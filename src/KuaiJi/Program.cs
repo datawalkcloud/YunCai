@@ -57,8 +57,12 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    // 生产环境才强制 HTTPS 跳转；开发环境保持 HTTP 直连，
+    // 以便 openapi-generator 等工具能直接读取 http 上的 OpenAPI 文档。
+    app.UseHttpsRedirection();
+}
 
 app.UseCors(CorsPolicy);
 
