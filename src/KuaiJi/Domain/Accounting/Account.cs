@@ -143,6 +143,17 @@ namespace KuaiJi.Domain.Accounting
             Name = name.Trim();
         }
 
+        /// <summary>修改余额方向。仅末级科目允许修改（非末级的方向由下级决定，无实际意义）。</summary>
+        public void ChangeDirection(BalanceDirection direction)
+        {
+            if (!IsLeaf)
+            {
+                throw new InvalidOperationException("非末级科目不允许修改余额方向。");
+            }
+
+            Direction = direction;
+        }
+
         /// <summary>设置助记码；传入空白则清除。</summary>
         public void SetMnemonic(string? mnemonic)
         {

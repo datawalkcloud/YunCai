@@ -1,5 +1,6 @@
 using KuaiJi.Application.Accounts;
 using KuaiJi.Domain.Accounting;
+using KuaiJi.Domain.AccountSets;
 using KuaiJi.Infrastructure.Accounting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +17,14 @@ namespace KuaiJi.Controllers
 
         private readonly AccountImportService _importService;
         private readonly IAccountRepository _accountRepository;
+        private readonly IAccountSetRepository _accountSetRepository;
         private readonly ILogger<AccountsController> _logger;
 
-        public AccountsController(AccountImportService importService, IAccountRepository accountRepository, ILogger<AccountsController> logger)
+        public AccountsController(AccountImportService importService, IAccountRepository accountRepository, IAccountSetRepository accountSetRepository, ILogger<AccountsController> logger)
         {
             _importService = importService;
             _accountRepository = accountRepository;
+            _accountSetRepository = accountSetRepository;
             _logger = logger;
         }
 
@@ -97,6 +100,17 @@ namespace KuaiJi.Controllers
                 return BadRequest(new { message = ex.Message });
             }
 
+            // 设置助记码和启用状态。
+            if (!string.IsNullOrWhiteSpace(request.Mnemonic))
+            {
+                account.SetMnemonic(request.Mnemonic);
+            }
+
+            if (!request.IsEnabled)
+            {
+                account.Disable();
+            }
+
             await _accountRepository.AddAsync(account, cancellationToken);
             await _accountRepository.SaveChangesAsync(cancellationToken);
 
@@ -128,6 +142,57 @@ namespace KuaiJi.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// 修改科目：仅允许修改名称、余额方向（末级科目）、助记码和启用状态。
+        /// 编码、类别和上级关系不可修改，以保证科目树结构和凭证引用的完整性。
+        /// </summary>
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult<AccountDto>> Update(Guid accountSetId, Guid id, [FromBody] UpdateAccountRequest request, CancellationToken cancellationToken)
+        {
+            var account = await _accountRepository.GetByIdAsync(accountSetId, id, cancellationToken);
+            if (account is null)
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                if (request.Name is not null)
+                {
+                    account.Rename(request.Name);
+                }
+
+                if (request.Direction is { } direction)
+                {
+                    account.ChangeDirection(direction);
+                }
+
+                if (request.Mnemonic is not null)
+                {
+                    account.SetMnemonic(request.Mnemonic);
+                }
+
+                if (request.IsEnabled is { } isEnabled)
+                {
+                    if (isEnabled)
+                        account.Enable();
+                    else
+                        account.Disable();
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+
+            await _accountRepository.SaveChangesAsync(cancellationToken);
+            return Ok(AccountDto.FromDomain(account));
+        }
+
 
         /// <summary>
         /// 下载科目导入模板（.xlsx）。模板含表头、示例数据与填写说明，供用户填写后回传导入。
@@ -137,6 +202,19 @@ namespace KuaiJi.Controllers
         {
             var bytes = AccountImportTemplateBuilder.Build();
             return File(bytes, AccountImportTemplateBuilder.ContentType, AccountImportTemplateBuilder.FileName);
+        }
+
+        /// <summary>
+        /// 导出账套全部科目（.xlsx）。导出列与导入模板一致，文件可原样回传导入。
+        /// </summary>
+        [HttpGet("export")]
+        public async Task<IActionResult> Export(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            var accounts = await _accountRepository.GetAllAsync(accountSetId, cancellationToken);
+            var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken);
+            var bytes = AccountExportBuilder.Build(accounts);
+            var fileName = AccountExportBuilder.BuildFileName(accountSet?.Name ?? string.Empty);
+            return File(bytes, AccountExportBuilder.ContentType, fileName);
         }
 
         /// <summary>

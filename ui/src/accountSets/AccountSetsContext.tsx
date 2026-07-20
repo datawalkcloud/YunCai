@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useParams } from "react-router"
 
 import { fetchAccountSets, type AccountSetDto } from "@/api/accountSets"
@@ -13,6 +13,8 @@ interface AccountSetsContextValue {
     error: string | null
     /** 默认账套 id：优先取当前账套，其次取第一个；无账套时为空串。 */
     defaultId: string
+    /** 手动刷新账套列表（如切换当前账套后调用）。 */
+    refresh: () => void
 }
 
 const AccountSetsContext = createContext<AccountSetsContextValue | null>(null)
@@ -46,6 +48,15 @@ export function AccountSetsProvider({ children }: { children: ReactNode }) {
         }
     }, [token])
 
+    const refresh = useCallback(() => {
+        setLoading(true)
+        setError(null)
+        fetchAccountSets(token ?? undefined)
+            .then((sets) => setAccountSets(sets))
+            .catch((err) => setError(err instanceof Error ? err.message : "加载账套失败。"))
+            .finally(() => setLoading(false))
+    }, [token])
+
     const value = useMemo<AccountSetsContextValue>(() => {
         const preferred = accountSets.find((s) => s.isCurrent) ?? accountSets[0]
         return {
@@ -53,8 +64,9 @@ export function AccountSetsProvider({ children }: { children: ReactNode }) {
             loading,
             error,
             defaultId: preferred?.id ?? "",
+            refresh,
         }
-    }, [accountSets, loading, error])
+    }, [accountSets, loading, error, refresh])
 
     return <AccountSetsContext value={value}>{children}</AccountSetsContext>
 }

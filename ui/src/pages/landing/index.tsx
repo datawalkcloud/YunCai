@@ -1,4 +1,4 @@
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
 import {
     ArrowRight,
     BarChart3,
@@ -19,7 +19,7 @@ import {
     Zap,
 } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "antd"
 import { ModeToggle } from "@/components/theme/mode-toggle"
 import { useAuth } from "@/auth/AuthContext"
 import heroImg from "@/assets/hero.png"
@@ -126,6 +126,7 @@ const FAQS = [
 /** 公开的官网首页：右上角提供登录入口，已登录用户显示进入控制台。 */
 export default function LandingPage() {
     const { status } = useAuth()
+    const navigate = useNavigate()
     const authed = status === "authenticated"
     const primaryHref = authed ? "/app" : "/login"
     const primaryLabel = authed ? "进入控制台" : "立即登录"
@@ -155,15 +156,13 @@ export default function LandingPage() {
                     <div className="flex items-center gap-2">
                         <ModeToggle />
                         {authed ? (
-                            <Button asChild>
-                                <Link to="/app">
-                                    进入控制台
-                                    <ArrowRight />
-                                </Link>
+                            <Button type="primary" onClick={() => navigate("/app")}>
+                                进入控制台
+                                <ArrowRight className="size-4" />
                             </Button>
                         ) : (
-                            <Button asChild>
-                                <Link to="/login">登录</Link>
+                            <Button type="primary" onClick={() => navigate("/login")}>
+                                登录
                             </Button>
                         )}
                     </div>
@@ -189,14 +188,12 @@ export default function LandingPage() {
                                 从凭证录入到财务报表，好会计帮你打通全流程。数据实时归集，报表随点随出，告别繁琐的手工核算。
                             </p>
                             <div className="flex flex-wrap items-center gap-3">
-                                <Button asChild size="lg">
-                                    <Link to={primaryHref}>
-                                        {primaryLabel}
-                                        <ArrowRight />
-                                    </Link>
+                                <Button type="primary" size="large" onClick={() => navigate(primaryHref)}>
+                                    {primaryLabel}
+                                    <ArrowRight className="size-4" />
                                 </Button>
-                                <Button asChild size="lg" variant="outline">
-                                    <a href="#features">了解功能</a>
+                                <Button size="large" href="#features">
+                                    了解功能
                                 </Button>
                             </div>
                             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
@@ -369,11 +366,9 @@ export default function LandingPage() {
                         <p className="max-w-xl text-muted-foreground">
                             登录好会计，立即体验高效、准确、清晰的在线记账。
                         </p>
-                        <Button asChild size="lg">
-                            <Link to={primaryHref}>
-                                {authed ? "进入控制台" : "登录使用"}
-                                <ArrowRight />
-                            </Link>
+                        <Button type="primary" size="large" onClick={() => navigate(primaryHref)}>
+                            {authed ? "进入控制台" : "登录使用"}
+                            <ArrowRight className="size-4" />
                         </Button>
                     </div>
                 </section>

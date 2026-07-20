@@ -28,16 +28,15 @@ namespace KuaiJi.Application.Reports
         }
 
         /// <summary>
-        /// 生成指定账套、指定会计期间的现金日记账。year/month 省略时优先取最近有凭证的月份，
-        /// 无凭证时回退账套启用期间。
+        /// 生成指定账套、指定日期范围的现金日记账。startDate/endDate 省略时默认取全部凭证。
         /// </summary>
-        public async Task<CashJournalDto> GetAsync(Guid accountSetId, int? year, int? month, CancellationToken cancellationToken = default)
+        public async Task<CashJournalDto> GetAsync(Guid accountSetId, DateOnly? startDate, DateOnly? endDate, CancellationToken cancellationToken = default)
         {
             var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken)
                              ?? throw new ReportException("指定的账套不存在。");
 
             var accounts = await _accountRepository.GetAllAsync(accountSetId, cancellationToken);
-            var accountsById = accounts.ToDictionary(a => a.Id, a => a);
+            var accountsById = accounts.ToDictionary(a => a.Id, a => a.Name);
             var cashAccountIds = accounts
                 .Where(a => a.Code.StartsWith(CashCodePrefix, StringComparison.Ordinal))
                 .Select(a => a.Id)
@@ -45,9 +44,8 @@ namespace KuaiJi.Application.Reports
 
             var vouchers = await _voucherRepository.GetAllAsync(accountSetId, cancellationToken);
 
-            var (resolvedYear, resolvedMonth) = ResolvePeriod(accountSet, vouchers, year, month);
-            var periodStart = new DateOnly(resolvedYear, resolvedMonth, 1);
-            var periodEnd = periodStart.AddMonths(1);
+            // 解析日期范围：未指定时取全部凭证的最小/最大日期，无凭证则回退账套启用期间。
+            var (resolvedStart, resolvedEnd) = ResolveDateRange(accountSet, vouchers, startDate, endDate);
 
             var openingBalance = 0m;
             var rows = new List<(DateOnly Date, int Number, CashJournalRowDto Row)>();
@@ -62,13 +60,13 @@ namespace KuaiJi.Application.Reports
                     }
 
                     // 期间之前：仅累计期初余额（现金净额 = 借 - 贷）。
-                    if (voucher.Date < periodStart)
+                    if (voucher.Date < resolvedStart)
                     {
                         openingBalance += entry.Debit - entry.Credit;
                         continue;
                     }
 
-                    if (voucher.Date >= periodEnd)
+                    if (voucher.Date > resolvedEnd)
                     {
                         continue;
                     }
@@ -76,7 +74,7 @@ namespace KuaiJi.Application.Reports
                     // 对方科目：同一凭证中除库存现金外的其他科目名称。
                     var contra = string.Join("、", voucher.Entries
                         .Where(e => !cashAccountIds.Contains(e.AccountId))
-                        .Select(e => accountsById.GetValueOrDefault(e.AccountId)?.Name)
+                        .Select(e => accountsById.GetValueOrDefault(e.AccountId))
                         .Where(n => !string.IsNullOrWhiteSpace(n))
                         .Distinct());
 
@@ -100,46 +98,43 @@ namespace KuaiJi.Application.Reports
 
             return new CashJournalDto
             {
-                Year = resolvedYear,
-                Month = resolvedMonth,
-                PeriodText = $"{resolvedYear:D4}年{resolvedMonth:D2}月",
+                StartDate = resolvedStart.ToString("yyyy-MM-dd"),
+                EndDate = resolvedEnd.ToString("yyyy-MM-dd"),
+                PeriodText = $"{resolvedStart:yyyy-MM-dd} 至 {resolvedEnd:yyyy-MM-dd}",
                 OpeningBalance = openingBalance,
                 Rows = orderedRows,
             };
         }
 
         /// <summary>
-        /// 解析会计期间：显式给定 year/month 时校验后采用；否则取最近有凭证的月份，
-        /// 无凭证时回退到账套启用期间。
+        /// 解析日期范围：显式给定时校验后采用；否则取全部凭证的最小/最大日期，
+        /// 无凭证时回退到账套启用期间的月初至月末。
         /// </summary>
-        private static (int Year, int Month) ResolvePeriod(
+        private static (DateOnly Start, DateOnly End) ResolveDateRange(
             AccountSet accountSet,
             IReadOnlyList<Voucher> vouchers,
-            int? year,
-            int? month)
+            DateOnly? startDate,
+            DateOnly? endDate)
         {
-            if (year is { } y && month is { } m)
+            if (startDate is { } s && endDate is { } e)
             {
-                if (m < 1 || m > 12)
+                if (s > e)
                 {
-                    throw new ReportException("会计期间的月份必须在 1 到 12 之间。");
+                    throw new ReportException("起始日期不能晚于截止日期。");
                 }
-
-                if (y < 1900 || y > 9999)
-                {
-                    throw new ReportException("会计期间的年份不合法。");
-                }
-
-                return (y, m);
+                return (s, e);
             }
 
             if (vouchers.Count > 0)
             {
-                var latest = vouchers.Max(v => v.Date);
-                return (latest.Year, latest.Month);
+                var minDate = vouchers.Min(v => v.Date);
+                var maxDate = vouchers.Max(v => v.Date);
+                return (startDate ?? minDate, endDate ?? maxDate);
             }
 
-            return (accountSet.StartYear, accountSet.StartMonth);
+            var fallbackStart = new DateOnly(accountSet.StartYear, accountSet.StartMonth, 1);
+            var fallbackEnd = fallbackStart.AddMonths(1).AddDays(-1);
+            return (startDate ?? fallbackStart, endDate ?? fallbackEnd);
         }
     }
 }

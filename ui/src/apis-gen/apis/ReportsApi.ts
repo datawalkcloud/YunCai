@@ -36,14 +36,14 @@ export interface AccountsetsAccountSetIdReportsBalanceSheetGetRequest {
 
 export interface AccountsetsAccountSetIdReportsCashJournalGetRequest {
     accountSetId: string;
-    year?: number;
-    month?: number;
+    startDate?: string;
+    endDate?: string;
 }
 
 export interface AccountsetsAccountSetIdReportsTrialBalanceGetRequest {
     accountSetId: string;
-    year?: number;
-    month?: number;
+    startDate?: string;
+    endDate?: string;
 }
 
 /**
@@ -199,12 +199,12 @@ export class ReportsApi extends runtime.BaseAPI implements ReportsApiInterface {
 
         const queryParameters: any = {};
 
-        if (requestParameters['year'] != null) {
-            queryParameters['year'] = requestParameters['year'];
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = requestParameters['startDate'];
         }
 
-        if (requestParameters['month'] != null) {
-            queryParameters['month'] = requestParameters['month'];
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = requestParameters['endDate'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -250,12 +250,12 @@ export class ReportsApi extends runtime.BaseAPI implements ReportsApiInterface {
 
         const queryParameters: any = {};
 
-        if (requestParameters['year'] != null) {
-            queryParameters['year'] = requestParameters['year'];
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = requestParameters['startDate'];
         }
 
-        if (requestParameters['month'] != null) {
-            queryParameters['month'] = requestParameters['month'];
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = requestParameters['endDate'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

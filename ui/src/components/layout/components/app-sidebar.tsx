@@ -1,21 +1,10 @@
-import * as React from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
-import { BookOpen, Building2, FileText, GalleryVerticalEnd, House, ListTree, LogOut, Scale, Table2, Upload } from "lucide-react"
+import { BookOpen, Building2, FileText, GalleryVerticalEnd, House, ListTree, LogOut, Scale, Table2 } from "lucide-react"
+import { Button, Menu, Select, Typography, theme } from "antd"
+import type { MenuProps } from "antd"
 
 import { useAuth } from "@/auth/AuthContext"
 import { useAccountSets } from "@/accountSets/AccountSetsContext"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from "@/components/ui/sidebar"
 
 // 导航分组，path 为账套下的相对子路径（首页为空串）。新增页面时在此登记即可。
 const navGroups = [
@@ -28,15 +17,14 @@ const navGroups = [
     items: [{ title: "现金日记账", path: "funds/cash-journal", icon: BookOpen }],
   },
   {
-    label: "账目",
-    items: [{ title: "科目余额表", path: "ledger/trial-balance", icon: Table2 }],
-  },
-  {
     label: "凭证",
     items: [
       { title: "凭证管理", path: "vouchers/manage", icon: FileText },
-      { title: "凭证导入", path: "vouchers/import", icon: Upload },
     ],
+  },
+  {
+    label: "账目",
+    items: [{ title: "科目余额表", path: "ledger/trial-balance", icon: Table2 }],
   },
   {
     label: "报表",
@@ -51,12 +39,13 @@ const navGroups = [
   },
 ]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ collapsed }: { collapsed: boolean }) {
   const { user, logout } = useAuth()
   const { accountSets } = useAccountSets()
   const location = useLocation()
   const navigate = useNavigate()
   const accountSetId = useParams().accountSetId ?? ""
+  const { token } = theme.useToken()
 
   // 账套内的绝对路径：/{accountSetId} 或 /{accountSetId}/{path}
   const base = `/${accountSetId}`
@@ -69,95 +58,103 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     navigate(`/${nextId}${rest}`)
   }
 
+  // 分组菜单项：每个 navGroup 映射为一个 group，其下为可点击的页面项。
+  const menuItems: MenuProps["items"] = navGroups.map((group) => ({
+    type: "group",
+    key: group.label,
+    label: group.label,
+    children: group.items.map((item) => {
+      const Icon = item.icon
+      return {
+        key: hrefOf(item.path),
+        icon: <Icon className="size-4" />,
+        label: item.title,
+      }
+    }),
+  }))
+
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link to={base}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <GalleryVerticalEnd className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">好会计</span>
-                  <span className="truncate text-xs text-muted-foreground">记账管理</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          {/* 账套切换器：切换后停留在当前页面。仅有多个账套时可切换。 */}
-          {accountSets.length > 0 && (
-            <SidebarMenuItem className="group-data-[collapsible=icon]:hidden">
-              <select
-                aria-label="切换账套"
-                className="h-9 w-full min-w-0 rounded-md border border-sidebar-border bg-transparent px-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-sidebar-ring/50"
-                value={accountSetId}
-                onChange={(e) => switchAccountSet(e.target.value)}
-              >
-                {accountSets.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                    {s.isCurrent ? "（当前）" : ""}
-                  </option>
-                ))}
-              </select>
-            </SidebarMenuItem>
+    <div className="flex h-full flex-col">
+      {/* 品牌 + 账套切换器 */}
+      <div className="flex flex-col gap-2 p-2">
+        <Link
+          to={base}
+          className="flex items-center gap-2 rounded-md p-2 no-underline"
+          style={{ color: token.colorText }}
+        >
+          <span
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: token.colorPrimary, color: token.colorWhite }}
+          >
+            <GalleryVerticalEnd className="size-4" />
+          </span>
+          {!collapsed && (
+            <span className="flex flex-col leading-tight">
+              <Typography.Text strong>好会计</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                记账管理
+              </Typography.Text>
+            </span>
           )}
-        </SidebarMenu>
-      </SidebarHeader>
+        </Link>
 
-      <SidebarContent>
-        {navGroups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarMenu>
-              {group.items.map((item) => {
-                const href = hrefOf(item.path)
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location.pathname === href}
-                      tooltip={item.title}
-                    >
-                      <Link to={href}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroup>
-        ))}
-      </SidebarContent>
+        {!collapsed && accountSets.length > 0 && (
+          <Select
+            aria-label="切换账套"
+            value={accountSetId}
+            onChange={switchAccountSet}
+            style={{ width: "100%" }}
+            options={accountSets.map((s) => ({
+              value: s.id,
+              label: `${s.name}${s.isCurrent ? "（当前）" : ""}`,
+            }))}
+          />
+        )}
+      </div>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <div className="flex items-center gap-2 rounded-md p-2 text-left text-sm">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
-                {(user?.displayName ?? "?").slice(0, 1)}
-              </div>
-              <div className="grid flex-1 leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-medium">{user?.displayName ?? "未登录"}</span>
-                <span className="truncate text-xs text-muted-foreground">{user?.username ?? ""}</span>
-              </div>
-            </div>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={logout} tooltip="退出登录">
-              <LogOut />
-              <span>退出登录</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      {/* 导航菜单 */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <Menu
+          mode="inline"
+          inlineCollapsed={collapsed}
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+          onClick={({ key }) => navigate(key)}
+          style={{ borderInlineEnd: "none", background: "transparent" }}
+        />
+      </div>
 
-      <SidebarRail />
-    </Sidebar>
+      {/* 用户信息 + 退出 */}
+      <div className="flex flex-col gap-1 p-2">
+        <div className="flex items-center gap-2 rounded-md p-2">
+          <span
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: token.colorFillSecondary, color: token.colorText }}
+          >
+            {(user?.displayName ?? "?").slice(0, 1)}
+          </span>
+          {!collapsed && (
+            <span className="flex min-w-0 flex-col leading-tight">
+              <Typography.Text strong ellipsis>
+                {user?.displayName ?? "未登录"}
+              </Typography.Text>
+              <Typography.Text type="secondary" ellipsis style={{ fontSize: 12 }}>
+                {user?.username ?? ""}
+              </Typography.Text>
+            </span>
+          )}
+        </div>
+        <Button
+          type="text"
+          block={!collapsed}
+          onClick={logout}
+          title="退出登录"
+          icon={<LogOut className="size-4" />}
+          style={{ justifyContent: collapsed ? "center" : "flex-start" }}
+        >
+          {!collapsed && "退出登录"}
+        </Button>
+      </div>
+    </div>
   )
 }

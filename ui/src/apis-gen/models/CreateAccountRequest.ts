@@ -49,6 +49,18 @@ export interface CreateAccountRequest {
      * @memberof CreateAccountRequest
      */
     direction?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateAccountRequest
+     */
+    mnemonic?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CreateAccountRequest
+     */
+    isEnabled?: boolean;
 }
 
 /**
@@ -73,6 +85,8 @@ export function CreateAccountRequestFromJSONTyped(json: any, ignoreDiscriminator
         'name': json['name'] == null ? undefined : json['name'],
         'category': json['category'] == null ? undefined : json['category'],
         'direction': json['direction'] == null ? undefined : json['direction'],
+        'mnemonic': json['mnemonic'] == null ? undefined : json['mnemonic'],
+        'isEnabled': json['isEnabled'] == null ? undefined : json['isEnabled'],
     };
 }
 
@@ -92,6 +106,8 @@ export function CreateAccountRequestToJSONTyped(value?: CreateAccountRequest | n
         'name': value['name'],
         'category': value['category'],
         'direction': value['direction'],
+        'mnemonic': value['mnemonic'],
+        'isEnabled': value['isEnabled'],
     };
 }
 

@@ -27,19 +27,19 @@ namespace KuaiJi.Controllers
         }
 
         /// <summary>
-        /// 科目余额表。可选 year/month 指定会计期间；省略时取最近有凭证的月份（无凭证则取账套启用期间）。
-        /// 返回选定期间及各科目的期初、本期发生额与期末余额。
+        /// 科目余额表。可选 startDate/endDate 指定日期范围（含起止日，格式 yyyy-MM-dd）；省略时取全部凭证。
+        /// 返回选定日期范围及各科目的期初、本期发生额与期末余额。
         /// </summary>
         [HttpGet("trial-balance")]
         public async Task<ActionResult<TrialBalanceDto>> GetTrialBalance(
             Guid accountSetId,
-            [FromQuery] int? year,
-            [FromQuery] int? month,
+            [FromQuery] DateOnly? startDate,
+            [FromQuery] DateOnly? endDate,
             CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _trialBalanceService.GetAsync(accountSetId, year, month, cancellationToken);
+                var result = await _trialBalanceService.GetAsync(accountSetId, startDate, endDate, cancellationToken);
                 return Ok(result);
             }
             catch (ReportException ex)
@@ -71,19 +71,19 @@ namespace KuaiJi.Controllers
         }
 
         /// <summary>
-        /// 现金日记账。可选 year/month 指定会计期间；省略时取最近有凭证的月份（无凭证则取账套启用期间）。
+        /// 现金日记账。可选 startDate/endDate 指定日期范围（含起止日，格式 yyyy-MM-dd）；省略时取全部凭证。
         /// 由涉及库存现金科目的凭证分录派生，返回期初余额与本期序时流水。
         /// </summary>
         [HttpGet("cash-journal")]
         public async Task<ActionResult<CashJournalDto>> GetCashJournal(
             Guid accountSetId,
-            [FromQuery] int? year,
-            [FromQuery] int? month,
+            [FromQuery] DateOnly? startDate,
+            [FromQuery] DateOnly? endDate,
             CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _cashJournalService.GetAsync(accountSetId, year, month, cancellationToken);
+                var result = await _cashJournalService.GetAsync(accountSetId, startDate, endDate, cancellationToken);
                 return Ok(result);
             }
             catch (ReportException ex)

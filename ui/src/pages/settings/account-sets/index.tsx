@@ -1,28 +1,31 @@
 import { useCallback, useEffect, useState } from "react"
-import { Building2, Check, CheckCircle2, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react"
+import { Building2, Check, CheckCircle2, Copy, Edit3, Plus, RefreshCw, Trash2 } from "lucide-react"
+import {
+    Alert,
+    Button,
+    Card,
+    Col,
+    DatePicker,
+    Drawer,
+    Empty,
+    Form,
+    Input,
+    Row,
+    Select,
+    Space,
+    Spin,
+    Tag,
+    Typography,
+    theme,
+} from "antd"
+import dayjs, { type Dayjs } from "dayjs"
 
 import { useAuth } from "@/auth/AuthContext"
+import { useAccountSets } from "@/accountSets/AccountSetsContext"
 import { AccountSetsApi, type AccountSetDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-import { Button } from "@/components/ui/button"
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-    Sheet,
-    SheetClose,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
-import { cn } from "@/lib/utils"
+
+const { Title, Text } = Typography
 
 /** 会计准则枚举值（与后端 AccountingStandard 对应）及其显示名。 */
 const STANDARDS: { value: number; label: string }[] = [
@@ -44,40 +47,30 @@ function taxpayerLabel(value?: number): string {
     return TAXPAYERS.find((t) => t.value === value)?.label ?? "—"
 }
 
-const selectClassName = cn(
-    "h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none",
-    "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
-    "disabled:pointer-events-none disabled:opacity-50 dark:bg-input/30",
-)
-
-function currentPeriod(): string {
-    return new Date().toISOString().slice(0, 7)
-}
-
-/** 将 yyyy-MM 形式的启用期间拆成年、月。 */
-function parsePeriod(period: string): { year: number; month: number } {
-    const [y, m] = period.split("-")
-    return { year: Number(y), month: Number(m) }
+/** 新增表单字段。 */
+interface CreateForm {
+    name: string
+    company: string
+    standard: number
+    currency: string
+    taxpayer: number
+    startPeriod: Dayjs
 }
 
 export default function AccountSetsPage() {
     const { token } = useAuth()
+    const { refresh: refreshAccountSets } = useAccountSets()
+    const { token: t } = theme.useToken()
 
     const [sets, setSets] = useState<AccountSetDto[]>([])
     const [loading, setLoading] = useState(false)
     const [listError, setListError] = useState<string | null>(null)
     const [busyId, setBusyId] = useState<string | null>(null)
 
-    // 新增表单字段。
-    const [name, setName] = useState("")
-    const [company, setCompany] = useState("")
-    const [standard, setStandard] = useState(STANDARDS[0].value)
-    const [currency, setCurrency] = useState("人民币")
-    const [taxpayer, setTaxpayer] = useState(TAXPAYERS[0].value)
-    const [startPeriod, setStartPeriod] = useState(currentPeriod())
-    const [error, setError] = useState("")
     const [submitting, setSubmitting] = useState(false)
     const [open, setOpen] = useState(false)
+    const [editing, setEditing] = useState<AccountSetDto | null>(null)
+    const [form] = Form.useForm<CreateForm>()
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -103,6 +96,7 @@ export default function AccountSetsPage() {
         try {
             await new AccountSetsApi(apiConfig(token)).accountSetsIdCurrentPost({ id })
             await load()
+            refreshAccountSets()
         } catch (err) {
             setListError(await apiErrorMessage(err, "设为当前账套失败，请重试。"))
         } finally {
@@ -125,248 +119,250 @@ export default function AccountSetsPage() {
         }
     }
 
-    function resetForm() {
-        setName("")
-        setCompany("")
-        setStandard(STANDARDS[0].value)
-        setCurrency("人民币")
-        setTaxpayer(TAXPAYERS[0].value)
-        setStartPeriod(currentPeriod())
-        setError("")
+    function openCreate() {
+        setEditing(null)
+        form.setFieldsValue({
+            name: "",
+            company: "",
+            standard: STANDARDS[0].value,
+            currency: "人民币",
+            taxpayer: TAXPAYERS[0].value,
+            startPeriod: dayjs(),
+        })
+        setOpen(true)
     }
 
-    async function addSet() {
-        const trimmedName = name.trim()
-        const trimmedCompany = company.trim()
-        if (!trimmedName || !trimmedCompany) {
-            setError("请填写账套名称和单位名称。")
-            return
-        }
-        const { year, month } = parsePeriod(startPeriod)
-        if (!year || !month) {
-            setError("请选择有效的启用期间。")
-            return
-        }
+    function openEdit(set: AccountSetDto) {
+        setEditing(set)
+        form.setFieldsValue({
+            name: set.name ?? "",
+            company: set.companyName ?? "",
+            standard: set.standard ?? STANDARDS[0].value,
+            currency: set.baseCurrency ?? "人民币",
+            taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
+            startPeriod: set.startPeriod ? dayjs(set.startPeriod) : dayjs(),
+        })
+        setOpen(true)
+    }
+
+    function openCopy(set: AccountSetDto) {
+        setEditing(null)
+        form.setFieldsValue({
+            name: `${set.name ?? ""}（副本）`,
+            company: set.companyName ?? "",
+            standard: set.standard ?? STANDARDS[0].value,
+            currency: set.baseCurrency ?? "人民币",
+            taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
+            startPeriod: set.startPeriod ? dayjs(set.startPeriod) : dayjs(),
+        })
+        setOpen(true)
+    }
+
+    async function saveSet() {
+        const values = await form.validateFields()
+        const period = values.startPeriod
         setSubmitting(true)
-        setError("")
+        setListError(null)
         try {
-            await new AccountSetsApi(apiConfig(token)).accountSetsPost({
-                createAccountSetRequest: {
-                    name: trimmedName,
-                    companyName: trimmedCompany,
-                    standard,
-                    taxpayerType: taxpayer,
-                    baseCurrency: currency.trim() || "人民币",
-                    startYear: year,
-                    startMonth: month,
-                },
-            })
-            resetForm()
+            const api = new AccountSetsApi(apiConfig(token))
+            if (editing) {
+                // 编辑
+                await api.accountSetsIdPut({
+                    id: editing.id,
+                    updateAccountSetRequest: {
+                        name: values.name.trim(),
+                        companyName: values.company.trim(),
+                        standard: values.standard,
+                        taxpayerType: values.taxpayer,
+                        baseCurrency: values.currency.trim() || "人民币",
+                    },
+                })
+            } else {
+                // 新增（含复制）
+                await api.accountSetsPost({
+                    createAccountSetRequest: {
+                        name: values.name.trim(),
+                        companyName: values.company.trim(),
+                        standard: values.standard,
+                        taxpayerType: values.taxpayer,
+                        baseCurrency: values.currency.trim() || "人民币",
+                        startYear: period.year(),
+                        startMonth: period.month() + 1,
+                    },
+                })
+            }
             setOpen(false)
             await load()
+            refreshAccountSets()
         } catch (err) {
-            setError(await apiErrorMessage(err, "创建账套失败，请重试。"))
+            setListError(await apiErrorMessage(err, editing ? "更新账套失败，请重试。" : "创建账套失败，请重试。"))
         } finally {
             setSubmitting(false)
         }
     }
 
-    function handleOpenChange(next: boolean) {
-        setOpen(next)
-        if (!next) setError("")
-    }
-
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex flex-col gap-1">
-                    <h1 className="text-2xl font-bold">账套</h1>
-                    <p className="text-sm text-muted-foreground">
-                        管理各单位的账簿账套，可在多套账之间切换当前账套。
-                    </p>
+        <Space direction="vertical" size="large" style={{ display: "flex" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                    <Title level={3} style={{ margin: 0 }}>账套</Title>
+                    <Text type="secondary">管理各单位的账簿账套，可在多套账之间切换当前账套。</Text>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-                    <RefreshCw className={cn(loading && "animate-spin")} />
+                <Button icon={<RefreshCw size={16} className={loading ? "spin" : undefined} />} onClick={() => void load()} loading={loading}>
                     刷新
                 </Button>
             </div>
 
-            <Card>
-                <CardHeader className="flex-row items-center justify-between gap-2">
-                    <CardTitle>账套列表</CardTitle>
-                    <Button size="sm" onClick={() => setOpen(true)}>
-                        <Plus />
+            <Card
+                title="账套列表"
+                extra={
+                    <Button type="primary" icon={<Plus size={16} />} onClick={openCreate}>
                         新增账套
                     </Button>
-                </CardHeader>
-                <CardContent>
-                    {listError && (
-                        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                            {listError}
-                        </div>
-                    )}
-                    {loading && sets.length === 0 ? (
-                        <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-                            <Loader2 className="size-4 animate-spin" />
-                            加载中…
-                        </div>
-                    ) : (
-                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                            {sets.map((set) => (
-                                <div
-                                    key={set.id}
-                                    className={cn(
-                                        "flex flex-col gap-3 rounded-lg border p-4 transition-colors",
-                                        set.isCurrent ? "border-primary bg-primary/5" : "hover:bg-muted/40",
-                                    )}
+                }
+            >
+                {listError && <Alert type="error" showIcon message={listError} style={{ marginBottom: 16 }} />}
+                {loading && sets.length === 0 ? (
+                    <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+                        <Spin />
+                    </div>
+                ) : sets.length === 0 ? (
+                    <Empty description="暂无账套，点击“新增账套”创建" />
+                ) : (
+                    <Row gutter={[16, 16]}>
+                        {sets.map((set) => (
+                            <Col key={set.id} xs={24} sm={12} xl={8}>
+                                <Card
+                                    size="small"
+                                    style={{
+                                        height: "100%",
+                                        borderColor: set.isCurrent ? t.colorPrimary : undefined,
+                                        borderLeftWidth: set.isCurrent ? 3 : undefined,
+                                    }}
+                                    styles={{ body: { display: "flex", flexDirection: "column", gap: 12, height: "100%" } }}
                                 >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                                                <Building2 className="size-5" />
+                                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    height: 36,
+                                                    width: 36,
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    borderRadius: t.borderRadius,
+                                                    background: t.colorFillSecondary,
+                                                    color: t.colorTextSecondary,
+                                                }}
+                                            >
+                                                <Building2 size={20} />
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{set.name}</span>
-                                                <span className="text-xs text-muted-foreground">{set.companyName}</span>
+                                            <div style={{ display: "flex", flexDirection: "column" }}>
+                                                <Text strong>{set.name}</Text>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>{set.companyName}</Text>
                                             </div>
                                         </div>
                                         {set.isCurrent && (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                                <CheckCircle2 className="size-3" />
+                                            <Tag color="blue" icon={<CheckCircle2 size={12} style={{ verticalAlign: "-2px" }} />}>
                                                 当前
-                                            </span>
+                                            </Tag>
                                         )}
                                     </div>
 
-                                    <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                        <dt>会计准则</dt>
-                                        <dd className="text-right text-foreground">{standardLabel(set.standard)}</dd>
-                                        <dt>本位币</dt>
-                                        <dd className="text-right text-foreground">{set.baseCurrency}</dd>
-                                        <dt>纳税人性质</dt>
-                                        <dd className="text-right text-foreground">{taxpayerLabel(set.taxpayerType)}</dd>
-                                        <dt>启用期间</dt>
-                                        <dd className="text-right tabular-nums text-foreground">{set.startPeriod}</dd>
-                                    </dl>
+                                    <Row gutter={[8, 4]} style={{ fontSize: 12 }}>
+                                        <Col span={12}><Text type="secondary">会计准则</Text></Col>
+                                        <Col span={12} style={{ textAlign: "right" }}>{standardLabel(set.standard)}</Col>
+                                        <Col span={12}><Text type="secondary">本位币</Text></Col>
+                                        <Col span={12} style={{ textAlign: "right" }}>{set.baseCurrency}</Col>
+                                        <Col span={12}><Text type="secondary">纳税人性质</Text></Col>
+                                        <Col span={12} style={{ textAlign: "right" }}>{taxpayerLabel(set.taxpayerType)}</Col>
+                                        <Col span={12}><Text type="secondary">启用期间</Text></Col>
+                                        <Col span={12} style={{ textAlign: "right" }}>{set.startPeriod}</Col>
+                                    </Row>
 
-                                    <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                                    <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 4 }}>
                                         <Button
-                                            variant={set.isCurrent ? "secondary" : "outline"}
-                                            size="sm"
-                                            disabled={set.isCurrent || busyId === set.id}
+                                            type={set.isCurrent ? "default" : "primary"}
+                                            ghost={!set.isCurrent}
+                                            size="small"
+                                            disabled={set.isCurrent}
+                                            loading={busyId === set.id}
+                                            icon={<Check size={16} />}
                                             onClick={() => void setCurrent(set.id)}
                                         >
-                                            {busyId === set.id ? <Loader2 className="animate-spin" /> : <Check />}
                                             {set.isCurrent ? "当前账套" : "设为当前"}
                                         </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-sm"
-                                            disabled={set.isCurrent || busyId === set.id}
-                                            onClick={() => void removeSet(set)}
-                                            title={set.isCurrent ? "当前账套不可删除" : "删除账套"}
-                                        >
-                                            <Trash2 />
-                                        </Button>
+                                        <Space size={0}>
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<Edit3 size={14} />}
+                                                onClick={() => openEdit(set)}
+                                                title="编辑账套"
+                                            />
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<Copy size={14} />}
+                                                onClick={() => openCopy(set)}
+                                                title="复制账套"
+                                            />
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                danger
+                                                disabled={set.isCurrent || busyId === set.id}
+                                                icon={<Trash2 size={16} />}
+                                                onClick={() => void removeSet(set)}
+                                                title={set.isCurrent ? "当前账套不可删除" : "删除账套"}
+                                            />
+                                        </Space>
                                     </div>
-                                </div>
-                            ))}
-                            {sets.length === 0 && (
-                                <div className="col-span-full rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
-                                    暂无账套，点击“新增账套”创建
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </CardContent>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                )}
             </Card>
 
-            <Sheet open={open} onOpenChange={handleOpenChange}>
-                <SheetContent side="right" className="w-full sm:max-w-md">
-                    <SheetHeader>
-                        <SheetTitle>新增账套</SheetTitle>
-                        <SheetDescription>填写单位与核算信息后点击“创建账套”保存。</SheetDescription>
-                    </SheetHeader>
-                    <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4">
-                        <div className="flex flex-col gap-2">
-                            <Label htmlFor="set-name">账套名称</Label>
-                            <Input
-                                id="set-name"
-                                placeholder="如 华信科技 2026"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <Label htmlFor="set-company">单位名称</Label>
-                            <Input
-                                id="set-company"
-                                placeholder="如 华信科技有限公司"
-                                value={company}
-                                onChange={(e) => setCompany(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <Label htmlFor="set-standard">会计准则</Label>
-                            <select
-                                id="set-standard"
-                                className={selectClassName}
-                                value={standard}
-                                onChange={(e) => setStandard(Number(e.target.value))}
-                            >
-                                {STANDARDS.map((s) => (
-                                    <option key={s.value} value={s.value}>
-                                        {s.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <Label htmlFor="set-currency">记账本位币</Label>
-                            <Input
-                                id="set-currency"
-                                placeholder="人民币"
-                                value={currency}
-                                onChange={(e) => setCurrency(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <Label htmlFor="set-taxpayer">纳税人性质</Label>
-                            <select
-                                id="set-taxpayer"
-                                className={selectClassName}
-                                value={taxpayer}
-                                onChange={(e) => setTaxpayer(Number(e.target.value))}
-                            >
-                                {TAXPAYERS.map((t) => (
-                                    <option key={t.value} value={t.value}>
-                                        {t.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <Label htmlFor="set-period">启用期间</Label>
-                            <Input
-                                id="set-period"
-                                type="month"
-                                value={startPeriod}
-                                onChange={(e) => setStartPeriod(e.target.value)}
-                            />
-                        </div>
-                        {error && <span className="text-sm text-destructive">{error}</span>}
-                    </div>
-                    <SheetFooter>
-                        <Button onClick={() => void addSet()} disabled={submitting}>
-                            {submitting ? <Loader2 className="animate-spin" /> : <Plus />}
-                            创建账套
+            <Drawer
+                title={editing ? "编辑账套" : "新增账套"}
+                open={open}
+                onClose={() => setOpen(false)}
+                width={480}
+                footer={
+                    <Space style={{ display: "flex", justifyContent: "flex-end" }}>
+                        <Button onClick={() => setOpen(false)}>取消</Button>
+                        <Button type="primary" icon={<Plus size={16} />} loading={submitting} onClick={() => void saveSet()}>
+                            {editing ? "保存" : "创建账套"}
                         </Button>
-                        <SheetClose asChild>
-                            <Button variant="outline">取消</Button>
-                        </SheetClose>
-                    </SheetFooter>
-                </SheetContent>
-            </Sheet>
-        </div>
+                    </Space>
+                }
+            >
+                <Text type="secondary">
+                    {editing ? '修改账套基本信息后点击"保存"。' : '填写单位与核算信息后点击"创建账套"保存。'}
+                </Text>
+                <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark>
+                    <Form.Item label="账套名称" name="name" rules={[{ required: true, message: "请填写账套名称" }]}>
+                        <Input placeholder="如 华信科技 2026" />
+                    </Form.Item>
+                    <Form.Item label="单位名称" name="company" rules={[{ required: true, message: "请填写单位名称" }]}>
+                        <Input placeholder="如 华信科技有限公司" />
+                    </Form.Item>
+                    <Form.Item label="会计准则" name="standard">
+                        <Select options={STANDARDS} />
+                    </Form.Item>
+                    <Form.Item label="记账本位币" name="currency">
+                        <Input placeholder="人民币" />
+                    </Form.Item>
+                    <Form.Item label="纳税人性质" name="taxpayer">
+                        <Select options={TAXPAYERS} />
+                    </Form.Item>
+                    <Form.Item label="启用期间" name="startPeriod" rules={[{ required: true, message: "请选择启用期间" }]}>
+                        <DatePicker picker="month" style={{ width: "100%" }} disabled={!!editing} />
+                    </Form.Item>
+                </Form>
+            </Drawer>
+        </Space>
     )
 }

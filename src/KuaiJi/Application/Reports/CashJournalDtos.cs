@@ -22,16 +22,16 @@ namespace KuaiJi.Application.Reports
         public decimal Expense { get; init; }
     }
 
-    /// <summary>现金日记账：选定会计期间、期初余额与按日期排序的流水明细。</summary>
+    /// <summary>现金日记账：选定日期范围、期初余额与按日期排序的流水明细。</summary>
     public sealed class CashJournalDto
     {
-        /// <summary>会计期间——年份。</summary>
-        public int Year { get; init; }
+        /// <summary>起始日期（含），形如 2026-07-01。</summary>
+        public string StartDate { get; init; } = null!;
 
-        /// <summary>会计期间——月份（1-12）。</summary>
-        public int Month { get; init; }
+        /// <summary>截止日期（含），形如 2026-07-31。</summary>
+        public string EndDate { get; init; } = null!;
 
-        /// <summary>会计期间显示文本，形如 2026年07月。</summary>
+        /// <summary>期间显示文本，形如 2026-07-01 至 2026-07-31。</summary>
         public string PeriodText { get; init; } = null!;
 
         /// <summary>期初余额（期间起始日之前全部现金分录的净额）。</summary>

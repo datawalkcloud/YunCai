@@ -1,34 +1,64 @@
+import { useState } from "react"
 import { Outlet } from "react-router"
+import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons"
+import { Button, Layout as AntLayout, theme } from "antd"
 
 import { AppSidebar } from "./components/app-sidebar"
 import { ModeToggle } from "@/components/theme/mode-toggle"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+
+const { Header, Sider, Content } = AntLayout
 
 export default function Layout() {
+  const [collapsed, setCollapsed] = useState(false)
+  const { token } = theme.useToken()
+
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+    <AntLayout style={{ minHeight: "100svh" }}>
+      <Sider
+        collapsible
+        collapsed={collapsed}
+        trigger={null}
+        width={240}
+        collapsedWidth={72}
+        style={{
+          background: token.colorBgContainer,
+          borderInlineEnd: `1px solid ${token.colorBorderSecondary}`,
+          position: "sticky",
+          top: 0,
+          height: "100svh",
+          overflow: "auto",
+        }}
+      >
+        <AppSidebar collapsed={collapsed} />
+      </Sider>
+      <AntLayout style={{ display: "flex", flexDirection: "column", height: "100svh", overflow: "hidden" }}>
+        <Header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            height: 56,
+            lineHeight: "56px",
+            paddingInline: 16,
+            background: token.colorBgContainer,
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+            flexShrink: 0,
+          }}
+        >
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
+            <Button
+              type="text"
+              onClick={() => setCollapsed((v) => !v)}
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             />
-            <span className="text-sm font-medium">好会计</span>
+            <span style={{ fontWeight: 500 }}>好会计</span>
           </div>
           <ModeToggle />
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        </Header>
+        <Content style={{ padding: 16, overflow: "auto" }}>
           <Outlet />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </Content>
+      </AntLayout>
+    </AntLayout>
   )
 }

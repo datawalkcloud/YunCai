@@ -1,10 +1,9 @@
 import { useMemo, useRef, useState } from "react"
-import { Plus, Save, Trash2, Loader2 } from "lucide-react"
+import { Plus, Save, Trash2 } from "lucide-react"
+import { Button, Input, Modal } from "antd"
 
 import { VouchersApi, type AccountDto, type CreateVoucherRequest, type UpdateVoucherRequest, type VoucherDetailDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 /** 凭证分录行。借方与贷方以字符串保存，便于输入编辑；account 存科目 id。 */
@@ -31,8 +30,8 @@ function toEntryRows(detail?: VoucherDetailDto): EntryRow[] {
             id: i + 1,
             summary: e.summary ?? "",
             accountId: e.accountId ?? "",
-            debit: e.debit && e.debit > 0 ? String(e.debit) : "",
-            credit: e.credit && e.credit > 0 ? String(e.credit) : "",
+            debit: e.debit != null && e.debit !== 0 ? String(e.debit) : "",
+            credit: e.credit != null && e.credit !== 0 ? String(e.credit) : "",
         }))
     }
     return [
@@ -43,17 +42,55 @@ function toEntryRows(detail?: VoucherDetailDto): EntryRow[] {
 
 function toAmount(value: string): number {
     const n = Number(value)
-    return Number.isFinite(n) && n > 0 ? n : 0
+    return Number.isFinite(n) && n !== 0 ? n : 0
 }
 
-/** 将金额按分位拆解为与 AMOUNT_COLUMNS 对齐的字符数组，0 时全部留空。 */
+/** 损益类科目中，收入类（科目名称含"收入"）正常应记贷方；费用类正常应记借方。 */
+function isRevenueAccount(account: AccountDto | undefined): boolean {
+    if (!account?.code || !account?.name) return false
+    return (account.code.startsWith("5") || account.code.startsWith("6")) && account.name.includes("收入")
+}
+
+function isExpenseAccount(account: AccountDto | undefined): boolean {
+    if (!account?.code || !account?.name) return false
+    return (account.code.startsWith("5") || account.code.startsWith("6")) && !account.name.includes("收入")
+}
+
+/** 检测凭证分录中损益类科目方向不规范的条目，返回行号（从 1 开始）数组。 */
+function detectDirectionIssues(entries: EntryRow[], accountMap: Map<string, AccountDto>): number[] {
+    const issues: number[] = []
+    let line = 0
+    for (const entry of entries) {
+        line++
+        const account = accountMap.get(entry.accountId)
+        const debit = toAmount(entry.debit)
+        const credit = toAmount(entry.credit)
+        if (isRevenueAccount(account) && debit > 0) {
+            issues.push(line)
+        } else if (isExpenseAccount(account) && credit > 0) {
+            issues.push(line)
+        }
+    }
+    return issues
+}
+
+/** 将金额按分位拆解为与 AMOUNT_COLUMNS 对齐的字符数组，0 时全部留空。负号在首位数字前加 "−"。 */
 function digitCells(value: number): string[] {
     const cells = Array<string>(AMOUNT_COLUMNS.length).fill("")
-    const cents = Math.round(value * 100)
+    if (value === 0) return cells
+    const absValue = Math.abs(value)
+    const cents = Math.round(absValue * 100)
     if (cents <= 0) return cells
     const str = String(cents)
     for (let i = 0; i < str.length && i < cells.length; i++) {
         cells[cells.length - 1 - i] = str[str.length - 1 - i]
+    }
+    // 负号放在第一个非空数字位之前
+    if (value < 0) {
+        const firstDigit = cells.findIndex((c) => c !== "")
+        if (firstDigit >= 0) {
+            cells[firstDigit] = "−" + cells[firstDigit]
+        }
     }
     return cells
 }
@@ -179,6 +216,9 @@ export default function VoucherForm({
     const [entries, setEntries] = useState<EntryRow[]>(() => toEntryRows(initial))
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [directionModal, setDirectionModal] = useState<{ issues: number[] } | null>(null)
+
+    const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a] as const)), [accounts])
 
     const { totalDebit, totalCredit } = useMemo(() => {
         let debit = 0
@@ -190,7 +230,7 @@ export default function VoucherForm({
         return { totalDebit: debit, totalCredit: credit }
     }, [entries])
 
-    const balanced = totalDebit > 0 && totalDebit === totalCredit
+    const balanced = totalDebit === totalCredit
     const canSave = balanced && !saving
 
     function updateEntry(id: number, patch: Partial<EntryRow>) {
@@ -209,34 +249,14 @@ export default function VoucherForm({
         setEntries((prev) => (prev.length > 1 ? prev.filter((e) => e.id !== id) : prev))
     }
 
-    async function handleSave() {
-        if (!canSave) return
-
-        // 仅提交有内容的分录行；逐行校验摘要、科目与借贷单边非零。
-        const active = entries.filter(
-            (e) => e.summary.trim() || e.accountId || toAmount(e.debit) > 0 || toAmount(e.credit) > 0,
-        )
-        if (active.length === 0) {
-            setError("请至少录入一条分录。")
-            return
-        }
-        for (const e of active) {
-            if (!e.summary.trim()) return setError("每条分录都需要填写摘要。")
-            if (!e.accountId) return setError("每条分录都需要选择会计科目。")
-            const debit = toAmount(e.debit)
-            const credit = toAmount(e.credit)
-            if (debit > 0 === credit > 0) {
-                return setError("每条分录只能填写借方或贷方其一，且金额不能为零。")
-            }
-        }
-
-        const mappedEntries = active.map((e) => ({
+    // 实际执行保存的 API 调用。
+    async function doSave(entriesToSave: EntryRow[]) {
+        const mappedEntries = entriesToSave.map((e) => ({
             summary: e.summary.trim(),
             accountId: e.accountId,
             debit: toAmount(e.debit),
             credit: toAmount(e.credit),
         }))
-        // date 为 yyyy-MM-dd 字符串，转为 Date；生成客户端会序列化为 date-only 传给后端。
         const dateValue = new Date(date)
         const attachmentCount = Number.parseInt(attachments, 10) > 0 ? Number.parseInt(attachments, 10) : 0
 
@@ -245,7 +265,6 @@ export default function VoucherForm({
         try {
             const api = new VouchersApi(apiConfig(token))
             if (editing && initial?.id) {
-                // 编辑：凭证字与号不变，仅更新日期、附单据数与分录。
                 const request: UpdateVoucherRequest = {
                     date: dateValue,
                     attachmentCount,
@@ -277,6 +296,58 @@ export default function VoucherForm({
         }
     }
 
+    async function handleSave() {
+        if (!canSave) return
+
+        // 仅提交有内容的分录行；逐行校验摘要、科目与借贷单边非零。
+        const active = entries.filter(
+            (e) => e.summary.trim() || e.accountId || toAmount(e.debit) !== 0 || toAmount(e.credit) !== 0,
+        )
+        if (active.length === 0) {
+            setError("请至少录入一条分录。")
+            return
+        }
+        for (const e of active) {
+            if (!e.summary.trim()) return setError("每条分录都需要填写摘要。")
+            if (!e.accountId) return setError("每条分录都需要选择会计科目。")
+            const debit = toAmount(e.debit)
+            const credit = toAmount(e.credit)
+            const hasDebit = debit !== 0
+            const hasCredit = credit !== 0
+            if (hasDebit === hasCredit) {
+                return setError("每条分录只能填写借方或贷方其一，且金额不能为零。")
+            }
+        }
+
+        // 损益类科目方向检查
+        const issues = detectDirectionIssues(active, accountMap)
+        if (issues.length > 0) {
+            setDirectionModal({ issues })
+            return
+        }
+
+        await doSave(active)
+    }
+
+    /** 批量调整：收入类借方正数 → 贷方正数，费用类贷方正数 → 借方正数。 */
+    function autoAdjustEntries() {
+        setEntries((prev) =>
+            prev.map((entry) => {
+                const account = accountMap.get(entry.accountId)
+                const debit = toAmount(entry.debit)
+                const credit = toAmount(entry.credit)
+                if (isRevenueAccount(account) && debit > 0) {
+                    return { ...entry, debit: "", credit: String(debit) }
+                }
+                if (isExpenseAccount(account) && credit > 0) {
+                    return { ...entry, debit: String(credit), credit: "" }
+                }
+                return entry
+            }),
+        )
+        setDirectionModal(null)
+    }
+
     const blankCls =
         "h-7 rounded-none border-0 border-b border-input bg-transparent px-1 text-center shadow-none focus-visible:ring-0"
 
@@ -289,6 +360,7 @@ export default function VoucherForm({
             <div className="flex flex-wrap items-end justify-between gap-4 text-sm">
                 <div className="flex items-end gap-1">
                     <Input
+                        variant="borderless"
                         value={voucherWord}
                         onChange={(e) => setVoucherWord(e.target.value)}
                         disabled={editing}
@@ -296,6 +368,7 @@ export default function VoucherForm({
                     />
                     <span className="pb-1">字第</span>
                     <Input
+                        variant="borderless"
                         value={voucherNo}
                         onChange={(e) => setVoucherNo(e.target.value.replace(/\D/g, ""))}
                         placeholder="自动"
@@ -307,6 +380,7 @@ export default function VoucherForm({
                 <div className="flex items-end gap-1">
                     <span className="pb-1">日期：</span>
                     <Input
+                        variant="borderless"
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
@@ -316,6 +390,7 @@ export default function VoucherForm({
                 <div className="flex items-end gap-1">
                     <span className="pb-1">附单据</span>
                     <Input
+                        variant="borderless"
                         type="number"
                         min={0}
                         value={attachments}
@@ -379,15 +454,15 @@ export default function VoucherForm({
                                             className="h-9 w-full bg-transparent px-2 outline-none placeholder:text-muted-foreground"
                                         />
                                         <Button
-                                            variant="ghost"
-                                            size="icon-xs"
+                                            type="text"
+                                            size="small"
+                                            danger
                                             onClick={() => removeRow(entry.id)}
                                             disabled={entries.length <= 1}
                                             title="删除该行"
-                                            className="mr-1 shrink-0 text-muted-foreground"
-                                        >
-                                            <Trash2 />
-                                        </Button>
+                                            className="mr-1 shrink-0"
+                                            icon={<Trash2 size={16} />}
+                                        />
                                     </div>
                                 </td>
                                 <td className={tdCls}>
@@ -449,8 +524,7 @@ export default function VoucherForm({
 
             {/* 操作区 */}
             <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-                <Button variant="outline" size="sm" onClick={addRow}>
-                    <Plus />
+                <Button size="small" onClick={addRow} icon={<Plus size={16} />}>
                     添加分录
                 </Button>
                 <span className={cn("text-sm", balanced ? "text-muted-foreground" : "text-destructive")}>
@@ -461,14 +535,61 @@ export default function VoucherForm({
                             : `借贷不平衡，差额 ¥${Math.abs(totalDebit - totalCredit).toFixed(2)}`}
                 </span>
                 <div className="flex-1" />
-                <Button variant="outline" onClick={onCancel} disabled={saving}>
+                <Button onClick={onCancel} disabled={saving}>
                     取消
                 </Button>
-                <Button onClick={handleSave} disabled={!canSave}>
-                    {saving ? <Loader2 className="animate-spin" /> : <Save />}
+                <Button type="primary" onClick={handleSave} disabled={!canSave} loading={saving} icon={saving ? undefined : <Save size={16} />}>
                     {saving ? "保存中…" : "保存凭证"}
                 </Button>
             </div>
+
+            {/* 损益类科目方向警告弹窗 */}
+            <Modal
+                title="凭证录入提示"
+                open={directionModal !== null}
+                onCancel={() => setDirectionModal(null)}
+                footer={null}
+                width={520}
+            >
+                <div className="space-y-4">
+                    <div>
+                        <p className="font-medium text-amber-600">系统检测到当前凭证存在损益科目录入不规范的凭证行哦~</p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            收入类 要做在 贷方 ， 费用类 要做在 借方 。 如果要冲回，应该录入相同方向的红字，即负数。否则科目余额表和利润表数据会对不上
+                        </p>
+                    </div>
+                    <p className="text-sm">
+                        需要调整金额方向的凭证行：<span className="font-semibold">{directionModal?.issues.join("、")}</span>
+                    </p>
+                    <div className="flex flex-col gap-2">
+                        <Button
+                            type="primary"
+                            block
+                            onClick={() => {
+                                autoAdjustEntries()
+                            }}
+                        >
+                            批量调整，系统帮您自动调整所有金额方向
+                        </Button>
+                        <Button
+                            block
+                            onClick={() => {
+                                setDirectionModal(null)
+                                // 重新获取 active 并保存
+                                const active = entries.filter(
+                                    (e) => e.summary.trim() || e.accountId || toAmount(e.debit) !== 0 || toAmount(e.credit) !== 0,
+                                )
+                                doSave(active)
+                            }}
+                        >
+                            继续保存，直接保存凭证
+                        </Button>
+                        <Button block onClick={() => setDirectionModal(null)}>
+                            关闭弹窗，自行修改凭证后重新保存
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     )
 }

@@ -29,16 +29,16 @@ import {
 export interface TrialBalanceDto {
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof TrialBalanceDto
      */
-    year?: number;
+    startDate?: string;
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof TrialBalanceDto
      */
-    month?: number;
+    endDate?: string;
     /**
      * 
      * @type {string}
@@ -70,8 +70,8 @@ export function TrialBalanceDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
     }
     return {
         
-        'year': json['year'] == null ? undefined : json['year'],
-        'month': json['month'] == null ? undefined : json['month'],
+        'startDate': json['startDate'] == null ? undefined : json['startDate'],
+        'endDate': json['endDate'] == null ? undefined : json['endDate'],
         'periodText': json['periodText'] == null ? undefined : json['periodText'],
         'rows': json['rows'] == null ? undefined : ((json['rows'] as Array<any>).map(TrialBalanceRowDtoFromJSON)),
     };
@@ -88,8 +88,8 @@ export function TrialBalanceDtoToJSONTyped(value?: TrialBalanceDto | null, ignor
 
     return {
         
-        'year': value['year'],
-        'month': value['month'],
+        'startDate': value['startDate'],
+        'endDate': value['endDate'],
         'periodText': value['periodText'],
         'rows': value['rows'] == null ? undefined : ((value['rows'] as Array<any>).map(TrialBalanceRowDtoToJSON)),
     };

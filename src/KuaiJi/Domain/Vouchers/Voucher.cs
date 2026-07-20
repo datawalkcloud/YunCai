@@ -280,13 +280,8 @@ namespace KuaiJi.Domain.Vouchers
                 throw new ArgumentException("必须选择会计科目。", nameof(accountId));
             }
 
-            if (debit < 0m || credit < 0m)
-            {
-                throw new ArgumentException("借方与贷方金额不能为负数。");
-            }
-
-            // 每条分录必须且只能填写借方或贷方其一。
-            if (debit > 0m == credit > 0m)
+            // 每条分录必须且只能填写借方或贷方其一（允许负数，用于红字冲回）。
+            if ((debit != 0m) == (credit != 0m))
             {
                 throw new ArgumentException("每条分录只能填写借方或贷方其一，且金额不能为零。");
             }

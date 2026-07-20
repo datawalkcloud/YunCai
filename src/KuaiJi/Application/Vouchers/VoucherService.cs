@@ -32,13 +32,16 @@ namespace KuaiJi.Application.Vouchers
             _voucherRepository = voucherRepository;
         }
 
-        /// <summary>获取指定账套的全部凭证（含借贷合计，按日期与凭证号排列）。</summary>
-        public async Task<IReadOnlyList<VoucherListItemDto>> ListAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        /// <summary>获取指定账套的凭证（可选日期范围过滤，含借贷合计，按日期与凭证号排列）。</summary>
+        public async Task<IReadOnlyList<VoucherListItemDto>> ListAsync(Guid accountSetId, DateOnly? startDate = null, DateOnly? endDate = null, CancellationToken cancellationToken = default)
         {
             await EnsureAccountSetExists(accountSetId, cancellationToken);
 
             var vouchers = await _voucherRepository.GetAllAsync(accountSetId, cancellationToken);
-            return vouchers.Select(VoucherListItemDto.FromDomain).ToList();
+            return vouchers
+                .Where(v => (startDate == null || v.Date >= startDate) && (endDate == null || v.Date <= endDate))
+                .Select(VoucherListItemDto.FromDomain)
+                .ToList();
         }
 
         /// <summary>获取单张凭证详情（含分录及其科目编码/名称）；不存在时返回 null。</summary>
@@ -145,17 +148,39 @@ namespace KuaiJi.Application.Vouchers
 
             try
             {
-                // UpdateHeader/RemoveEntry/AddEntry 均要求草稿状态，非草稿会抛出 InvalidOperationException。
+                // UpdateHeader/RemoveEntry/AddEntry/UpdateEntry 均要求草稿状态，非草稿会抛出 InvalidOperationException。
                 voucher.UpdateHeader(request.Date, request.AttachmentCount);
 
-                // 以「先清空后重建」方式整体替换分录，避免逐条 diff 的复杂度；EF 会据此删旧插新。
-                foreach (var existing in voucher.Entries.ToList())
+                // 以原地更新方式替换分录，避免 DELETE 操作触发 Npgsql 并发校验。
+                var existingEntries = voucher.Entries.ToList();
+                var requestEntries = request.Entries;
+
+                // 更新已有分录（按位置一一对应）
+                for (int i = 0; i < Math.Min(existingEntries.Count, requestEntries.Count); i++)
                 {
-                    voucher.RemoveEntry(existing.Id);
+                    var entry = requestEntries[i];
+                    if (!accountsById.TryGetValue(entry.AccountId, out var account))
+                    {
+                        throw new VoucherException("存在无效的会计科目，请重新选择。");
+                    }
+
+                    if (!account.IsLeaf)
+                    {
+                        throw new VoucherException($"科目「{account.Code} {account.Name}」不是末级科目，不能用于记账。");
+                    }
+
+                    if (!account.IsEnabled)
+                    {
+                        throw new VoucherException($"科目「{account.Code} {account.Name}」已停用，不能用于记账。");
+                    }
+
+                    voucher.UpdateEntry(existingEntries[i].Id, entry.Summary, entry.AccountId, entry.Debit, entry.Credit);
                 }
 
-                foreach (var entry in request.Entries)
+                // 新增多余分录
+                for (int i = existingEntries.Count; i < requestEntries.Count; i++)
                 {
+                    var entry = requestEntries[i];
                     if (!accountsById.TryGetValue(entry.AccountId, out var account))
                     {
                         throw new VoucherException("存在无效的会计科目，请重新选择。");
@@ -172,6 +197,12 @@ namespace KuaiJi.Application.Vouchers
                     }
 
                     voucher.AddEntry(entry.Summary, entry.AccountId, entry.Debit, entry.Credit);
+                }
+
+                // 删除多余分录
+                for (int i = requestEntries.Count; i < existingEntries.Count; i++)
+                {
+                    voucher.RemoveEntry(existingEntries[i].Id);
                 }
             }
             catch (ArgumentException ex)
@@ -199,6 +230,46 @@ namespace KuaiJi.Application.Vouchers
             _voucherRepository.Remove(voucher);
             await _voucherRepository.SaveChangesAsync(cancellationToken);
             return true;
+        }
+
+        /// <summary>
+        /// 导出：将账套全部凭证展开为扁平行（每条分录一行），按「日期 → 字 → 号 → 行号」排序。
+        /// 列与凭证导入解析列同构，导出文件可回传导入。科目编码/名称由科目表反查。
+        /// </summary>
+        public async Task<IReadOnlyList<VoucherExportRow>> ExportRowsAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        {
+            await EnsureAccountSetExists(accountSetId, cancellationToken);
+
+            var accountsById = await LoadAccountsById(accountSetId, cancellationToken);
+            var vouchers = await _voucherRepository.GetAllAsync(accountSetId, cancellationToken);
+
+            var rows = new List<VoucherExportRow>();
+            foreach (var voucher in vouchers
+                .OrderBy(v => v.Date)
+                .ThenBy(v => v.Word, StringComparer.Ordinal)
+                .ThenBy(v => v.Number))
+            {
+                foreach (var entry in voucher.Entries.OrderBy(e => e.LineNumber))
+                {
+                    var account = accountsById.GetValueOrDefault(entry.AccountId);
+                    rows.Add(new VoucherExportRow
+                    {
+                        Date = voucher.Date,
+                        VoucherNo = $"{voucher.Word}-{voucher.Number}",
+                        LineNumber = entry.LineNumber,
+                        Summary = entry.Summary,
+                        AccountCode = account?.Code ?? string.Empty,
+                        AccountName = account?.Name ?? string.Empty,
+                        Debit = entry.Debit,
+                        Credit = entry.Credit,
+                        Preparer = voucher.Preparer,
+                        Reviewer = voucher.Reviewer ?? string.Empty,
+                        AttachmentCount = voucher.AttachmentCount,
+                    });
+                }
+            }
+
+            return rows;
         }
 
         private async Task EnsureAccountSetExists(Guid accountSetId, CancellationToken cancellationToken)

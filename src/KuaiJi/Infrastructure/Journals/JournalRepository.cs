@@ -32,6 +32,7 @@ namespace KuaiJi.Infrastructure.Journals
         {
             return await _context.Journals
                 .AsNoTracking()
+                .Include(j => j.Entries)
                 .Where(j => j.AccountSetId == accountSetId)
                 .OrderBy(j => j.Name)
                 .ToListAsync(cancellationToken);

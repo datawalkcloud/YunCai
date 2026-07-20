@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useState } from "react"
-import { FileText, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, Upload } from "lucide-react"
+import { Alert, Button, Card, Col, DatePicker, Drawer, Row, Space, Statistic, Table, Tag, Typography, theme } from "antd"
+import type { ColumnsType } from "antd/es/table"
+import dayjs, { type Dayjs } from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -8,20 +11,21 @@ import {
     VouchersApi,
     type AccountDto,
     type VoucherDetailDto,
+    type VoucherImportResult,
     type VoucherListItemDto,
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import VoucherForm from "./voucher-form"
+
+const { Title, Text } = Typography
+const { RangePicker } = DatePicker
+
+/** 日期范围。 */
+interface DateRange {
+    startDate: string
+    endDate: string
+}
 
 function formatAmount(n: number): string {
     return n.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -32,11 +36,18 @@ function formatDate(d?: Date): string {
     return d ? d.toISOString().slice(0, 10) : ""
 }
 
+function toDayjsArray(dr: DateRange | null): [Dayjs, Dayjs] | null {
+    return dr ? [dayjs(dr.startDate), dayjs(dr.endDate)] : null
+}
+
+const ACCEPT = ".xls,.xlsx"
+
 export default function VoucherManagePage() {
     const { token, user } = useAuth()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
+    const { token: t } = theme.useToken()
 
     const [vouchers, setVouchers] = useState<VoucherListItemDto[]>([])
     const [accounts, setAccounts] = useState<AccountDto[]>([])
@@ -46,6 +57,16 @@ export default function VoucherManagePage() {
     const [editing, setEditing] = useState<VoucherDetailDto | null>(null)
     const [openingId, setOpeningId] = useState<string | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
+    const [dateRange, setDateRange] = useState<DateRange | null>(null)
+
+    // ── 凭证导入相关状态 ──
+    const importInputRef = useRef<HTMLInputElement>(null)
+    const [importOpen, setImportOpen] = useState(false)
+    const [importFile, setImportFile] = useState<File | null>(null)
+    const [importDragging, setImportDragging] = useState(false)
+    const [importing, setImporting] = useState(false)
+    const [importResult, setImportResult] = useState<VoucherImportResult | null>(null)
+    const [importError, setImportError] = useState<string | null>(null)
 
     const load = useCallback(async () => {
         if (!accountSetId) return
@@ -54,7 +75,11 @@ export default function VoucherManagePage() {
         try {
             const config = apiConfig(token)
             const [list, accs] = await Promise.all([
-                new VouchersApi(config).accountsetsAccountSetIdVouchersGet({ accountSetId }),
+                new VouchersApi(config).accountsetsAccountSetIdVouchersGet({
+                    accountSetId,
+                    startDate: dateRange?.startDate,
+                    endDate: dateRange?.endDate,
+                }),
                 new AccountsApi(config).accountsetsAccountSetIdAccountsGet({ accountSetId, leafOnly: true }),
             ])
             setVouchers(list)
@@ -64,11 +89,19 @@ export default function VoucherManagePage() {
         } finally {
             setLoading(false)
         }
-    }, [accountSetId, token])
+    }, [accountSetId, token, dateRange])
 
     useEffect(() => {
         void load()
     }, [load])
+
+    // 当 URL hash 为 #import 时自动打开导入抽屉并清除 hash
+    useEffect(() => {
+        if (window.location.hash === "#import") {
+            setImportOpen(true)
+            window.history.replaceState(null, "", window.location.pathname + window.location.search)
+        }
+    }, [])
 
     async function handleDelete(v: VoucherListItemDto) {
         if (deletingId || !v.id) return
@@ -117,159 +150,297 @@ export default function VoucherManagePage() {
         void load()
     }
 
+    // ── 凭证导入处理 ──
+    function pickImportFile(next: File | null) {
+        setImportFile(next)
+        setImportResult(null)
+        setImportError(null)
+    }
+
+    function onImportDrop(e: React.DragEvent<HTMLDivElement>) {
+        e.preventDefault()
+        setImportDragging(false)
+        const dropped = e.dataTransfer.files?.[0]
+        if (dropped) pickImportFile(dropped)
+    }
+
+    async function handleImport() {
+        if (!importFile || importing) return
+        if (!accountSetId) {
+            setImportError("请先选择账套。")
+            return
+        }
+        setImporting(true)
+        setImportError(null)
+        setImportResult(null)
+        try {
+            const res = await new VouchersApi(apiConfig(token)).accountsetsAccountSetIdVouchersImportPost({
+                accountSetId,
+                file: importFile,
+            })
+            setImportResult(res)
+            void load()
+        } catch (err) {
+            setImportError(await apiErrorMessage(err, "导入失败，请重试。"))
+        } finally {
+            setImporting(false)
+        }
+    }
+
+    const columns: ColumnsType<VoucherListItemDto> = [
+        { title: "日期", dataIndex: "date", width: 120, render: (d?: Date) => formatDate(d) },
+        { title: "凭证号", dataIndex: "voucherNo", width: 120, render: (v: string) => <Text strong>{v}</Text> },
+        { title: "分录数", dataIndex: "entryCount", width: 90, align: "center" },
+        { title: "借方合计", dataIndex: "totalDebit", width: 140, align: "right", render: (v?: number) => formatAmount(v ?? 0) },
+        { title: "贷方合计", dataIndex: "totalCredit", width: 140, align: "right", render: (v?: number) => formatAmount(v ?? 0) },
+        {
+            title: "状态",
+            dataIndex: "isBalanced",
+            width: 100,
+            align: "center",
+            render: (_: boolean, v) =>
+                v.isBalanced ? <Tag>{v.statusText}</Tag> : <Tag color="error">不平衡</Tag>,
+        },
+        { title: "制单人", dataIndex: "preparer", width: 120 },
+        {
+            title: "操作",
+            key: "action",
+            width: 100,
+            align: "right",
+            render: (_, v) => (
+                <Space size={0}>
+                    {v.status === 1 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<Pencil size={16} />}
+                            loading={openingId === v.id}
+                            onClick={() => void handleEdit(v)}
+                            title="编辑凭证"
+                        />
+                    )}
+                    <Button
+                        type="text"
+                        size="small"
+                        danger
+                        icon={<Trash2 size={16} />}
+                        loading={deletingId === v.id}
+                        onClick={() => void handleDelete(v)}
+                        title="删除凭证"
+                    />
+                </Space>
+            ),
+        },
+    ]
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex flex-col gap-1">
-                    <h1 className="text-2xl font-bold">凭证管理</h1>
-                    <p className="text-sm text-muted-foreground">
+                    <Title level={3} style={{ margin: 0 }}>凭证管理</Title>
+                    <Text type="secondary">
                         账套：{currentSet?.name ?? (accountSetId || "未指定")}
                         {currentSet?.isCurrent ? "（当前）" : ""}
                         ，共 {vouchers.length} 张凭证。
-                    </p>
+                    </Text>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading || !accountSetId}>
-                        <RefreshCw className={cn(loading && "animate-spin")} />
+                <Space>
+                    <Button icon={<RefreshCw size={16} />} onClick={() => void load()} loading={loading} disabled={!accountSetId}>
                         刷新
                     </Button>
-                    <Button size="sm" onClick={handleCreate} disabled={!accountSetId}>
-                        <Plus />
+                    <Button icon={<Upload size={16} />} onClick={() => setImportOpen(true)} disabled={!accountSetId}>
+                        导入凭证
+                    </Button>
+                    <Button type="primary" icon={<Plus size={16} />} onClick={handleCreate} disabled={!accountSetId}>
                         新增凭证
                     </Button>
-                </div>
+                </Space>
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Space wrap>
+                <span>日期范围：</span>
+                <RangePicker
+                    value={toDayjsArray(dateRange)}
+                    onChange={(dates) => {
+                        if (dates && dates[0] && dates[1]) {
+                            setDateRange({
+                                startDate: dates[0].format("YYYY-MM-DD"),
+                                endDate: dates[1].format("YYYY-MM-DD"),
+                            })
+                        }
+                    }}
+                    disabled={!accountSetId}
+                    allowClear
+                />
+            </Space>
 
-            <Card>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[880px] border-collapse text-sm">
-                            <thead>
-                                <tr className="border-b border-border text-left text-muted-foreground">
-                                    <th className="px-4 py-3 font-medium">日期</th>
-                                    <th className="px-4 py-3 font-medium">凭证号</th>
-                                    <th className="px-4 py-3 text-center font-medium">分录数</th>
-                                    <th className="px-4 py-3 text-right font-medium">借方合计</th>
-                                    <th className="px-4 py-3 text-right font-medium">贷方合计</th>
-                                    <th className="px-4 py-3 text-center font-medium">状态</th>
-                                    <th className="px-4 py-3 font-medium">制单人</th>
-                                    <th className="px-4 py-3 text-right font-medium">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading && vouchers.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
-                                            <Loader2 className="mx-auto size-5 animate-spin" />
-                                        </td>
-                                    </tr>
-                                ) : vouchers.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={8} className="px-4 py-16 text-center text-muted-foreground">
-                                            <FileText className="mx-auto mb-2 size-8 opacity-50" />
-                                            暂无凭证，点击右上角「新增凭证」开始记账。
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    vouchers.map((v) => (
-                                        <tr key={v.id} className="border-b border-border last:border-0 hover:bg-accent/30">
-                                            <td className="px-4 py-3 tabular-nums">{formatDate(v.date)}</td>
-                                            <td className="px-4 py-3 font-medium">{v.voucherNo}</td>
-                                            <td className="px-4 py-3 text-center tabular-nums">{v.entryCount}</td>
-                                            <td className="px-4 py-3 text-right tabular-nums">{formatAmount(v.totalDebit ?? 0)}</td>
-                                            <td className="px-4 py-3 text-right tabular-nums">{formatAmount(v.totalCredit ?? 0)}</td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span
-                                                    className={cn(
-                                                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs",
-                                                        v.isBalanced
-                                                            ? "bg-muted text-muted-foreground"
-                                                            : "bg-destructive/10 text-destructive",
-                                                    )}
-                                                >
-                                                    {v.isBalanced ? v.statusText : "不平衡"}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">{v.preparer}</td>
-                                            <td className="px-4 py-3 text-right">
-                                                {v.status === 1 && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon-xs"
-                                                        onClick={() => void handleEdit(v)}
-                                                        disabled={openingId === v.id}
-                                                        title="编辑凭证"
-                                                        className="text-muted-foreground hover:text-foreground"
-                                                    >
-                                                        {openingId === v.id ? (
-                                                            <Loader2 className="animate-spin" />
-                                                        ) : (
-                                                            <Pencil />
-                                                        )}
-                                                    </Button>
-                                                )}
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-xs"
-                                                    onClick={() => void handleDelete(v)}
-                                                    disabled={deletingId === v.id}
-                                                    title="删除凭证"
-                                                    className="text-muted-foreground hover:text-destructive"
-                                                >
-                                                    {deletingId === v.id ? (
-                                                        <Loader2 className="animate-spin" />
-                                                    ) : (
-                                                        <Trash2 />
-                                                    )}
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
+            {error && <Alert type="error" showIcon message={error} />}
+
+            <Card styles={{ body: { padding: 0 } }}>
+                <Table<VoucherListItemDto>
+                    rowKey="id"
+                    columns={columns}
+                    dataSource={vouchers}
+                    loading={loading && vouchers.length === 0}
+                    pagination={false}
+                    scroll={{ x: 880 }}
+                    locale={{ emptyText: "暂无凭证，点击右上角「新增凭证」开始记账。" }}
+                />
             </Card>
 
             {/* 新增 / 编辑凭证抽屉 */}
-            <Sheet
+            <Drawer
                 open={open}
-                onOpenChange={(next) => {
-                    setOpen(next)
-                    if (!next) setEditing(null)
+                onClose={() => {
+                    setOpen(false)
+                    setEditing(null)
                 }}
+                width={1120}
+                title={editing ? `编辑凭证 ${editing.voucherNo}` : "新增凭证"}
             >
-                <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-[1120px]">
-                    <SheetHeader className="border-b border-border">
-                        <SheetTitle>{editing ? `编辑凭证 ${editing.voucherNo}` : "新增凭证"}</SheetTitle>
-                        <SheetDescription>
-                            {editing
-                                ? "凭证字与号不可更改；修改日期、附单据数或分录后，借贷需保持平衡方可保存。"
-                                : "仿纸质记账凭证录入，借贷金额需保持平衡后方可保存。凭证号留空时自动续号。"}
-                        </SheetDescription>
-                    </SheetHeader>
-                    <div className="p-4">
-                        {open && (
-                            <VoucherForm
-                                key={editing?.id ?? "new"}
-                                accountSetId={accountSetId}
-                                accounts={accounts}
-                                preparer={user?.displayName}
-                                token={token ?? undefined}
-                                initial={editing ?? undefined}
-                                onSaved={handleSaved}
-                                onCancel={() => {
-                                    setOpen(false)
-                                    setEditing(null)
-                                }}
-                            />
-                        )}
+                {open && (
+                    <VoucherForm
+                        key={editing?.id ?? "new"}
+                        accountSetId={accountSetId}
+                        accounts={accounts}
+                        preparer={user?.displayName}
+                        token={token ?? undefined}
+                        initial={editing ?? undefined}
+                        onSaved={handleSaved}
+                        onCancel={() => {
+                            setOpen(false)
+                            setEditing(null)
+                        }}
+                    />
+                )}
+            </Drawer>
+
+            {/* 导入凭证抽屉 */}
+            <Drawer
+                open={importOpen}
+                onClose={() => {
+                    setImportOpen(false)
+                    pickImportFile(null)
+                }}
+                width={640}
+                title="导入凭证"
+            >
+                <div className="flex flex-col gap-4">
+                    <Text type="secondary">
+                        支持导入其他平台导出的记账凭证文件（.xls / .xlsx）。系统按凭证号聚合分录、自动补建缺失科目，
+                        借贷金额原样保留。
+                    </Text>
+
+                    <div className="flex flex-col gap-2">
+                        <Text strong>导入到账套</Text>
+                        <Text type="secondary">
+                            {currentSet?.name ?? accountSetId}
+                            {currentSet?.isCurrent ? "（当前）" : ""}
+                        </Text>
                     </div>
-                </SheetContent>
-            </Sheet>
+
+                    {/* 文件拖放 / 选择区 */}
+                    <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => importInputRef.current?.click()}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") importInputRef.current?.click()
+                        }}
+                        onDragOver={(e) => {
+                            e.preventDefault()
+                            setImportDragging(true)
+                        }}
+                        onDragLeave={() => setImportDragging(false)}
+                        onDrop={onImportDrop}
+                        style={{
+                            borderColor: importDragging ? t.colorPrimary : t.colorBorder,
+                            background: importDragging ? t.colorPrimaryBg : undefined,
+                        }}
+                        className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors"
+                    >
+                        <FileSpreadsheet size={40} color={t.colorTextSecondary} />
+                        {importFile ? (
+                            <div className="flex flex-col gap-1">
+                                <Text strong>{importFile.name}</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
+                                </Text>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-1">
+                                <Text strong>点击选择，或拖拽文件到此处</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>支持 .xls / .xlsx，最大 10MB</Text>
+                            </div>
+                        )}
+                        <input
+                            ref={importInputRef}
+                            type="file"
+                            accept={ACCEPT}
+                            className="hidden"
+                            onChange={(e) => pickImportFile(e.target.files?.[0] ?? null)}
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <Button
+                            type="primary"
+                            icon={<Upload size={16} />}
+                            loading={importing}
+                            onClick={handleImport}
+                            disabled={!importFile || !accountSetId}
+                        >
+                            {importing ? "导入中…" : "开始导入"}
+                        </Button>
+                        {importFile && !importing && <Button onClick={() => pickImportFile(null)}>清除</Button>}
+                    </div>
+
+                    {importError && <Alert type="error" showIcon message={importError} />}
+
+                    {/* 导入结果 */}
+                    {importResult && (
+                        <Card title="导入结果" size="small">
+                            <Row gutter={[16, 16]}>
+                                <ImportStat label="解析行数" value={importResult.totalRows ?? 0} />
+                                <ImportStat label="导入凭证" value={importResult.importedVouchers ?? 0} />
+                                <ImportStat label="导入分录" value={importResult.importedEntries ?? 0} />
+                                <ImportStat label="新建科目" value={importResult.createdAccounts ?? 0} />
+                                <ImportStat label="跳过凭证" value={importResult.skippedVouchers ?? 0} muted />
+                            </Row>
+
+                            {importResult.warnings && importResult.warnings.length > 0 && (
+                                <div className="mt-4 flex flex-col gap-2">
+                                    <Text type="secondary">告警（{importResult.warnings.length}）</Text>
+                                    <ul
+                                        className="max-h-64 overflow-auto rounded-md p-3 text-sm"
+                                        style={{ border: `1px solid ${t.colorBorderSecondary}`, background: t.colorFillQuaternary }}
+                                    >
+                                        {importResult.warnings.map((w, i) => (
+                                            <li key={i} className={cn("py-0.5")} style={{ color: t.colorTextSecondary }}>
+                                                · {w}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </Card>
+                    )}
+                </div>
+            </Drawer>
         </div>
+    )
+}
+
+function ImportStat({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
+    return (
+        <Col xs={12} sm={8} lg={muted ? 24 : 4} flex="auto">
+            <Card size="small">
+                <Statistic
+                    title={label}
+                    value={value}
+                    valueStyle={muted ? { color: "rgba(0,0,0,0.45)" } : undefined}
+                />
+            </Card>
+        </Col>
     )
 }

@@ -57,5 +57,27 @@ namespace KuaiJi.Application.Accounts
 
         /// <summary>余额方向（仅顶级科目使用；明细科目继承上级）。</summary>
         public BalanceDirection Direction { get; init; }
+
+        /// <summary>助记码，可为空。</summary>
+        public string? Mnemonic { get; init; }
+
+        /// <summary>是否启用，默认为 true。</summary>
+        public bool IsEnabled { get; init; } = true;
+    }
+
+    /// <summary>修改科目请求。仅允许修改名称、余额方向（末级科目）、助记码和启用状态。</summary>
+    public sealed class UpdateAccountRequest
+    {
+        /// <summary>科目名称。</summary>
+        public string? Name { get; init; }
+
+        /// <summary>余额方向（仅末级科目可修改）。</summary>
+        public BalanceDirection? Direction { get; init; }
+
+        /// <summary>助记码。</summary>
+        public string? Mnemonic { get; init; }
+
+        /// <summary>是否启用。</summary>
+        public bool? IsEnabled { get; init; }
     }
 }

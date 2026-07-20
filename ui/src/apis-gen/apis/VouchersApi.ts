@@ -36,6 +36,8 @@ import {
 
 export interface AccountsetsAccountSetIdVouchersGetRequest {
     accountSetId: string;
+    startDate?: string;
+    endDate?: string;
 }
 
 export interface AccountsetsAccountSetIdVouchersIdDeleteRequest {
@@ -228,6 +230,14 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = requestParameters['startDate'];
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = requestParameters['endDate'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 

@@ -7,7 +7,6 @@ import Home from "@/pages/home";
 import CashJournal from "@/pages/funds/cash-journal";
 import TrialBalance from "@/pages/ledger/trial-balance";
 import VoucherManage from "@/pages/vouchers/manage";
-import ImportVoucher from "@/pages/vouchers/import";
 import BalanceSheet from "@/pages/reports/balance-sheet";
 import Accounts from "@/pages/settings/accounts";
 import AccountSets from "@/pages/settings/account-sets";
@@ -98,7 +97,6 @@ const router = createBrowserRouter([
                     { path: "funds/cash-journal", element: <CashJournal /> },
                     { path: "ledger/trial-balance", element: <TrialBalance /> },
                     { path: "vouchers/manage", element: <VoucherManage /> },
-                    { path: "vouchers/import", element: <ImportVoucher /> },
                     { path: "reports/balance-sheet", element: <BalanceSheet /> },
                     { path: "settings/accounts", element: <Accounts /> },
                     { path: "settings/account-sets", element: <AccountSets /> },

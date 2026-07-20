@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, RefreshCw } from "lucide-react"
+import { ReloadOutlined } from "@ant-design/icons"
+import { Alert, Button, Card, DatePicker, Space, Spin, Typography } from "antd"
+import dayjs, { type Dayjs } from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type BalanceSheetLineDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 type RowKind = "section" | "item" | "total"
@@ -106,9 +106,8 @@ function fmt(value: number, force = false): string {
     })
 }
 
-/** Period → <input type="month"> 的值（YYYY-MM）。 */
-function toMonthInput(p: Period | null): string {
-    return p ? `${String(p.year).padStart(4, "0")}-${String(p.month).padStart(2, "0")}` : ""
+function toDayjs(p: Period | null): Dayjs | null {
+    return p ? dayjs(`${p.year}-${String(p.month).padStart(2, "0")}-01`) : null
 }
 
 function buildAssetRows(map: AmountMap): SheetLine[] {
@@ -266,61 +265,51 @@ export default function BalanceSheetPage() {
 
     const rowCount = Math.max(assetRows.length, liabilityRows.length)
 
-    function handleMonthChange(value: string) {
-        if (!value) return
-        const [y, m] = value.split("-").map(Number)
-        if (Number.isFinite(y) && Number.isFinite(m)) setPeriod({ year: y, month: m })
-    }
-
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-2xl font-bold">资产负债表</h1>
-                <p className="text-sm text-muted-foreground">
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            <div>
+                <Typography.Title level={3} style={{ marginBottom: 4 }}>资产负债表</Typography.Title>
+                <Typography.Text type="secondary">
                     账套：{currentSet?.name ?? (accountSetId || "未指定")}
                     。按《企业会计准则》会企01表格式编制，金额由凭证实时汇总。
-                </p>
+                </Typography.Text>
             </div>
 
             <Card>
-                <CardContent className="flex flex-col gap-3 py-6">
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
                     <div className="relative text-center">
                         <div className="text-lg font-bold">资产负债表</div>
-                        <div className="absolute right-0 top-0 text-sm text-muted-foreground">
-                            会企01表
-                        </div>
+                        <div className="absolute right-0 top-0 text-sm text-muted-foreground">会企01表</div>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
+                        <Space wrap>
                             <span>会计期间：</span>
-                            <Input
-                                type="month"
-                                className="h-8 w-40"
-                                value={toMonthInput(period)}
-                                onChange={(e) => handleMonthChange(e.target.value)}
+                            <DatePicker
+                                picker="month"
+                                value={toDayjs(period)}
+                                onChange={(d) => d && setPeriod({ year: d.year(), month: d.month() + 1 })}
                                 disabled={!accountSetId}
+                                allowClear={false}
                             />
-                            <button
-                                type="button"
+                            <Button
+                                icon={<ReloadOutlined spin={loading} />}
                                 onClick={() => void load()}
                                 disabled={loading || !accountSetId}
-                                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
                             >
-                                <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
                                 刷新
-                            </button>
-                        </div>
+                            </Button>
+                        </Space>
                         <span>编制单位：{user?.displayName ?? "——"}</span>
                         <span>{endingDate}</span>
                         <span>单位：元</span>
                     </div>
 
-                    {error && <p className="text-sm text-destructive">{error}</p>}
+                    {error && <Alert type="error" message={error} showIcon />}
 
                     {loading && !loaded ? (
-                        <div className="flex items-center justify-center py-16 text-muted-foreground">
-                            <Loader2 className="size-5 animate-spin" />
+                        <div className="flex items-center justify-center py-16">
+                            <Spin />
                         </div>
                     ) : !accountSetId ? (
                         <div className="py-16 text-center text-sm text-muted-foreground">请先选择账套。</div>
@@ -364,12 +353,12 @@ export default function BalanceSheetPage() {
                     )}
 
                     {loaded && !loading && (
-                        <div className={cn("text-sm", balanced ? "text-muted-foreground" : "text-destructive")}>
+                        <Typography.Text type={balanced ? "secondary" : "danger"}>
                             {balanced ? "资产总计 = 负债和所有者权益总计" : "试算不平衡，请核对数据"}
-                        </div>
+                        </Typography.Text>
                     )}
-                </CardContent>
+                </Space>
             </Card>
-        </div>
+        </Space>
     )
 }

@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, RefreshCw } from "lucide-react"
+import { Alert, Card, DatePicker, Space, Table, Typography } from "antd"
+import type { ColumnsType } from "antd/es/table"
+import dayjs, { type Dayjs } from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type TrialBalanceRowDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
 
-/** 选定的会计期间。 */
-interface Period {
-    year: number
-    month: number
+const { RangePicker } = DatePicker
+
+/** 选定的日期范围。 */
+interface DateRange {
+    startDate: string
+    endDate: string
 }
 
 const AMOUNT_KEYS = [
@@ -32,13 +33,17 @@ function fmt(value: number, force = false): string {
     })
 }
 
-/** Period → <input type="month"> 的值（YYYY-MM）。 */
-function toMonthInput(p: Period | null): string {
-    return p ? `${String(p.year).padStart(4, "0")}-${String(p.month).padStart(2, "0")}` : ""
+function toDayjsArray(dr: DateRange | null): [Dayjs, Dayjs] | null {
+    return dr ? [dayjs(dr.startDate), dayjs(dr.endDate)] : null
 }
 
-const cellCls = "border border-border px-2 py-1 align-middle"
-const amountCls = cn(cellCls, "text-right tabular-nums")
+const amount = (dataIndex: string, title: string) => ({
+    title,
+    dataIndex,
+    align: "right" as const,
+    width: 120,
+    render: (v: number) => fmt(v ?? 0),
+})
 
 export default function TrialBalancePage() {
     const { token } = useAuth()
@@ -46,7 +51,7 @@ export default function TrialBalancePage() {
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
 
-    const [period, setPeriod] = useState<Period | null>(null)
+    const [dateRange, setDateRange] = useState<DateRange | null>(null)
     const [rows, setRows] = useState<TrialBalanceRowDto[]>([])
     const [periodText, setPeriodText] = useState("")
     const [loading, setLoading] = useState(false)
@@ -59,14 +64,14 @@ export default function TrialBalancePage() {
         try {
             const res = await new ReportsApi(apiConfig(token)).accountsetsAccountSetIdReportsTrialBalanceGet({
                 accountSetId,
-                year: period?.year,
-                month: period?.month,
+                startDate: dateRange?.startDate,
+                endDate: dateRange?.endDate,
             })
             setRows(res.rows ?? [])
             setPeriodText(res.periodText ?? "")
-            // 首次未指定期间时，采用后端解析出的期间（最近有凭证的月份）。
-            if (period === null && res.year && res.month) {
-                setPeriod({ year: res.year, month: res.month })
+            // 首次未指定日期范围时，采用后端解析出的日期范围。
+            if (dateRange === null && res.startDate && res.endDate) {
+                setDateRange({ startDate: res.startDate, endDate: res.endDate })
             }
         } catch (err) {
             setError(await apiErrorMessage(err, "加载科目余额表失败，请重试。"))
@@ -74,7 +79,7 @@ export default function TrialBalancePage() {
         } finally {
             setLoading(false)
         }
-    }, [accountSetId, token, period])
+    }, [accountSetId, token, dateRange])
 
     useEffect(() => {
         void load()
@@ -103,119 +108,84 @@ export default function TrialBalancePage() {
         }
     }, [rows])
 
-    function handleMonthChange(value: string) {
-        if (!value) return
-        const [y, m] = value.split("-").map(Number)
-        if (Number.isFinite(y) && Number.isFinite(m)) setPeriod({ year: y, month: m })
-    }
+    const columns: ColumnsType<TrialBalanceRowDto> = [
+        { title: "科目编码", dataIndex: "code", width: 120 },
+        { title: "科目名称", dataIndex: "name" },
+        { title: "期初余额", children: [amount("openingDebit", "借方"), amount("openingCredit", "贷方")] },
+        { title: "本期发生额", children: [amount("periodDebit", "借方"), amount("periodCredit", "贷方")] },
+        { title: "期末余额", children: [amount("endingDebit", "借方"), amount("endingCredit", "贷方")] },
+    ]
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-2xl font-bold">科目余额表</h1>
-                <p className="text-sm text-muted-foreground">
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            <div>
+                <Typography.Title level={3} style={{ marginBottom: 4 }}>科目余额表</Typography.Title>
+                <Typography.Text type="secondary">
                     账套：{currentSet?.name ?? (accountSetId || "未指定")}
                     。汇总各科目的期初余额、本期发生额与期末余额，用于试算平衡与结账核对。
-                </p>
+                </Typography.Text>
             </div>
 
             <Card>
-                <CardContent className="flex flex-col gap-3 py-6">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                            <span>会计期间：</span>
-                            <Input
-                                type="month"
-                                className="h-8 w-40"
-                                value={toMonthInput(period)}
-                                onChange={(e) => handleMonthChange(e.target.value)}
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Space wrap>
+                            <span>日期范围：</span>
+                            <RangePicker
+                                value={toDayjsArray(dateRange)}
+                                onChange={(dates) => {
+                                    if (dates && dates[0] && dates[1]) {
+                                        setDateRange({
+                                            startDate: dates[0].format("YYYY-MM-DD"),
+                                            endDate: dates[1].format("YYYY-MM-DD"),
+                                        })
+                                    }
+                                }}
                                 disabled={!accountSetId}
+                                allowClear
                             />
-                            <button
-                                type="button"
-                                onClick={() => void load()}
-                                disabled={loading || !accountSetId}
-                                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
-                            >
-                                <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-                                刷新
-                            </button>
-                        </div>
-                        <span>单位：元</span>
+                        </Space>
+                        <Typography.Text type="secondary">单位：元</Typography.Text>
                     </div>
 
-                    {error && <p className="text-sm text-destructive">{error}</p>}
+                    {error && <Alert type="error" message={error} showIcon />}
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[900px] border-collapse text-sm">
-                            <thead className="bg-muted/50 text-muted-foreground">
-                                <tr>
-                                    <th rowSpan={2} className={cn(cellCls, "text-center font-medium")}>科目编码</th>
-                                    <th rowSpan={2} className={cn(cellCls, "text-center font-medium")}>科目名称</th>
-                                    <th colSpan={2} className={cn(cellCls, "text-center font-medium")}>期初余额</th>
-                                    <th colSpan={2} className={cn(cellCls, "text-center font-medium")}>本期发生额</th>
-                                    <th colSpan={2} className={cn(cellCls, "text-center font-medium")}>期末余额</th>
-                                </tr>
-                                <tr>
-                                    <th className={cn(cellCls, "text-right font-medium")}>借方</th>
-                                    <th className={cn(cellCls, "text-right font-medium")}>贷方</th>
-                                    <th className={cn(cellCls, "text-right font-medium")}>借方</th>
-                                    <th className={cn(cellCls, "text-right font-medium")}>贷方</th>
-                                    <th className={cn(cellCls, "text-right font-medium")}>借方</th>
-                                    <th className={cn(cellCls, "text-right font-medium")}>贷方</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading && rows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={8} className="px-2 py-10 text-center text-muted-foreground">
-                                            <Loader2 className="mx-auto size-5 animate-spin" />
-                                        </td>
-                                    </tr>
-                                ) : rows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={8} className="px-2 py-10 text-center text-muted-foreground">
-                                            {accountSetId ? "该期间暂无科目余额数据。" : "请先选择账套。"}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    rows.map((row) => (
-                                        <tr key={row.code} className="hover:bg-muted/40">
-                                            <td className={cn(cellCls, "tabular-nums")}>{row.code}</td>
-                                            <td className={cellCls}>{row.name}</td>
-                                            <td className={amountCls}>{fmt(row.openingDebit ?? 0)}</td>
-                                            <td className={amountCls}>{fmt(row.openingCredit ?? 0)}</td>
-                                            <td className={amountCls}>{fmt(row.periodDebit ?? 0)}</td>
-                                            <td className={amountCls}>{fmt(row.periodCredit ?? 0)}</td>
-                                            <td className={amountCls}>{fmt(row.endingDebit ?? 0)}</td>
-                                            <td className={amountCls}>{fmt(row.endingCredit ?? 0)}</td>
-                                        </tr>
-                                    ))
-                                )}
-                                {rows.length > 0 && (
-                                    <tr className="bg-muted/50 font-medium">
-                                        <td className={cellCls} colSpan={2}>合计</td>
-                                        <td className={amountCls}>{fmt(totals.openingDebit, true)}</td>
-                                        <td className={amountCls}>{fmt(totals.openingCredit, true)}</td>
-                                        <td className={amountCls}>{fmt(totals.periodDebit, true)}</td>
-                                        <td className={amountCls}>{fmt(totals.periodCredit, true)}</td>
-                                        <td className={amountCls}>{fmt(totals.endingDebit, true)}</td>
-                                        <td className={amountCls}>{fmt(totals.endingCredit, true)}</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    <Table<TrialBalanceRowDto>
+                        rowKey="code"
+                        columns={columns}
+                        dataSource={rows}
+                        loading={loading}
+                        pagination={false}
+                        size="small"
+                        bordered
+                        scroll={{ x: 900 }}
+                        locale={{ emptyText: accountSetId ? "该期间暂无科目余额数据。" : "请先选择账套。" }}
+                        summary={() =>
+                            rows.length > 0 ? (
+                                <Table.Summary fixed>
+                                    <Table.Summary.Row>
+                                        <Table.Summary.Cell index={0} colSpan={2}>合计</Table.Summary.Cell>
+                                        <Table.Summary.Cell index={2} align="right">{fmt(totals.openingDebit, true)}</Table.Summary.Cell>
+                                        <Table.Summary.Cell index={3} align="right">{fmt(totals.openingCredit, true)}</Table.Summary.Cell>
+                                        <Table.Summary.Cell index={4} align="right">{fmt(totals.periodDebit, true)}</Table.Summary.Cell>
+                                        <Table.Summary.Cell index={5} align="right">{fmt(totals.periodCredit, true)}</Table.Summary.Cell>
+                                        <Table.Summary.Cell index={6} align="right">{fmt(totals.endingDebit, true)}</Table.Summary.Cell>
+                                        <Table.Summary.Cell index={7} align="right">{fmt(totals.endingCredit, true)}</Table.Summary.Cell>
+                                    </Table.Summary.Row>
+                                </Table.Summary>
+                            ) : null
+                        }
+                    />
 
                     {rows.length > 0 && (
-                        <div className={cn("text-sm", balanced ? "text-muted-foreground" : "text-destructive")}>
+                        <Typography.Text type={balanced ? "secondary" : "danger"}>
                             {balanced
                                 ? `试算平衡：借方合计 = 贷方合计（${periodText}）`
                                 : "试算不平衡，请核对数据"}
-                        </div>
+                        </Typography.Text>
                     )}
-                </CardContent>
+                </Space>
             </Card>
-        </div>
+        </Space>
     )
 }

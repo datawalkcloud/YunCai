@@ -29,16 +29,16 @@ import {
 export interface CashJournalDto {
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof CashJournalDto
      */
-    year?: number;
+    startDate?: string;
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof CashJournalDto
      */
-    month?: number;
+    endDate?: string;
     /**
      * 
      * @type {string}
@@ -76,8 +76,8 @@ export function CashJournalDtoFromJSONTyped(json: any, ignoreDiscriminator: bool
     }
     return {
         
-        'year': json['year'] == null ? undefined : json['year'],
-        'month': json['month'] == null ? undefined : json['month'],
+        'startDate': json['startDate'] == null ? undefined : json['startDate'],
+        'endDate': json['endDate'] == null ? undefined : json['endDate'],
         'periodText': json['periodText'] == null ? undefined : json['periodText'],
         'openingBalance': json['openingBalance'] == null ? undefined : json['openingBalance'],
         'rows': json['rows'] == null ? undefined : ((json['rows'] as Array<any>).map(CashJournalRowDtoFromJSON)),
@@ -95,8 +95,8 @@ export function CashJournalDtoToJSONTyped(value?: CashJournalDto | null, ignoreD
 
     return {
         
-        'year': value['year'],
-        'month': value['month'],
+        'startDate': value['startDate'],
+        'endDate': value['endDate'],
         'periodText': value['periodText'],
         'openingBalance': value['openingBalance'],
         'rows': value['rows'] == null ? undefined : ((value['rows'] as Array<any>).map(CashJournalRowDtoToJSON)),

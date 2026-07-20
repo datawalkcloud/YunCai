@@ -1,4 +1,6 @@
 using KuaiJi.Application.Vouchers;
+using KuaiJi.Domain.AccountSets;
+using KuaiJi.Infrastructure.Vouchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,22 +16,28 @@ namespace KuaiJi.Controllers
 
         private readonly VoucherImportService _importService;
         private readonly VoucherService _voucherService;
+        private readonly IAccountSetRepository _accountSetRepository;
         private readonly ILogger<VouchersController> _logger;
 
-        public VouchersController(VoucherImportService importService, VoucherService voucherService, ILogger<VouchersController> logger)
+        public VouchersController(VoucherImportService importService, VoucherService voucherService, IAccountSetRepository accountSetRepository, ILogger<VouchersController> logger)
         {
             _importService = importService;
             _voucherService = voucherService;
+            _accountSetRepository = accountSetRepository;
             _logger = logger;
         }
 
-        /// <summary>获取指定账套的全部凭证（含借贷合计，供凭证管理列表展示）。</summary>
+        /// <summary>获取指定账套的凭证（可选 startDate/endDate 日期范围过滤，格式 yyyy-MM-dd，含起止日）。</summary>
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<VoucherListItemDto>>> GetAll(Guid accountSetId, CancellationToken cancellationToken)
+        public async Task<ActionResult<IReadOnlyList<VoucherListItemDto>>> GetAll(
+            Guid accountSetId,
+            [FromQuery] DateOnly? startDate,
+            [FromQuery] DateOnly? endDate,
+            CancellationToken cancellationToken)
         {
             try
             {
-                var vouchers = await _voucherService.ListAsync(accountSetId, cancellationToken);
+                var vouchers = await _voucherService.ListAsync(accountSetId, startDate, endDate, cancellationToken);
                 return Ok(vouchers);
             }
             catch (VoucherException ex)
@@ -86,6 +94,26 @@ namespace KuaiJi.Controllers
         {
             var deleted = await _voucherService.DeleteAsync(accountSetId, id, cancellationToken);
             return deleted ? NoContent() : NotFound();
+        }
+
+        /// <summary>
+        /// 导出账套全部凭证（.xlsx）。每条分录一行，列与凭证导入解析列同构，文件可回传导入。
+        /// </summary>
+        [HttpGet("export")]
+        public async Task<IActionResult> Export(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var rows = await _voucherService.ExportRowsAsync(accountSetId, cancellationToken);
+                var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken);
+                var bytes = VoucherExportBuilder.Build(rows);
+                var fileName = VoucherExportBuilder.BuildFileName(accountSet?.Name ?? string.Empty);
+                return File(bytes, VoucherExportBuilder.ContentType, fileName);
+            }
+            catch (VoucherException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
 

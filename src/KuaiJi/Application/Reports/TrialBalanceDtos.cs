@@ -28,16 +28,16 @@ namespace KuaiJi.Application.Reports
         public decimal EndingCredit { get; init; }
     }
 
-    /// <summary>科目余额表：选定会计期间及其各科目余额行。</summary>
+    /// <summary>科目余额表：选定日期范围及其各科目余额行。</summary>
     public sealed class TrialBalanceDto
     {
-        /// <summary>会计期间——年份。</summary>
-        public int Year { get; init; }
+        /// <summary>起始日期（含），形如 2026-07-01。</summary>
+        public string StartDate { get; init; } = null!;
 
-        /// <summary>会计期间——月份（1-12）。</summary>
-        public int Month { get; init; }
+        /// <summary>截止日期（含），形如 2026-07-31。</summary>
+        public string EndDate { get; init; } = null!;
 
-        /// <summary>会计期间显示文本，形如 2026年07月。</summary>
+        /// <summary>期间显示文本，形如 2026-07-01 至 2026-07-31。</summary>
         public string PeriodText { get; init; } = null!;
 
         /// <summary>各科目余额行（按科目编码排序，仅含有余额或本期发生额的科目）。</summary>
