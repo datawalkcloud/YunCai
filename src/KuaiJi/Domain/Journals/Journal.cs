@@ -14,9 +14,10 @@ namespace KuaiJi.Domain.Journals
         {
         }
 
-        private Journal(Guid id, JournalType type, string name, Guid accountId, decimal openingBalance)
+        private Journal(Guid id, Guid accountSetId, JournalType type, string name, Guid accountId, decimal openingBalance)
         {
             Id = id;
+            AccountSetId = accountSetId;
             Type = type;
             Name = name;
             AccountId = accountId;
@@ -25,6 +26,9 @@ namespace KuaiJi.Domain.Journals
 
         /// <summary>日记账标识。</summary>
         public Guid Id { get; private set; }
+
+        /// <summary>所属账套标识。日记账不能脱离账套独立存在。</summary>
+        public Guid AccountSetId { get; private set; }
 
         /// <summary>日记账类型（现金 / 银行存款）。</summary>
         public JournalType Type { get; private set; }
@@ -50,9 +54,14 @@ namespace KuaiJi.Domain.Journals
         /// <summary>期末余额 = 期初余额 + 本期收入 − 本期支出。</summary>
         public decimal ClosingBalance => OpeningBalance + TotalIncome - TotalExpense;
 
-        /// <summary>创建一本日记账。</summary>
-        public static Journal Create(JournalType type, string name, Guid accountId, decimal openingBalance = 0m)
+        /// <summary>创建一本日记账，须归属于某一账套。</summary>
+        public static Journal Create(Guid accountSetId, JournalType type, string name, Guid accountId, decimal openingBalance = 0m)
         {
+            if (accountSetId == Guid.Empty)
+            {
+                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+            }
+
             if (string.IsNullOrWhiteSpace(name))
             {
                 throw new ArgumentException("账簿名称不能为空。", nameof(name));
@@ -63,7 +72,7 @@ namespace KuaiJi.Domain.Journals
                 throw new ArgumentException("必须指定对应的会计科目。", nameof(accountId));
             }
 
-            return new Journal(Guid.NewGuid(), type, name.Trim(), accountId, openingBalance);
+            return new Journal(Guid.NewGuid(), accountSetId, type, name.Trim(), accountId, openingBalance);
         }
 
         /// <summary>登记一笔流水，登记后自动重排序号与余额。</summary>

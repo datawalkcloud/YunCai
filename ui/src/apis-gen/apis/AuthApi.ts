@@ -15,21 +15,21 @@
 
 import * as runtime from '../runtime';
 import type {
-  LoginRequest,
-  LoginResponse,
-  UserInfo,
+  LoginCommand,
+  LoginResult,
+  UserDto,
 } from '../models/index';
 import {
-    LoginRequestFromJSON,
-    LoginRequestToJSON,
-    LoginResponseFromJSON,
-    LoginResponseToJSON,
-    UserInfoFromJSON,
-    UserInfoToJSON,
+    LoginCommandFromJSON,
+    LoginCommandToJSON,
+    LoginResultFromJSON,
+    LoginResultToJSON,
+    UserDtoFromJSON,
+    UserDtoToJSON,
 } from '../models/index';
 
 export interface AuthLoginPostRequest {
-    loginRequest: LoginRequest;
+    loginCommand: LoginCommand;
 }
 
 /**
@@ -41,7 +41,7 @@ export interface AuthLoginPostRequest {
 export interface AuthApiInterface {
     /**
      * Creates request options for authLoginPost without sending the request
-     * @param {LoginRequest} loginRequest 
+     * @param {LoginCommand} loginCommand 
      * @throws {RequiredError}
      * @memberof AuthApiInterface
      */
@@ -49,16 +49,16 @@ export interface AuthApiInterface {
 
     /**
      * 
-     * @param {LoginRequest} loginRequest 
+     * @param {LoginCommand} loginCommand 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof AuthApiInterface
      */
-    authLoginPostRaw(requestParameters: AuthLoginPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LoginResponse>>;
+    authLoginPostRaw(requestParameters: AuthLoginPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LoginResult>>;
 
     /**
      */
-    authLoginPost(requestParameters: AuthLoginPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LoginResponse>;
+    authLoginPost(requestParameters: AuthLoginPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LoginResult>;
 
     /**
      * Creates request options for authMeGet without sending the request
@@ -73,11 +73,11 @@ export interface AuthApiInterface {
      * @throws {RequiredError}
      * @memberof AuthApiInterface
      */
-    authMeGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserInfo>>;
+    authMeGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserDto>>;
 
     /**
      */
-    authMeGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserInfo>;
+    authMeGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto>;
 
 }
 
@@ -90,10 +90,10 @@ export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
      * Creates request options for authLoginPost without sending the request
      */
     async authLoginPostRequestOpts(requestParameters: AuthLoginPostRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['loginRequest'] == null) {
+        if (requestParameters['loginCommand'] == null) {
             throw new runtime.RequiredError(
-                'loginRequest',
-                'Required parameter "loginRequest" was null or undefined when calling authLoginPost().'
+                'loginCommand',
+                'Required parameter "loginCommand" was null or undefined when calling authLoginPost().'
             );
         }
 
@@ -111,22 +111,22 @@ export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: LoginRequestToJSON(requestParameters['loginRequest']),
+            body: LoginCommandToJSON(requestParameters['loginCommand']),
         };
     }
 
     /**
      */
-    async authLoginPostRaw(requestParameters: AuthLoginPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LoginResponse>> {
+    async authLoginPostRaw(requestParameters: AuthLoginPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LoginResult>> {
         const requestOptions = await this.authLoginPostRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => LoginResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => LoginResultFromJSON(jsonValue));
     }
 
     /**
      */
-    async authLoginPost(requestParameters: AuthLoginPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LoginResponse> {
+    async authLoginPost(requestParameters: AuthLoginPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LoginResult> {
         const response = await this.authLoginPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -152,16 +152,16 @@ export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
 
     /**
      */
-    async authMeGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserInfo>> {
+    async authMeGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserDto>> {
         const requestOptions = await this.authMeGetRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => UserInfoFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => UserDtoFromJSON(jsonValue));
     }
 
     /**
      */
-    async authMeGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserInfo> {
+    async authMeGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto> {
         const response = await this.authMeGetRaw(initOverrides);
         return await response.value();
     }

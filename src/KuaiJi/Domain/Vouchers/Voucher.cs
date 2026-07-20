@@ -14,9 +14,10 @@ namespace KuaiJi.Domain.Vouchers
         {
         }
 
-        private Voucher(Guid id, string word, int number, DateOnly date, string preparer, int attachmentCount)
+        private Voucher(Guid id, Guid accountSetId, string word, int number, DateOnly date, string preparer, int attachmentCount)
         {
             Id = id;
+            AccountSetId = accountSetId;
             Word = word;
             Number = number;
             Date = date;
@@ -27,6 +28,9 @@ namespace KuaiJi.Domain.Vouchers
 
         /// <summary>凭证标识。</summary>
         public Guid Id { get; private set; }
+
+        /// <summary>所属账套标识。凭证不能脱离账套独立存在。</summary>
+        public Guid AccountSetId { get; private set; }
 
         /// <summary>凭证字，如“记”。</summary>
         public string Word { get; private set; } = null!;
@@ -61,9 +65,14 @@ namespace KuaiJi.Domain.Vouchers
         /// <summary>借贷是否平衡（且至少有一条分录）。</summary>
         public bool IsBalanced => _entries.Count > 0 && TotalDebit == TotalCredit;
 
-        /// <summary>制单：创建一张草稿凭证。</summary>
-        public static Voucher Create(string word, int number, DateOnly date, string preparer, int attachmentCount = 0)
+        /// <summary>制单：创建一张草稿凭证，须归属于某一账套。</summary>
+        public static Voucher Create(Guid accountSetId, string word, int number, DateOnly date, string preparer, int attachmentCount = 0)
         {
+            if (accountSetId == Guid.Empty)
+            {
+                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+            }
+
             if (string.IsNullOrWhiteSpace(word))
             {
                 throw new ArgumentException("凭证字不能为空。", nameof(word));
@@ -84,7 +93,61 @@ namespace KuaiJi.Domain.Vouchers
                 throw new ArgumentException("附单据数不能为负数。", nameof(attachmentCount));
             }
 
-            return new Voucher(Guid.NewGuid(), word.Trim(), number, date, preparer.Trim(), attachmentCount);
+            return new Voucher(Guid.NewGuid(), accountSetId, word.Trim(), number, date, preparer.Trim(), attachmentCount);
+        }
+
+        /// <summary>
+        /// 从外部平台导入一张凭证头。相较于 <see cref="Create"/>，导入路径对字段做宽松处理：
+        /// 缺失的凭证字/号/制单人用默认值兜底，以尽量保留原始数据；分录须通过
+        /// <see cref="AddImportedEntry"/> 追加。若给出审核人则直接置为已审核状态。
+        /// </summary>
+        public static Voucher Import(
+            Guid accountSetId,
+            string? word,
+            int number,
+            DateOnly date,
+            string? preparer,
+            int attachmentCount,
+            string? reviewer)
+        {
+            if (accountSetId == Guid.Empty)
+            {
+                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+            }
+
+            var voucher = new Voucher(
+                Guid.NewGuid(),
+                accountSetId,
+                string.IsNullOrWhiteSpace(word) ? "记" : word.Trim(),
+                number > 0 ? number : 1,
+                date,
+                string.IsNullOrWhiteSpace(preparer) ? "导入" : preparer.Trim(),
+                attachmentCount < 0 ? 0 : attachmentCount);
+
+            if (!string.IsNullOrWhiteSpace(reviewer))
+            {
+                voucher.Reviewer = reviewer.Trim();
+                voucher.Status = VoucherStatus.Reviewed;
+            }
+
+            return voucher;
+        }
+
+        /// <summary>
+        /// 导入专用：按原始数据追加一条分录，原样保留借贷金额（允许负数、允许同侧、允许为零），
+        /// 不执行手工录入时的「单边且非零」校验，以忠实还原外部平台的凭证。
+        /// </summary>
+        public VoucherEntry AddImportedEntry(int lineNumber, string? summary, Guid accountId, decimal debit, decimal credit)
+        {
+            if (accountId == Guid.Empty)
+            {
+                throw new ArgumentException("必须指定会计科目。", nameof(accountId));
+            }
+
+            var entry = new VoucherEntry(Guid.NewGuid(), Id, summary?.Trim() ?? string.Empty, accountId, debit, credit);
+            entry.SetLineNumber(lineNumber > 0 ? lineNumber : _entries.Count + 1);
+            _entries.Add(entry);
+            return entry;
         }
 
         /// <summary>新增一条分录（仅草稿状态可用）。</summary>

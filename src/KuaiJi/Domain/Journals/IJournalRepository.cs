@@ -5,14 +5,14 @@ namespace KuaiJi.Domain.Journals
     /// </summary>
     public interface IJournalRepository
     {
-        /// <summary>按标识获取日记账（含分录）。</summary>
-        Task<Journal?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+        /// <summary>按标识获取日记账（含分录，限定账套）。</summary>
+        Task<Journal?> GetByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default);
 
-        /// <summary>按对应科目获取日记账（含分录）。</summary>
-        Task<Journal?> GetByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default);
+        /// <summary>按对应科目获取日记账（含分录，限定账套）。</summary>
+        Task<Journal?> GetByAccountIdAsync(Guid accountSetId, Guid accountId, CancellationToken cancellationToken = default);
 
-        /// <summary>获取全部日记账（不含分录，用于列表）。</summary>
-        Task<IReadOnlyList<Journal>> GetAllAsync(CancellationToken cancellationToken = default);
+        /// <summary>获取指定账套的全部日记账（不含分录，用于列表）。</summary>
+        Task<IReadOnlyList<Journal>> GetAllAsync(Guid accountSetId, CancellationToken cancellationToken = default);
 
         /// <summary>新增日记账。</summary>
         Task AddAsync(Journal journal, CancellationToken cancellationToken = default);

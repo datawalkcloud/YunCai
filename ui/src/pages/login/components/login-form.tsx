@@ -26,8 +26,8 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // 登录成功后回到来源页；无来源时回到首页。
-  const from = (location.state as { from?: string } | null)?.from ?? "/"
+  // 登录成功后回到来源页；无来源时进入应用控制台。
+  const from = (location.state as { from?: string } | null)?.from ?? "/app"
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

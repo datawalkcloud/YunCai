@@ -1,8 +1,9 @@
 import * as React from "react"
-import { Link, useLocation } from "react-router"
-import { BookOpen, Building2, FileText, GalleryVerticalEnd, House, ListTree, LogOut, Scale, Table2 } from "lucide-react"
+import { Link, useLocation, useNavigate, useParams } from "react-router"
+import { BookOpen, Building2, FileText, GalleryVerticalEnd, House, ListTree, LogOut, Scale, Table2, Upload } from "lucide-react"
 
 import { useAuth } from "@/auth/AuthContext"
+import { useAccountSets } from "@/accountSets/AccountSetsContext"
 import {
   Sidebar,
   SidebarContent,
@@ -16,40 +17,57 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// 导航分组，后续新增页面时在此登记即可。
+// 导航分组，path 为账套下的相对子路径（首页为空串）。新增页面时在此登记即可。
 const navGroups = [
   {
     label: "导航",
-    items: [{ title: "首页", url: "/", icon: House }],
+    items: [{ title: "首页", path: "", icon: House }],
   },
   {
     label: "资金",
-    items: [{ title: "现金日记账", url: "/funds/cash-journal", icon: BookOpen }],
+    items: [{ title: "现金日记账", path: "funds/cash-journal", icon: BookOpen }],
   },
   {
     label: "账目",
-    items: [{ title: "科目余额表", url: "/ledger/trial-balance", icon: Table2 }],
+    items: [{ title: "科目余额表", path: "ledger/trial-balance", icon: Table2 }],
   },
   {
     label: "凭证",
-    items: [{ title: "新增凭证", url: "/vouchers/new", icon: FileText }],
+    items: [
+      { title: "凭证管理", path: "vouchers/manage", icon: FileText },
+      { title: "凭证导入", path: "vouchers/import", icon: Upload },
+    ],
   },
   {
     label: "报表",
-    items: [{ title: "资产负债表", url: "/reports/balance-sheet", icon: Scale }],
+    items: [{ title: "资产负债表", path: "reports/balance-sheet", icon: Scale }],
   },
   {
     label: "设置",
     items: [
-      { title: "账套", url: "/settings/account-sets", icon: Building2 },
-      { title: "科目", url: "/settings/accounts", icon: ListTree },
+      { title: "账套", path: "settings/account-sets", icon: Building2 },
+      { title: "科目", path: "settings/accounts", icon: ListTree },
     ],
   },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, logout } = useAuth()
+  const { accountSets } = useAccountSets()
   const location = useLocation()
+  const navigate = useNavigate()
+  const accountSetId = useParams().accountSetId ?? ""
+
+  // 账套内的绝对路径：/{accountSetId} 或 /{accountSetId}/{path}
+  const base = `/${accountSetId}`
+  const hrefOf = (path: string) => (path ? `${base}/${path}` : base)
+
+  // 切换账套时保留当前子页面：/{old}/xxx → /{new}/xxx
+  function switchAccountSet(nextId: string) {
+    if (!nextId || nextId === accountSetId) return
+    const rest = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : ""
+    navigate(`/${nextId}${rest}`)
+  }
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -57,7 +75,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link to="/">
+              <Link to={base}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <GalleryVerticalEnd className="size-4" />
                 </div>
@@ -68,6 +86,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
+          {/* 账套切换器：切换后停留在当前页面。仅有多个账套时可切换。 */}
+          {accountSets.length > 0 && (
+            <SidebarMenuItem className="group-data-[collapsible=icon]:hidden">
+              <select
+                aria-label="切换账套"
+                className="h-9 w-full min-w-0 rounded-md border border-sidebar-border bg-transparent px-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-sidebar-ring/50"
+                value={accountSetId}
+                onChange={(e) => switchAccountSet(e.target.value)}
+              >
+                {accountSets.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.isCurrent ? "（当前）" : ""}
+                  </option>
+                ))}
+              </select>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarHeader>
 
@@ -76,20 +113,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarMenu>
-              {group.items.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location.pathname === item.url}
-                    tooltip={item.title}
-                  >
-                    <Link to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {group.items.map((item) => {
+                const href = hrefOf(item.path)
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname === href}
+                      tooltip={item.title}
+                    >
+                      <Link to={href}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroup>
         ))}

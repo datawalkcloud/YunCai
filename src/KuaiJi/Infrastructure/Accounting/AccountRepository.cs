@@ -14,41 +14,42 @@ namespace KuaiJi.Infrastructure.Accounting
             _context = context;
         }
 
-        public Task<Account?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<Account?> GetByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
         {
-            return _context.Accounts.SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+            return _context.Accounts.SingleOrDefaultAsync(a => a.AccountSetId == accountSetId && a.Id == id, cancellationToken);
         }
 
-        public Task<Account?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
+        public Task<Account?> GetByCodeAsync(Guid accountSetId, string code, CancellationToken cancellationToken = default)
         {
-            return _context.Accounts.SingleOrDefaultAsync(a => a.Code == code, cancellationToken);
+            return _context.Accounts.SingleOrDefaultAsync(a => a.AccountSetId == accountSetId && a.Code == code, cancellationToken);
         }
 
-        public async Task<IReadOnlyList<Account>> GetAllAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Account>> GetAllAsync(Guid accountSetId, CancellationToken cancellationToken = default)
         {
             return await _context.Accounts
                 .AsNoTracking()
+                .Where(a => a.AccountSetId == accountSetId)
                 .OrderBy(a => a.Code)
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<IReadOnlyList<Account>> GetChildrenAsync(Guid? parentId, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Account>> GetChildrenAsync(Guid accountSetId, Guid? parentId, CancellationToken cancellationToken = default)
         {
             return await _context.Accounts
                 .AsNoTracking()
-                .Where(a => a.ParentId == parentId)
+                .Where(a => a.AccountSetId == accountSetId && a.ParentId == parentId)
                 .OrderBy(a => a.Code)
                 .ToListAsync(cancellationToken);
         }
 
-        public Task<bool> ExistsByCodeAsync(string code, CancellationToken cancellationToken = default)
+        public Task<bool> ExistsByCodeAsync(Guid accountSetId, string code, CancellationToken cancellationToken = default)
         {
-            return _context.Accounts.AnyAsync(a => a.Code == code, cancellationToken);
+            return _context.Accounts.AnyAsync(a => a.AccountSetId == accountSetId && a.Code == code, cancellationToken);
         }
 
-        public Task<bool> HasChildrenAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<bool> HasChildrenAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
         {
-            return _context.Accounts.AnyAsync(a => a.ParentId == id, cancellationToken);
+            return _context.Accounts.AnyAsync(a => a.AccountSetId == accountSetId && a.ParentId == id, cancellationToken);
         }
 
         public async Task AddAsync(Account account, CancellationToken cancellationToken = default)

@@ -11,7 +11,7 @@ All URIs are relative to *http://localhost:5271*
 
 ## authLoginPost
 
-> LoginResponse authLoginPost(loginRequest)
+> LoginResult authLoginPost(loginCommand)
 
 
 
@@ -29,8 +29,8 @@ async function example() {
   const api = new AuthApi();
 
   const body = {
-    // LoginRequest
-    loginRequest: ...,
+    // LoginCommand
+    loginCommand: ...,
   } satisfies AuthLoginPostRequest;
 
   try {
@@ -50,11 +50,11 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **loginRequest** | [LoginRequest](LoginRequest.md) |  | |
+| **loginCommand** | [LoginCommand](LoginCommand.md) |  | |
 
 ### Return type
 
-[**LoginResponse**](LoginResponse.md)
+[**LoginResult**](LoginResult.md)
 
 ### Authorization
 
@@ -76,7 +76,7 @@ No authorization required
 
 ## authMeGet
 
-> UserInfo authMeGet()
+> UserDto authMeGet()
 
 
 
@@ -111,7 +111,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**UserInfo**](UserInfo.md)
+[**UserDto**](UserDto.md)
 
 ### Authorization
 

@@ -1,16 +1,19 @@
-import { createBrowserRouter, Navigate, useLocation } from "react-router";
+import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router";
 import type { ReactNode } from "react";
 
 import Login from "@/pages/login/Login";
+import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import CashJournal from "@/pages/funds/cash-journal";
 import TrialBalance from "@/pages/ledger/trial-balance";
-import NewVoucher from "@/pages/vouchers/new";
+import VoucherManage from "@/pages/vouchers/manage";
+import ImportVoucher from "@/pages/vouchers/import";
 import BalanceSheet from "@/pages/reports/balance-sheet";
 import Accounts from "@/pages/settings/accounts";
 import AccountSets from "@/pages/settings/account-sets";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/auth/AuthContext";
+import { AccountSetsProvider, useAccountSets } from "@/accountSets/AccountSetsContext";
 
 /** 校验令牌期间的占位界面，避免闪烁跳转。 */
 function AuthLoading() {
@@ -38,26 +41,69 @@ function RedirectIfAuthed({ children }: { children: ReactNode }) {
     const { status } = useAuth();
 
     if (status === "loading") return <AuthLoading />;
-    if (status === "authenticated") return <Navigate to="/" replace />;
+    if (status === "authenticated") return <Navigate to="/app" replace />;
     return <>{children}</>;
 }
 
+/**
+ * 根路径落地：解析默认账套后跳转到「/{accountSetId}」。
+ * 无任何账套时提示先创建账套。
+ */
+function DefaultAccountSetRedirect() {
+    const { loading, defaultId, error } = useAccountSets();
+
+    if (loading) return <AuthLoading />;
+    if (error) {
+        return (
+            <div className="flex min-h-svh items-center justify-center text-destructive">
+                {error}
+            </div>
+        );
+    }
+    if (!defaultId) {
+        return (
+            <div className="flex min-h-svh flex-col items-center justify-center gap-2 text-muted-foreground">
+                <span>尚未创建任何账套。</span>
+                <span className="text-sm">请联系管理员在后台创建账套后再使用。</span>
+            </div>
+        );
+    }
+    return <Navigate to={`/${defaultId}`} replace />;
+}
+
 const router = createBrowserRouter([
+    // 公开官网首页，右上角提供登录入口，无需登录即可访问。
     {
         path: "/",
+        element: <Landing />,
+    },
+    // 受保护的应用区：登录后可访问，统一挂载账套上下文。
+    {
         element: (
             <RequireAuth>
-                <Layout />
+                <AccountSetsProvider>
+                    <Outlet />
+                </AccountSetsProvider>
             </RequireAuth>
         ),
         children: [
-            { index: true, element: <Home /> },
-            { path: "funds/cash-journal", element: <CashJournal /> },
-            { path: "ledger/trial-balance", element: <TrialBalance /> },
-            { path: "vouchers/new", element: <NewVoucher /> },
-            { path: "reports/balance-sheet", element: <BalanceSheet /> },
-            { path: "settings/accounts", element: <Accounts /> },
-            { path: "settings/account-sets", element: <AccountSets /> },
+            // 登录后的默认落地：解析默认账套并跳转到 /{accountSetId}。
+            { path: "app", element: <DefaultAccountSetRedirect /> },
+            {
+                // 账套 id 作为路由第一段，其下所有页面均归属该账套。
+                path: ":accountSetId",
+                element: <Layout />,
+                children: [
+                    { index: true, element: <Home /> },
+                    { path: "funds/cash-journal", element: <CashJournal /> },
+                    { path: "ledger/trial-balance", element: <TrialBalance /> },
+                    { path: "vouchers/manage", element: <VoucherManage /> },
+                    { path: "vouchers/import", element: <ImportVoucher /> },
+                    { path: "reports/balance-sheet", element: <BalanceSheet /> },
+                    { path: "settings/accounts", element: <Accounts /> },
+                    { path: "settings/account-sets", element: <AccountSets /> },
+                ],
+            },
         ],
     },
     {

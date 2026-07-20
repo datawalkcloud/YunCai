@@ -1,5 +1,6 @@
 using System.Text;
 using KuaiJi.Infrastructure.Data;
+using Microsoft.OpenApi;
 using KuaiJi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,25 @@ builder.Services.AddSerilog(Log.Logger);
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    // .NET 10 的 schema 生成会把数值字段描述成 ["integer"/"number","string"] 联合类型
+    // （允许从字符串读取数值），这会让 openapi-generator 产出无法使用的空对象类型。
+    // 这里剥离多余的 string，使数值字段生成为纯 integer/number。
+    options.AddSchemaTransformer((schema, context, cancellationToken) =>
+    {
+        var type = schema.Type;
+        if (type is not null
+            && (type.Value & JsonSchemaType.String) != 0
+            && (type.Value & (JsonSchemaType.Integer | JsonSchemaType.Number)) != 0)
+        {
+            schema.Type = type.Value & ~JsonSchemaType.String;
+            schema.Pattern = null;
+        }
+
+        return Task.CompletedTask;
+    });
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -28,7 +47,18 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Progr
 // 认证相关服务
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddScoped<KuaiJi.Domain.Users.IUserRepository, KuaiJi.Infrastructure.Persistence.UserRepository>();
+builder.Services.AddScoped<KuaiJi.Domain.AccountSets.IAccountSetRepository, KuaiJi.Infrastructure.AccountSets.AccountSetRepository>();
 builder.Services.AddScoped<KuaiJi.Domain.Accounting.IAccountRepository, KuaiJi.Infrastructure.Accounting.AccountRepository>();
+builder.Services.AddScoped<KuaiJi.Domain.Journals.IJournalRepository, KuaiJi.Infrastructure.Journals.JournalRepository>();
+builder.Services.AddScoped<KuaiJi.Domain.Vouchers.IVoucherRepository, KuaiJi.Infrastructure.Vouchers.VoucherRepository>();
+builder.Services.AddScoped<KuaiJi.Application.Vouchers.IVoucherImportReader, KuaiJi.Infrastructure.Vouchers.XlsVoucherImportReader>();
+builder.Services.AddScoped<KuaiJi.Application.Vouchers.VoucherImportService>();
+builder.Services.AddScoped<KuaiJi.Application.Vouchers.VoucherService>();
+builder.Services.AddScoped<KuaiJi.Application.Accounts.IAccountImportReader, KuaiJi.Infrastructure.Accounting.XlsxAccountImportReader>();
+builder.Services.AddScoped<KuaiJi.Application.Accounts.AccountImportService>();
+builder.Services.AddScoped<KuaiJi.Application.Reports.TrialBalanceService>();
+builder.Services.AddScoped<KuaiJi.Application.Reports.BalanceSheetService>();
+builder.Services.AddScoped<KuaiJi.Application.Reports.CashJournalService>();
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
@@ -98,6 +128,22 @@ using (var scope = app.Services.CreateScope())
                     PasswordHash = KuaiJi.Services.PasswordHasher.Hash("user123")
                 }
             );
+            context.SaveChanges();
+        }
+
+        // 创建默认账套（科目/日记账/凭证均需归属于某一账套），并置为当前账套。
+        if (!context.AccountSets.Any())
+        {
+            var defaultSet = KuaiJi.Domain.AccountSets.AccountSet.Create(
+                "默认账套",
+                "默认单位",
+                KuaiJi.Domain.AccountSets.AccountingStandard.Enterprise,
+                KuaiJi.Domain.AccountSets.TaxpayerType.General,
+                "人民币",
+                DateTime.UtcNow.Year,
+                1);
+            defaultSet.MarkAsCurrent();
+            context.AccountSets.Add(defaultSet);
             context.SaveChanges();
         }
     }                           

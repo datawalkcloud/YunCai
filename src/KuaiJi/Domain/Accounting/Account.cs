@@ -16,6 +16,7 @@ namespace KuaiJi.Domain.Accounting
 
         private Account(
             Guid id,
+            Guid accountSetId,
             string code,
             string name,
             AccountCategory category,
@@ -25,6 +26,7 @@ namespace KuaiJi.Domain.Accounting
             bool isPreset)
         {
             Id = id;
+            AccountSetId = accountSetId;
             Code = code;
             Name = name;
             Category = category;
@@ -39,7 +41,10 @@ namespace KuaiJi.Domain.Accounting
         /// <summary>科目标识（代理主键）。</summary>
         public Guid Id { get; private set; }
 
-        /// <summary>科目编码，全局唯一；明细科目以上级编码为前缀。</summary>
+        /// <summary>所属账套标识。科目不能脱离账套独立存在。</summary>
+        public Guid AccountSetId { get; private set; }
+
+        /// <summary>科目编码，账套内唯一；明细科目以上级编码为前缀。</summary>
         public string Code { get; private set; } = null!;
 
         /// <summary>科目名称。</summary>
@@ -75,16 +80,22 @@ namespace KuaiJi.Domain.Accounting
         /// <summary>下级明细科目集合。</summary>
         public IReadOnlyCollection<Account> Children => _children;
 
-        /// <summary>创建一个顶级（一级）科目。</summary>
+        /// <summary>创建一个顶级（一级）科目，须归属于某一账套。</summary>
         public static Account CreateRoot(
+            Guid accountSetId,
             string code,
             string name,
             AccountCategory category,
             BalanceDirection direction,
             bool isPreset = false)
         {
+            if (accountSetId == Guid.Empty)
+            {
+                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+            }
+
             Guard(code, name);
-            return new Account(Guid.NewGuid(), code.Trim(), name.Trim(), category, direction, parentId: null, level: 1, isPreset);
+            return new Account(Guid.NewGuid(), accountSetId, code.Trim(), name.Trim(), category, direction, parentId: null, level: 1, isPreset);
         }
 
         /// <summary>
@@ -104,6 +115,7 @@ namespace KuaiJi.Domain.Accounting
 
             var child = new Account(
                 Guid.NewGuid(),
+                AccountSetId,
                 childCode,
                 name.Trim(),
                 Category,

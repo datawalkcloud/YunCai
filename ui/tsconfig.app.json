@@ -26,5 +26,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "references": [{ "path": "./tsconfig.apis-gen.json" }],
+  "include": ["src"],
+  "exclude": ["src/apis-gen"]
 }

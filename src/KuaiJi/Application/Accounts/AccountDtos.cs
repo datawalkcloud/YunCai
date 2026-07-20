@@ -1,0 +1,61 @@
+using KuaiJi.Domain.Accounting;
+
+namespace KuaiJi.Application.Accounts
+{
+    /// <summary>会计科目响应 DTO（供凭证录入选择科目等场景）。</summary>
+    public sealed class AccountDto
+    {
+        public Guid Id { get; init; }
+
+        public string Code { get; init; } = null!;
+
+        public string Name { get; init; } = null!;
+
+        public AccountCategory Category { get; init; }
+
+        public BalanceDirection Direction { get; init; }
+
+        public Guid? ParentId { get; init; }
+
+        public int Level { get; init; }
+
+        public bool IsLeaf { get; init; }
+
+        public bool IsEnabled { get; init; }
+
+        public string? Mnemonic { get; init; }
+
+        public static AccountDto FromDomain(Account account) => new()
+        {
+            Id = account.Id,
+            Code = account.Code,
+            Name = account.Name,
+            Category = account.Category,
+            Direction = account.Direction,
+            ParentId = account.ParentId,
+            Level = account.Level,
+            IsLeaf = account.IsLeaf,
+            IsEnabled = account.IsEnabled,
+            Mnemonic = account.Mnemonic,
+        };
+    }
+
+    /// <summary>新增科目请求。指定上级科目时创建明细科目，其类别与方向继承上级（Category/Direction 被忽略）。</summary>
+    public sealed class CreateAccountRequest
+    {
+        /// <summary>上级科目标识；为空表示创建顶级科目。</summary>
+        public Guid? ParentId { get; init; }
+
+        /// <summary>科目编码，账套内唯一；明细科目须以上级编码为前缀。</summary>
+        public string Code { get; init; } = null!;
+
+        /// <summary>科目名称。</summary>
+        public string Name { get; init; } = null!;
+
+        /// <summary>科目类别（仅顶级科目使用；明细科目继承上级）。</summary>
+        public AccountCategory Category { get; init; }
+
+        /// <summary>余额方向（仅顶级科目使用；明细科目继承上级）。</summary>
+        public BalanceDirection Direction { get; init; }
+    }
+}

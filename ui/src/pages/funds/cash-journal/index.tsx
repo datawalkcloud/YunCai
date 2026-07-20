@@ -1,7 +1,10 @@
-import { useMemo, useRef, useState } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Loader2, RefreshCw } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { useAuth } from "@/auth/AuthContext"
+import { ReportsApi, type CashJournalRowDto } from "@/apis-gen"
+import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import {
     Card,
     CardContent,
@@ -9,50 +12,13 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
-/** 现金日记账的一条流水（收入/支出金额以字符串保存，便于表格内编辑）。 */
-interface JournalEntry {
-    id: string
-    date: string
-    summary: string
-    /** 收支类别。 */
-    category: string
-    /** 往来单位。 */
-    counterparty: string
-    /** 收入金额（借方）。 */
-    income: string
-    /** 支出金额（贷方）。 */
-    expense: string
-    /** 关联凭证号。 */
-    voucher: string
-}
-
-/** 期初余额（示例数据，后续接入后端后替换）。 */
-const OPENING_BALANCE = 12000
-
-const INITIAL_ENTRIES: JournalEntry[] = [
-    { id: "1", date: "2026-07-01", summary: "期初结转", category: "期初", counterparty: "", income: "", expense: "", voucher: "记-001" },
-    { id: "2", date: "2026-07-03", summary: "销售收款", category: "销售收入", counterparty: "华信科技", income: "8600", expense: "", voucher: "记-002" },
-    { id: "3", date: "2026-07-05", summary: "采购办公用品", category: "办公费", counterparty: "晨光文具", income: "", expense: "1250", voucher: "记-003" },
-    { id: "4", date: "2026-07-09", summary: "报销差旅费", category: "差旅费", counterparty: "员工-张三", income: "", expense: "3200", voucher: "记-004" },
-    { id: "5", date: "2026-07-12", summary: "客户预付款", category: "预收款", counterparty: "远大商贸", income: "15000", expense: "", voucher: "记-005" },
-    { id: "6", date: "2026-07-18", summary: "支付水电费", category: "水电费", counterparty: "国网电力", income: "", expense: "860", voucher: "记-006" },
-]
-
-function toNum(value: string): number {
-    const n = Number(value)
-    return Number.isFinite(n) ? n : 0
-}
-
-/** 规整金额输入：仅数字与一个小数点，且小数点后最多两位。 */
-function sanitizeAmount(v: string): string {
-    let s = v.replace(/[^\d.]/g, "")
-    const dot = s.indexOf(".")
-    if (dot !== -1) {
-        s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, "").slice(0, 2)
-    }
-    return s
+/** 选定的会计期间。 */
+interface Period {
+    year: number
+    month: number
 }
 
 function formatMoney(value: number): string {
@@ -63,27 +29,70 @@ function formatMoney(value: number): string {
     })
 }
 
-function today(): string {
-    return new Date().toISOString().slice(0, 10)
+/** 金额为 0 时留空，避免表格被 0.00 填满。 */
+function fmt(value: number): string {
+    if (!value) return ""
+    return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const cellCls = "border border-border p-0"
-const cellInput =
-    "h-9 w-full bg-transparent px-2 outline-none focus:bg-accent/50 placeholder:text-muted-foreground/60"
-const amountInput = cn(cellInput, "text-right tabular-nums")
+/** Period → <input type="month"> 的值（YYYY-MM）。 */
+function toMonthInput(p: Period | null): string {
+    return p ? `${String(p.year).padStart(4, "0")}-${String(p.month).padStart(2, "0")}` : ""
+}
+
+const cellCls = "border border-border px-2 py-2 align-middle"
 
 export default function CashJournalPage() {
-    const nextId = useRef(INITIAL_ENTRIES.length + 1)
-    const [entries, setEntries] = useState<JournalEntry[]>(INITIAL_ENTRIES)
+    const { token } = useAuth()
+    const { accountSets } = useAccountSets()
+    const accountSetId = useCurrentAccountSetId() ?? ""
+    const currentSet = accountSets.find((s) => s.id === accountSetId)
+
+    const [period, setPeriod] = useState<Period | null>(null)
+    const [entries, setEntries] = useState<CashJournalRowDto[]>([])
+    const [openingBalance, setOpeningBalance] = useState(0)
+    const [periodText, setPeriodText] = useState("")
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const load = useCallback(async () => {
+        if (!accountSetId) return
+        setLoading(true)
+        setError(null)
+        try {
+            const res = await new ReportsApi(apiConfig(token)).accountsetsAccountSetIdReportsCashJournalGet({
+                accountSetId,
+                year: period?.year,
+                month: period?.month,
+            })
+            setEntries(res.rows ?? [])
+            setOpeningBalance(res.openingBalance ?? 0)
+            setPeriodText(res.periodText ?? "")
+            // 首次未指定期间时，采用后端解析出的期间（最近有凭证的月份）。
+            if (period === null && res.year && res.month) {
+                setPeriod({ year: res.year, month: res.month })
+            }
+        } catch (err) {
+            setError(await apiErrorMessage(err, "加载现金日记账失败，请重试。"))
+            setEntries([])
+            setOpeningBalance(0)
+        } finally {
+            setLoading(false)
+        }
+    }, [accountSetId, token, period])
+
+    useEffect(() => {
+        void load()
+    }, [load])
 
     // 计算每行的累计余额与本期收支合计。
     const { rows, totalIncome, totalExpense, closingBalance } = useMemo(() => {
-        let balance = OPENING_BALANCE
+        let balance = openingBalance
         let income = 0
         let expense = 0
         const computed = entries.map((entry, index) => {
-            const inc = toNum(entry.income)
-            const exp = toNum(entry.expense)
+            const inc = entry.income ?? 0
+            const exp = entry.expense ?? 0
             balance += inc - exp
             income += inc
             expense += exp
@@ -95,34 +104,16 @@ export default function CashJournalPage() {
             totalExpense: expense,
             closingBalance: balance,
         }
-    }, [entries])
+    }, [entries, openingBalance])
 
-    function updateEntry(id: string, patch: Partial<JournalEntry>) {
-        setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)))
-    }
-
-    function removeEntry(id: string) {
-        setEntries((prev) => prev.filter((e) => e.id !== id))
-    }
-
-    function addRow() {
-        setEntries((prev) => [
-            ...prev,
-            {
-                id: String(nextId.current++),
-                date: today(),
-                summary: "",
-                category: "",
-                counterparty: "",
-                income: "",
-                expense: "",
-                voucher: "",
-            },
-        ])
+    function handleMonthChange(value: string) {
+        if (!value) return
+        const [y, m] = value.split("-").map(Number)
+        if (Number.isFinite(y) && Number.isFinite(m)) setPeriod({ year: y, month: m })
     }
 
     const summary = [
-        { label: "期初余额", value: OPENING_BALANCE },
+        { label: "期初余额", value: openingBalance },
         { label: "本期收入", value: totalIncome },
         { label: "本期支出", value: totalExpense },
         { label: "期末余额", value: closingBalance },
@@ -133,9 +124,35 @@ export default function CashJournalPage() {
             <div className="flex flex-col gap-1">
                 <h1 className="text-2xl font-bold">现金日记账</h1>
                 <p className="text-sm text-muted-foreground">
-                    按日期顺序记录现金的收入、支出及结余，可像表格一样直接编辑任意单元格。
+                    账套：{currentSet?.name ?? (accountSetId || "未指定")}
+                    。由涉及库存现金科目的凭证按日期序时汇总，收入为借方、支出为贷方。
                 </p>
             </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                    <span>会计期间：</span>
+                    <Input
+                        type="month"
+                        className="h-8 w-40"
+                        value={toMonthInput(period)}
+                        onChange={(e) => handleMonthChange(e.target.value)}
+                        disabled={!accountSetId}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => void load()}
+                        disabled={loading || !accountSetId}
+                        className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                    >
+                        <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+                        刷新
+                    </button>
+                </div>
+                {periodText && <span>期间：{periodText}</span>}
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {summary.map((item) => (
@@ -151,128 +168,63 @@ export default function CashJournalPage() {
             </div>
 
             <Card>
-                <CardHeader className="flex-row items-center justify-between gap-2">
+                <CardHeader>
                     <CardTitle>明细流水</CardTitle>
-                    <Button size="sm" onClick={addRow}>
-                        <Plus />
-                        新增一行
-                    </Button>
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto rounded-md border">
-                        <table className="w-full min-w-[1080px] border-collapse text-sm">
+                        <table className="w-full min-w-[960px] border-collapse text-sm">
                             <thead>
                                 <tr className="bg-muted/50 text-left text-muted-foreground">
-                                    <th className={cn(cellCls, "px-2 py-2 font-medium")}>日期</th>
-                                    <th className={cn(cellCls, "px-2 py-2 font-medium")}>摘要</th>
-                                    <th className={cn(cellCls, "px-2 py-2 font-medium")}>收支类别</th>
-                                    <th className={cn(cellCls, "px-2 py-2 font-medium")}>往来单位</th>
-                                    <th className={cn(cellCls, "px-2 py-2 text-right font-medium")}>收入（借方）</th>
-                                    <th className={cn(cellCls, "px-2 py-2 text-right font-medium")}>支出（贷方）</th>
-                                    <th className={cn(cellCls, "px-2 py-2 text-right font-medium")}>余额</th>
-                                    <th className={cn(cellCls, "px-2 py-2 font-medium")}>关联凭证</th>
-                                    <th className={cn(cellCls, "px-2 py-2 text-center font-medium")}>日记账序号</th>
-                                    <th className={cn(cellCls, "w-14 px-2 py-2 text-center font-medium")}>操作</th>
+                                    <th className={cn(cellCls, "font-medium")}>日期</th>
+                                    <th className={cn(cellCls, "font-medium")}>凭证号</th>
+                                    <th className={cn(cellCls, "font-medium")}>摘要</th>
+                                    <th className={cn(cellCls, "font-medium")}>对方科目</th>
+                                    <th className={cn(cellCls, "text-right font-medium")}>收入（借方）</th>
+                                    <th className={cn(cellCls, "text-right font-medium")}>支出（贷方）</th>
+                                    <th className={cn(cellCls, "text-right font-medium")}>余额</th>
+                                    <th className={cn(cellCls, "text-center font-medium")}>序号</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {rows.map((row) => (
-                                    <tr key={row.id} className="hover:bg-muted/30">
-                                        <td className={cn(cellCls, "w-40")}>
-                                            <input
-                                                type="date"
-                                                value={row.date}
-                                                onChange={(e) => updateEntry(row.id, { date: e.target.value })}
-                                                className={cn(cellInput, "tabular-nums")}
-                                            />
-                                        </td>
-                                        <td className={cellCls}>
-                                            <input
-                                                value={row.summary}
-                                                placeholder="摘要"
-                                                onChange={(e) => updateEntry(row.id, { summary: e.target.value })}
-                                                className={cellInput}
-                                            />
-                                        </td>
-                                        <td className={cellCls}>
-                                            <input
-                                                value={row.category}
-                                                placeholder="收支类别"
-                                                onChange={(e) => updateEntry(row.id, { category: e.target.value })}
-                                                className={cellInput}
-                                            />
-                                        </td>
-                                        <td className={cellCls}>
-                                            <input
-                                                value={row.counterparty}
-                                                placeholder="往来单位"
-                                                onChange={(e) => updateEntry(row.id, { counterparty: e.target.value })}
-                                                className={cellInput}
-                                            />
-                                        </td>
-                                        <td className={cellCls}>
-                                            <input
-                                                inputMode="decimal"
-                                                value={row.income}
-                                                placeholder="0.00"
-                                                onChange={(e) => updateEntry(row.id, { income: sanitizeAmount(e.target.value) })}
-                                                onFocus={(e) => e.target.select()}
-                                                className={amountInput}
-                                            />
-                                        </td>
-                                        <td className={cellCls}>
-                                            <input
-                                                inputMode="decimal"
-                                                value={row.expense}
-                                                placeholder="0.00"
-                                                onChange={(e) => updateEntry(row.id, { expense: sanitizeAmount(e.target.value) })}
-                                                onFocus={(e) => e.target.select()}
-                                                className={amountInput}
-                                            />
-                                        </td>
-                                        <td className={cn(cellCls, "px-2 text-right font-medium tabular-nums")}>
-                                            {formatMoney(row.balance)}
-                                        </td>
-                                        <td className={cellCls}>
-                                            <input
-                                                value={row.voucher}
-                                                placeholder="凭证号"
-                                                onChange={(e) => updateEntry(row.id, { voucher: e.target.value })}
-                                                className={cellInput}
-                                            />
-                                        </td>
-                                        <td className={cn(cellCls, "px-2 text-center tabular-nums text-muted-foreground")}>
-                                            {row.seq}
-                                        </td>
-                                        <td className={cn(cellCls, "text-center")}>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-sm"
-                                                onClick={() => removeEntry(row.id)}
-                                                title="删除该行"
-                                            >
-                                                <Trash2 />
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {rows.length === 0 && (
+                                {loading && rows.length === 0 ? (
                                     <tr>
-                                        <td className={cn(cellCls, "px-3 py-6 text-center text-muted-foreground")} colSpan={10}>
-                                            暂无流水，点击“新增一行”开始记账
+                                        <td className={cn(cellCls, "px-3 py-10 text-center text-muted-foreground")} colSpan={8}>
+                                            <Loader2 className="mx-auto size-5 animate-spin" />
                                         </td>
                                     </tr>
+                                ) : rows.length === 0 ? (
+                                    <tr>
+                                        <td className={cn(cellCls, "px-3 py-10 text-center text-muted-foreground")} colSpan={8}>
+                                            {accountSetId ? "该期间暂无现金流水。" : "请先选择账套。"}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    rows.map((row) => (
+                                        <tr key={row.seq} className="hover:bg-muted/30">
+                                            <td className={cn(cellCls, "tabular-nums")}>{row.date}</td>
+                                            <td className={cn(cellCls, "tabular-nums")}>{row.voucherNo}</td>
+                                            <td className={cellCls}>{row.summary}</td>
+                                            <td className={cellCls}>{row.contraAccount}</td>
+                                            <td className={cn(cellCls, "text-right tabular-nums")}>{fmt(row.income ?? 0)}</td>
+                                            <td className={cn(cellCls, "text-right tabular-nums")}>{fmt(row.expense ?? 0)}</td>
+                                            <td className={cn(cellCls, "text-right font-medium tabular-nums")}>
+                                                {formatMoney(row.balance)}
+                                            </td>
+                                            <td className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>
+                                                {row.seq}
+                                            </td>
+                                        </tr>
+                                    ))
                                 )}
                             </tbody>
                             <tfoot>
                                 <tr className="bg-muted/50 font-medium">
-                                    <td className={cn(cellCls, "px-2 py-2")} colSpan={4}>
-                                        本期合计
-                                    </td>
-                                    <td className={cn(cellCls, "px-2 py-2 text-right tabular-nums")}>{formatMoney(totalIncome)}</td>
-                                    <td className={cn(cellCls, "px-2 py-2 text-right tabular-nums")}>{formatMoney(totalExpense)}</td>
-                                    <td className={cn(cellCls, "px-2 py-2 text-right tabular-nums")}>{formatMoney(closingBalance)}</td>
-                                    <td className={cellCls} colSpan={3} />
+                                    <td className={cellCls} colSpan={4}>本期合计</td>
+                                    <td className={cn(cellCls, "text-right tabular-nums")}>{formatMoney(totalIncome)}</td>
+                                    <td className={cn(cellCls, "text-right tabular-nums")}>{formatMoney(totalExpense)}</td>
+                                    <td className={cn(cellCls, "text-right tabular-nums")}>{formatMoney(closingBalance)}</td>
+                                    <td className={cellCls} />
                                 </tr>
                             </tfoot>
                         </table>
