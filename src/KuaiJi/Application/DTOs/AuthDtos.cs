@@ -1,11 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using MediatR;
 
-namespace KuaiJi.Models
+namespace KuaiJi.Application.DTOs
 {
-    /// <summary>
-    /// 登录请求体。
-    /// </summary>
-    public class LoginRequest
+    public class LoginCommand : IRequest<LoginResult?>
     {
         [Required]
         public string Username { get; set; } = string.Empty;
@@ -14,20 +12,14 @@ namespace KuaiJi.Models
         public string Password { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// 登录成功后返回的令牌与用户信息。
-    /// </summary>
-    public class LoginResponse
+    public class LoginResult
     {
         public required string Token { get; init; }
         public required DateTime ExpiresAt { get; init; }
-        public required UserInfo User { get; init; }
+        public required UserDto User { get; init; }
     }
 
-    /// <summary>
-    /// 返回给前端的公开用户信息（不含密码）。
-    /// </summary>
-    public class UserInfo
+    public class UserDto
     {
         public required string Id { get; init; }
         public required string Username { get; init; }

@@ -1,0 +1,267 @@
+[22:07:06.861  INF] User profile is available. Using 'C:\Users\Sprin\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[22:07:07.117  INF] Now listening on: https://localhost:7058
+[22:07:07.119  INF] Now listening on: http://localhost:5271
+[22:07:07.150  INF] Application started. Press Ctrl+C to shut down.
+[22:07:07.152  INF] Hosting environment: Development
+[22:07:07.153  INF] Content root path: H:\kuaiji\src\KuaiJi
+[22:07:26.207 9fc0fecdb7bf88f9ad858ee55d40c1b6 INF] Request starting HTTP/1.1 POST http://localhost:5271/auth/login - application/json 42
+[22:07:26.240 9fc0fecdb7bf88f9ad858ee55d40c1b6 INF] CORS policy execution successful.
+[22:07:26.286 9fc0fecdb7bf88f9ad858ee55d40c1b6 INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Login (KuaiJi)'
+[22:07:26.306 9fc0fecdb7bf88f9ad858ee55d40c1b6 INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Auth.DTOs.LoginResult]] Login(KuaiJi.Application.Auth.DTOs.LoginCommand) on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[22:07:26.319 9fc0fecdb7bf88f9ad858ee55d40c1b6 WRN] You do not have a valid license key for the Lucky Penny software MediatR. This is allowed for development and testing scenarios. If you are running in production you are required to have a licensed version. Please visit https://luckypennysoftware.com to obtain a valid license.
+[22:07:31.529 9fc0fecdb7bf88f9ad858ee55d40c1b6 ERR] An error occurred using the connection to database 'kuaiji' on server 'tcp://localhost:5432'.
+[22:07:31.547 9fc0fecdb7bf88f9ad858ee55d40c1b6 ERR] An exception occurred while iterating over the results of a query for context type 'KuaiJi.Infrastructure.Data.AppDbContext'.
+System.InvalidOperationException: An exception has been raised that is likely due to a transient failure.
+ ---> Npgsql.NpgsqlException (0x80004005): Failed to connect to 127.0.0.1:5432
+ ---> System.Net.Sockets.SocketException (10061): 由于目标计算机积极拒绝，无法连接。
+   at Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   at Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   at Npgsql.Internal.NpgsqlConnector.RawOpen(NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.Internal.NpgsqlConnector.<Open>g__OpenCore|209_0(NpgsqlConnector conn, String username, SslMode sslMode, GssEncryptionMode gssEncMode, NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.Internal.NpgsqlConnector.Open(NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.PoolingDataSource.OpenNewConnector(NpgsqlConnection conn, NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.PoolingDataSource.<Get>g__RentAsync|33_0(NpgsqlConnection conn, NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlConnection.<Open>g__OpenAsync|42_0(Boolean async, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlConnection.Open()
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenDbConnection(Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenInternal(Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.Open(Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReader(RelationalCommandParameterObject parameterObject)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.Enumerator.InitializeReader(Enumerator enumerator)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.Enumerator.<>c.<MoveNext>b__21_0(DbContext _, Enumerator enumerator)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.Execute[TState,TResult](TState state, Func`3 operation, Func`3 verifySucceeded)
+   --- End of inner exception stack trace ---
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.Execute[TState,TResult](TState state, Func`3 operation, Func`3 verifySucceeded)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.Enumerator.MoveNext()
+System.InvalidOperationException: An exception has been raised that is likely due to a transient failure.
+ ---> Npgsql.NpgsqlException (0x80004005): Failed to connect to 127.0.0.1:5432
+ ---> System.Net.Sockets.SocketException (10061): 由于目标计算机积极拒绝，无法连接。
+   at Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   at Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   at Npgsql.Internal.NpgsqlConnector.RawOpen(NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.Internal.NpgsqlConnector.<Open>g__OpenCore|209_0(NpgsqlConnector conn, String username, SslMode sslMode, GssEncryptionMode gssEncMode, NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.Internal.NpgsqlConnector.Open(NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.PoolingDataSource.OpenNewConnector(NpgsqlConnection conn, NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.PoolingDataSource.<Get>g__RentAsync|33_0(NpgsqlConnection conn, NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlConnection.<Open>g__OpenAsync|42_0(Boolean async, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlConnection.Open()
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenDbConnection(Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenInternal(Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.Open(Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReader(RelationalCommandParameterObject parameterObject)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.Enumerator.InitializeReader(Enumerator enumerator)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.Enumerator.<>c.<MoveNext>b__21_0(DbContext _, Enumerator enumerator)
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.Execute[TState,TResult](TState state, Func`3 operation, Func`3 verifySucceeded)
+   --- End of inner exception stack trace ---
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.Execute[TState,TResult](TState state, Func`3 operation, Func`3 verifySucceeded)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.Enumerator.MoveNext()
+[22:09:59.265  ERR] An error occurred using the connection to database 'kuaiji' on server 'tcp://localhost:5432'.
+[22:09:59.310  ERR] 数据库自动迁移过程中发生了错误。
+Npgsql.NpgsqlException (0x80004005): Failed to connect to 127.0.0.1:5432
+ ---> System.Net.Sockets.SocketException (10061): 由于目标计算机积极拒绝，无法连接。
+   at Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   at Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   at Npgsql.Internal.NpgsqlConnector.RawOpen(NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.Internal.NpgsqlConnector.<Open>g__OpenCore|209_0(NpgsqlConnector conn, String username, SslMode sslMode, GssEncryptionMode gssEncMode, NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.Internal.NpgsqlConnector.Open(NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.PoolingDataSource.OpenNewConnector(NpgsqlConnection conn, NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.PoolingDataSource.<Get>g__RentAsync|33_0(NpgsqlConnection conn, NpgsqlTimeout timeout, Boolean async, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlConnection.<Open>g__OpenAsync|42_0(Boolean async, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlConnection.Open()
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenDbConnection(Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.OpenInternal(Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalConnection.Open(Boolean errorsExpected)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReader(RelationalCommandParameterObject parameterObject)
+   at Microsoft.EntityFrameworkCore.Migrations.HistoryRepository.GetAppliedMigrations()
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Migrations.Internal.NpgsqlHistoryRepository.GetAppliedMigrations()
+   at Npgsql.EntityFrameworkCore.PostgreSQL.Migrations.Internal.NpgsqlMigrator.Migrate(String targetMigration)
+   at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.Migrate(DatabaseFacade databaseFacade)
+   at Program.<Main>$(String[] args) in H:\kuaiji\src\KuaiJi\Program.cs:line 78
+[22:09:59.415  INF] User profile is available. Using 'C:\Users\Sprin\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[22:09:59.561  INF] Now listening on: https://localhost:7058
+[22:09:59.563  INF] Now listening on: http://localhost:5271
+[22:09:59.593  INF] Application started. Press Ctrl+C to shut down.
+[22:09:59.594  INF] Hosting environment: Development
+[22:09:59.595  INF] Content root path: H:\kuaiji\src\KuaiJi
+[22:11:56.242  ERR] An error occurred using the connection to database 'kuaiji_dev' on server 'tcp://101.37.166.120:30432'.
+[22:11:56.620  INF] Executed DbCommand (93ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE DATABASE kuaiji_dev;
+[22:11:56.781  INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[22:11:56.845  INF] Executed DbCommand (18ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+[22:11:56.868  INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[22:11:56.882  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+[22:11:56.898  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[22:11:56.911  INF] Applying migration '20260719140942_InitialCreate'.
+[22:11:56.939  INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE users (
+    id text NOT NULL,
+    username character varying(50) NOT NULL,
+    password_hash text NOT NULL,
+    display_name character varying(100) NOT NULL,
+    CONSTRAINT "PK_users" PRIMARY KEY (id)
+);
+[22:11:56.954  INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX "IX_users_username" ON users (username);
+[22:11:56.968  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260719140942_InitialCreate', '10.0.10');
+[22:11:57.091  INF] User profile is available. Using 'C:\Users\Sprin\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[22:11:57.306  INF] Now listening on: https://localhost:7058
+[22:11:57.307  INF] Now listening on: http://localhost:5271
+[22:11:57.342  INF] Application started. Press Ctrl+C to shut down.
+[22:11:57.343  INF] Hosting environment: Development
+[22:11:57.344  INF] Content root path: H:\kuaiji\src\KuaiJi
+[22:14:07.506  INF] Executed DbCommand (38ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[22:14:07.758  INF] Executed DbCommand (36ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[22:14:07.815  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+[22:14:07.844  INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[22:14:07.866  INF] Executed DbCommand (21ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+[22:14:07.878  INF] Executed DbCommand (9ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[22:14:07.885  INF] No migrations were applied. The database is already up to date.
+[22:14:08.226  INF] Executed DbCommand (32ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM users AS u)
+[22:14:08.423  INF] Executed DbCommand (36ms) [Parameters=[@p0='?', @p1='?', @p2='?', @p3='?', @p4='?', @p5='?', @p6='?', @p7='?'], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO users (id, display_name, password_hash, username)
+VALUES (@p0, @p1, @p2, @p3);
+INSERT INTO users (id, display_name, password_hash, username)
+VALUES (@p4, @p5, @p6, @p7);
+[22:14:08.543  INF] User profile is available. Using 'C:\Users\Sprin\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[22:14:08.711  INF] Now listening on: https://localhost:7058
+[22:14:08.713  INF] Now listening on: http://localhost:5271
+[22:14:08.753  INF] Application started. Press Ctrl+C to shut down.
+[22:14:08.754  INF] Hosting environment: Development
+[22:14:08.755  INF] Content root path: H:\kuaiji\src\KuaiJi
+[22:14:11.516 2b383917c576da7709852c15c7381d94 INF] Request starting HTTP/1.1 POST http://localhost:5271/auth/login - application/json 42
+[22:14:11.562 2b383917c576da7709852c15c7381d94 INF] CORS policy execution successful.
+[22:14:11.621 2b383917c576da7709852c15c7381d94 INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Login (KuaiJi)'
+[22:14:11.646 2b383917c576da7709852c15c7381d94 INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Auth.DTOs.LoginResult]] Login(KuaiJi.Application.Auth.DTOs.LoginCommand) on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[22:14:11.666 2b383917c576da7709852c15c7381d94 WRN] You do not have a valid license key for the Lucky Penny software MediatR. This is allowed for development and testing scenarios. If you are running in production you are required to have a licensed version. Please visit https://luckypennysoftware.com to obtain a valid license.
+[22:14:11.856 2b383917c576da7709852c15c7381d94 INF] Executed DbCommand (46ms) [Parameters=[@username='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u.id, u.display_name, u.password_hash, u.username
+FROM users AS u
+WHERE u.username = @username
+LIMIT 2
+[22:14:11.917 2b383917c576da7709852c15c7381d94 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Auth.DTOs.LoginResult'.
+[22:14:11.931 2b383917c576da7709852c15c7381d94 INF] Executed action KuaiJi.Controllers.AuthController.Login (KuaiJi) in 277.4277ms
+[22:14:11.934 2b383917c576da7709852c15c7381d94 INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Login (KuaiJi)'
+[22:14:11.945 2b383917c576da7709852c15c7381d94 INF] Request finished HTTP/1.1 POST http://localhost:5271/auth/login - 200 null application/json; charset=utf-8 435.3844ms
+[22:34:08.897 125bc08ea909339eacabb28afd04e706 INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[22:34:08.987 125bc08ea909339eacabb28afd04e706 INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[22:34:09.007 125bc08ea909339eacabb28afd04e706 INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Auth.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[22:34:09.028 125bc08ea909339eacabb28afd04e706 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Auth.DTOs.UserDto'.
+[22:34:09.030 125bc08ea909339eacabb28afd04e706 INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 9.5482ms
+[22:34:09.035 125bc08ea909339eacabb28afd04e706 INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[22:34:09.036 67ae757e7b3bb158ccf4352faf921bce INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[22:34:09.040 125bc08ea909339eacabb28afd04e706 INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 143.7663ms
+[22:34:09.060 67ae757e7b3bb158ccf4352faf921bce INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[22:34:09.065 67ae757e7b3bb158ccf4352faf921bce INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Auth.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[22:34:09.069 67ae757e7b3bb158ccf4352faf921bce INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Auth.DTOs.UserDto'.
+[22:34:09.072 67ae757e7b3bb158ccf4352faf921bce INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 5.1671ms
+[22:34:09.078 67ae757e7b3bb158ccf4352faf921bce INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[22:34:09.079 67ae757e7b3bb158ccf4352faf921bce INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 43.6734ms
+[22:34:19.416 b9d685d71eb90cbf5ca52fc9a3b47c44 INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[22:34:19.422 b9d685d71eb90cbf5ca52fc9a3b47c44 INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[22:34:19.423 b9d685d71eb90cbf5ca52fc9a3b47c44 INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Auth.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[22:34:19.425 b9d685d71eb90cbf5ca52fc9a3b47c44 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Auth.DTOs.UserDto'.
+[22:34:19.427 b9d685d71eb90cbf5ca52fc9a3b47c44 INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 1.9ms
+[22:34:19.429 b9d685d71eb90cbf5ca52fc9a3b47c44 INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[22:34:19.430 bacc2dadea3bd0f150a32dc5c2ddef59 INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[22:34:19.431 b9d685d71eb90cbf5ca52fc9a3b47c44 INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 14.656ms
+[22:34:19.435 bacc2dadea3bd0f150a32dc5c2ddef59 INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[22:34:19.439 bacc2dadea3bd0f150a32dc5c2ddef59 INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Auth.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[22:34:19.443 bacc2dadea3bd0f150a32dc5c2ddef59 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Auth.DTOs.UserDto'.
+[22:34:19.445 bacc2dadea3bd0f150a32dc5c2ddef59 INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 2.8589ms
+[22:34:19.451 bacc2dadea3bd0f150a32dc5c2ddef59 INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[22:34:19.453 bacc2dadea3bd0f150a32dc5c2ddef59 INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 22.8449ms
+[23:00:00.691  INF] Executed DbCommand (29ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:00:00.916  INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[23:00:00.990  INF] Executed DbCommand (17ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+[23:00:01.014  INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[23:00:01.029  INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+[23:00:01.055  INF] Executed DbCommand (24ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:00:01.065  INF] Applying migration '20260719145714_AddAccounts'.
+[23:00:01.099  INF] Executed DbCommand (17ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE accounts (
+    id uuid NOT NULL,
+    code character varying(32) NOT NULL,
+    name character varying(100) NOT NULL,
+    category integer NOT NULL,
+    direction integer NOT NULL,
+    parent_id uuid,
+    level integer NOT NULL,
+    is_leaf boolean NOT NULL,
+    is_enabled boolean NOT NULL,
+    is_preset boolean NOT NULL,
+    mnemonic character varying(50),
+    CONSTRAINT "PK_accounts" PRIMARY KEY (id),
+    CONSTRAINT "FK_accounts_accounts_parent_id" FOREIGN KEY (parent_id) REFERENCES accounts (id) ON DELETE RESTRICT
+);
+[23:00:01.115  INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX "IX_accounts_code" ON accounts (code);
+[23:00:01.131  INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_accounts_parent_id" ON accounts (parent_id);
+[23:00:01.148  INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260719145714_AddAccounts', '10.0.10');
+[23:00:01.463  INF] Executed DbCommand (16ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM users AS u)
+[23:00:01.560  INF] User profile is available. Using 'C:\Users\Sprin\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[23:00:01.733  INF] Now listening on: https://localhost:7058
+[23:00:01.734  INF] Now listening on: http://localhost:5271
+[23:00:01.778  INF] Application started. Press Ctrl+C to shut down.
+[23:00:01.779  INF] Hosting environment: Development
+[23:00:01.780  INF] Content root path: H:\kuaiji\src\KuaiJi
+[23:00:05.830 f55ec9f1cf576531b999f4d9f032b6c2 INF] Request starting HTTP/1.1 POST http://localhost:5271/auth/login - application/json 42
+[23:00:05.863 f55ec9f1cf576531b999f4d9f032b6c2 INF] CORS policy execution successful.
+[23:00:05.914 f55ec9f1cf576531b999f4d9f032b6c2 INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Login (KuaiJi)'
+[23:00:05.943 f55ec9f1cf576531b999f4d9f032b6c2 INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.DTOs.LoginResult]] Login(KuaiJi.Application.DTOs.LoginCommand) on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[23:00:05.964 f55ec9f1cf576531b999f4d9f032b6c2 WRN] You do not have a valid license key for the Lucky Penny software MediatR. This is allowed for development and testing scenarios. If you are running in production you are required to have a licensed version. Please visit https://luckypennysoftware.com to obtain a valid license.
+[23:00:06.153 f55ec9f1cf576531b999f4d9f032b6c2 INF] Executed DbCommand (26ms) [Parameters=[@username='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u.id, u.display_name, u.password_hash, u.username
+FROM users AS u
+WHERE u.username = @username
+LIMIT 2
+[23:00:06.274 f55ec9f1cf576531b999f4d9f032b6c2 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.DTOs.LoginResult'.
+[23:00:06.287 f55ec9f1cf576531b999f4d9f032b6c2 INF] Executed action KuaiJi.Controllers.AuthController.Login (KuaiJi) in 338.0872ms
+[23:00:06.289 f55ec9f1cf576531b999f4d9f032b6c2 INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Login (KuaiJi)'
+[23:00:06.298 f55ec9f1cf576531b999f4d9f032b6c2 INF] Request finished HTTP/1.1 POST http://localhost:5271/auth/login - 200 null application/json; charset=utf-8 472.6447ms

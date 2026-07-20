@@ -1,14 +1,12 @@
-import { useNavigate } from "react-router"
-
-import { Button } from "@/components/ui/button"
+import { useAuth } from "@/auth/AuthContext"
 
 export default function Home() {
-    const navigate = useNavigate()
+    const { user } = useAuth()
 
     return (
-        <div className="flex min-h-svh flex-col items-center justify-center gap-4">
-            <h1 className="text-2xl font-bold">Home</h1>
-            <Button onClick={() => navigate("/login")}>去登录</Button>
+        <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold">欢迎，{user?.displayName ?? "用户"}</h1>
+            <p className="text-muted-foreground">你已成功登录好会计。</p>
         </div>
     )
 }

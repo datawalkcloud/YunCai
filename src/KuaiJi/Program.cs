@@ -1,19 +1,34 @@
 using System.Text;
+using KuaiJi.Infrastructure.Data;
 using KuaiJi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .CreateLogger();
+
+builder.Services.AddSerilog(Log.Logger);
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
 // 认证相关服务
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
-builder.Services.AddSingleton<IUserStore, InMemoryUserStore>();
+builder.Services.AddScoped<KuaiJi.Domain.Users.IUserRepository, KuaiJi.Infrastructure.Persistence.UserRepository>();
+builder.Services.AddScoped<KuaiJi.Domain.Accounting.IAccountRepository, KuaiJi.Infrastructure.Accounting.AccountRepository>();
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
@@ -51,6 +66,47 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// 应用启动时自动执行 EF Core 数据库迁移
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        if (context.Database.IsRelational())
+        {
+            context.Database.Migrate();
+        }
+
+        // 创建默认用户
+        if (!context.Users.Any())
+        {
+            context.Users.AddRange(
+                new KuaiJi.Domain.Users.User
+                {
+                    Id = "1",
+                    Username = "admin",
+                    DisplayName = "管理员",
+                    PasswordHash = KuaiJi.Services.PasswordHasher.Hash("admin123")
+                },
+                new KuaiJi.Domain.Users.User
+                {
+                    Id = "2",
+                    Username = "user",
+                    DisplayName = "普通用户",
+                    PasswordHash = KuaiJi.Services.PasswordHasher.Hash("user123")
+                }
+            );
+            context.SaveChanges();
+        }
+    }                           
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "数据库自动迁移或初始化数据过程中发生了错误。");
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

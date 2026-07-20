@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using KuaiJi.Models;
-using KuaiJi.Services;
+using System.Threading.Tasks;
+using KuaiJi.Application.Commands.Auth;
+using KuaiJi.Application.DTOs;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,13 +13,11 @@ namespace KuaiJi.Controllers
     [Route("[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly IUserStore _users;
-        private readonly ITokenService _tokens;
+        private readonly IMediator _mediator;
 
-        public AuthController(IUserStore users, ITokenService tokens)
+        public AuthController(IMediator mediator)
         {
-            _users = users;
-            _tokens = tokens;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -25,27 +25,15 @@ namespace KuaiJi.Controllers
         /// </summary>
         [HttpPost("login")]
         [AllowAnonymous]
-        public ActionResult<LoginResponse> Login([FromBody] LoginRequest request)
+        public async Task<ActionResult<LoginResult>> Login([FromBody] LoginCommand request)
         {
-            var user = _users.FindByUsername(request.Username);
-            if (user is null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
+            var result = await _mediator.Send(request);
+            if (result == null)
             {
                 return Unauthorized(new { message = "用户名或密码错误" });
             }
 
-            var (token, expiresAt) = _tokens.CreateToken(user);
-
-            return Ok(new LoginResponse
-            {
-                Token = token,
-                ExpiresAt = expiresAt,
-                User = new UserInfo
-                {
-                    Id = user.Id,
-                    Username = user.Username,
-                    DisplayName = user.DisplayName
-                }
-            });
+            return Ok(result);
         }
 
         /// <summary>
@@ -53,7 +41,7 @@ namespace KuaiJi.Controllers
         /// </summary>
         [HttpGet("me")]
         [Authorize]
-        public ActionResult<UserInfo> Me()
+        public ActionResult<UserDto> Me()
         {
             var id = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                      ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -66,7 +54,7 @@ namespace KuaiJi.Controllers
                 return Unauthorized();
             }
 
-            return Ok(new UserInfo
+            return Ok(new UserDto
             {
                 Id = id,
                 Username = username,

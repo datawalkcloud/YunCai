@@ -1,7 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using KuaiJi.Models;
+using KuaiJi.Domain.Users;
 using Microsoft.IdentityModel.Tokens;
 
 namespace KuaiJi.Services
@@ -19,7 +19,7 @@ namespace KuaiJi.Services
 
     public interface ITokenService
     {
-        (string Token, DateTime ExpiresAt) CreateToken(AppUser user);
+        (string Token, DateTime ExpiresAt) CreateToken(User user);
     }
 
     /// <summary>
@@ -34,7 +34,7 @@ namespace KuaiJi.Services
             _options = options.Value;
         }
 
-        public (string Token, DateTime ExpiresAt) CreateToken(AppUser user)
+        public (string Token, DateTime ExpiresAt) CreateToken(User user)
         {
             var expiresAt = DateTime.UtcNow.AddMinutes(_options.ExpireMinutes);
 
