@@ -11,6 +11,8 @@ Name | Type
 `name` | string
 `category` | number
 `direction` | number
+`mnemonic` | string
+`isEnabled` | boolean
 
 ## Example
 
@@ -24,6 +26,8 @@ const example = {
   "name": null,
   "category": null,
   "direction": null,
+  "mnemonic": null,
+  "isEnabled": null,
 } satisfies CreateAccountRequest
 
 console.log(example)

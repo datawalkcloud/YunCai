@@ -49,6 +49,12 @@ export interface UpdateAccountSetRequest {
      * @memberof UpdateAccountSetRequest
      */
     baseCurrency?: string;
+    /**
+     * 科目编码方案，形如 "4-2-2-2"
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    accountCodingScheme?: string;
 }
 
 /**
@@ -73,6 +79,7 @@ export function UpdateAccountSetRequestFromJSONTyped(json: any, ignoreDiscrimina
         'standard': json['standard'] == null ? undefined : json['standard'],
         'taxpayerType': json['taxpayerType'] == null ? undefined : json['taxpayerType'],
         'baseCurrency': json['baseCurrency'] == null ? undefined : json['baseCurrency'],
+        'accountCodingScheme': json['accountCodingScheme'] == null ? undefined : json['accountCodingScheme'],
     };
 }
 
@@ -92,6 +99,7 @@ export function UpdateAccountSetRequestToJSONTyped(value?: UpdateAccountSetReque
         'standard': value['standard'],
         'taxpayerType': value['taxpayerType'],
         'baseCurrency': value['baseCurrency'],
+        'accountCodingScheme': value['accountCodingScheme'],
     };
 }
 

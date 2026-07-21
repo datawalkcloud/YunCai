@@ -20,6 +20,7 @@ Name | Type
 `totalDebit` | number
 `totalCredit` | number
 `isBalanced` | boolean
+`entries` | [Array&lt;VoucherEntryDto&gt;](VoucherEntryDto.md)
 
 ## Example
 
@@ -42,6 +43,7 @@ const example = {
   "totalDebit": null,
   "totalCredit": null,
   "isBalanced": null,
+  "entries": null,
 } satisfies VoucherListItemDto
 
 console.log(example)

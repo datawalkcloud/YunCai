@@ -32,15 +32,16 @@ namespace KuaiJi.Application.Vouchers
             _voucherRepository = voucherRepository;
         }
 
-        /// <summary>获取指定账套的凭证（可选日期范围过滤，含借贷合计，按日期与凭证号排列）。</summary>
+        /// <summary>获取指定账套的凭证（可选日期范围过滤，含借贷合计与分录明细，按日期与凭证号排列）。</summary>
         public async Task<IReadOnlyList<VoucherListItemDto>> ListAsync(Guid accountSetId, DateOnly? startDate = null, DateOnly? endDate = null, CancellationToken cancellationToken = default)
         {
             await EnsureAccountSetExists(accountSetId, cancellationToken);
 
+            var accountsById = await LoadAccountsById(accountSetId, cancellationToken);
             var vouchers = await _voucherRepository.GetAllAsync(accountSetId, cancellationToken);
             return vouchers
                 .Where(v => (startDate == null || v.Date >= startDate) && (endDate == null || v.Date <= endDate))
-                .Select(VoucherListItemDto.FromDomain)
+                .Select(v => VoucherListItemDto.FromDomain(v, accountsById))
                 .ToList();
         }
 

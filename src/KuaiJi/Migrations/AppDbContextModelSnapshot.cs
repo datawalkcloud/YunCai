@@ -29,6 +29,14 @@ namespace KuaiJi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AccountCodingScheme")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("4-2-2-2")
+                        .HasColumnName("account_coding_scheme");
+
                     b.Property<string>("BaseCurrency")
                         .IsRequired()
                         .HasMaxLength(50)

@@ -7,52 +7,50 @@ namespace KuaiJi.Application.Accounts
     /// 科目导入应用服务：解析模板 → 先父后子逐行建立科目 → 编码重复者跳过并告警。
     /// 所有科目均归属于指定账套，无法脱离账套独立导入。顶级科目须给出类别；明细科目类别继承上级，
     /// 方向留空时亦继承上级，编码须以上级编码为前缀（由领域模型强制校验）。
+    /// 当行未显式指定上级编码时，依据当前账套编码方案自动拆分编码层级，并自动创建缺失的上级科目。
     /// </summary>
     public sealed class AccountImportService
     {
         private readonly IAccountImportReader _reader;
         private readonly IAccountSetRepository _accountSetRepository;
         private readonly IAccountRepository _accountRepository;
+        private readonly AccountAutoCreateService _autoCreate;
 
         public AccountImportService(
             IAccountImportReader reader,
             IAccountSetRepository accountSetRepository,
-            IAccountRepository accountRepository)
+            IAccountRepository accountRepository,
+            AccountAutoCreateService autoCreate)
         {
             _reader = reader;
             _accountSetRepository = accountSetRepository;
             _accountRepository = accountRepository;
+            _autoCreate = autoCreate;
         }
 
         public async Task<AccountImportResult> ImportAsync(Guid accountSetId, Stream stream, CancellationToken cancellationToken = default)
         {
-            // 导入必须面向一个已存在的账套；科目不能脱离账套独立存在。
-            if (accountSetId == Guid.Empty || await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken) is null)
-            {
+            if (accountSetId == Guid.Empty || await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken) is not { } accountSet)
                 throw new AccountImportException("指定的账套不存在，无法导入科目。");
-            }
+
+            var scheme = AccountSet.ParseCodingScheme(accountSet.AccountCodingScheme);
+            var maxLevel = scheme.Length;
+            var cumLengths = BuildCumLengths(scheme);
 
             var rows = _reader.Read(stream);
             if (rows.Count == 0)
-            {
                 throw new AccountImportException("文件中未找到任何科目数据行。");
-            }
 
             var warnings = new List<string>();
 
-            // 已存在科目编码集合，用于查重（AsNoTracking，仅用于判断存在性）。
-            var knownCodes = new HashSet<string>(
-                (await _accountRepository.GetAllAsync(accountSetId, cancellationToken)).Select(a => a.Code),
-                StringComparer.Ordinal);
-
-            // 可作为上级使用的科目（本次新建的 + 按需从库中加载的，均为受跟踪实体，
-            // 以便 AddChild 对上级 IsLeaf 的修改能被持久化）。
-            var parentCandidates = new Dictionary<string, Account>(StringComparer.Ordinal);
+            // 已存在科目：code → Account
+            var knownAccounts = new Dictionary<string, Account>(StringComparer.Ordinal);
+            foreach (var a in await _accountRepository.GetAllAsync(accountSetId, cancellationToken))
+                knownAccounts[a.Code] = a;
 
             var imported = 0;
             var skipped = 0;
 
-            // 先父后子：明细科目编码以上级编码为前缀，必长于上级；按编码长度升序即可保证上级先建。
             foreach (var row in rows
                          .OrderBy(r => (r.Code ?? string.Empty).Trim().Length)
                          .ThenBy(r => r.Code, StringComparer.Ordinal))
@@ -65,59 +63,68 @@ namespace KuaiJi.Application.Accounts
                     continue;
                 }
 
-                if (knownCodes.Contains(code))
+                if (knownAccounts.ContainsKey(code))
                 {
                     skipped++;
                     warnings.Add($"第 {row.RowNumber} 行科目「{code} {name}」编码已存在，已跳过。");
                     continue;
                 }
 
-                Account account;
-                var parentCode = row.ParentCode.Trim();
-                if (parentCode.Length > 0)
+                var explicitParentCode = row.ParentCode.Trim();
+
+                // ── 方案一：显式指定上级编码 ──
+                if (explicitParentCode.Length > 0)
                 {
-                    var parent = await ResolveParentAsync(accountSetId, parentCode, parentCandidates, cancellationToken);
-                    if (parent is null)
+                    // 先确保上级存在。
+                    var parent = await _autoCreate.EnsureAccountAsync(
+                        accountSetId, scheme, cumLengths, maxLevel,
+                        explicitParentCode, "科目" + explicitParentCode, knownAccounts,
+                        category: null, direction: null, warnings: warnings, cancellationToken: cancellationToken);
+                    if (parent is null) continue;
+
+                    var newLevel = parent.Level + 1;
+                    if (newLevel > maxLevel)
                     {
-                        warnings.Add($"第 {row.RowNumber} 行科目「{code} {name}」的上级科目「{parentCode}」不存在，已跳过。");
+                        warnings.Add($"第 {row.RowNumber} 行科目「{code} {name}」超出编码方案最大级次 {maxLevel}，已跳过。");
+                        continue;
+                    }
+
+                    var expectedLength = cumLengths[newLevel - 1];
+                    if (code.Length != expectedLength)
+                    {
+                        warnings.Add($"第 {row.RowNumber} 行科目「{code} {name}」编码长度应为 {expectedLength} 位，实际 {code.Length} 位，已跳过。");
                         continue;
                     }
 
                     try
                     {
-                        // 明细科目类别继承上级；方向留空亦继承上级（AddChild 内部处理）。
-                        account = parent.AddChild(code, name, ParseDirection(row.Direction));
+                        var child = parent.AddChild(code, name, ParseDirection(row.Direction));
+                        AccountAutoCreateService.FinalizeAccount(child, row.Mnemonic, row.IsEnabled);
+                        await _accountRepository.AddAsync(child, cancellationToken);
+                        knownAccounts[code] = child;
+                        imported++;
                     }
                     catch (ArgumentException ex)
                     {
                         warnings.Add($"第 {row.RowNumber} 行科目「{code} {name}」创建失败：{ex.Message}");
-                        continue;
-                    }
-                }
-                else
-                {
-                    var category = ParseCategory(row.Category);
-                    if (category is null)
-                    {
-                        warnings.Add(
-                            $"第 {row.RowNumber} 行顶级科目「{code} {name}」的类别「{row.Category}」无法识别（应为 资产/负债/权益/成本/损益），已跳过。");
-                        continue;
                     }
 
-                    var direction = ParseDirection(row.Direction) ?? DefaultDirection(category.Value, name);
-                    account = Account.CreateRoot(accountSetId, code, name, category.Value, direction, isPreset: false);
+                    continue;
                 }
 
-                account.SetMnemonic(row.Mnemonic);
-                if (!row.IsEnabled)
-                {
-                    account.Disable();
-                }
+                // ── 方案二：按编码方案自动拆分 ──
+                var account = await _autoCreate.EnsureAccountAsync(
+                    accountSetId, scheme, cumLengths, maxLevel,
+                    code, name, knownAccounts,
+                    category: ParseCategory(row.Category),
+                    direction: ParseDirection(row.Direction),
+                    mnemonic: row.Mnemonic,
+                    isEnabled: row.IsEnabled,
+                    warnings: warnings,
+                    cancellationToken: cancellationToken);
 
-                await _accountRepository.AddAsync(account, cancellationToken);
-                knownCodes.Add(code);
-                parentCandidates[code] = account;
-                imported++;
+                if (account is not null)
+                    imported++;
             }
 
             await _accountRepository.SaveChangesAsync(cancellationToken);
@@ -131,35 +138,17 @@ namespace KuaiJi.Application.Accounts
             };
         }
 
-        /// <summary>解析上级科目：优先取本次导入的缓存，否则从库中按编码加载（受跟踪）。</summary>
-        private async Task<Account?> ResolveParentAsync(
-            Guid accountSetId,
-            string parentCode,
-            Dictionary<string, Account> parentCandidates,
-            CancellationToken cancellationToken)
+        private static int[] BuildCumLengths(int[] scheme)
         {
-            if (parentCandidates.TryGetValue(parentCode, out var cached))
-            {
-                return cached;
-            }
-
-            var fromDb = await _accountRepository.GetByCodeAsync(accountSetId, parentCode, cancellationToken);
-            if (fromDb is not null)
-            {
-                parentCandidates[parentCode] = fromDb;
-            }
-
-            return fromDb;
+            var cum = new int[scheme.Length];
+            for (int i = 0, sum = 0; i < scheme.Length; i++)
+                cum[i] = sum += scheme[i];
+            return cum;
         }
 
-        /// <summary>解析科目类别文本；无法识别返回 null。兼容「资产」与「资产类」等写法。</summary>
         private static AccountCategory? ParseCategory(string text)
         {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return null;
-            }
-
+            if (string.IsNullOrWhiteSpace(text)) return null;
             var t = text.Trim();
             if (t.StartsWith("资产", StringComparison.Ordinal)) return AccountCategory.Asset;
             if (t.StartsWith("负债", StringComparison.Ordinal)) return AccountCategory.Liability;
@@ -169,37 +158,13 @@ namespace KuaiJi.Application.Accounts
             return null;
         }
 
-        /// <summary>解析余额方向文本；留空或无法识别返回 null（交由上级继承或按类别取默认值）。</summary>
         private static BalanceDirection? ParseDirection(string text)
         {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return null;
-            }
-
+            if (string.IsNullOrWhiteSpace(text)) return null;
             var t = text.Trim();
             if (t.StartsWith("借", StringComparison.Ordinal)) return BalanceDirection.Debit;
             if (t.StartsWith("贷", StringComparison.Ordinal)) return BalanceDirection.Credit;
             return null;
-        }
-
-        /// <summary>
-        /// 顶级科目未显式给出方向时，按类别取常规默认方向：资产、成本记借方；负债、权益记贷方；
-        /// 损益类中含「收入/收益」的记贷方，其余记借方。
-        /// </summary>
-        private static BalanceDirection DefaultDirection(AccountCategory category, string name)
-        {
-            return category switch
-            {
-                AccountCategory.Asset => BalanceDirection.Debit,
-                AccountCategory.Cost => BalanceDirection.Debit,
-                AccountCategory.Liability => BalanceDirection.Credit,
-                AccountCategory.Equity => BalanceDirection.Credit,
-                AccountCategory.ProfitAndLoss => (name.Contains("收入") || name.Contains("收益"))
-                    ? BalanceDirection.Credit
-                    : BalanceDirection.Debit,
-                _ => BalanceDirection.Debit,
-            };
         }
     }
 }

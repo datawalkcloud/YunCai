@@ -3,7 +3,7 @@ using KuaiJi.Domain.Vouchers;
 
 namespace KuaiJi.Application.Vouchers
 {
-    /// <summary>凭证列表项 DTO（含借贷合计，供列表展示）。</summary>
+    /// <summary>凭证列表项 DTO（含借贷合计与分录明细，供列表卡片展示）。</summary>
     public sealed class VoucherListItemDto
     {
         public Guid Id { get; init; }
@@ -35,7 +35,9 @@ namespace KuaiJi.Application.Vouchers
 
         public bool IsBalanced { get; init; }
 
-        public static VoucherListItemDto FromDomain(Voucher voucher) => new()
+        public IReadOnlyList<VoucherEntryDto> Entries { get; init; } = [];
+
+        public static VoucherListItemDto FromDomain(Voucher voucher, IReadOnlyDictionary<Guid, Account> accountsById) => new()
         {
             Id = voucher.Id,
             Word = voucher.Word,
@@ -51,6 +53,10 @@ namespace KuaiJi.Application.Vouchers
             TotalDebit = voucher.TotalDebit,
             TotalCredit = voucher.TotalCredit,
             IsBalanced = voucher.IsBalanced,
+            Entries = voucher.Entries
+                .OrderBy(e => e.LineNumber)
+                .Select(e => VoucherEntryDto.FromDomain(e, accountsById.GetValueOrDefault(e.AccountId)))
+                .ToList(),
         };
 
         internal static string StatusTextOf(VoucherStatus status) => status switch

@@ -34,10 +34,14 @@ import {
     VoucherListItemDtoToJSON,
 } from '../models/index';
 
+export interface AccountsetsAccountSetIdVouchersExportGetRequest {
+    accountSetId: string;
+}
+
 export interface AccountsetsAccountSetIdVouchersGetRequest {
     accountSetId: string;
-    startDate?: string;
-    endDate?: string;
+    startDate?: Date;
+    endDate?: Date;
 }
 
 export interface AccountsetsAccountSetIdVouchersIdDeleteRequest {
@@ -59,6 +63,7 @@ export interface AccountsetsAccountSetIdVouchersIdPutRequest {
 export interface AccountsetsAccountSetIdVouchersImportPostRequest {
     accountSetId: string;
     file?: Blob;
+    conflict?: number;
 }
 
 export interface AccountsetsAccountSetIdVouchersPostRequest {
@@ -74,8 +79,31 @@ export interface AccountsetsAccountSetIdVouchersPostRequest {
  */
 export interface VouchersApiInterface {
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersExportGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersExportGetRaw(requestParameters: AccountsetsAccountSetIdVouchersExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersExportGet(requestParameters: AccountsetsAccountSetIdVouchersExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersGet without sending the request
      * @param {string} accountSetId 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
      * @throws {RequiredError}
      * @memberof VouchersApiInterface
      */
@@ -84,6 +112,8 @@ export interface VouchersApiInterface {
     /**
      * 
      * @param {string} accountSetId 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof VouchersApiInterface
@@ -219,6 +249,48 @@ export interface VouchersApiInterface {
 export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface {
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersExportGet without sending the request
+     */
+    async accountsetsAccountSetIdVouchersExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersExportGetRaw(requestParameters: AccountsetsAccountSetIdVouchersExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersExportGet(requestParameters: AccountsetsAccountSetIdVouchersExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchersExportGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersGet without sending the request
      */
     async accountsetsAccountSetIdVouchersGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersGetRequest): Promise<runtime.RequestOpts> {
@@ -232,11 +304,11 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
         const queryParameters: any = {};
 
         if (requestParameters['startDate'] != null) {
-            queryParameters['startDate'] = requestParameters['startDate'];
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
         }
 
         if (requestParameters['endDate'] != null) {
-            queryParameters['endDate'] = requestParameters['endDate'];
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -464,6 +536,10 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
 
         if (requestParameters['file'] != null) {
             formParams.append('file', requestParameters['file'] as any);
+        }
+
+        if (requestParameters['conflict'] != null) {
+            formParams.append('conflict', String(requestParameters['conflict']));
         }
 
 

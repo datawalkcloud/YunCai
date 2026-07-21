@@ -8,6 +8,7 @@ import {
     Drawer,
     Form,
     Input,
+    Modal,
     Radio,
     Row,
     Segmented,
@@ -23,7 +24,7 @@ import type { ColumnsType } from "antd/es/table"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
-import { AccountsApi, type AccountDto, type AccountImportResult } from "@/apis-gen"
+import { AccountsApi, AccountSetsApi, type AccountDto, type AccountImportResult } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 
@@ -80,7 +81,7 @@ interface EditForm {
 
 export default function AccountsPage() {
     const { token } = useAuth()
-    const { accountSets } = useAccountSets()
+    const { accountSets, refresh: refreshAccountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
     const { token: t } = theme.useToken()
@@ -115,6 +116,13 @@ export default function AccountsPage() {
     const [editError, setEditError] = useState("")
     const [editForm] = Form.useForm<EditForm>()
 
+    // ── 编码方案弹窗 ──
+    const [schemeModalOpen, setSchemeModalOpen] = useState(false)
+    const [schemeLevels, setSchemeLevels] = useState(4)
+    const [schemeDigits, setSchemeDigits] = useState<number[]>([4, 2, 2, 2])
+    const [schemeSaving, setSchemeSaving] = useState(false)
+    const [schemeError, setSchemeError] = useState("")
+
     const load = useCallback(async () => {
         if (!accountSetId) return
         setLoading(true)
@@ -135,10 +143,26 @@ export default function AccountsPage() {
         void load()
     }, [load])
 
+    // 根据编码方案和上级科目，计算新增科目的期望编码长度。
+    const codingScheme = useMemo(
+        () => ((currentSet as any)?.accountCodingScheme ?? "4-2-2-2") as string,
+        [currentSet],
+    )
+    const schemeSegments = useMemo(() => codingScheme.split("-").map(Number), [codingScheme])
+
     const parent = useMemo(
         () => (watchedParentId == null ? null : accounts.find((a) => a.id === watchedParentId) ?? null),
         [accounts, watchedParentId],
     )
+
+    const newLevel = parent ? (parent.level ?? 0) + 1 : 1
+    const expectedCodeLength = useMemo(() => {
+        if (parent) {
+            return schemeSegments.slice(0, newLevel).reduce((s, d) => s + d, 0)
+        }
+        return schemeSegments[0] ?? 4
+    }, [parent, newLevel, schemeSegments])
+    const levelDigits = schemeSegments[newLevel - 1] ?? 2
 
     // 按父子关系构建树（顶级按类别筛选，明细挂在父级 children 下）。
     const treeData = useMemo<AccountNode[]>(() => {
@@ -155,18 +179,111 @@ export default function AccountsPage() {
         return build(null)
     }, [accounts, filter])
 
-    // 上级科目下拉可选项：仅显示当前选中类别下的顶级科目（按编码排序）。
+    // 上级科目下拉可选项：仅显示当前选中类别下的顶级科目（按编码排序）；
+    // 已达编码方案最大级次的科目不可再挂下级。
     const parentOptions = useMemo(() => {
+        const scheme = (currentSet as any)?.accountCodingScheme ?? "4-2-2-2"
+        const maxLevel = scheme.split("-").length
         return [...accounts]
-            .filter((a) => a.parentId == null && a.category === watchedCategory)
+            .filter((a) => a.parentId == null && a.category === watchedCategory && (a.level ?? 0) < maxLevel)
             .sort((a, b) => (a.code ?? "").localeCompare(b.code ?? ""))
-            .map((a) => ({ value: a.id as string, label: `${a.code} ${a.name}` }))
-    }, [accounts, watchedCategory])
+            .map((a) => ({ value: a.id as string, label: `${a.code} ${a.name}（${a.level} 级）` }))
+    }, [accounts, watchedCategory, currentSet])
 
     function openDrawer() {
         form.setFieldsValue({ parentId: null, code: "", name: "", category: 1, direction: 1, mnemonic: "", isEnabled: true })
         setError("")
         setOpen(true)
+    }
+
+    // ── 编码方案弹窗 ──
+    function openSchemeModal() {
+        const raw = (currentSet as any)?.accountCodingScheme ?? "4-2-2-2"
+        const parts = raw.split("-").map(Number)
+        setSchemeLevels(parts.length)
+        setSchemeDigits(parts)
+        setSchemeError("")
+        setSchemeModalOpen(true)
+    }
+
+    /** 生成编码示例：一级固定 1001，其余用 "1" 补零。如 4-2-2-2 → "1001 01 01 01" */
+    const schemePreview = useMemo(() => {
+        return schemeDigits.slice(0, schemeLevels).map((d, i) => {
+            if (i === 0) return "1001"
+            return "1".padStart(d, "0")
+        }).join(" ")
+    }, [schemeLevels, schemeDigits])
+
+    /** 各层级累计总位数。如 4-2-2-2 → [4, 6, 8, 10] */
+    const schemeTotalDigits = useMemo(() => {
+        let sum = 0
+        return schemeDigits.slice(0, schemeLevels).map((d) => { sum += d; return sum })
+    }, [schemeLevels, schemeDigits])
+
+    function handleSchemeLevelsChange(levels: number) {
+        setSchemeLevels(levels)
+        setSchemeDigits((prev) => {
+            if (levels > prev.length) {
+                // 增加级次，新级默认 2 位
+                return [...prev, ...Array(levels - prev.length).fill(2)]
+            }
+            return prev.slice(0, levels)
+        })
+    }
+
+    function handleSchemeDigitChange(index: number, digit: number) {
+        setSchemeDigits((prev) => {
+            const next = [...prev]
+            next[index] = digit
+            return next
+        })
+    }
+
+    async function saveScheme() {
+        if (schemeSaving || !accountSetId || !currentSet) return
+        const scheme = schemeDigits.slice(0, schemeLevels).join("-")
+
+        // 若当前有科目，提示用户编码将按新方案重建。
+        if (accounts.length > 0) {
+            Modal.confirm({
+                title: "更改编码方案",
+                content: `当前账套下已有 ${accounts.length} 个科目。更改编码方案将按新规则重建所有科目编码（如二级 "01" 变为 "001"）。确定继续吗？`,
+                okText: "确定",
+                cancelText: "取消",
+                okButtonProps: { danger: true },
+                onOk: async () => {
+                    await doSaveScheme(scheme)
+                },
+            })
+            return
+        }
+
+        await doSaveScheme(scheme)
+    }
+
+    async function doSaveScheme(scheme: string) {
+        setSchemeSaving(true)
+        setSchemeError("")
+        try {
+            await new AccountSetsApi(apiConfig(token)).accountSetsIdPut({
+                id: accountSetId,
+                updateAccountSetRequest: {
+                    name: currentSet.name ?? "",
+                    companyName: (currentSet as any).companyName ?? "",
+                    standard: (currentSet as any).standard ?? 1,
+                    taxpayerType: (currentSet as any).taxpayerType ?? 1,
+                    baseCurrency: currentSet.baseCurrency ?? "人民币",
+                    accountCodingScheme: scheme,
+                },
+            })
+            setSchemeModalOpen(false)
+            refreshAccountSets()
+            await load()
+        } catch (err) {
+            setSchemeError(await apiErrorMessage(err, "保存编码方案失败，请重试。"))
+        } finally {
+            setSchemeSaving(false)
+        }
     }
 
     async function addAccount() {
@@ -330,6 +447,7 @@ export default function AccountsPage() {
     const columns: ColumnsType<AccountNode> = [
         { title: "科目编码", dataIndex: "code", width: 160 },
         { title: "科目名称", dataIndex: "name", render: (v: string, r) => (r.parentId == null ? <Text strong>{v}</Text> : v) },
+        { title: "级次", dataIndex: "level", width: 64, align: "center" as const, render: (v: number) => v ?? "—" },
         { title: "类别", dataIndex: "category", width: 100, render: (v?: number) => CATEGORY_LABELS[v ?? 0] ?? "—" },
         { title: "余额方向", dataIndex: "direction", width: 100, render: (v?: number) => DIRECTION_LABELS[v ?? 0] ?? "—" },
         {
@@ -380,6 +498,7 @@ export default function AccountsPage() {
                 <Title level={3} style={{ margin: 0 }}>科目</Title>
                 <Text type="secondary">
                     账套：{currentSet?.name ?? (accountSetId || "未指定")}
+                    {((currentSet as any)?.accountCodingScheme) ? ` · 编码方案：${(currentSet as any).accountCodingScheme}` : ""}
                     。维护多级会计科目表，一级科目下可挂明细科目，用于凭证录入与账簿核算。
                 </Text>
             </div>
@@ -393,6 +512,9 @@ export default function AccountsPage() {
                         </Button>
                         <Button icon={<Upload size={16} />} onClick={() => setImportOpen(true)} disabled={!accountSetId}>
                             导入科目
+                        </Button>
+                        <Button icon={<Pencil size={16} />} onClick={openSchemeModal} disabled={!accountSetId}>
+                            编码方案
                         </Button>
                         <Button type="primary" icon={<Plus size={16} />} onClick={openDrawer} disabled={!accountSetId}>
                             新增科目
@@ -468,8 +590,24 @@ export default function AccountsPage() {
                             }}
                         />
                     </Form.Item>
-                    <Form.Item label="科目编码" name="code" rules={[{ required: true, message: "请填写科目编码" }]}>
-                        <Input placeholder={parent ? `如 ${parent.code}01` : "如 1001"} />
+                    <Form.Item
+                        label="科目编码"
+                        name="code"
+                        rules={[
+                            { required: true, message: "请填写科目编码" },
+                            {
+                                len: expectedCodeLength,
+                                message: `第 ${newLevel} 级科目编码固定为 ${expectedCodeLength} 位（方案：${codingScheme}）`,
+                            },
+                        ]}
+                    >
+                        <Input
+                            placeholder={
+                                parent
+                                    ? `${parent.code}${"0".repeat(levelDigits)}（${expectedCodeLength} 位）`
+                                    : `${"0".repeat(levelDigits)}（${expectedCodeLength} 位）`
+                            }
+                        />
                     </Form.Item>
                     <Form.Item label="科目名称" name="name" rules={[{ required: true, message: "请填写科目名称" }]}>
                         <Input placeholder="如 库存现金" />
@@ -494,7 +632,13 @@ export default function AccountsPage() {
                     </Form.Item>
                     {parent && (
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            将作为「{parent.code} {parent.name}」的明细科目，余额方向已继承上级。
+                            将作为「{parent.code} {parent.name}」的第 {newLevel} 级明细科目（本级 {levelDigits} 位，编码方案：
+                            {codingScheme}），余额方向已继承上级。
+                        </Text>
+                    )}
+                    {!parent && (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            一级科目编码固定 {expectedCodeLength} 位（编码方案：{codingScheme}）。
                         </Text>
                     )}
                     {error && <Alert type="error" showIcon message={error} style={{ marginTop: 12 }} />}
@@ -525,7 +669,7 @@ export default function AccountsPage() {
                             <Input value={editTarget.code} disabled />
                         </Form.Item>
                         <Form.Item label="类别">
-                            <Input value={CATEGORY_LABELS[editTarget.category] ?? "—"} disabled />
+                            <Input value={CATEGORY_LABELS[editTarget.category!] ?? "—"} disabled />
                         </Form.Item>
                         <Form.Item label="科目名称" name="name" rules={[{ required: true, message: "请填写科目名称" }]}>
                             <Input placeholder="如 库存现金" />
@@ -678,6 +822,65 @@ export default function AccountsPage() {
                     )}
                 </div>
             </Drawer>
+
+            {/* 编码方案弹窗 */}
+            <Modal
+                title="科目编码方案"
+                open={schemeModalOpen}
+                onCancel={() => setSchemeModalOpen(false)}
+                onOk={() => void saveScheme()}
+                confirmLoading={schemeSaving}
+                okText="保存"
+                cancelText="取消"
+                destroyOnClose
+                width={640}
+            >
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                    <div>
+                        <Text strong>科目级次</Text>
+                        <div style={{ marginTop: 8 }}>
+                            <Select
+                                value={schemeLevels}
+                                onChange={handleSchemeLevelsChange}
+                                style={{ width: 120 }}
+                                options={Array.from({ length: 7 }, (_, i) => ({ value: i + 4, label: `${i + 4} 级` }))}
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <Text strong>各级位数</Text>
+                        <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            {Array.from({ length: schemeLevels }, (_, i) => (
+                                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    {i > 0 && <Text type="secondary">-</Text>}
+                                    <Select
+                                        value={schemeDigits[i] ?? 2}
+                                        onChange={(v) => handleSchemeDigitChange(i, v)}
+                                        style={{ width: 56 }}
+                                        options={[2, 3, 4].map((d) => ({ value: d, label: `${d}` }))}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 示例预览 */}
+                    <Card size="small" styles={{ body: { padding: "12px 16px" } }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>编码方案：{schemeDigits.slice(0, schemeLevels).join("-")}</Text>
+                            <Text code style={{ fontSize: 14, letterSpacing: 1 }}>{schemePreview}</Text>
+                        </div>
+                        <div style={{ marginTop: 6 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                各级总位数：{schemeTotalDigits.join(" → ")}
+                            </Text>
+                        </div>
+                    </Card>
+                </Space>
+
+                {schemeError && <Alert type="error" showIcon message={schemeError} style={{ marginTop: 12 }} />}
+            </Modal>
         </Space>
     )
 }

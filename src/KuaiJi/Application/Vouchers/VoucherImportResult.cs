@@ -1,5 +1,15 @@
 namespace KuaiJi.Application.Vouchers
 {
+    /// <summary>导入时遇到已存在凭证的冲突处理策略。</summary>
+    public enum VoucherImportConflict
+    {
+        /// <summary>跳过已存在的凭证，只导入新增的。</summary>
+        Skip = 0,
+
+        /// <summary>删除已有凭证后重新导入。</summary>
+        Overwrite = 1,
+    }
+
     /// <summary>凭证导入结果汇总，返回给前端展示。</summary>
     public sealed class VoucherImportResult
     {
@@ -14,6 +24,9 @@ namespace KuaiJi.Application.Vouchers
 
         /// <summary>因已存在而跳过的凭证张数。</summary>
         public int SkippedVouchers { get; init; }
+
+        /// <summary>因覆盖而被删除的旧凭证张数。</summary>
+        public int OverwrittenVouchers { get; init; }
 
         /// <summary>新建的会计科目数量。</summary>
         public int CreatedAccounts { get; init; }

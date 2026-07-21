@@ -4,6 +4,7 @@ All URIs are relative to *http://localhost:5271*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
+| [**accountsetsAccountSetIdVouchersExportGet**](VouchersApi.md#accountsetsaccountsetidvouchersexportget) | **GET** /accountsets/{accountSetId}/Vouchers/export |  |
 | [**accountsetsAccountSetIdVouchersGet**](VouchersApi.md#accountsetsaccountsetidvouchersget) | **GET** /accountsets/{accountSetId}/Vouchers |  |
 | [**accountsetsAccountSetIdVouchersIdDelete**](VouchersApi.md#accountsetsaccountsetidvouchersiddelete) | **DELETE** /accountsets/{accountSetId}/Vouchers/{id} |  |
 | [**accountsetsAccountSetIdVouchersIdGet**](VouchersApi.md#accountsetsaccountsetidvouchersidget) | **GET** /accountsets/{accountSetId}/Vouchers/{id} |  |
@@ -13,9 +14,74 @@ All URIs are relative to *http://localhost:5271*
 
 
 
+## accountsetsAccountSetIdVouchersExportGet
+
+> accountsetsAccountSetIdVouchersExportGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  VouchersApi,
+} from '';
+import type { AccountsetsAccountSetIdVouchersExportGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new VouchersApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdVouchersExportGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdVouchersExportGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## accountsetsAccountSetIdVouchersGet
 
-> Array&lt;VoucherListItemDto&gt; accountsetsAccountSetIdVouchersGet(accountSetId)
+> Array&lt;VoucherListItemDto&gt; accountsetsAccountSetIdVouchersGet(accountSetId, startDate, endDate)
 
 
 
@@ -35,6 +101,10 @@ async function example() {
   const body = {
     // string
     accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Date (optional)
+    startDate: 2013-10-20,
+    // Date (optional)
+    endDate: 2013-10-20,
   } satisfies AccountsetsAccountSetIdVouchersGetRequest;
 
   try {
@@ -55,6 +125,8 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **startDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 

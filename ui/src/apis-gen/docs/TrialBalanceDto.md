@@ -6,8 +6,8 @@
 
 Name | Type
 ------------ | -------------
-`year` | number
-`month` | number
+`startDate` | string
+`endDate` | string
 `periodText` | string
 `rows` | [Array&lt;TrialBalanceRowDto&gt;](TrialBalanceRowDto.md)
 
@@ -18,8 +18,8 @@ import type { TrialBalanceDto } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "year": null,
-  "month": null,
+  "startDate": null,
+  "endDate": null,
   "periodText": null,
   "rows": null,
 } satisfies TrialBalanceDto

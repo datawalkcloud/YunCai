@@ -55,6 +55,7 @@ namespace KuaiJi.Infrastructure.Data
                 entity.Property(e => e.StartYear).HasColumnName("start_year").IsRequired();
                 entity.Property(e => e.StartMonth).HasColumnName("start_month").IsRequired();
                 entity.Property(e => e.IsCurrent).HasColumnName("is_current").IsRequired();
+                entity.Property(e => e.AccountCodingScheme).HasColumnName("account_coding_scheme").IsRequired().HasMaxLength(50).HasDefaultValue(AccountSet.DefaultCodingScheme);
 
                 entity.HasIndex(e => e.Name).IsUnique();
                 entity.HasIndex(e => e.IsCurrent);

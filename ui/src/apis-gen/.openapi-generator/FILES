@@ -23,6 +23,7 @@ docs/LoginResult.md
 docs/ReportsApi.md
 docs/TrialBalanceDto.md
 docs/TrialBalanceRowDto.md
+docs/UpdateAccountRequest.md
 docs/UpdateAccountSetRequest.md
 docs/UpdateVoucherRequest.md
 docs/UserDto.md
@@ -47,6 +48,7 @@ models/LoginCommand.ts
 models/LoginResult.ts
 models/TrialBalanceDto.ts
 models/TrialBalanceRowDto.ts
+models/UpdateAccountRequest.ts
 models/UpdateAccountSetRequest.ts
 models/UpdateVoucherRequest.ts
 models/UserDto.ts

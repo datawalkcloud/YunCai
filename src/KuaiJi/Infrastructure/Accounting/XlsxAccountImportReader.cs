@@ -1,12 +1,13 @@
 using System.Globalization;
 using KuaiJi.Application.Accounts;
-using MiniExcelLibs;
+using NPOI.SS.UserModel;
 
 namespace KuaiJi.Infrastructure.Accounting
 {
     /// <summary>
-    /// 基于 MiniExcel 的科目导入读取器，解析「科目导入模板」工作表（.xlsx）。
-    /// 通过表头名称定位列，对列顺序变化具备一定容错能力（MiniExcel 不支持旧版 .xls）。
+    /// 基于 NPOI 的科目导入读取器，解析「科目导入模板」首个工作表。
+    /// NPOI 的 <see cref="WorkbookFactory"/> 可自动识别 .xls 与 .xlsx，兼容两种格式。
+    /// 通过表头名称定位列，对列顺序变化具备一定容错能力。
     /// </summary>
     public sealed class XlsxAccountImportReader : IAccountImportReader
     {
@@ -21,50 +22,53 @@ namespace KuaiJi.Infrastructure.Accounting
 
         public IReadOnlyList<ImportedAccountRow> Read(Stream stream)
         {
-            // 拷贝到内存，避免上游转发流不可多次读取。
-            using var buffer = new MemoryStream();
-            stream.CopyTo(buffer);
-            buffer.Position = 0;
-
-            List<IDictionary<string, object>> records;
+            IWorkbook workbook;
             try
             {
-                records = buffer.Query(useHeaderRow: true)
-                    .Cast<IDictionary<string, object>>()
-                    .ToList();
+                workbook = WorkbookFactory.Create(stream);
             }
             catch (Exception ex)
             {
                 throw new AccountImportException($"无法识别的表格文件，请上传由系统导出的 .xlsx 科目导入模板。（{ex.Message}）");
             }
 
-            if (records.Count == 0)
+            var sheet = workbook.NumberOfSheets > 0 ? workbook.GetSheetAt(0) : null;
+            if (sheet is null)
+                throw new AccountImportException("文件中未找到任何工作表。");
+
+            var headerRow = sheet.GetRow(sheet.FirstRowNum);
+            if (headerRow is null)
+                throw new AccountImportException("文件缺少表头行，请使用系统导出的科目导入模板。");
+
+            // 以表头名称建立「列名 → 列索引」映射。
+            var columnIndex = new Dictionary<string, int>(StringComparer.Ordinal);
+            for (var c = headerRow.FirstCellNum; c < headerRow.LastCellNum; c++)
             {
-                throw new AccountImportException("文件中未找到任何科目数据行。");
+                var name = GetCellString(headerRow.GetCell(c));
+                if (!string.IsNullOrEmpty(name) && !columnIndex.ContainsKey(name))
+                    columnIndex[name] = c;
             }
 
-            // 依据首行的键构建「期望列名 → 实际键」映射（对表头空白具备容错）。
-            var keyMap = MapColumns(records[0].Keys);
             foreach (var required in new[] { ColCode, ColName })
             {
-                if (!keyMap.ContainsKey(required))
-                {
+                if (!columnIndex.ContainsKey(required))
                     throw new AccountImportException($"表头缺少必要列「{required}」，请使用系统导出的科目导入模板。");
-                }
             }
 
             var rows = new List<ImportedAccountRow>();
             var dataRowIndex = 0;
-            foreach (var record in records)
-            {
-                var code = GetString(record, keyMap, ColCode);
-                var name = GetString(record, keyMap, ColName);
 
-                // 编码与名称均为空的行视为空行跳过（避免尾部空行报错）。
+            for (var r = sheet.FirstRowNum + 1; r <= sheet.LastRowNum; r++)
+            {
+                var row = sheet.GetRow(r);
+                if (row is null) continue;
+
+                var code = GetString(row, columnIndex, ColCode);
+                var name = GetString(row, columnIndex, ColName);
+
+                // 编码与名称均为空的行视为空行跳过。
                 if (string.IsNullOrWhiteSpace(code) && string.IsNullOrWhiteSpace(name))
-                {
                     continue;
-                }
 
                 dataRowIndex++;
                 rows.Add(new ImportedAccountRow
@@ -72,74 +76,64 @@ namespace KuaiJi.Infrastructure.Accounting
                     RowNumber = dataRowIndex,
                     Code = code,
                     Name = name,
-                    Category = GetString(record, keyMap, ColCategory),
-                    Direction = GetString(record, keyMap, ColDirection),
-                    ParentCode = GetString(record, keyMap, ColParentCode),
-                    Mnemonic = GetString(record, keyMap, ColMnemonic),
-                    IsEnabled = ParseEnabled(GetString(record, keyMap, ColEnabled)),
+                    Category = GetString(row, columnIndex, ColCategory),
+                    Direction = GetString(row, columnIndex, ColDirection),
+                    ParentCode = GetString(row, columnIndex, ColParentCode),
+                    Mnemonic = GetString(row, columnIndex, ColMnemonic),
+                    IsEnabled = ParseEnabled(GetString(row, columnIndex, ColEnabled)),
                 });
             }
 
             if (rows.Count == 0)
-            {
                 throw new AccountImportException("文件中未找到任何科目数据行。");
-            }
 
             return rows;
         }
 
-        private static Dictionary<string, string> MapColumns(IEnumerable<string> headerKeys)
-        {
-            // 期望列名 → 实际键（按去除首尾空白后的名称匹配，首个命中优先）。
-            var map = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (var key in headerKeys)
-            {
-                var name = key?.Trim();
-                if (!string.IsNullOrEmpty(name) && !map.ContainsKey(name))
-                {
-                    map[name] = key!;
-                }
-            }
+        private static ICell? GetCell(IRow row, IReadOnlyDictionary<string, int> columnIndex, string column)
+            => columnIndex.TryGetValue(column, out var idx) ? row.GetCell(idx) : null;
 
-            return map;
+        private static string GetString(IRow row, IReadOnlyDictionary<string, int> columnIndex, string column)
+            => GetCellString(GetCell(row, columnIndex, column));
+
+        /// <summary>将单元格统一转为去空白的字符串，兼顾数值/日期/公式/布尔等类型。</summary>
+        private static string GetCellString(ICell? cell)
+        {
+            if (cell is null) return string.Empty;
+
+            switch (cell.CellType)
+            {
+                case CellType.String:
+                    return cell.StringCellValue?.Trim() ?? string.Empty;
+                case CellType.Numeric:
+                    if (DateUtil.IsCellDateFormatted(cell))
+                        return cell.DateCellValue?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty;
+                    return cell.NumericCellValue.ToString(CultureInfo.InvariantCulture);
+                case CellType.Boolean:
+                    return cell.BooleanCellValue ? "是" : "否";
+                case CellType.Formula:
+                    return cell.CachedFormulaResultType switch
+                    {
+                        CellType.String => cell.StringCellValue?.Trim() ?? string.Empty,
+                        CellType.Numeric => DateUtil.IsCellDateFormatted(cell)
+                            ? cell.DateCellValue?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty
+                            : cell.NumericCellValue.ToString(CultureInfo.InvariantCulture),
+                        CellType.Boolean => cell.BooleanCellValue ? "是" : "否",
+                        _ => string.Empty,
+                    };
+                default:
+                    return string.Empty;
+            }
         }
 
-        private static string GetString(IDictionary<string, object> record, IReadOnlyDictionary<string, string> keyMap, string column)
-        {
-            if (!keyMap.TryGetValue(column, out var key) || !record.TryGetValue(key, out var value) || value is null)
-            {
-                return string.Empty;
-            }
-
-            return value switch
-            {
-                string s => s.Trim(),
-                double d => d.ToString(CultureInfo.InvariantCulture),
-                DateTime dt => dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                bool b => b ? "是" : "否",
-                _ => value.ToString()?.Trim() ?? string.Empty,
-            };
-        }
-
-        /// <summary>解析「是否启用」列：空、是、启用、true、1、y、yes 视为启用；其余视为停用。</summary>
+        /// <summary>解析「是否启用」列：空、是、启用、true、1 视为启用；其余视为停用。</summary>
         private static bool ParseEnabled(string text)
         {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return true;
-            }
+            if (string.IsNullOrWhiteSpace(text)) return true;
 
             var t = text.Trim();
-            if (t is "否" or "停用" or "禁用" or "0")
-            {
-                return false;
-            }
-
-            if (bool.TryParse(t, out var b))
-            {
-                return b;
-            }
-
+            if (t is "否" or "停用" or "禁用" or "0") return false;
+            if (bool.TryParse(t, out var b)) return b;
             return t is not ("false" or "no" or "n" or "N" or "No" or "FALSE" or "False");
         }
     }

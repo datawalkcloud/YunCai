@@ -79,6 +79,12 @@ export interface AccountSetDto {
      * @memberof AccountSetDto
      */
     isCurrent?: boolean;
+    /**
+     * 科目编码方案，形如 "4-2-2-2"
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    accountCodingScheme?: string;
 }
 
 /**
@@ -108,6 +114,7 @@ export function AccountSetDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'startMonth': json['startMonth'] == null ? undefined : json['startMonth'],
         'startPeriod': json['startPeriod'] == null ? undefined : json['startPeriod'],
         'isCurrent': json['isCurrent'] == null ? undefined : json['isCurrent'],
+        'accountCodingScheme': json['accountCodingScheme'] == null ? undefined : json['accountCodingScheme'],
     };
 }
 
@@ -132,6 +139,7 @@ export function AccountSetDtoToJSONTyped(value?: AccountSetDto | null, ignoreDis
         'startMonth': value['startMonth'],
         'startPeriod': value['startPeriod'],
         'isCurrent': value['isCurrent'],
+        'accountCodingScheme': value['accountCodingScheme'],
     };
 }
 

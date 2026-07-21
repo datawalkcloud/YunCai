@@ -76,22 +76,49 @@ namespace KuaiJi.Controllers
                 return BadRequest(new { message = "科目编码已存在。" });
             }
 
+            // 加载账套以获取编码方案进行校验。
+            var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken);
+            if (accountSet is null)
+            {
+                return BadRequest(new { message = "账套不存在。" });
+            }
+
+            var scheme = AccountSet.ParseCodingScheme(accountSet.AccountCodingScheme);
+            var maxLevel = scheme.Length;
+
             Account account;
             try
             {
                 if (request.ParentId is { } parentId)
                 {
-                    // 明细科目：上级须受跟踪，以便 AddChild 对上级 IsLeaf 的修改被持久化。
                     var parent = await _accountRepository.GetByIdAsync(accountSetId, parentId, cancellationToken);
                     if (parent is null)
                     {
                         return BadRequest(new { message = "指定的上级科目不存在。" });
                     }
 
+                    var newLevel = parent.Level + 1;
+                    if (newLevel > maxLevel)
+                    {
+                        return BadRequest(new { message = $"科目编码方案「{accountSet.AccountCodingScheme}」最多支持 {maxLevel} 级，无法再创建第 {newLevel} 级科目。" });
+                    }
+
+                    var expectedLength = scheme.Take(newLevel).Sum();
+                    if (code.Length != expectedLength)
+                    {
+                        return BadRequest(new { message = $"第 {newLevel} 级科目编码应为 {expectedLength} 位（编码方案：{accountSet.AccountCodingScheme}），当前编码「{code}」为 {code.Length} 位。" });
+                    }
+
                     account = parent.AddChild(code, name, request.Direction);
                 }
                 else
                 {
+                    var expectedLength = scheme[0];
+                    if (code.Length != expectedLength)
+                    {
+                        return BadRequest(new { message = $"一级科目编码应为 {expectedLength} 位（编码方案：{accountSet.AccountCodingScheme}），当前编码「{code}」为 {code.Length} 位。" });
+                    }
+
                     account = Account.CreateRoot(accountSetId, code, name, request.Category, request.Direction);
                 }
             }

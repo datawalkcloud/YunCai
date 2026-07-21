@@ -48,6 +48,12 @@ export interface VoucherImportResult {
      * @type {number}
      * @memberof VoucherImportResult
      */
+    overwrittenVouchers?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof VoucherImportResult
+     */
     createdAccounts?: number;
     /**
      * 
@@ -78,6 +84,7 @@ export function VoucherImportResultFromJSONTyped(json: any, ignoreDiscriminator:
         'importedVouchers': json['importedVouchers'] == null ? undefined : json['importedVouchers'],
         'importedEntries': json['importedEntries'] == null ? undefined : json['importedEntries'],
         'skippedVouchers': json['skippedVouchers'] == null ? undefined : json['skippedVouchers'],
+        'overwrittenVouchers': json['overwrittenVouchers'] == null ? undefined : json['overwrittenVouchers'],
         'createdAccounts': json['createdAccounts'] == null ? undefined : json['createdAccounts'],
         'warnings': json['warnings'] == null ? undefined : json['warnings'],
     };
@@ -98,6 +105,7 @@ export function VoucherImportResultToJSONTyped(value?: VoucherImportResult | nul
         'importedVouchers': value['importedVouchers'],
         'importedEntries': value['importedEntries'],
         'skippedVouchers': value['skippedVouchers'],
+        'overwrittenVouchers': value['overwrittenVouchers'],
         'createdAccounts': value['createdAccounts'],
         'warnings': value['warnings'],
     };

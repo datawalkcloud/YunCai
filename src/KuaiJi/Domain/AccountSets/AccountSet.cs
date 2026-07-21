@@ -7,6 +7,15 @@ namespace KuaiJi.Domain.AccountSets
     /// </summary>
     public class AccountSet
     {
+        /// <summary>科目编码方案分隔符，形如 "4-2-2-2"。</summary>
+        public const char CodingSchemeSeparator = '-';
+
+        /// <summary>默认科目编码方案（4 级，每级位数分别为 4-2-2-2）。</summary>
+        public const string DefaultCodingScheme = "4-2-2-2";
+
+        /// <summary>科目编码方案最大支持级数。</summary>
+        public const int MaxCodingLevel = 10;
+
         // EF Core 物化实体所需的无参构造函数。
         private AccountSet()
         {
@@ -20,7 +29,8 @@ namespace KuaiJi.Domain.AccountSets
             TaxpayerType taxpayerType,
             string baseCurrency,
             int startYear,
-            int startMonth)
+            int startMonth,
+            string accountCodingScheme)
         {
             Id = id;
             Name = name;
@@ -30,6 +40,7 @@ namespace KuaiJi.Domain.AccountSets
             BaseCurrency = baseCurrency;
             StartYear = startYear;
             StartMonth = startMonth;
+            AccountCodingScheme = accountCodingScheme;
             IsCurrent = false;
         }
 
@@ -60,6 +71,9 @@ namespace KuaiJi.Domain.AccountSets
         /// <summary>是否为当前账套（全局唯一，由应用层保证互斥）。</summary>
         public bool IsCurrent { get; private set; }
 
+        /// <summary>科目编码方案，形如 "4-2-2-2"，表示各级科目的编码位数。默认 "4-2-2-2"。</summary>
+        public string AccountCodingScheme { get; private set; } = DefaultCodingScheme;
+
         /// <summary>启用期间的显示文本，形如 2026-01。</summary>
         public string StartPeriodText() => $"{StartYear:D4}-{StartMonth:D2}";
 
@@ -71,9 +85,11 @@ namespace KuaiJi.Domain.AccountSets
             TaxpayerType taxpayerType,
             string baseCurrency,
             int startYear,
-            int startMonth)
+            int startMonth,
+            string accountCodingScheme = DefaultCodingScheme)
         {
             Guard(name, companyName, baseCurrency, startYear, startMonth);
+            GuardCodingScheme(accountCodingScheme);
             return new AccountSet(
                 Guid.NewGuid(),
                 name.Trim(),
@@ -82,7 +98,8 @@ namespace KuaiJi.Domain.AccountSets
                 taxpayerType,
                 baseCurrency.Trim(),
                 startYear,
-                startMonth);
+                startMonth,
+                accountCodingScheme);
         }
 
         /// <summary>重命名账套。</summary>
@@ -124,6 +141,69 @@ namespace KuaiJi.Domain.AccountSets
 
         /// <summary>取消当前账套标记。</summary>
         public void UnmarkCurrent() => IsCurrent = false;
+
+        /// <summary>设置科目编码方案。格式为以 "-" 分隔的各级位数，如 "4-2-2-2"。</summary>
+        public void SetCodingScheme(string scheme)
+        {
+            GuardCodingScheme(scheme);
+            AccountCodingScheme = scheme;
+        }
+
+        /// <summary>获取科目编码方案中第 level 级（从 1 开始）的编码总长度。</summary>
+        public int CodeLengthForLevel(int level)
+        {
+            var segments = ParseCodingScheme(AccountCodingScheme);
+            if (level < 1 || level > segments.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(level), $"级次必须在 1 到 {segments.Length} 之间。");
+            }
+
+            return segments.Take(level).Sum();
+        }
+
+        /// <summary>解析编码方案字符串为各级位数的整数数组。</summary>
+        public static int[] ParseCodingScheme(string scheme)
+        {
+            var parts = (scheme ?? DefaultCodingScheme).Split(CodingSchemeSeparator);
+            return parts.Select(p => int.Parse(p.Trim())).ToArray();
+        }
+
+        /// <summary>校验编码方案字符串的合法性。</summary>
+        public static bool IsValidCodingScheme(string scheme, out string? error)
+        {
+            error = null;
+            if (string.IsNullOrWhiteSpace(scheme))
+            {
+                error = "科目编码方案不能为空。";
+                return false;
+            }
+
+            var parts = scheme.Split(CodingSchemeSeparator);
+            if (parts.Length == 0 || parts.Length > MaxCodingLevel)
+            {
+                error = $"科目编码方案级数须在 1 到 {MaxCodingLevel} 之间。";
+                return false;
+            }
+
+            for (var i = 0; i < parts.Length; i++)
+            {
+                if (!int.TryParse(parts[i].Trim(), out var digits) || digits < 1 || digits > 4)
+                {
+                    error = $"第 {i + 1} 级的位数「{parts[i].Trim()}」不合法（须为 1–4 的整数）。";
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static void GuardCodingScheme(string scheme)
+        {
+            if (!IsValidCodingScheme(scheme, out var error))
+            {
+                throw new ArgumentException(error!, nameof(scheme));
+            }
+        }
 
         private static void Guard(string name, string companyName, string baseCurrency, int startYear, int startMonth)
         {

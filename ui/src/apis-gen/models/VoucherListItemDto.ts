@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { VoucherEntryDto } from './VoucherEntryDto';
+import {
+    VoucherEntryDtoFromJSON,
+    VoucherEntryDtoFromJSONTyped,
+    VoucherEntryDtoToJSON,
+    VoucherEntryDtoToJSONTyped,
+} from './VoucherEntryDto';
+
 /**
  * 
  * @export
@@ -103,6 +111,12 @@ export interface VoucherListItemDto {
      * @memberof VoucherListItemDto
      */
     isBalanced?: boolean;
+    /**
+     * 
+     * @type {Array<VoucherEntryDto>}
+     * @memberof VoucherListItemDto
+     */
+    entries?: Array<VoucherEntryDto>;
 }
 
 /**
@@ -136,6 +150,7 @@ export function VoucherListItemDtoFromJSONTyped(json: any, ignoreDiscriminator: 
         'totalDebit': json['totalDebit'] == null ? undefined : json['totalDebit'],
         'totalCredit': json['totalCredit'] == null ? undefined : json['totalCredit'],
         'isBalanced': json['isBalanced'] == null ? undefined : json['isBalanced'],
+        'entries': json['entries'] == null ? undefined : ((json['entries'] as Array<any>).map(VoucherEntryDtoFromJSON)),
     };
 }
 
@@ -164,6 +179,7 @@ export function VoucherListItemDtoToJSONTyped(value?: VoucherListItemDto | null,
         'totalDebit': value['totalDebit'],
         'totalCredit': value['totalCredit'],
         'isBalanced': value['isBalanced'],
+        'entries': value['entries'] == null ? undefined : ((value['entries'] as Array<any>).map(VoucherEntryDtoToJSON)),
     };
 }
 

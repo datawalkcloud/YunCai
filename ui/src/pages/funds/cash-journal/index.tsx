@@ -60,8 +60,8 @@ export default function CashJournalPage() {
         try {
             const res = await new ReportsApi(apiConfig(token)).accountsetsAccountSetIdReportsCashJournalGet({
                 accountSetId,
-                startDate: dateRange?.startDate,
-                endDate: dateRange?.endDate,
+                startDate: dateRange?.startDate ? new Date(dateRange.startDate) : undefined,
+                endDate: dateRange?.endDate ? new Date(dateRange.endDate) : undefined,
             })
             setEntries(res.rows ?? [])
             setOpeningBalance(res.openingBalance ?? 0)

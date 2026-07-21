@@ -1,3 +1,4 @@
+using KuaiJi.Application.Accounts;
 using KuaiJi.Domain.AccountSets;
 using KuaiJi.Domain.Accounting;
 using KuaiJi.Domain.Vouchers;
@@ -5,9 +6,7 @@ using KuaiJi.Domain.Vouchers;
 namespace KuaiJi.Application.Vouchers
 {
     /// <summary>
-    /// 凭证导入应用服务：解析文件 → 自动补建缺失科目 → 按凭证号聚合分录 → 原样写入凭证。
-    /// 借贷金额原样保留（含负数），借贷不平衡的凭证不阻断导入，仅记录告警。
-    /// 所有科目与凭证均归属于指定账套，无法脱离账套独立导入。
+    /// 凭证导入应用服务：解析文件 → 自动补建缺失科目（按编码方案拆分层级） → 按凭证号聚合分录 → 原样写入凭证。
     /// </summary>
     public sealed class VoucherImportService
     {
@@ -15,81 +14,104 @@ namespace KuaiJi.Application.Vouchers
         private readonly IAccountSetRepository _accountSetRepository;
         private readonly IAccountRepository _accountRepository;
         private readonly IVoucherRepository _voucherRepository;
+        private readonly AccountAutoCreateService _autoCreate;
 
         public VoucherImportService(
             IVoucherImportReader reader,
             IAccountSetRepository accountSetRepository,
             IAccountRepository accountRepository,
-            IVoucherRepository voucherRepository)
+            IVoucherRepository voucherRepository,
+            AccountAutoCreateService autoCreate)
         {
             _reader = reader;
             _accountSetRepository = accountSetRepository;
             _accountRepository = accountRepository;
             _voucherRepository = voucherRepository;
+            _autoCreate = autoCreate;
         }
 
-        public async Task<VoucherImportResult> ImportAsync(Guid accountSetId, Stream stream, CancellationToken cancellationToken = default)
+        public async Task<VoucherImportResult> ImportAsync(
+            Guid accountSetId, Stream stream, VoucherImportConflict conflict = VoucherImportConflict.Skip, CancellationToken cancellationToken = default)
         {
-            // 导入必须面向一个已存在的账套；科目与凭证不能脱离账套独立存在。
-            if (accountSetId == Guid.Empty || await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken) is null)
-            {
+            if (accountSetId == Guid.Empty || await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken) is not { } accountSet)
                 throw new VoucherImportException("指定的账套不存在，无法导入凭证。");
-            }
 
             var rows = _reader.Read(stream);
             if (rows.Count == 0)
-            {
                 throw new VoucherImportException("文件中未找到任何凭证数据行。");
-            }
 
             var warnings = new List<string>();
 
-            // 1) 补建缺失科目：以科目编码为键，先载入该账套已有科目，再按需创建。
-            var accountsByCode = (await _accountRepository.GetAllAsync(accountSetId, cancellationToken))
-                .ToDictionary(a => a.Code, a => a, StringComparer.Ordinal);
+            // 解析编码方案。
+            var scheme = AccountSet.ParseCodingScheme(accountSet.AccountCodingScheme);
+            var maxLevel = scheme.Length;
+            var cumLengths = new int[scheme.Length];
+            for (int i = 0, sum = 0; i < scheme.Length; i++)
+                cumLengths[i] = sum += scheme[i];
+
+            // 载入已有科目。
+            var knownAccounts = new Dictionary<string, Account>(StringComparer.Ordinal);
+            foreach (var a in await _accountRepository.GetAllAsync(accountSetId, cancellationToken))
+                knownAccounts[a.Code] = a;
+
             var createdAccounts = 0;
 
+            // 补建缺失科目：按编码方案自动拆分、自动创建缺失上级。
+            // 先按编码长度排序，确保上级短编码先建，长编码能找到上级。
             foreach (var code in rows
                          .Select(r => r.AccountCode)
                          .Where(c => !string.IsNullOrWhiteSpace(c))
-                         .Distinct(StringComparer.Ordinal))
+                         .Distinct(StringComparer.Ordinal)
+                         .OrderBy(c => c.Length)
+                         .ThenBy(c => c, StringComparer.Ordinal))
             {
-                if (accountsByCode.ContainsKey(code))
-                {
+                if (knownAccounts.ContainsKey(code))
                     continue;
-                }
 
                 var name = rows.First(r => r.AccountCode == code).AccountName;
-                var (category, direction) = InferCategoryAndDirection(code, name);
-                var account = Account.CreateRoot(
-                    accountSetId,
-                    code,
-                    string.IsNullOrWhiteSpace(name) ? code : name,
-                    category,
-                    direction,
-                    isPreset: false);
+                if (string.IsNullOrWhiteSpace(name))
+                    name = code;
 
-                await _accountRepository.AddAsync(account, cancellationToken);
-                accountsByCode[code] = account;
-                createdAccounts++;
+                var account = await _autoCreate.EnsureAccountAsync(
+                    accountSetId, scheme, cumLengths, maxLevel,
+                    code, name, knownAccounts,
+                    category: null,
+                    direction: null,
+                    warnings: warnings,
+                    cancellationToken: cancellationToken);
+
+                if (account is not null)
+                    createdAccounts++;
             }
+
+            await _accountRepository.SaveChangesAsync(cancellationToken);
 
             // 2) 按凭证聚合：源文件中同一凭证的分录连续排列，且行号自 1 起递增；
             //    以「行号==1 或 凭证号发生变化」作为一张新凭证的起点。
             var importedVouchers = 0;
             var importedEntries = 0;
             var skippedVouchers = 0;
+            var overwrittenVouchers = 0;
 
             foreach (var group in GroupIntoVouchers(rows))
             {
                 var head = group[0];
                 var (word, number) = ParseVoucherNo(head.VoucherNo);
 
-                if (await _voucherRepository.ExistsByWordNumberDateAsync(accountSetId, word, number, head.Date, cancellationToken))
+                var existing = await _voucherRepository.GetByWordNumberDateAsync(accountSetId, word, number, head.Date, cancellationToken);
+                if (existing is not null)
                 {
-                    skippedVouchers++;
-                    warnings.Add($"凭证「{head.VoucherNo}」（{head.Date:yyyy-MM-dd}）已存在，已跳过。");
-                    continue;
+                    if (conflict == VoucherImportConflict.Skip)
+                    {
+                        skippedVouchers++;
+                        warnings.Add($"凭证「{head.VoucherNo}」（{head.Date:yyyy-MM-dd}）已存在，已跳过。");
+                        continue;
+                    }
+
+                    // 覆盖：先删旧凭证。
+                    _voucherRepository.Remove(existing);
+                    overwrittenVouchers++;
+                    warnings.Add($"凭证「{head.VoucherNo}」（{head.Date:yyyy-MM-dd}）已存在，已覆盖。");
                 }
 
                 var voucher = Voucher.Import(
@@ -104,7 +126,7 @@ namespace KuaiJi.Application.Vouchers
                 var lineNumber = 0;
                 foreach (var row in group)
                 {
-                    if (string.IsNullOrWhiteSpace(row.AccountCode) || !accountsByCode.TryGetValue(row.AccountCode, out var account))
+                    if (string.IsNullOrWhiteSpace(row.AccountCode) || !knownAccounts.TryGetValue(row.AccountCode, out var account))
                     {
                         warnings.Add($"第 {row.RowNumber} 行缺少有效科目编码，该分录已跳过。");
                         continue;
@@ -143,6 +165,7 @@ namespace KuaiJi.Application.Vouchers
                 ImportedVouchers = importedVouchers,
                 ImportedEntries = importedEntries,
                 SkippedVouchers = skippedVouchers,
+                OverwrittenVouchers = overwrittenVouchers,
                 CreatedAccounts = createdAccounts,
                 Warnings = warnings,
             };
@@ -199,26 +222,6 @@ namespace KuaiJi.Application.Vouchers
             var word = i > 0 ? text[..i].Trim() : "记";
             var numberText = text[i..];
             return (string.IsNullOrEmpty(word) ? "记" : word, int.TryParse(numberText, out var num) && num > 0 ? num : 1);
-        }
-
-        /// <summary>
-        /// 依据科目编码首位与名称推断科目类别与余额方向（中国会计准则通用编码约定）：
-        /// 1 资产、2 负债、3 权益、4 成本、5/6 损益；损益类中含“收入”的记贷方，其余记借方。
-        /// </summary>
-        private static (AccountCategory Category, BalanceDirection Direction) InferCategoryAndDirection(string code, string name)
-        {
-            var first = code.Length > 0 ? code[0] : '1';
-            return first switch
-            {
-                '1' => (AccountCategory.Asset, BalanceDirection.Debit),
-                '2' => (AccountCategory.Liability, BalanceDirection.Credit),
-                '3' => (AccountCategory.Equity, BalanceDirection.Credit),
-                '4' => (AccountCategory.Cost, BalanceDirection.Debit),
-                '5' or '6' => (
-                    AccountCategory.ProfitAndLoss,
-                    (name?.Contains("收入") ?? false) ? BalanceDirection.Credit : BalanceDirection.Debit),
-                _ => (AccountCategory.Asset, BalanceDirection.Debit),
-            };
         }
 
         private static string Truncate(string value, int maxLength)

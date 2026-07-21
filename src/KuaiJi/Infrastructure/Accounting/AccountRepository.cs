@@ -27,7 +27,6 @@ namespace KuaiJi.Infrastructure.Accounting
         public async Task<IReadOnlyList<Account>> GetAllAsync(Guid accountSetId, CancellationToken cancellationToken = default)
         {
             return await _context.Accounts
-                .AsNoTracking()
                 .Where(a => a.AccountSetId == accountSetId)
                 .OrderBy(a => a.Code)
                 .ToListAsync(cancellationToken);
@@ -54,6 +53,10 @@ namespace KuaiJi.Infrastructure.Accounting
 
         public async Task AddAsync(Account account, CancellationToken cancellationToken = default)
         {
+            // 避免重复追踪：已在 tracker 中则跳过。
+            var entry = _context.Entry(account);
+            if (entry.State != EntityState.Detached)
+                return;
             await _context.Accounts.AddAsync(account, cancellationToken);
         }
 

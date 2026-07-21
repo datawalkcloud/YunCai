@@ -64,8 +64,8 @@ export default function TrialBalancePage() {
         try {
             const res = await new ReportsApi(apiConfig(token)).accountsetsAccountSetIdReportsTrialBalanceGet({
                 accountSetId,
-                startDate: dateRange?.startDate,
-                endDate: dateRange?.endDate,
+                startDate: dateRange?.startDate ? new Date(dateRange.startDate) : undefined,
+                endDate: dateRange?.endDate ? new Date(dateRange.endDate) : undefined,
             })
             setRows(res.rows ?? [])
             setPeriodText(res.periodText ?? "")

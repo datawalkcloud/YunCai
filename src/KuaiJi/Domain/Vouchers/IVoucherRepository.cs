@@ -17,6 +17,9 @@ namespace KuaiJi.Domain.Vouchers
         /// <summary>判断指定「凭证字+号+日期」的凭证在账套内是否已存在，用于导入去重。</summary>
         Task<bool> ExistsByWordNumberDateAsync(Guid accountSetId, string word, int number, DateOnly date, CancellationToken cancellationToken = default);
 
+        /// <summary>按「凭证字+号+日期」获取已有凭证（含分录），覆写时删除用。</summary>
+        Task<Voucher?> GetByWordNumberDateAsync(Guid accountSetId, string word, int number, DateOnly date, CancellationToken cancellationToken = default);
+
         /// <summary>获取指定凭证字在账套内当前的最大凭证号（无则返回 0），用于生成下一号。</summary>
         Task<int> GetMaxNumberAsync(Guid accountSetId, string word, CancellationToken cancellationToken = default);
 

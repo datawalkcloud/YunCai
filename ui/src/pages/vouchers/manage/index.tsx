@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, Upload } from "lucide-react"
-import { Alert, Button, Card, Col, DatePicker, Drawer, Row, Space, Statistic, Table, Tag, Typography, theme } from "antd"
-import type { ColumnsType } from "antd/es/table"
+import { Alert, Button, Card, Col, DatePicker, Drawer, Radio, Row, Space, Statistic, Table, Tag, Typography, theme } from "antd"
 import dayjs, { type Dayjs } from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -11,6 +10,7 @@ import {
     VouchersApi,
     type AccountDto,
     type VoucherDetailDto,
+    type VoucherEntryDto,
     type VoucherImportResult,
     type VoucherListItemDto,
 } from "@/apis-gen"
@@ -28,7 +28,7 @@ interface DateRange {
 }
 
 function formatAmount(n: number): string {
-    return n.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return Math.abs(n).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 /** 将后端返回的日期（解析为 UTC 零点的 Date）格式化为 yyyy-MM-dd。 */
@@ -41,6 +41,125 @@ function toDayjsArray(dr: DateRange | null): [Dayjs, Dayjs] | null {
 }
 
 const ACCEPT = ".xls,.xlsx"
+
+/** 单条分录的表格列（卡片内嵌用）。 */
+const ENTRY_COLUMNS = [
+    { title: "摘要", dataIndex: "summary", ellipsis: true },
+    {
+        title: "科目",
+        key: "account",
+        render: (_: unknown, r: VoucherEntryDto) => (
+            <span>
+                <Text style={{ fontSize: 12 }} type="secondary">{r.accountCode} </Text>
+                {r.accountName}
+            </span>
+        ),
+    },
+    {
+        title: "借方",
+        dataIndex: "debit",
+        align: "right" as const,
+        width: 100,
+        render: (v?: number) =>
+            v != null && v !== 0 ? <Text style={{ color: v < 0 ? "#ff4d4f" : undefined }}>{formatAmount(v)}</Text> : null,
+    },
+    {
+        title: "贷方",
+        dataIndex: "credit",
+        align: "right" as const,
+        width: 100,
+        render: (v?: number) =>
+            v != null && v !== 0 ? <Text style={{ color: v < 0 ? "#ff4d4f" : undefined }}>{formatAmount(v)}</Text> : null,
+    },
+]
+
+/** 凭证列表主表格列（接收操作回调）。 */
+function getVoucherColumns(ops: {
+    onEdit: (v: VoucherListItemDto) => void
+    onDelete: (v: VoucherListItemDto) => void
+    openingId: string | null
+    deletingId: string | null
+}) {
+    return [
+        {
+            title: "凭证号",
+            dataIndex: "voucherNo",
+            width: 140,
+            render: (_: unknown, r: VoucherListItemDto) => (
+                <Space size={4}>
+                    <Text strong>{r.voucherNo}</Text>
+                    <Tag color={r.isBalanced ? (r.status === 1 ? "blue" : "green") : "red"} style={{ fontSize: 11, lineHeight: "18px", padding: "0 4px" }}>
+                        {r.statusText}
+                    </Tag>
+                </Space>
+            ),
+        },
+        {
+            title: "日期",
+            dataIndex: "date",
+            width: 110,
+            render: (_: unknown, r: VoucherListItemDto) => <Text>{formatDate(r.date)}</Text>,
+        },
+        {
+            title: "借方合计",
+            dataIndex: "totalDebit",
+            align: "right" as const,
+            width: 120,
+            render: (v?: number) => (
+                <Text strong style={{ color: (v ?? 0) < 0 ? "#ff4d4f" : "#2adb5c" }}>
+                    {formatAmount(v ?? 0)}
+                </Text>
+            ),
+        },
+        {
+            title: "贷方合计",
+            dataIndex: "totalCredit",
+            align: "right" as const,
+            width: 120,
+            render: (v?: number) => (
+                <Text strong style={{ color: (v ?? 0) < 0 ? "#ff4d4f" : "#2adb5c" }}>
+                    {formatAmount(v ?? 0)}
+                </Text>
+            ),
+        },
+        {
+            title: "制单人",
+            dataIndex: "preparer",
+            width: 90,
+            render: (_: unknown, r: VoucherListItemDto) => (
+                <Text type="secondary">{r.preparer ?? "—"}</Text>
+            ),
+        },
+        {
+            title: "操作",
+            key: "actions",
+            width: 80,
+            render: (_: unknown, r: VoucherListItemDto) => (
+                <Space size={0}>
+                    {r.status === 1 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<Pencil size={16} />}
+                            loading={ops.openingId === r.id}
+                            onClick={() => ops.onEdit(r)}
+                            title="编辑凭证"
+                        />
+                    )}
+                    <Button
+                        type="text"
+                        size="small"
+                        danger
+                        icon={<Trash2 size={16} />}
+                        loading={ops.deletingId === r.id}
+                        onClick={() => ops.onDelete(r)}
+                        title="删除凭证"
+                    />
+                </Space>
+            ),
+        },
+    ]
+}
 
 export default function VoucherManagePage() {
     const { token, user } = useAuth()
@@ -65,6 +184,7 @@ export default function VoucherManagePage() {
     const [importFile, setImportFile] = useState<File | null>(null)
     const [importDragging, setImportDragging] = useState(false)
     const [importing, setImporting] = useState(false)
+    const [importConflict, setImportConflict] = useState<0 | 1>(0)
     const [importResult, setImportResult] = useState<VoucherImportResult | null>(null)
     const [importError, setImportError] = useState<string | null>(null)
 
@@ -77,8 +197,8 @@ export default function VoucherManagePage() {
             const [list, accs] = await Promise.all([
                 new VouchersApi(config).accountsetsAccountSetIdVouchersGet({
                     accountSetId,
-                    startDate: dateRange?.startDate,
-                    endDate: dateRange?.endDate,
+                    startDate: dateRange?.startDate ? new Date(dateRange.startDate) : undefined,
+                    endDate: dateRange?.endDate ? new Date(dateRange.endDate) : undefined,
                 }),
                 new AccountsApi(config).accountsetsAccountSetIdAccountsGet({ accountSetId, leafOnly: true }),
             ])
@@ -177,6 +297,7 @@ export default function VoucherManagePage() {
             const res = await new VouchersApi(apiConfig(token)).accountsetsAccountSetIdVouchersImportPost({
                 accountSetId,
                 file: importFile,
+                conflict: importConflict,
             })
             setImportResult(res)
             void load()
@@ -186,52 +307,6 @@ export default function VoucherManagePage() {
             setImporting(false)
         }
     }
-
-    const columns: ColumnsType<VoucherListItemDto> = [
-        { title: "日期", dataIndex: "date", width: 120, render: (d?: Date) => formatDate(d) },
-        { title: "凭证号", dataIndex: "voucherNo", width: 120, render: (v: string) => <Text strong>{v}</Text> },
-        { title: "分录数", dataIndex: "entryCount", width: 90, align: "center" },
-        { title: "借方合计", dataIndex: "totalDebit", width: 140, align: "right", render: (v?: number) => formatAmount(v ?? 0) },
-        { title: "贷方合计", dataIndex: "totalCredit", width: 140, align: "right", render: (v?: number) => formatAmount(v ?? 0) },
-        {
-            title: "状态",
-            dataIndex: "isBalanced",
-            width: 100,
-            align: "center",
-            render: (_: boolean, v) =>
-                v.isBalanced ? <Tag>{v.statusText}</Tag> : <Tag color="error">不平衡</Tag>,
-        },
-        { title: "制单人", dataIndex: "preparer", width: 120 },
-        {
-            title: "操作",
-            key: "action",
-            width: 100,
-            align: "right",
-            render: (_, v) => (
-                <Space size={0}>
-                    {v.status === 1 && (
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<Pencil size={16} />}
-                            loading={openingId === v.id}
-                            onClick={() => void handleEdit(v)}
-                            title="编辑凭证"
-                        />
-                    )}
-                    <Button
-                        type="text"
-                        size="small"
-                        danger
-                        icon={<Trash2 size={16} />}
-                        loading={deletingId === v.id}
-                        onClick={() => void handleDelete(v)}
-                        title="删除凭证"
-                    />
-                </Space>
-            ),
-        },
-    ]
 
     return (
         <div className="flex flex-col gap-6">
@@ -276,17 +351,61 @@ export default function VoucherManagePage() {
 
             {error && <Alert type="error" showIcon message={error} />}
 
-            <Card styles={{ body: { padding: 0 } }}>
-                <Table<VoucherListItemDto>
-                    rowKey="id"
-                    columns={columns}
-                    dataSource={vouchers}
-                    loading={loading && vouchers.length === 0}
-                    pagination={false}
-                    scroll={{ x: 880 }}
-                    locale={{ emptyText: "暂无凭证，点击右上角「新增凭证」开始记账。" }}
-                />
-            </Card>
+            {/* 凭证列表 */}
+            <Table<VoucherListItemDto>
+                rowKey="id"
+                dataSource={vouchers}
+                loading={loading}
+                columns={getVoucherColumns({ onEdit: handleEdit, onDelete: handleDelete, openingId, deletingId })}
+                expandable={{
+                    defaultExpandAllRows: true,
+                    expandIcon: () => null,
+                    indentSize: 0,
+                    expandedRowRender: (record) => (
+                        <div className="pb-2">
+                            {/* 分录明细 */}
+                            {record.entries && record.entries.length > 0 && (
+                                <Table<VoucherEntryDto>
+                                    rowKey="id"
+                                    columns={ENTRY_COLUMNS}
+                                    dataSource={record.entries}
+                                    pagination={false}
+                                    size="small"
+                                    showHeader={false}
+                                    locale={{ emptyText: null }}
+                                />
+                            )}
+                            {/* 合计行 */}
+                            <div
+                                className="flex items-center justify-between px-4 py-2 text-sm"
+                                style={{ borderTop: `1px solid #f0f0f0`, background: "rgba(0,0,0,0.02)" }}
+                            >
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    制单：{record.preparer ?? "—"}
+                                    {record.reviewer ? ` · 审核：${record.reviewer}` : ""}
+                                </Text>
+                                <Space size={16}>
+                                    <span>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>借方 </Text>
+                                        <Text strong style={{ color: (record.totalDebit ?? 0) < 0 ? "#ff4d4f" : "#2adb5c" }}>{formatAmount(record.totalDebit ?? 0)}</Text>
+                                    </span>
+                                    <span>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>贷方 </Text>
+                                        <Text strong style={{ color: (record.totalCredit ?? 0) < 0 ? "#ff4d4f" : "#2adb5c" }}>{formatAmount(record.totalCredit ?? 0)}</Text>
+                                    </span>
+                                </Space>
+                            </div>
+                        </div>
+                    ),
+                }}
+                pagination={{
+                    pageSize: 20,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 张凭证`,
+                }}
+                size="middle"
+                locale={{ emptyText: "暂无凭证，点击右上角「新增凭证」开始记账。" }}
+            />
 
             {/* 新增 / 编辑凭证抽屉 */}
             <Drawer
@@ -337,6 +456,21 @@ export default function VoucherManagePage() {
                             {currentSet?.name ?? accountSetId}
                             {currentSet?.isCurrent ? "（当前）" : ""}
                         </Text>
+                    </div>
+
+                    {/* 冲突策略 */}
+                    <div className="flex flex-col gap-2">
+                        <Text strong>重复凭证处理</Text>
+                        <Radio.Group
+                            value={importConflict}
+                            onChange={(e) => setImportConflict(e.target.value)}
+                            optionType="button"
+                            buttonStyle="solid"
+                            size="small"
+                        >
+                            <Radio.Button value={0}>跳过</Radio.Button>
+                            <Radio.Button value={1}>覆盖</Radio.Button>
+                        </Radio.Group>
                     </div>
 
                     {/* 文件拖放 / 选择区 */}
@@ -405,6 +539,7 @@ export default function VoucherManagePage() {
                                 <ImportStat label="导入凭证" value={importResult.importedVouchers ?? 0} />
                                 <ImportStat label="导入分录" value={importResult.importedEntries ?? 0} />
                                 <ImportStat label="新建科目" value={importResult.createdAccounts ?? 0} />
+                                <ImportStat label="覆盖凭证" value={importResult.overwrittenVouchers ?? 0} muted />
                                 <ImportStat label="跳过凭证" value={importResult.skippedVouchers ?? 0} muted />
                             </Row>
 

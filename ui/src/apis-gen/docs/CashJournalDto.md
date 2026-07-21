@@ -6,8 +6,8 @@
 
 Name | Type
 ------------ | -------------
-`year` | number
-`month` | number
+`startDate` | string
+`endDate` | string
 `periodText` | string
 `openingBalance` | number
 `rows` | [Array&lt;CashJournalRowDto&gt;](CashJournalRowDto.md)
@@ -19,8 +19,8 @@ import type { CashJournalDto } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "year": null,
-  "month": null,
+  "startDate": null,
+  "endDate": null,
   "periodText": null,
   "openingBalance": null,
   "rows": null,

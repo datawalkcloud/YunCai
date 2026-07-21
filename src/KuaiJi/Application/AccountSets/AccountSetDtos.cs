@@ -25,6 +25,9 @@ namespace KuaiJi.Application.AccountSets
 
         public bool IsCurrent { get; init; }
 
+        /// <summary>科目编码方案，形如 "4-2-2-2"。</summary>
+        public string AccountCodingScheme { get; init; } = AccountSet.DefaultCodingScheme;
+
         public static AccountSetDto FromDomain(AccountSet accountSet) => new()
         {
             Id = accountSet.Id,
@@ -37,6 +40,7 @@ namespace KuaiJi.Application.AccountSets
             StartMonth = accountSet.StartMonth,
             StartPeriod = accountSet.StartPeriodText(),
             IsCurrent = accountSet.IsCurrent,
+            AccountCodingScheme = accountSet.AccountCodingScheme,
         };
     }
 
@@ -56,6 +60,9 @@ namespace KuaiJi.Application.AccountSets
         public int StartYear { get; init; }
 
         public int StartMonth { get; init; }
+
+        /// <summary>科目编码方案，形如 "4-2-2-2"。不传则默认 "4-2-2-2"。</summary>
+        public string? AccountCodingScheme { get; init; }
     }
 
     /// <summary>更新账套基础信息请求。</summary>
@@ -70,5 +77,8 @@ namespace KuaiJi.Application.AccountSets
         public TaxpayerType TaxpayerType { get; init; }
 
         public string BaseCurrency { get; init; } = null!;
+
+        /// <summary>科目编码方案，形如 "4-2-2-2"。</summary>
+        public string? AccountCodingScheme { get; init; }
     }
 }

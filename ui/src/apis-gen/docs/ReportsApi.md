@@ -83,7 +83,7 @@ No authorization required
 
 ## accountsetsAccountSetIdReportsCashJournalGet
 
-> CashJournalDto accountsetsAccountSetIdReportsCashJournalGet(accountSetId, year, month)
+> CashJournalDto accountsetsAccountSetIdReportsCashJournalGet(accountSetId, startDate, endDate)
 
 
 
@@ -103,10 +103,10 @@ async function example() {
   const body = {
     // string
     accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // number (optional)
-    year: 56,
-    // number (optional)
-    month: 56,
+    // Date (optional)
+    startDate: 2013-10-20,
+    // Date (optional)
+    endDate: 2013-10-20,
   } satisfies AccountsetsAccountSetIdReportsCashJournalGetRequest;
 
   try {
@@ -127,8 +127,8 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **accountSetId** | `string` |  | [Defaults to `undefined`] |
-| **year** | `number` |  | [Optional] [Defaults to `undefined`] |
-| **month** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **startDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -154,7 +154,7 @@ No authorization required
 
 ## accountsetsAccountSetIdReportsTrialBalanceGet
 
-> TrialBalanceDto accountsetsAccountSetIdReportsTrialBalanceGet(accountSetId, year, month)
+> TrialBalanceDto accountsetsAccountSetIdReportsTrialBalanceGet(accountSetId, startDate, endDate)
 
 
 
@@ -174,10 +174,10 @@ async function example() {
   const body = {
     // string
     accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // number (optional)
-    year: 56,
-    // number (optional)
-    month: 56,
+    // Date (optional)
+    startDate: 2013-10-20,
+    // Date (optional)
+    endDate: 2013-10-20,
   } satisfies AccountsetsAccountSetIdReportsTrialBalanceGetRequest;
 
   try {
@@ -198,8 +198,8 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **accountSetId** | `string` |  | [Defaults to `undefined`] |
-| **year** | `number` |  | [Optional] [Defaults to `undefined`] |
-| **month** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **startDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 

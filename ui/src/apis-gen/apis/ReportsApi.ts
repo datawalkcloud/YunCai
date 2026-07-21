@@ -36,14 +36,14 @@ export interface AccountsetsAccountSetIdReportsBalanceSheetGetRequest {
 
 export interface AccountsetsAccountSetIdReportsCashJournalGetRequest {
     accountSetId: string;
-    startDate?: string;
-    endDate?: string;
+    startDate?: Date;
+    endDate?: Date;
 }
 
 export interface AccountsetsAccountSetIdReportsTrialBalanceGetRequest {
     accountSetId: string;
-    startDate?: string;
-    endDate?: string;
+    startDate?: Date;
+    endDate?: Date;
 }
 
 /**
@@ -81,8 +81,8 @@ export interface ReportsApiInterface {
     /**
      * Creates request options for accountsetsAccountSetIdReportsCashJournalGet without sending the request
      * @param {string} accountSetId 
-     * @param {number} [year] 
-     * @param {number} [month] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
      * @throws {RequiredError}
      * @memberof ReportsApiInterface
      */
@@ -91,8 +91,8 @@ export interface ReportsApiInterface {
     /**
      * 
      * @param {string} accountSetId 
-     * @param {number} [year] 
-     * @param {number} [month] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof ReportsApiInterface
@@ -106,8 +106,8 @@ export interface ReportsApiInterface {
     /**
      * Creates request options for accountsetsAccountSetIdReportsTrialBalanceGet without sending the request
      * @param {string} accountSetId 
-     * @param {number} [year] 
-     * @param {number} [month] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
      * @throws {RequiredError}
      * @memberof ReportsApiInterface
      */
@@ -116,8 +116,8 @@ export interface ReportsApiInterface {
     /**
      * 
      * @param {string} accountSetId 
-     * @param {number} [year] 
-     * @param {number} [month] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof ReportsApiInterface
@@ -200,11 +200,11 @@ export class ReportsApi extends runtime.BaseAPI implements ReportsApiInterface {
         const queryParameters: any = {};
 
         if (requestParameters['startDate'] != null) {
-            queryParameters['startDate'] = requestParameters['startDate'];
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
         }
 
         if (requestParameters['endDate'] != null) {
-            queryParameters['endDate'] = requestParameters['endDate'];
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -251,11 +251,11 @@ export class ReportsApi extends runtime.BaseAPI implements ReportsApiInterface {
         const queryParameters: any = {};
 
         if (requestParameters['startDate'] != null) {
-            queryParameters['startDate'] = requestParameters['startDate'];
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
         }
 
         if (requestParameters['endDate'] != null) {
-            queryParameters['endDate'] = requestParameters['endDate'];
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

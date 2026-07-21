@@ -57,7 +57,7 @@ function isExpenseAccount(account: AccountDto | undefined): boolean {
 }
 
 /** 检测凭证分录中损益类科目方向不规范的条目，返回行号（从 1 开始）数组。 */
-function detectDirectionIssues(entries: EntryRow[], accountMap: Map<string, AccountDto>): number[] {
+function detectDirectionIssues(entries: EntryRow[], accountMap: Map<string | undefined, AccountDto>): number[] {
     const issues: number[] = []
     let line = 0
     for (const entry of entries) {
@@ -74,7 +74,7 @@ function detectDirectionIssues(entries: EntryRow[], accountMap: Map<string, Acco
     return issues
 }
 
-/** 将金额按分位拆解为与 AMOUNT_COLUMNS 对齐的字符数组，0 时全部留空。负号在首位数字前加 "−"。 */
+/** 将金额按分位拆解为与 AMOUNT_COLUMNS 对齐的字符数组，0 时全部留空。 */
 function digitCells(value: number): string[] {
     const cells = Array<string>(AMOUNT_COLUMNS.length).fill("")
     if (value === 0) return cells
@@ -84,13 +84,6 @@ function digitCells(value: number): string[] {
     const str = String(cents)
     for (let i = 0; i < str.length && i < cells.length; i++) {
         cells[cells.length - 1 - i] = str[str.length - 1 - i]
-    }
-    // 负号放在第一个非空数字位之前
-    if (value < 0) {
-        const firstDigit = cells.findIndex((c) => c !== "")
-        if (firstDigit >= 0) {
-            cells[firstDigit] = "−" + cells[firstDigit]
-        }
     }
     return cells
 }
@@ -154,14 +147,30 @@ function AmountCells({
 }) {
     const [focused, setFocused] = useState(false)
     const cells = digitCells(value)
+    const isNegative = value < 0
+    const redStyle = isNegative ? { color: "#ff4d4f" } : undefined
     return (
         <div className="relative">
-            <div className="grid grid-cols-11 divide-x divide-border">
-                {cells.map((d, i) => (
-                    <div key={i} className="flex h-9 items-center justify-center tabular-nums">
-                        {focused ? "" : d}
-                    </div>
-                ))}
+            <div className="grid grid-cols-11" style={redStyle}>
+                {cells.map((d, i) => {
+                    // 分位竖线：元→角粉红，千→百/百万→十万蓝色，其余浅灰
+                    const isYuanSep = i === 8
+                    const isQianSep = i === 5
+                    const isBaiwanSep = i === 2
+                    const colored = isYuanSep || isQianSep || isBaiwanSep
+                    return (
+                        <div
+                            key={i}
+                            className="flex h-[54px] items-center justify-center tabular-nums"
+                            style={i < 10 ? {
+                                borderRight: "1px solid",
+                                borderRightColor: colored ? (isYuanSep ? "#ffd6e7" : "#bae7ff") : undefined,
+                            } : undefined}
+                        >
+                            {focused ? "" : d}
+                        </div>
+                    )
+                })}
             </div>
             {editable && (
                 <input
@@ -357,14 +366,14 @@ export default function VoucherForm({
             <div className="text-center text-xl font-bold tracking-[0.5em]">记账凭证</div>
 
             {/* 凭证字号 / 日期 / 附件 */}
-            <div className="flex flex-wrap items-end justify-between gap-4 text-sm">
-                <div className="flex items-end gap-1">
+            <div className="flex items-end gap-4 text-sm whitespace-nowrap">
+                <div className="flex items-end gap-1 shrink-0">
                     <Input
                         variant="borderless"
                         value={voucherWord}
                         onChange={(e) => setVoucherWord(e.target.value)}
                         disabled={editing}
-                        className={cn(blankCls, "w-12")}
+                        className={cn(blankCls, "w-10")}
                     />
                     <span className="pb-1">字第</span>
                     <Input
@@ -373,21 +382,21 @@ export default function VoucherForm({
                         onChange={(e) => setVoucherNo(e.target.value.replace(/\D/g, ""))}
                         placeholder="自动"
                         disabled={editing}
-                        className={cn(blankCls, "w-20")}
+                        className={cn(blankCls, "w-16")}
                     />
                     <span className="pb-1">号</span>
                 </div>
-                <div className="flex items-end gap-1">
+                <div className="flex items-end gap-1 shrink-0">
                     <span className="pb-1">日期：</span>
                     <Input
                         variant="borderless"
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className={cn(blankCls, "w-40")}
+                        className={cn(blankCls, "w-32")}
                     />
                 </div>
-                <div className="flex items-end gap-1">
+                <div className="flex items-end gap-1 shrink-0">
                     <span className="pb-1">附单据</span>
                     <Input
                         variant="borderless"
@@ -395,10 +404,11 @@ export default function VoucherForm({
                         min={0}
                         value={attachments}
                         onChange={(e) => setAttachments(e.target.value)}
-                        className={cn(blankCls, "w-16")}
+                        className={cn(blankCls, "w-12")}
                     />
                     <span className="pb-1">张</span>
                 </div>
+                <div className="flex-1" />
             </div>
 
             {/* 分录表格 */}
@@ -408,10 +418,10 @@ export default function VoucherForm({
                         <col style={{ width: 240 }} />
                         <col style={{ width: 200 }} />
                         {AMOUNT_COLUMNS.map((_, i) => (
-                            <col key={`d-${i}`} style={{ width: 28 }} />
+                            <col key={`d-${i}`} style={{ width: 24 }} />
                         ))}
                         {AMOUNT_COLUMNS.map((_, i) => (
-                            <col key={`c-${i}`} style={{ width: 28 }} />
+                            <col key={`c-${i}`} style={{ width: 24 }} />
                         ))}
                     </colgroup>
                     <thead>
@@ -430,16 +440,50 @@ export default function VoucherForm({
                             </th>
                         </tr>
                         <tr>
-                            {AMOUNT_COLUMNS.map((c, i) => (
-                                <th key={`dh-${i}`} className={cn(thCls, "text-[10px]")}>
-                                    {c}
-                                </th>
-                            ))}
-                            {AMOUNT_COLUMNS.map((c, i) => (
-                                <th key={`ch-${i}`} className={cn(thCls, "text-[10px]")}>
-                                    {c}
-                                </th>
-                            ))}
+                            <th colSpan={11} className={cn(thCls, "p-0 align-top")}>
+                                <div className="grid grid-cols-11">
+                                    {AMOUNT_COLUMNS.map((c, i) => {
+                                        const isYuanSep = i === 8
+                                        const isQianSep = i === 5
+                                        const isBaiwanSep = i === 2
+                                        const colored = isYuanSep || isQianSep || isBaiwanSep
+                                        return (
+                                            <div
+                                                key={`dh-${i}`}
+                                                className="flex h-12 items-center justify-center text-[10px] font-medium text-muted-foreground"
+                                                style={{
+                                                    ...(i < 10 ? { borderRight: "1px solid", borderRightColor: colored ? (isYuanSep ? "#ffd6e7" : "#bae7ff") : undefined } : {}),
+                                                    writingMode: "vertical-rl",
+                                                }}
+                                            >
+                                                {c}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </th>
+                            <th colSpan={11} className={cn(thCls, "p-0 align-top")}>
+                                <div className="grid grid-cols-11">
+                                    {AMOUNT_COLUMNS.map((c, i) => {
+                                        const isYuanSep = i === 8
+                                        const isQianSep = i === 5
+                                        const isBaiwanSep = i === 2
+                                        const colored = isYuanSep || isQianSep || isBaiwanSep
+                                        return (
+                                            <div
+                                                key={`ch-${i}`}
+                                                className="flex h-12 items-center justify-center text-[10px] font-medium text-muted-foreground"
+                                                style={{
+                                                    ...(i < 10 ? { borderRight: "1px solid", borderRightColor: colored ? (isYuanSep ? "#ffd6e7" : "#bae7ff") : undefined } : {}),
+                                                    writingMode: "vertical-rl",
+                                                }}
+                                            >
+                                                {c}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>

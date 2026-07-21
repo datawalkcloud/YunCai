@@ -45,6 +45,15 @@ namespace KuaiJi.Infrastructure.Vouchers
                 cancellationToken);
         }
 
+        public Task<Voucher?> GetByWordNumberDateAsync(Guid accountSetId, string word, int number, DateOnly date, CancellationToken cancellationToken = default)
+        {
+            return _context.Vouchers
+                .Include(v => v.Entries)
+                .FirstOrDefaultAsync(
+                    v => v.AccountSetId == accountSetId && v.Word == word && v.Number == number && v.Date == date,
+                    cancellationToken);
+        }
+
         public async Task<int> GetMaxNumberAsync(Guid accountSetId, string word, CancellationToken cancellationToken = default)
         {
             var query = _context.Vouchers.Where(v => v.AccountSetId == accountSetId && v.Word == word);

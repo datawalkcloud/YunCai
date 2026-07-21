@@ -166,6 +166,14 @@ namespace KuaiJi.Domain.Accounting
         /// <summary>停用科目。</summary>
         public void Disable() => IsEnabled = false;
 
+        /// <summary>编码方案变更时，用新编码、新上级和新级次重建此科目。</summary>
+        public void RebaseCode(string newCode, Guid? newParentId, int newLevel)
+        {
+            Code = newCode;
+            ParentId = newParentId;
+            Level = newLevel;
+        }
+
         private static void Guard(string code, string name)
         {
             if (string.IsNullOrWhiteSpace(code))

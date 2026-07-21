@@ -123,7 +123,8 @@ namespace KuaiJi.Controllers
         /// </summary>
         [HttpPost("import")]
         [RequestSizeLimit(MaxUploadBytes)]
-        public async Task<ActionResult<VoucherImportResult>> Import(Guid accountSetId, IFormFile? file, CancellationToken cancellationToken)
+        public async Task<ActionResult<VoucherImportResult>> Import(
+            Guid accountSetId, IFormFile? file, [FromForm] VoucherImportConflict conflict = VoucherImportConflict.Skip, CancellationToken cancellationToken = default)
         {
             if (file is null || file.Length == 0)
             {
@@ -138,7 +139,7 @@ namespace KuaiJi.Controllers
             try
             {
                 await using var stream = file.OpenReadStream();
-                var result = await _importService.ImportAsync(accountSetId, stream, cancellationToken);
+                var result = await _importService.ImportAsync(accountSetId, stream, conflict, cancellationToken);
                 return Ok(result);
             }
             catch (VoucherImportException ex)

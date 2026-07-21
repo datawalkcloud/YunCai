@@ -54,6 +54,7 @@ builder.Services.AddScoped<KuaiJi.Domain.Vouchers.IVoucherRepository, KuaiJi.Inf
 builder.Services.AddScoped<KuaiJi.Application.Vouchers.IVoucherImportReader, KuaiJi.Infrastructure.Vouchers.XlsVoucherImportReader>();
 builder.Services.AddScoped<KuaiJi.Application.Vouchers.VoucherImportService>();
 builder.Services.AddScoped<KuaiJi.Application.Vouchers.VoucherService>();
+builder.Services.AddScoped<KuaiJi.Application.Accounts.AccountAutoCreateService>();
 builder.Services.AddScoped<KuaiJi.Application.Accounts.IAccountImportReader, KuaiJi.Infrastructure.Accounting.XlsxAccountImportReader>();
 builder.Services.AddScoped<KuaiJi.Application.Accounts.AccountImportService>();
 builder.Services.AddScoped<KuaiJi.Application.Reports.TrialBalanceService>();

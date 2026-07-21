@@ -6,6 +6,8 @@ export interface AccountSetDto {
   baseCurrency: string
   startPeriod: string
   isCurrent: boolean
+  /** 科目编码方案，形如 "4-2-2-2"，表示各级科目的编码位数。 */
+  accountCodingScheme?: string
 }
 
 const API_BASE = '/api'

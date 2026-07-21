@@ -15,6 +15,7 @@ export * from './LoginCommand';
 export * from './LoginResult';
 export * from './TrialBalanceDto';
 export * from './TrialBalanceRowDto';
+export * from './UpdateAccountRequest';
 export * from './UpdateAccountSetRequest';
 export * from './UpdateVoucherRequest';
 export * from './UserDto';

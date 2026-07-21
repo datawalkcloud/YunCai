@@ -55,6 +55,7 @@ interface CreateForm {
     currency: string
     taxpayer: number
     startPeriod: Dayjs
+    codingScheme: string
 }
 
 export default function AccountSetsPage() {
@@ -128,6 +129,7 @@ export default function AccountSetsPage() {
             currency: "人民币",
             taxpayer: TAXPAYERS[0].value,
             startPeriod: dayjs(),
+            codingScheme: "4-2-2-2",
         })
         setOpen(true)
     }
@@ -141,6 +143,7 @@ export default function AccountSetsPage() {
             currency: set.baseCurrency ?? "人民币",
             taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
             startPeriod: set.startPeriod ? dayjs(set.startPeriod) : dayjs(),
+            codingScheme: (set as any).accountCodingScheme ?? "4-2-2-2",
         })
         setOpen(true)
     }
@@ -154,6 +157,7 @@ export default function AccountSetsPage() {
             currency: set.baseCurrency ?? "人民币",
             taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
             startPeriod: set.startPeriod ? dayjs(set.startPeriod) : dayjs(),
+            codingScheme: (set as any).accountCodingScheme ?? "4-2-2-2",
         })
         setOpen(true)
     }
@@ -168,13 +172,14 @@ export default function AccountSetsPage() {
             if (editing) {
                 // 编辑
                 await api.accountSetsIdPut({
-                    id: editing.id,
+                    id: editing.id!,
                     updateAccountSetRequest: {
                         name: values.name.trim(),
                         companyName: values.company.trim(),
                         standard: values.standard,
                         taxpayerType: values.taxpayer,
                         baseCurrency: values.currency.trim() || "人民币",
+                        accountCodingScheme: values.codingScheme?.trim() || undefined,
                     },
                 })
             } else {
@@ -188,6 +193,7 @@ export default function AccountSetsPage() {
                         baseCurrency: values.currency.trim() || "人民币",
                         startYear: period.year(),
                         startMonth: period.month() + 1,
+                        accountCodingScheme: values.codingScheme?.trim() || undefined,
                     },
                 })
             }
@@ -278,6 +284,8 @@ export default function AccountSetsPage() {
                                         <Col span={12} style={{ textAlign: "right" }}>{taxpayerLabel(set.taxpayerType)}</Col>
                                         <Col span={12}><Text type="secondary">启用期间</Text></Col>
                                         <Col span={12} style={{ textAlign: "right" }}>{set.startPeriod}</Col>
+                                        <Col span={12}><Text type="secondary">编码方案</Text></Col>
+                                        <Col span={12} style={{ textAlign: "right" }}>{(set as any).accountCodingScheme ?? "—"}</Col>
                                     </Row>
 
                                     <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 4 }}>
@@ -360,6 +368,17 @@ export default function AccountSetsPage() {
                     </Form.Item>
                     <Form.Item label="启用期间" name="startPeriod" rules={[{ required: true, message: "请选择启用期间" }]}>
                         <DatePicker picker="month" style={{ width: "100%" }} disabled={!!editing} />
+                    </Form.Item>
+                    <Form.Item
+                        label="科目编码方案"
+                        name="codingScheme"
+                        rules={[
+                            { required: true, message: "请填写科目编码方案" },
+                            { pattern: /^\d{1,2}(-\d{1,2}){0,9}$/, message: "格式须如 4-2-2-2，每级 1-2 位数字，最多 10 级" },
+                        ]}
+                        extra={'以 "-" 分隔各级科目编码的位数，如 4-2-2-2 表示一级 4 位、二级 2 位、三级 2 位、四级 2 位。最多支持 10 级。'}
+                    >
+                        <Input placeholder="4-2-2-2" />
                     </Form.Item>
                 </Form>
             </Drawer>
