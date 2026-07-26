@@ -16,6 +16,9 @@ namespace KuaiJi.Domain.AccountSets
         /// <summary>科目编码方案最大支持级数。</summary>
         public const int MaxCodingLevel = 10;
 
+        /// <summary>默认凭证字列表（逗号分隔）。</summary>
+        public const string DefaultVoucherWords = "记,收,付,转";
+
         // EF Core 物化实体所需的无参构造函数。
         private AccountSet()
         {
@@ -74,8 +77,26 @@ namespace KuaiJi.Domain.AccountSets
         /// <summary>科目编码方案，形如 "4-2-2-2"，表示各级科目的编码位数。默认 "4-2-2-2"。</summary>
         public string AccountCodingScheme { get; private set; } = DefaultCodingScheme;
 
+        /// <summary>纳税人识别号（统一社会信用代码），可为空。</summary>
+        public string? TaxpayerNumber { get; private set; }
+
+        /// <summary>增值税税率（百分比数值，如 13 表示 13%）。</summary>
+        public decimal VatRate { get; private set; }
+
+        /// <summary>企业所得税税率（百分比数值，如 25 表示 25%）。</summary>
+        public decimal IncomeTaxRate { get; private set; }
+
+        /// <summary>凭证字列表，逗号分隔（如 "记,收,付,转"）。制单时凭证字须取自此列表。</summary>
+        public string VoucherWords { get; private set; } = DefaultVoucherWords;
+
+        /// <summary>已结账至期间（yyyyMM 格式整数）；0 表示尚未结账。结账按月逐期顺序推进。</summary>
+        public int ClosedPeriod { get; private set; }
+
         /// <summary>启用期间的显示文本，形如 2026-01。</summary>
         public string StartPeriodText() => $"{StartYear:D4}-{StartMonth:D2}";
+
+        /// <summary>已结账期间的显示文本（形如 2026-06）；尚未结账时为 null。</summary>
+        public string? ClosedPeriodText() => ClosedPeriod == 0 ? null : $"{ClosedPeriod / 100:D4}-{ClosedPeriod % 100:D2}";
 
         /// <summary>新建账套。</summary>
         public static AccountSet Create(
@@ -90,7 +111,7 @@ namespace KuaiJi.Domain.AccountSets
         {
             Guard(name, companyName, baseCurrency, startYear, startMonth);
             GuardCodingScheme(accountCodingScheme);
-            return new AccountSet(
+            var accountSet = new AccountSet(
                 Guid.NewGuid(),
                 name.Trim(),
                 companyName.Trim(),
@@ -100,6 +121,11 @@ namespace KuaiJi.Domain.AccountSets
                 startYear,
                 startMonth,
                 accountCodingScheme);
+
+            // 默认税率按纳税人性质预置：一般纳税人 13%，小规模纳税人 3%；所得税默认 25%。
+            accountSet.VatRate = taxpayerType == TaxpayerType.SmallScale ? 3m : 13m;
+            accountSet.IncomeTaxRate = 25m;
+            return accountSet;
         }
 
         /// <summary>重命名账套。</summary>
@@ -134,6 +160,98 @@ namespace KuaiJi.Domain.AccountSets
             Standard = standard;
             TaxpayerType = taxpayerType;
             BaseCurrency = baseCurrency.Trim();
+        }
+
+        /// <summary>更新涉税资料：纳税人识别号与税率。税率为百分比数值（0–100）。</summary>
+        public void UpdateTaxInfo(string? taxpayerNumber, decimal vatRate, decimal incomeTaxRate)
+        {
+            if (vatRate < 0m || vatRate > 100m)
+            {
+                throw new ArgumentException("增值税税率必须在 0 到 100 之间。", nameof(vatRate));
+            }
+
+            if (incomeTaxRate < 0m || incomeTaxRate > 100m)
+            {
+                throw new ArgumentException("所得税税率必须在 0 到 100 之间。", nameof(incomeTaxRate));
+            }
+
+            TaxpayerNumber = string.IsNullOrWhiteSpace(taxpayerNumber) ? null : taxpayerNumber.Trim();
+            VatRate = vatRate;
+            IncomeTaxRate = incomeTaxRate;
+        }
+
+        /// <summary>设置凭证字列表（逗号分隔）。每个凭证字 1–4 个字符，去重后至少保留一个。</summary>
+        public void SetVoucherWords(string words)
+        {
+            var list = ParseVoucherWords(words);
+            if (list.Count == 0)
+            {
+                throw new ArgumentException("凭证字列表不能为空。", nameof(words));
+            }
+
+            if (list.Any(w => w.Length > 4))
+            {
+                throw new ArgumentException("单个凭证字不能超过 4 个字符。", nameof(words));
+            }
+
+            VoucherWords = string.Join(',', list);
+        }
+
+        /// <summary>解析后的凭证字列表。</summary>
+        public IReadOnlyList<string> VoucherWordList() => ParseVoucherWords(VoucherWords);
+
+        /// <summary>解析凭证字字符串（兼容中英文逗号、顿号与空格分隔），去空去重保序。</summary>
+        public static List<string> ParseVoucherWords(string? words)
+        {
+            return (string.IsNullOrWhiteSpace(words) ? DefaultVoucherWords : words)
+                .Split(new[] { ',', '，', '、', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct()
+                .ToList();
+        }
+
+        /// <summary>下一个待结账期间：未结账时为启用期间，否则为已结期间的次月。</summary>
+        public (int Year, int Month) NextPeriodToClose()
+        {
+            if (ClosedPeriod == 0)
+            {
+                return (StartYear, StartMonth);
+            }
+
+            var year = ClosedPeriod / 100;
+            var month = ClosedPeriod % 100;
+            return month == 12 ? (year + 1, 1) : (year, month + 1);
+        }
+
+        /// <summary>判断指定日期是否落在已结账期间内。已结期间禁止增删改凭证。</summary>
+        public bool IsDateClosed(DateOnly date)
+        {
+            return ClosedPeriod != 0 && date.Year * 100 + date.Month <= ClosedPeriod;
+        }
+
+        /// <summary>月末结账：只能按顺序结转下一个待结期间。期间内凭证须已全部过账（由应用层校验）。</summary>
+        public void ClosePeriod(int year, int month)
+        {
+            var (nextYear, nextMonth) = NextPeriodToClose();
+            if (year != nextYear || month != nextMonth)
+            {
+                throw new InvalidOperationException($"只能按顺序结账，下一个待结期间为 {nextYear:D4}-{nextMonth:D2}。");
+            }
+
+            ClosedPeriod = year * 100 + month;
+        }
+
+        /// <summary>反结账：撤销最近一次结账，已结期间退回一个月；退到启用期间之前则清零。</summary>
+        public void ReopenPeriod()
+        {
+            if (ClosedPeriod == 0)
+            {
+                throw new InvalidOperationException("尚未结账，无需反结账。");
+            }
+
+            var year = ClosedPeriod / 100;
+            var month = ClosedPeriod % 100;
+            var previous = month == 1 ? (year - 1) * 100 + 12 : year * 100 + (month - 1);
+            ClosedPeriod = previous < StartYear * 100 + StartMonth ? 0 : previous;
         }
 
         /// <summary>设为当前账套。互斥性（同一时刻仅一个当前账套）由应用层保证。</summary>

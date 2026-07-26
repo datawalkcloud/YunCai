@@ -15,15 +15,18 @@ namespace KuaiJi.Controllers
         private readonly TrialBalanceService _trialBalanceService;
         private readonly BalanceSheetService _balanceSheetService;
         private readonly CashJournalService _cashJournalService;
+        private readonly IncomeStatementService _incomeStatementService;
 
         public ReportsController(
             TrialBalanceService trialBalanceService,
             BalanceSheetService balanceSheetService,
-            CashJournalService cashJournalService)
+            CashJournalService cashJournalService,
+            IncomeStatementService incomeStatementService)
         {
             _trialBalanceService = trialBalanceService;
             _balanceSheetService = balanceSheetService;
             _cashJournalService = cashJournalService;
+            _incomeStatementService = incomeStatementService;
         }
 
         /// <summary>
@@ -84,6 +87,28 @@ namespace KuaiJi.Controllers
             try
             {
                 var result = await _cashJournalService.GetAsync(accountSetId, startDate, endDate, cancellationToken);
+                return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 利润表（会企 02 表）。可选 year/month 指定会计期间；省略时取最近有凭证的月份（无凭证则取账套启用期间）。
+        /// 本期金额取选定月份，本年累计取本年 1 月 1 日至选定月末；各标准行次金额已按报表方向净额列示。
+        /// </summary>
+        [HttpGet("income-statement")]
+        public async Task<ActionResult<IncomeStatementDto>> GetIncomeStatement(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _incomeStatementService.GetAsync(accountSetId, year, month, cancellationToken);
                 return Ok(result);
             }
             catch (ReportException ex)

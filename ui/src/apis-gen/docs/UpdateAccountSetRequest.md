@@ -11,6 +11,11 @@ Name | Type
 `standard` | number
 `taxpayerType` | number
 `baseCurrency` | string
+`accountCodingScheme` | string
+`taxpayerNumber` | string
+`vatRate` | number
+`incomeTaxRate` | number
+`voucherWords` | string
 
 ## Example
 
@@ -24,6 +29,11 @@ const example = {
   "standard": null,
   "taxpayerType": null,
   "baseCurrency": null,
+  "accountCodingScheme": null,
+  "taxpayerNumber": null,
+  "vatRate": null,
+  "incomeTaxRate": null,
+  "voucherWords": null,
 } satisfies UpdateAccountSetRequest
 
 console.log(example)

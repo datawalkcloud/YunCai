@@ -47,6 +47,16 @@ namespace KuaiJi.Application.Reports
             var endingNet = new Dictionary<Guid, decimal>();
             var openingNet = new Dictionary<Guid, decimal>();
 
+            // 科目启用期初余额先于一切凭证，同时计入期末与年初（按余额方向换算为借-贷视角）。
+            foreach (var account in accounts.Where(a => a.IsLeaf && a.OpeningBalance != 0m))
+            {
+                var netDebit = account.Direction == BalanceDirection.Debit
+                    ? account.OpeningBalance
+                    : -account.OpeningBalance;
+                endingNet[account.Id] = endingNet.GetValueOrDefault(account.Id) + netDebit;
+                openingNet[account.Id] = openingNet.GetValueOrDefault(account.Id) + netDebit;
+            }
+
             foreach (var voucher in vouchers)
             {
                 foreach (var entry in voucher.Entries)

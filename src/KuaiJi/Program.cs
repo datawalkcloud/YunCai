@@ -57,9 +57,11 @@ builder.Services.AddScoped<KuaiJi.Application.Vouchers.VoucherService>();
 builder.Services.AddScoped<KuaiJi.Application.Accounts.AccountAutoCreateService>();
 builder.Services.AddScoped<KuaiJi.Application.Accounts.IAccountImportReader, KuaiJi.Infrastructure.Accounting.XlsxAccountImportReader>();
 builder.Services.AddScoped<KuaiJi.Application.Accounts.AccountImportService>();
+builder.Services.AddScoped<KuaiJi.Application.Accounts.OpeningBalanceService>();
 builder.Services.AddScoped<KuaiJi.Application.Reports.TrialBalanceService>();
 builder.Services.AddScoped<KuaiJi.Application.Reports.BalanceSheetService>();
 builder.Services.AddScoped<KuaiJi.Application.Reports.CashJournalService>();
+builder.Services.AddScoped<KuaiJi.Application.Reports.IncomeStatementService>();
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()

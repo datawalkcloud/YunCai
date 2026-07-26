@@ -80,11 +80,53 @@ export interface AccountSetDto {
      */
     isCurrent?: boolean;
     /**
-     * 科目编码方案，形如 "4-2-2-2"
+     * 
      * @type {string}
      * @memberof AccountSetDto
      */
     accountCodingScheme?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    taxpayerNumber?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountSetDto
+     */
+    vatRate?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountSetDto
+     */
+    incomeTaxRate?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    voucherWords?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    closedPeriod?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountSetDto
+     */
+    nextCloseYear?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountSetDto
+     */
+    nextCloseMonth?: number;
 }
 
 /**
@@ -115,6 +157,13 @@ export function AccountSetDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'startPeriod': json['startPeriod'] == null ? undefined : json['startPeriod'],
         'isCurrent': json['isCurrent'] == null ? undefined : json['isCurrent'],
         'accountCodingScheme': json['accountCodingScheme'] == null ? undefined : json['accountCodingScheme'],
+        'taxpayerNumber': json['taxpayerNumber'] == null ? undefined : json['taxpayerNumber'],
+        'vatRate': json['vatRate'] == null ? undefined : json['vatRate'],
+        'incomeTaxRate': json['incomeTaxRate'] == null ? undefined : json['incomeTaxRate'],
+        'voucherWords': json['voucherWords'] == null ? undefined : json['voucherWords'],
+        'closedPeriod': json['closedPeriod'] == null ? undefined : json['closedPeriod'],
+        'nextCloseYear': json['nextCloseYear'] == null ? undefined : json['nextCloseYear'],
+        'nextCloseMonth': json['nextCloseMonth'] == null ? undefined : json['nextCloseMonth'],
     };
 }
 
@@ -140,6 +189,13 @@ export function AccountSetDtoToJSONTyped(value?: AccountSetDto | null, ignoreDis
         'startPeriod': value['startPeriod'],
         'isCurrent': value['isCurrent'],
         'accountCodingScheme': value['accountCodingScheme'],
+        'taxpayerNumber': value['taxpayerNumber'],
+        'vatRate': value['vatRate'],
+        'incomeTaxRate': value['incomeTaxRate'],
+        'voucherWords': value['voucherWords'],
+        'closedPeriod': value['closedPeriod'],
+        'nextCloseYear': value['nextCloseYear'],
+        'nextCloseMonth': value['nextCloseMonth'],
     };
 }
 

@@ -13,6 +13,7 @@ Name | Type
 `baseCurrency` | string
 `startYear` | number
 `startMonth` | number
+`accountCodingScheme` | string
 
 ## Example
 
@@ -28,6 +29,7 @@ const example = {
   "baseCurrency": null,
   "startYear": null,
   "startMonth": null,
+  "accountCodingScheme": null,
 } satisfies CreateAccountSetRequest
 
 console.log(example)

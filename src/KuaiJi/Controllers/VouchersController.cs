@@ -88,12 +88,68 @@ namespace KuaiJi.Controllers
             }
         }
 
-        /// <summary>删除凭证（含其全部分录）。</summary>
+        /// <summary>删除凭证（含其全部分录）。已过账凭证不允许删除。</summary>
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid accountSetId, Guid id, CancellationToken cancellationToken)
         {
-            var deleted = await _voucherService.DeleteAsync(accountSetId, id, cancellationToken);
-            return deleted ? NoContent() : NotFound();
+            try
+            {
+                var deleted = await _voucherService.DeleteAsync(accountSetId, id, cancellationToken);
+                return deleted ? NoContent() : NotFound();
+            }
+            catch (VoucherException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>审核凭证：草稿 → 已审核。要求借贷平衡，审核人取当前登录用户的显示名。</summary>
+        [HttpPost("{id:guid}/review")]
+        public async Task<ActionResult<VoucherDetailDto>> Review(Guid accountSetId, Guid id, CancellationToken cancellationToken)
+        {
+            // 审核人取自当前登录用户的显示名（JWT 的 displayName 声明）。
+            var reviewer = User.FindFirst("displayName")?.Value
+                           ?? User.FindFirst("unique_name")?.Value
+                           ?? "未知";
+            try
+            {
+                var voucher = await _voucherService.ReviewAsync(accountSetId, id, reviewer, cancellationToken);
+                return voucher is null ? NotFound() : Ok(voucher);
+            }
+            catch (VoucherException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>反审核凭证：已审核 → 草稿，清空审核人。</summary>
+        [HttpPost("{id:guid}/unreview")]
+        public async Task<ActionResult<VoucherDetailDto>> Unreview(Guid accountSetId, Guid id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var voucher = await _voucherService.UnreviewAsync(accountSetId, id, cancellationToken);
+                return voucher is null ? NotFound() : Ok(voucher);
+            }
+            catch (VoucherException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>过账凭证：已审核 → 已过账（登记入账锁定）。</summary>
+        [HttpPost("{id:guid}/post")]
+        public async Task<ActionResult<VoucherDetailDto>> Post(Guid accountSetId, Guid id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var voucher = await _voucherService.PostAsync(accountSetId, id, cancellationToken);
+                return voucher is null ? NotFound() : Ok(voucher);
+            }
+            catch (VoucherException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>

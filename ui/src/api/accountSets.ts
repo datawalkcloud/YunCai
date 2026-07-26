@@ -8,6 +8,8 @@ export interface AccountSetDto {
   isCurrent: boolean
   /** 科目编码方案，形如 "4-2-2-2"，表示各级科目的编码位数。 */
   accountCodingScheme?: string
+  /** 凭证字列表（逗号分隔，如 "记,收,付,转"），制单时只能从中选择。 */
+  voucherWords?: string
 }
 
 const API_BASE = '/api'

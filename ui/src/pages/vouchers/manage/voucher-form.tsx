@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from "react"
 import { Plus, Save, Trash2 } from "lucide-react"
-import { Button, Input, Modal } from "antd"
+import { Button, Input, Modal, Select } from "antd"
 
+import { useAccountSets } from "@/accountSets/AccountSetsContext"
 import { VouchersApi, type AccountDto, type CreateVoucherRequest, type UpdateVoucherRequest, type VoucherDetailDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
@@ -218,6 +219,12 @@ export default function VoucherForm({
 }) {
     const editing = Boolean(initial?.id)
     const nextId = useRef((initial?.entries?.length ?? 2) + 1)
+    // 凭证字候选来自账套配置（逗号分隔），制单时只能从中选择。
+    const { accountSets } = useAccountSets()
+    const voucherWordOptions = useMemo(() => {
+        const raw = accountSets.find((s) => s.id === accountSetId)?.voucherWords ?? "记,收,付,转"
+        return raw.split(/[,，、\s]+/).filter(Boolean)
+    }, [accountSets, accountSetId])
     const [voucherWord, setVoucherWord] = useState(initial?.word ?? "记")
     const [voucherNo, setVoucherNo] = useState(initial?.number ? String(initial.number) : "")
     const [date, setDate] = useState(() => (initial?.date ? initial.date.toISOString().slice(0, 10) : today()))
@@ -368,12 +375,14 @@ export default function VoucherForm({
             {/* 凭证字号 / 日期 / 附件 */}
             <div className="flex items-end gap-4 text-sm whitespace-nowrap">
                 <div className="flex items-end gap-1 shrink-0">
-                    <Input
+                    <Select
                         variant="borderless"
+                        size="small"
                         value={voucherWord}
-                        onChange={(e) => setVoucherWord(e.target.value)}
+                        onChange={setVoucherWord}
                         disabled={editing}
-                        className={cn(blankCls, "w-10")}
+                        options={voucherWordOptions.map((w) => ({ value: w, label: w }))}
+                        className="w-16 border-b border-input"
                     />
                     <span className="pb-1">字第</span>
                     <Input

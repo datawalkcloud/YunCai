@@ -121,6 +121,14 @@ namespace KuaiJi.Controllers
             {
                 accountSet.Rename(request.Name);
                 accountSet.UpdateProfile(request.CompanyName, request.Standard, request.TaxpayerType, request.BaseCurrency);
+                accountSet.UpdateTaxInfo(
+                    request.TaxpayerNumber ?? accountSet.TaxpayerNumber,
+                    request.VatRate ?? accountSet.VatRate,
+                    request.IncomeTaxRate ?? accountSet.IncomeTaxRate);
+                if (request.VoucherWords is not null)
+                {
+                    accountSet.SetVoucherWords(request.VoucherWords);
+                }
                 if (newCodingScheme is not null)
                 {
                     accountSet.SetCodingScheme(newCodingScheme);
@@ -211,6 +219,64 @@ namespace KuaiJi.Controllers
             target.MarkAsCurrent();
             await _accountSetRepository.SaveChangesAsync(cancellationToken);
             return Ok(AccountSetDto.FromDomain(target));
+        }
+
+        /// <summary>
+        /// 月末结账：将下一个待结期间标记为已结账。要求该期间内全部凭证均已过账；
+        /// 已结期间内禁止新增、修改、删除与反审核凭证。
+        /// </summary>
+        [HttpPost("{id:guid}/close-period")]
+        public async Task<ActionResult<AccountSetDto>> ClosePeriod(Guid id, [FromBody] ClosePeriodRequest request, CancellationToken cancellationToken)
+        {
+            var accountSet = await _accountSetRepository.GetByIdAsync(id, cancellationToken);
+            if (accountSet is null)
+            {
+                return NotFound();
+            }
+
+            // 待结期间内的凭证须全部过账，避免草稿/待审凭证被锁进已结期间。
+            var vouchers = await _voucherRepository.GetAllAsync(id, cancellationToken);
+            var pending = vouchers.Count(v =>
+                v.Date.Year == request.Year && v.Date.Month == request.Month && v.Status != VoucherStatus.Posted);
+            if (pending > 0)
+            {
+                return BadRequest(new { message = $"{request.Year:D4}-{request.Month:D2} 期间尚有 {pending} 张凭证未过账，请先完成审核与过账。" });
+            }
+
+            try
+            {
+                accountSet.ClosePeriod(request.Year, request.Month);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+
+            await _accountSetRepository.SaveChangesAsync(cancellationToken);
+            return Ok(AccountSetDto.FromDomain(accountSet));
+        }
+
+        /// <summary>反结账：撤销最近一次结账，已结期间退回一个月。</summary>
+        [HttpPost("{id:guid}/reopen-period")]
+        public async Task<ActionResult<AccountSetDto>> ReopenPeriod(Guid id, CancellationToken cancellationToken)
+        {
+            var accountSet = await _accountSetRepository.GetByIdAsync(id, cancellationToken);
+            if (accountSet is null)
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                accountSet.ReopenPeriod();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+
+            await _accountSetRepository.SaveChangesAsync(cancellationToken);
+            return Ok(AccountSetDto.FromDomain(accountSet));
         }
 
         /// <summary>删除账套：仅当其下没有任何科目、凭证、日记账时允许，以保证下属数据不脱离账套。</summary>

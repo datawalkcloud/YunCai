@@ -43,11 +43,23 @@ namespace KuaiJi.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("base_currency");
 
+                    b.Property<int>("ClosedPeriod")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("closed_period");
+
                     b.Property<string>("CompanyName")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("company_name");
+
+                    b.Property<decimal>("IncomeTaxRate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(25m)
+                        .HasColumnName("income_tax_rate");
 
                     b.Property<bool>("IsCurrent")
                         .HasColumnType("boolean")
@@ -71,9 +83,28 @@ namespace KuaiJi.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("start_year");
 
+                    b.Property<string>("TaxpayerNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("taxpayer_number");
+
                     b.Property<int>("TaxpayerType")
                         .HasColumnType("integer")
                         .HasColumnName("taxpayer_type");
+
+                    b.Property<decimal>("VatRate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(13m)
+                        .HasColumnName("vat_rate");
+
+                    b.Property<string>("VoucherWords")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("记,收,付,转")
+                        .HasColumnName("voucher_words");
 
                     b.HasKey("Id");
 
@@ -136,6 +167,12 @@ namespace KuaiJi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
+
+                    b.Property<decimal>("OpeningBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("opening_balance");
 
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid")

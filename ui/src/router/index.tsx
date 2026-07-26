@@ -8,8 +8,10 @@ import CashJournal from "@/pages/funds/cash-journal";
 import TrialBalance from "@/pages/ledger/trial-balance";
 import VoucherManage from "@/pages/vouchers/manage";
 import BalanceSheet from "@/pages/reports/balance-sheet";
+import IncomeStatement from "@/pages/reports/income-statement";
 import Accounts from "@/pages/settings/accounts";
 import AccountSets from "@/pages/settings/account-sets";
+import OpeningBalances from "@/pages/settings/opening-balances";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/auth/AuthContext";
 import { AccountSetsProvider, useAccountSets } from "@/accountSets/AccountSetsContext";
@@ -98,8 +100,10 @@ const router = createBrowserRouter([
                     { path: "ledger/trial-balance", element: <TrialBalance /> },
                     { path: "vouchers/manage", element: <VoucherManage /> },
                     { path: "reports/balance-sheet", element: <BalanceSheet /> },
+                    { path: "reports/income-statement", element: <IncomeStatement /> },
                     { path: "settings/accounts", element: <Accounts /> },
                     { path: "settings/account-sets", element: <AccountSets /> },
+                    { path: "settings/opening-balances", element: <OpeningBalances /> },
                 ],
             },
         ],

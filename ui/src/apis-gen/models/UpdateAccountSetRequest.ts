@@ -50,11 +50,35 @@ export interface UpdateAccountSetRequest {
      */
     baseCurrency?: string;
     /**
-     * 科目编码方案，形如 "4-2-2-2"
+     * 
      * @type {string}
      * @memberof UpdateAccountSetRequest
      */
-    accountCodingScheme?: string;
+    accountCodingScheme?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    taxpayerNumber?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof UpdateAccountSetRequest
+     */
+    vatRate?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof UpdateAccountSetRequest
+     */
+    incomeTaxRate?: number | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    voucherWords?: string | null;
 }
 
 /**
@@ -80,6 +104,10 @@ export function UpdateAccountSetRequestFromJSONTyped(json: any, ignoreDiscrimina
         'taxpayerType': json['taxpayerType'] == null ? undefined : json['taxpayerType'],
         'baseCurrency': json['baseCurrency'] == null ? undefined : json['baseCurrency'],
         'accountCodingScheme': json['accountCodingScheme'] == null ? undefined : json['accountCodingScheme'],
+        'taxpayerNumber': json['taxpayerNumber'] == null ? undefined : json['taxpayerNumber'],
+        'vatRate': json['vatRate'] == null ? undefined : json['vatRate'],
+        'incomeTaxRate': json['incomeTaxRate'] == null ? undefined : json['incomeTaxRate'],
+        'voucherWords': json['voucherWords'] == null ? undefined : json['voucherWords'],
     };
 }
 
@@ -100,6 +128,10 @@ export function UpdateAccountSetRequestToJSONTyped(value?: UpdateAccountSetReque
         'taxpayerType': value['taxpayerType'],
         'baseCurrency': value['baseCurrency'],
         'accountCodingScheme': value['accountCodingScheme'],
+        'taxpayerNumber': value['taxpayerNumber'],
+        'vatRate': value['vatRate'],
+        'incomeTaxRate': value['incomeTaxRate'],
+        'voucherWords': value['voucherWords'],
     };
 }
 

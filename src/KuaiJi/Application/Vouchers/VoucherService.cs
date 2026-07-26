@@ -64,14 +64,26 @@ namespace KuaiJi.Application.Vouchers
         /// </summary>
         public async Task<VoucherDetailDto> CreateAsync(Guid accountSetId, string preparer, CreateVoucherRequest request, CancellationToken cancellationToken = default)
         {
-            await EnsureAccountSetExists(accountSetId, cancellationToken);
+            var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
 
             if (request.Entries is null || request.Entries.Count == 0)
             {
                 throw new VoucherException("凭证至少需要一条分录。");
             }
 
+            if (accountSet.IsDateClosed(request.Date))
+            {
+                throw new VoucherException($"{request.Date.Year:D4}-{request.Date.Month:D2} 期间已结账，不能再录入凭证。");
+            }
+
             var word = string.IsNullOrWhiteSpace(request.Word) ? "记" : request.Word.Trim();
+
+            // 凭证字须取自账套维护的凭证字列表。
+            var allowedWords = accountSet.VoucherWordList();
+            if (!allowedWords.Contains(word))
+            {
+                throw new VoucherException($"凭证字「{word}」不在账套凭证字列表（{string.Join("、", allowedWords)}）中。");
+            }
 
             // 凭证号：显式指定则查重，否则按凭证字自动续号。
             int number;
@@ -132,12 +144,17 @@ namespace KuaiJi.Application.Vouchers
         /// </summary>
         public async Task<VoucherDetailDto?> UpdateAsync(Guid accountSetId, Guid id, UpdateVoucherRequest request, CancellationToken cancellationToken = default)
         {
-            await EnsureAccountSetExists(accountSetId, cancellationToken);
+            var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
 
             var voucher = await _voucherRepository.GetByIdAsync(accountSetId, id, cancellationToken);
             if (voucher is null)
             {
                 return null;
+            }
+
+            if (accountSet.IsDateClosed(voucher.Date) || accountSet.IsDateClosed(request.Date))
+            {
+                throw new VoucherException("凭证所属期间已结账，不能修改。");
             }
 
             if (request.Entries is null || request.Entries.Count == 0)
@@ -219,7 +236,7 @@ namespace KuaiJi.Application.Vouchers
             return VoucherDetailDto.FromDomain(voucher, accountsById);
         }
 
-        /// <summary>删除凭证（含其全部分录）；不存在时返回 false。</summary>
+        /// <summary>删除凭证（含其全部分录）；不存在时返回 false。已过账凭证已登记入账、已结期间凭证均不允许删除。</summary>
         public async Task<bool> DeleteAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
         {
             var voucher = await _voucherRepository.GetByIdAsync(accountSetId, id, cancellationToken);
@@ -228,9 +245,70 @@ namespace KuaiJi.Application.Vouchers
                 return false;
             }
 
+            if (voucher.Status == VoucherStatus.Posted)
+            {
+                throw new VoucherException($"凭证「{voucher.Word}-{voucher.Number}」已过账，不能删除。");
+            }
+
+            var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
+            if (accountSet.IsDateClosed(voucher.Date))
+            {
+                throw new VoucherException($"凭证「{voucher.Word}-{voucher.Number}」所属期间已结账，不能删除。");
+            }
+
             _voucherRepository.Remove(voucher);
             await _voucherRepository.SaveChangesAsync(cancellationToken);
             return true;
+        }
+
+        /// <summary>审核凭证：草稿 → 已审核。要求借贷平衡，审核人取当前登录用户显示名；不存在时返回 null。</summary>
+        public async Task<VoucherDetailDto?> ReviewAsync(Guid accountSetId, Guid id, string reviewer, CancellationToken cancellationToken = default)
+        {
+            return await TransitionAsync(accountSetId, id, v => v.Review(reviewer), cancellationToken);
+        }
+
+        /// <summary>反审核凭证：已审核 → 草稿，清空审核人；已结期间内的凭证不允许反审核；不存在时返回 null。</summary>
+        public async Task<VoucherDetailDto?> UnreviewAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
+        {
+            return await TransitionAsync(accountSetId, id, v => v.Unreview(), cancellationToken, forbidInClosedPeriod: true);
+        }
+
+        /// <summary>过账凭证：已审核 → 已过账（登记入账锁定）；不存在时返回 null。</summary>
+        public async Task<VoucherDetailDto?> PostAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
+        {
+            return await TransitionAsync(accountSetId, id, v => v.Post(), cancellationToken);
+        }
+
+        /// <summary>执行凭证状态流转并持久化；域层校验失败时统一转换为友好提示。</summary>
+        private async Task<VoucherDetailDto?> TransitionAsync(Guid accountSetId, Guid id, Action<Voucher> transition, CancellationToken cancellationToken, bool forbidInClosedPeriod = false)
+        {
+            var voucher = await _voucherRepository.GetByIdAsync(accountSetId, id, cancellationToken);
+            if (voucher is null)
+            {
+                return null;
+            }
+
+            if (forbidInClosedPeriod)
+            {
+                var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
+                if (accountSet.IsDateClosed(voucher.Date))
+                {
+                    throw new VoucherException($"凭证「{voucher.Word}-{voucher.Number}」所属期间已结账，不能反审核。");
+                }
+            }
+
+            try
+            {
+                transition(voucher);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                throw new VoucherException(ex.Message);
+            }
+
+            await _voucherRepository.SaveChangesAsync(cancellationToken);
+            var accountsById = await LoadAccountsById(accountSetId, cancellationToken);
+            return VoucherDetailDto.FromDomain(voucher, accountsById);
         }
 
         /// <summary>
@@ -275,10 +353,16 @@ namespace KuaiJi.Application.Vouchers
 
         private async Task EnsureAccountSetExists(Guid accountSetId, CancellationToken cancellationToken)
         {
-            if (accountSetId == Guid.Empty || await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken) is null)
-            {
-                throw new VoucherException("指定的账套不存在。");
-            }
+            await LoadAccountSet(accountSetId, cancellationToken);
+        }
+
+        /// <summary>加载账套（用于结账期间、凭证字等校验）；不存在时抛出友好错误。</summary>
+        private async Task<AccountSet> LoadAccountSet(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            var accountSet = accountSetId == Guid.Empty
+                ? null
+                : await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken);
+            return accountSet ?? throw new VoucherException("指定的账套不存在。");
         }
 
         private async Task<IReadOnlyDictionary<Guid, Account>> LoadAccountsById(Guid accountSetId, CancellationToken cancellationToken)

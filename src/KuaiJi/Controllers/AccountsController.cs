@@ -18,14 +18,49 @@ namespace KuaiJi.Controllers
         private readonly AccountImportService _importService;
         private readonly IAccountRepository _accountRepository;
         private readonly IAccountSetRepository _accountSetRepository;
+        private readonly OpeningBalanceService _openingBalanceService;
         private readonly ILogger<AccountsController> _logger;
 
-        public AccountsController(AccountImportService importService, IAccountRepository accountRepository, IAccountSetRepository accountSetRepository, ILogger<AccountsController> logger)
+        public AccountsController(AccountImportService importService, IAccountRepository accountRepository, IAccountSetRepository accountSetRepository, OpeningBalanceService openingBalanceService, ILogger<AccountsController> logger)
         {
             _importService = importService;
             _accountRepository = accountRepository;
             _accountSetRepository = accountSetRepository;
+            _openingBalanceService = openingBalanceService;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// 获取期初余额表：全部科目按编码排序，末级可录入、非末级由下级汇总，含试算平衡合计。
+        /// </summary>
+        [HttpGet("opening-balances")]
+        public async Task<ActionResult<OpeningBalancesDto>> GetOpeningBalances(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _openingBalanceService.GetAsync(accountSetId, cancellationToken));
+            }
+            catch (OpeningBalanceException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 批量保存期初余额：仅末级科目可录入，金额按科目余额方向为正（反方向余额用负数）。
+        /// 返回保存后的最新期初余额表与试算平衡结果。
+        /// </summary>
+        [HttpPut("opening-balances")]
+        public async Task<ActionResult<OpeningBalancesDto>> SaveOpeningBalances(Guid accountSetId, [FromBody] SaveOpeningBalancesRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _openingBalanceService.SaveAsync(accountSetId, request, cancellationToken));
+            }
+            catch (OpeningBalanceException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>

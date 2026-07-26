@@ -10,6 +10,7 @@ Name | Type
 `importedVouchers` | number
 `importedEntries` | number
 `skippedVouchers` | number
+`overwrittenVouchers` | number
 `createdAccounts` | number
 `warnings` | Array&lt;string&gt;
 
@@ -24,6 +25,7 @@ const example = {
   "importedVouchers": null,
   "importedEntries": null,
   "skippedVouchers": null,
+  "overwrittenVouchers": null,
   "createdAccounts": null,
   "warnings": null,
 } satisfies VoucherImportResult

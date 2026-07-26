@@ -50,6 +50,14 @@ namespace KuaiJi.Application.Reports
             var openingBalance = 0m;
             var rows = new List<(DateOnly Date, int Number, CashJournalRowDto Row)>();
 
+            // 现金科目的启用期初余额先于一切凭证，直接计入期初（按余额方向换算为现金净额）。
+            foreach (var account in accounts.Where(a => a.IsLeaf && a.OpeningBalance != 0m && cashAccountIds.Contains(a.Id)))
+            {
+                openingBalance += account.Direction == BalanceDirection.Debit
+                    ? account.OpeningBalance
+                    : -account.OpeningBalance;
+            }
+
             foreach (var voucher in vouchers)
             {
                 foreach (var entry in voucher.Entries)

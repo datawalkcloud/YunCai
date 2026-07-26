@@ -74,6 +74,9 @@ namespace KuaiJi.Domain.Accounting
         /// <summary>助记码（拼音首字母等），用于快速检索，可为空。</summary>
         public string? Mnemonic { get; private set; }
 
+        /// <summary>期初余额（账套启用期间的期初，按科目余额方向为正）。仅末级科目持有，上级由下级汇总。</summary>
+        public decimal OpeningBalance { get; private set; }
+
         /// <summary>上级科目导航属性。</summary>
         public Account? Parent { get; private set; }
 
@@ -158,6 +161,17 @@ namespace KuaiJi.Domain.Accounting
         public void SetMnemonic(string? mnemonic)
         {
             Mnemonic = string.IsNullOrWhiteSpace(mnemonic) ? null : mnemonic.Trim();
+        }
+
+        /// <summary>设置期初余额（按科目余额方向为正，反方向余额用负数）。仅末级科目允许录入。</summary>
+        public void SetOpeningBalance(decimal amount)
+        {
+            if (!IsLeaf && amount != 0m)
+            {
+                throw new InvalidOperationException($"科目「{Code} {Name}」非末级科目，期初余额须录在末级科目上。");
+            }
+
+            OpeningBalance = amount;
         }
 
         /// <summary>启用科目。</summary>

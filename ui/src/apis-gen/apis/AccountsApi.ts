@@ -18,6 +18,8 @@ import type {
   AccountDto,
   AccountImportResult,
   CreateAccountRequest,
+  OpeningBalancesDto,
+  SaveOpeningBalancesRequest,
   UpdateAccountRequest,
 } from '../models/index';
 import {
@@ -27,6 +29,10 @@ import {
     AccountImportResultToJSON,
     CreateAccountRequestFromJSON,
     CreateAccountRequestToJSON,
+    OpeningBalancesDtoFromJSON,
+    OpeningBalancesDtoToJSON,
+    SaveOpeningBalancesRequestFromJSON,
+    SaveOpeningBalancesRequestToJSON,
     UpdateAccountRequestFromJSON,
     UpdateAccountRequestToJSON,
 } from '../models/index';
@@ -63,6 +69,15 @@ export interface AccountsetsAccountSetIdAccountsImportPostRequest {
 
 export interface AccountsetsAccountSetIdAccountsImportTemplateGetRequest {
     accountSetId: string;
+}
+
+export interface AccountsetsAccountSetIdAccountsOpeningBalancesGetRequest {
+    accountSetId: string;
+}
+
+export interface AccountsetsAccountSetIdAccountsOpeningBalancesPutRequest {
+    accountSetId: string;
+    saveOpeningBalancesRequest: SaveOpeningBalancesRequest;
 }
 
 export interface AccountsetsAccountSetIdAccountsPostRequest {
@@ -235,6 +250,50 @@ export interface AccountsApiInterface {
     /**
      */
     accountsetsAccountSetIdAccountsImportTemplateGet(requestParameters: AccountsetsAccountSetIdAccountsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdAccountsOpeningBalancesGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    accountsetsAccountSetIdAccountsOpeningBalancesGetRequestOpts(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    accountsetsAccountSetIdAccountsOpeningBalancesGetRaw(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OpeningBalancesDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdAccountsOpeningBalancesGet(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OpeningBalancesDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdAccountsOpeningBalancesPut without sending the request
+     * @param {string} accountSetId 
+     * @param {SaveOpeningBalancesRequest} saveOpeningBalancesRequest 
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    accountsetsAccountSetIdAccountsOpeningBalancesPutRequestOpts(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesPutRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {SaveOpeningBalancesRequest} saveOpeningBalancesRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    accountsetsAccountSetIdAccountsOpeningBalancesPutRaw(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OpeningBalancesDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdAccountsOpeningBalancesPut(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OpeningBalancesDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdAccountsPost without sending the request
@@ -621,6 +680,102 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
      */
     async accountsetsAccountSetIdAccountsImportTemplateGet(requestParameters: AccountsetsAccountSetIdAccountsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.accountsetsAccountSetIdAccountsImportTemplateGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdAccountsOpeningBalancesGet without sending the request
+     */
+    async accountsetsAccountSetIdAccountsOpeningBalancesGetRequestOpts(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdAccountsOpeningBalancesGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Accounts/opening-balances`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdAccountsOpeningBalancesGetRaw(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OpeningBalancesDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdAccountsOpeningBalancesGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OpeningBalancesDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdAccountsOpeningBalancesGet(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OpeningBalancesDto> {
+        const response = await this.accountsetsAccountSetIdAccountsOpeningBalancesGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdAccountsOpeningBalancesPut without sending the request
+     */
+    async accountsetsAccountSetIdAccountsOpeningBalancesPutRequestOpts(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesPutRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdAccountsOpeningBalancesPut().'
+            );
+        }
+
+        if (requestParameters['saveOpeningBalancesRequest'] == null) {
+            throw new runtime.RequiredError(
+                'saveOpeningBalancesRequest',
+                'Required parameter "saveOpeningBalancesRequest" was null or undefined when calling accountsetsAccountSetIdAccountsOpeningBalancesPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/Accounts/opening-balances`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveOpeningBalancesRequestToJSON(requestParameters['saveOpeningBalancesRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdAccountsOpeningBalancesPutRaw(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OpeningBalancesDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdAccountsOpeningBalancesPutRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OpeningBalancesDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdAccountsOpeningBalancesPut(requestParameters: AccountsetsAccountSetIdAccountsOpeningBalancesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OpeningBalancesDto> {
+        const response = await this.accountsetsAccountSetIdAccountsOpeningBalancesPutRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

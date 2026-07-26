@@ -16,17 +16,25 @@
 import * as runtime from '../runtime';
 import type {
   AccountSetDto,
+  ClosePeriodRequest,
   CreateAccountSetRequest,
   UpdateAccountSetRequest,
 } from '../models/index';
 import {
     AccountSetDtoFromJSON,
     AccountSetDtoToJSON,
+    ClosePeriodRequestFromJSON,
+    ClosePeriodRequestToJSON,
     CreateAccountSetRequestFromJSON,
     CreateAccountSetRequestToJSON,
     UpdateAccountSetRequestFromJSON,
     UpdateAccountSetRequestToJSON,
 } from '../models/index';
+
+export interface AccountSetsIdClosePeriodPostRequest {
+    id: string;
+    closePeriodRequest: ClosePeriodRequest;
+}
 
 export interface AccountSetsIdCurrentPostRequest {
     id: string;
@@ -43,6 +51,10 @@ export interface AccountSetsIdGetRequest {
 export interface AccountSetsIdPutRequest {
     id: string;
     updateAccountSetRequest: UpdateAccountSetRequest;
+}
+
+export interface AccountSetsIdReopenPeriodPostRequest {
+    id: string;
 }
 
 export interface AccountSetsPostRequest {
@@ -74,6 +86,29 @@ export interface AccountSetsApiInterface {
     /**
      */
     accountSetsGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountSetDto>>;
+
+    /**
+     * Creates request options for accountSetsIdClosePeriodPost without sending the request
+     * @param {string} id 
+     * @param {ClosePeriodRequest} closePeriodRequest 
+     * @throws {RequiredError}
+     * @memberof AccountSetsApiInterface
+     */
+    accountSetsIdClosePeriodPostRequestOpts(requestParameters: AccountSetsIdClosePeriodPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} id 
+     * @param {ClosePeriodRequest} closePeriodRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountSetsApiInterface
+     */
+    accountSetsIdClosePeriodPostRaw(requestParameters: AccountSetsIdClosePeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountSetDto>>;
+
+    /**
+     */
+    accountSetsIdClosePeriodPost(requestParameters: AccountSetsIdClosePeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto>;
 
     /**
      * Creates request options for accountSetsIdCurrentPost without sending the request
@@ -162,6 +197,27 @@ export interface AccountSetsApiInterface {
     accountSetsIdPut(requestParameters: AccountSetsIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto>;
 
     /**
+     * Creates request options for accountSetsIdReopenPeriodPost without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof AccountSetsApiInterface
+     */
+    accountSetsIdReopenPeriodPostRequestOpts(requestParameters: AccountSetsIdReopenPeriodPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountSetsApiInterface
+     */
+    accountSetsIdReopenPeriodPostRaw(requestParameters: AccountSetsIdReopenPeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountSetDto>>;
+
+    /**
+     */
+    accountSetsIdReopenPeriodPost(requestParameters: AccountSetsIdReopenPeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto>;
+
+    /**
      * Creates request options for accountSetsPost without sending the request
      * @param {CreateAccountSetRequest} createAccountSetRequest 
      * @throws {RequiredError}
@@ -221,6 +277,59 @@ export class AccountSetsApi extends runtime.BaseAPI implements AccountSetsApiInt
      */
     async accountSetsGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountSetDto>> {
         const response = await this.accountSetsGetRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountSetsIdClosePeriodPost without sending the request
+     */
+    async accountSetsIdClosePeriodPostRequestOpts(requestParameters: AccountSetsIdClosePeriodPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountSetsIdClosePeriodPost().'
+            );
+        }
+
+        if (requestParameters['closePeriodRequest'] == null) {
+            throw new runtime.RequiredError(
+                'closePeriodRequest',
+                'Required parameter "closePeriodRequest" was null or undefined when calling accountSetsIdClosePeriodPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/AccountSets/{id}/close-period`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ClosePeriodRequestToJSON(requestParameters['closePeriodRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountSetsIdClosePeriodPostRaw(requestParameters: AccountSetsIdClosePeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountSetDto>> {
+        const requestOptions = await this.accountSetsIdClosePeriodPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AccountSetDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountSetsIdClosePeriodPost(requestParameters: AccountSetsIdClosePeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto> {
+        const response = await this.accountSetsIdClosePeriodPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -402,6 +511,49 @@ export class AccountSetsApi extends runtime.BaseAPI implements AccountSetsApiInt
      */
     async accountSetsIdPut(requestParameters: AccountSetsIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto> {
         const response = await this.accountSetsIdPutRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountSetsIdReopenPeriodPost without sending the request
+     */
+    async accountSetsIdReopenPeriodPostRequestOpts(requestParameters: AccountSetsIdReopenPeriodPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountSetsIdReopenPeriodPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/AccountSets/{id}/reopen-period`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountSetsIdReopenPeriodPostRaw(requestParameters: AccountSetsIdReopenPeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountSetDto>> {
+        const requestOptions = await this.accountSetsIdReopenPeriodPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AccountSetDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountSetsIdReopenPeriodPost(requestParameters: AccountSetsIdReopenPeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto> {
+        const response = await this.accountSetsIdReopenPeriodPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

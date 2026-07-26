@@ -16,6 +16,14 @@ Name | Type
 `startMonth` | number
 `startPeriod` | string
 `isCurrent` | boolean
+`accountCodingScheme` | string
+`taxpayerNumber` | string
+`vatRate` | number
+`incomeTaxRate` | number
+`voucherWords` | string
+`closedPeriod` | string
+`nextCloseYear` | number
+`nextCloseMonth` | number
 
 ## Example
 
@@ -34,6 +42,14 @@ const example = {
   "startMonth": null,
   "startPeriod": null,
   "isCurrent": null,
+  "accountCodingScheme": null,
+  "taxpayerNumber": null,
+  "vatRate": null,
+  "incomeTaxRate": null,
+  "voucherWords": null,
+  "closedPeriod": null,
+  "nextCloseYear": null,
+  "nextCloseMonth": null,
 } satisfies AccountSetDto
 
 console.log(example)

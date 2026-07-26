@@ -262,6 +262,7 @@ export default function AccountsPage() {
     }
 
     async function doSaveScheme(scheme: string) {
+        if (!currentSet) return
         setSchemeSaving(true)
         setSchemeError("")
         try {

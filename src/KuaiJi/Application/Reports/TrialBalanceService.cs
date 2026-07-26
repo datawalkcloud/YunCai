@@ -14,8 +14,8 @@ namespace KuaiJi.Application.Reports
 
     /// <summary>
     /// 科目余额表应用服务：按选定会计期间，从凭证分录汇总各科目的期初、本期发生额与期末余额。
-    /// 期初 = 期间起始日之前全部分录的净额；本期发生额 = 期间内借/贷合计；期末 = 期初 + 本期净额。
-    /// 余额按净额正负归入借/贷方，因每张凭证借贷平衡，故合计恒满足试算平衡。
+    /// 期初 = 科目录入的启用期初余额 + 期间起始日之前全部分录的净额；本期发生额 = 期间内借/贷合计；期末 = 期初 + 本期净额。
+    /// 余额按净额正负归入借/贷方，因每张凭证借贷平衡且期初录入经试算平衡校验，故合计恒满足试算平衡。
     /// </summary>
     public sealed class TrialBalanceService
     {
@@ -51,6 +51,15 @@ namespace KuaiJi.Application.Reports
             var openingNet = new Dictionary<Guid, decimal>();
             var periodDebit = new Dictionary<Guid, decimal>();
             var periodCredit = new Dictionary<Guid, decimal>();
+
+            // 科目启用期初余额先于一切凭证，直接计入期初净额（按余额方向换算为借-贷视角）。
+            foreach (var account in accounts.Where(a => a.IsLeaf && a.OpeningBalance != 0m))
+            {
+                var netDebit = account.Direction == BalanceDirection.Debit
+                    ? account.OpeningBalance
+                    : -account.OpeningBalance;
+                openingNet[account.Id] = openingNet.GetValueOrDefault(account.Id) + netDebit;
+            }
 
             foreach (var voucher in vouchers)
             {

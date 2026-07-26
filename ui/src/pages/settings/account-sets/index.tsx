@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { Building2, Check, CheckCircle2, Copy, Edit3, Plus, RefreshCw, Trash2 } from "lucide-react"
+import { Building2, Check, CheckCircle2, Copy, Edit3, Lock, LockOpen, Plus, RefreshCw, Trash2 } from "lucide-react"
 import {
     Alert,
     Button,
@@ -10,6 +10,7 @@ import {
     Empty,
     Form,
     Input,
+    InputNumber,
     Row,
     Select,
     Space,
@@ -56,6 +57,11 @@ interface CreateForm {
     taxpayer: number
     startPeriod: Dayjs
     codingScheme: string
+    // 以下为编辑时才提交的涉税与凭证字信息（新增账套时由后端按纳税人性质预置）。
+    taxpayerNumber?: string
+    vatRate?: number
+    incomeTaxRate?: number
+    voucherWords?: string
 }
 
 export default function AccountSetsPage() {
@@ -120,6 +126,41 @@ export default function AccountSetsPage() {
         }
     }
 
+    /** 月结账：按后端给出的下一待结期间顺序推进，结账前需期间内凭证全部已过账。 */
+    async function closePeriod(set: AccountSetDto) {
+        if (!set.id || busyId || !set.nextCloseYear || !set.nextCloseMonth) return
+        if (!window.confirm(`确定对账套「${set.name}」执行 ${set.nextCloseYear} 年 ${set.nextCloseMonth} 月的结账吗？结账后该期间凭证将不可增删改。`)) return
+        setBusyId(set.id)
+        setListError(null)
+        try {
+            await new AccountSetsApi(apiConfig(token)).accountSetsIdClosePeriodPost({
+                id: set.id,
+                closePeriodRequest: { year: set.nextCloseYear, month: set.nextCloseMonth },
+            })
+            await load()
+        } catch (err) {
+            setListError(await apiErrorMessage(err, "结账失败，请重试。"))
+        } finally {
+            setBusyId(null)
+        }
+    }
+
+    /** 反结账：退回最近一个已结期间。 */
+    async function reopenPeriod(set: AccountSetDto) {
+        if (!set.id || busyId || !set.closedPeriod) return
+        if (!window.confirm(`确定对账套「${set.name}」反结账吗？将退回最近一个已结期间（${set.closedPeriod}）。`)) return
+        setBusyId(set.id)
+        setListError(null)
+        try {
+            await new AccountSetsApi(apiConfig(token)).accountSetsIdReopenPeriodPost({ id: set.id })
+            await load()
+        } catch (err) {
+            setListError(await apiErrorMessage(err, "反结账失败，请重试。"))
+        } finally {
+            setBusyId(null)
+        }
+    }
+
     function openCreate() {
         setEditing(null)
         form.setFieldsValue({
@@ -144,6 +185,10 @@ export default function AccountSetsPage() {
             taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
             startPeriod: set.startPeriod ? dayjs(set.startPeriod) : dayjs(),
             codingScheme: (set as any).accountCodingScheme ?? "4-2-2-2",
+            taxpayerNumber: set.taxpayerNumber ?? "",
+            vatRate: set.vatRate,
+            incomeTaxRate: set.incomeTaxRate,
+            voucherWords: set.voucherWords ?? "记,收,付,转",
         })
         setOpen(true)
     }
@@ -180,6 +225,10 @@ export default function AccountSetsPage() {
                         taxpayerType: values.taxpayer,
                         baseCurrency: values.currency.trim() || "人民币",
                         accountCodingScheme: values.codingScheme?.trim() || undefined,
+                        taxpayerNumber: values.taxpayerNumber?.trim() || undefined,
+                        vatRate: values.vatRate ?? undefined,
+                        incomeTaxRate: values.incomeTaxRate ?? undefined,
+                        voucherWords: values.voucherWords?.trim() || undefined,
                     },
                 })
             } else {
@@ -282,8 +331,16 @@ export default function AccountSetsPage() {
                                         <Col span={12} style={{ textAlign: "right" }}>{set.baseCurrency}</Col>
                                         <Col span={12}><Text type="secondary">纳税人性质</Text></Col>
                                         <Col span={12} style={{ textAlign: "right" }}>{taxpayerLabel(set.taxpayerType)}</Col>
+                                        <Col span={12}><Text type="secondary">纳税人识别号</Text></Col>
+                                        <Col span={12} style={{ textAlign: "right" }}>{set.taxpayerNumber || "—"}</Col>
+                                        <Col span={12}><Text type="secondary">增值税 / 所得税</Text></Col>
+                                        <Col span={12} style={{ textAlign: "right" }}>{set.vatRate ?? "—"}% / {set.incomeTaxRate ?? "—"}%</Col>
+                                        <Col span={12}><Text type="secondary">凭证字</Text></Col>
+                                        <Col span={12} style={{ textAlign: "right" }}>{set.voucherWords || "—"}</Col>
                                         <Col span={12}><Text type="secondary">启用期间</Text></Col>
                                         <Col span={12} style={{ textAlign: "right" }}>{set.startPeriod}</Col>
+                                        <Col span={12}><Text type="secondary">已结至</Text></Col>
+                                        <Col span={12} style={{ textAlign: "right" }}>{set.closedPeriod || "未结账"}</Col>
                                         <Col span={12}><Text type="secondary">编码方案</Text></Col>
                                         <Col span={12} style={{ textAlign: "right" }}>{(set as any).accountCodingScheme ?? "—"}</Col>
                                     </Row>
@@ -301,6 +358,22 @@ export default function AccountSetsPage() {
                                             {set.isCurrent ? "当前账套" : "设为当前"}
                                         </Button>
                                         <Space size={0}>
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<Lock size={14} />}
+                                                disabled={busyId === set.id}
+                                                onClick={() => void closePeriod(set)}
+                                                title={set.nextCloseYear && set.nextCloseMonth ? `结账（${set.nextCloseYear} 年 ${set.nextCloseMonth} 月）` : "结账"}
+                                            />
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<LockOpen size={14} />}
+                                                disabled={!set.closedPeriod || busyId === set.id}
+                                                onClick={() => void reopenPeriod(set)}
+                                                title={set.closedPeriod ? `反结账（退回 ${set.closedPeriod}）` : "尚未结账"}
+                                            />
                                             <Button
                                                 type="text"
                                                 size="small"
@@ -380,6 +453,33 @@ export default function AccountSetsPage() {
                     >
                         <Input placeholder="4-2-2-2" />
                     </Form.Item>
+                    {editing && (
+                        <>
+                            <Form.Item label="纳税人识别号" name="taxpayerNumber">
+                                <Input placeholder="如 91330100MA27XXXXXX" maxLength={50} />
+                            </Form.Item>
+                            <Row gutter={12}>
+                                <Col span={12}>
+                                    <Form.Item label="增值税率（%）" name="vatRate">
+                                        <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item label="所得税率（%）" name="incomeTaxRate">
+                                        <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <Form.Item
+                                label="凭证字"
+                                name="voucherWords"
+                                rules={[{ required: true, message: "请填写凭证字" }]}
+                                extra='以逗号分隔多个凭证字，制单时只能从中选择，如：记,收,付,转。'
+                            >
+                                <Input placeholder="记,收,付,转" maxLength={100} />
+                            </Form.Item>
+                        </>
+                    )}
                 </Form>
             </Drawer>
         </Space>

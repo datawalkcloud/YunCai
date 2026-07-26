@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate, useParams } from "react-router"
-import { BookOpen, Building2, FileText, GalleryVerticalEnd, House, ListTree, LogOut, Scale, Table2 } from "lucide-react"
+import { BookOpen, Building2, FileText, GalleryVerticalEnd, House, ListTree, LogOut, Scale, Sigma, Table2, TrendingUp } from "lucide-react"
 import { Button, Menu, Select, Typography, theme } from "antd"
 import type { MenuProps } from "antd"
 
@@ -28,13 +28,17 @@ const navGroups = [
   },
   {
     label: "报表",
-    items: [{ title: "资产负债表", path: "reports/balance-sheet", icon: Scale }],
+    items: [
+      { title: "资产负债表", path: "reports/balance-sheet", icon: Scale },
+      { title: "利润表", path: "reports/income-statement", icon: TrendingUp },
+    ],
   },
   {
     label: "设置",
     items: [
       { title: "账套", path: "settings/account-sets", icon: Building2 },
       { title: "科目", path: "settings/accounts", icon: ListTree },
+      { title: "期初余额", path: "settings/opening-balances", icon: Sigma },
     ],
   },
 ]

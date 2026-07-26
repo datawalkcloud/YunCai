@@ -16,6 +16,7 @@ Name | Type
 `isLeaf` | boolean
 `isEnabled` | boolean
 `mnemonic` | string
+`openingBalance` | number
 
 ## Example
 
@@ -34,6 +35,7 @@ const example = {
   "isLeaf": null,
   "isEnabled": null,
   "mnemonic": null,
+  "openingBalance": null,
 } satisfies AccountDto
 
 console.log(example)

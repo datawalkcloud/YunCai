@@ -79,6 +79,12 @@ export interface AccountDto {
      * @memberof AccountDto
      */
     mnemonic?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountDto
+     */
+    openingBalance?: number;
 }
 
 /**
@@ -108,6 +114,7 @@ export function AccountDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean)
         'isLeaf': json['isLeaf'] == null ? undefined : json['isLeaf'],
         'isEnabled': json['isEnabled'] == null ? undefined : json['isEnabled'],
         'mnemonic': json['mnemonic'] == null ? undefined : json['mnemonic'],
+        'openingBalance': json['openingBalance'] == null ? undefined : json['openingBalance'],
     };
 }
 
@@ -132,6 +139,7 @@ export function AccountDtoToJSONTyped(value?: AccountDto | null, ignoreDiscrimin
         'isLeaf': value['isLeaf'],
         'isEnabled': value['isEnabled'],
         'mnemonic': value['mnemonic'],
+        'openingBalance': value['openingBalance'],
     };
 }
 

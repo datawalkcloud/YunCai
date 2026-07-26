@@ -25,6 +25,9 @@ namespace KuaiJi.Application.Accounts
 
         public string? Mnemonic { get; init; }
 
+        /// <summary>期初余额（按科目余额方向为正）。</summary>
+        public decimal OpeningBalance { get; init; }
+
         public static AccountDto FromDomain(Account account) => new()
         {
             Id = account.Id,
@@ -37,6 +40,7 @@ namespace KuaiJi.Application.Accounts
             IsLeaf = account.IsLeaf,
             IsEnabled = account.IsEnabled,
             Mnemonic = account.Mnemonic,
+            OpeningBalance = account.OpeningBalance,
         };
     }
 

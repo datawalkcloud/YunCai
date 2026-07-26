@@ -28,20 +28,52 @@ namespace KuaiJi.Application.AccountSets
         /// <summary>科目编码方案，形如 "4-2-2-2"。</summary>
         public string AccountCodingScheme { get; init; } = AccountSet.DefaultCodingScheme;
 
-        public static AccountSetDto FromDomain(AccountSet accountSet) => new()
+        /// <summary>纳税人识别号，可为空。</summary>
+        public string? TaxpayerNumber { get; init; }
+
+        /// <summary>增值税税率（百分比数值）。</summary>
+        public decimal VatRate { get; init; }
+
+        /// <summary>企业所得税税率（百分比数值）。</summary>
+        public decimal IncomeTaxRate { get; init; }
+
+        /// <summary>凭证字列表（逗号分隔，如 "记,收,付,转"）。</summary>
+        public string VoucherWords { get; init; } = AccountSet.DefaultVoucherWords;
+
+        /// <summary>已结账至期间的显示文本（如 "2026-06"）；尚未结账时为 null。</summary>
+        public string? ClosedPeriod { get; init; }
+
+        /// <summary>下一个待结账期间——年份。</summary>
+        public int NextCloseYear { get; init; }
+
+        /// <summary>下一个待结账期间——月份。</summary>
+        public int NextCloseMonth { get; init; }
+
+        public static AccountSetDto FromDomain(AccountSet accountSet)
         {
-            Id = accountSet.Id,
-            Name = accountSet.Name,
-            CompanyName = accountSet.CompanyName,
-            Standard = accountSet.Standard,
-            TaxpayerType = accountSet.TaxpayerType,
-            BaseCurrency = accountSet.BaseCurrency,
-            StartYear = accountSet.StartYear,
-            StartMonth = accountSet.StartMonth,
-            StartPeriod = accountSet.StartPeriodText(),
-            IsCurrent = accountSet.IsCurrent,
-            AccountCodingScheme = accountSet.AccountCodingScheme,
-        };
+            var (nextYear, nextMonth) = accountSet.NextPeriodToClose();
+            return new AccountSetDto
+            {
+                Id = accountSet.Id,
+                Name = accountSet.Name,
+                CompanyName = accountSet.CompanyName,
+                Standard = accountSet.Standard,
+                TaxpayerType = accountSet.TaxpayerType,
+                BaseCurrency = accountSet.BaseCurrency,
+                StartYear = accountSet.StartYear,
+                StartMonth = accountSet.StartMonth,
+                StartPeriod = accountSet.StartPeriodText(),
+                IsCurrent = accountSet.IsCurrent,
+                AccountCodingScheme = accountSet.AccountCodingScheme,
+                TaxpayerNumber = accountSet.TaxpayerNumber,
+                VatRate = accountSet.VatRate,
+                IncomeTaxRate = accountSet.IncomeTaxRate,
+                VoucherWords = accountSet.VoucherWords,
+                ClosedPeriod = accountSet.ClosedPeriodText(),
+                NextCloseYear = nextYear,
+                NextCloseMonth = nextMonth,
+            };
+        }
     }
 
     /// <summary>新建账套请求。</summary>
@@ -80,5 +112,25 @@ namespace KuaiJi.Application.AccountSets
 
         /// <summary>科目编码方案，形如 "4-2-2-2"。</summary>
         public string? AccountCodingScheme { get; init; }
+
+        /// <summary>纳税人识别号；传 null 表示不修改，传空串表示清除。</summary>
+        public string? TaxpayerNumber { get; init; }
+
+        /// <summary>增值税税率（百分比数值）；不传则不修改。</summary>
+        public decimal? VatRate { get; init; }
+
+        /// <summary>企业所得税税率（百分比数值）；不传则不修改。</summary>
+        public decimal? IncomeTaxRate { get; init; }
+
+        /// <summary>凭证字列表（逗号分隔）；不传则不修改。</summary>
+        public string? VoucherWords { get; init; }
+    }
+
+    /// <summary>月末结账请求：指定待结账的会计期间（须为下一个待结期间）。</summary>
+    public sealed class ClosePeriodRequest
+    {
+        public int Year { get; init; }
+
+        public int Month { get; init; }
     }
 }

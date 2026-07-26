@@ -56,6 +56,11 @@ namespace KuaiJi.Infrastructure.Data
                 entity.Property(e => e.StartMonth).HasColumnName("start_month").IsRequired();
                 entity.Property(e => e.IsCurrent).HasColumnName("is_current").IsRequired();
                 entity.Property(e => e.AccountCodingScheme).HasColumnName("account_coding_scheme").IsRequired().HasMaxLength(50).HasDefaultValue(AccountSet.DefaultCodingScheme);
+                entity.Property(e => e.TaxpayerNumber).HasColumnName("taxpayer_number").HasMaxLength(50);
+                entity.Property(e => e.VatRate).HasColumnName("vat_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(13m);
+                entity.Property(e => e.IncomeTaxRate).HasColumnName("income_tax_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(25m);
+                entity.Property(e => e.VoucherWords).HasColumnName("voucher_words").IsRequired().HasMaxLength(100).HasDefaultValue(AccountSet.DefaultVoucherWords);
+                entity.Property(e => e.ClosedPeriod).HasColumnName("closed_period").IsRequired().HasDefaultValue(0);
 
                 entity.HasIndex(e => e.Name).IsUnique();
                 entity.HasIndex(e => e.IsCurrent);
@@ -78,6 +83,7 @@ namespace KuaiJi.Infrastructure.Data
                 entity.Property(e => e.IsEnabled).HasColumnName("is_enabled").IsRequired();
                 entity.Property(e => e.IsPreset).HasColumnName("is_preset").IsRequired();
                 entity.Property(e => e.Mnemonic).HasColumnName("mnemonic").HasMaxLength(50);
+                entity.Property(e => e.OpeningBalance).HasColumnName("opening_balance").HasColumnType("numeric(18,2)").IsRequired().HasDefaultValue(0m);
 
                 // 科目编码在同一账套内唯一。
                 entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();

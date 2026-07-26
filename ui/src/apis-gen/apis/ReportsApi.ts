@@ -17,6 +17,7 @@ import * as runtime from '../runtime';
 import type {
   BalanceSheetDto,
   CashJournalDto,
+  IncomeStatementDto,
   TrialBalanceDto,
 } from '../models/index';
 import {
@@ -24,6 +25,8 @@ import {
     BalanceSheetDtoToJSON,
     CashJournalDtoFromJSON,
     CashJournalDtoToJSON,
+    IncomeStatementDtoFromJSON,
+    IncomeStatementDtoToJSON,
     TrialBalanceDtoFromJSON,
     TrialBalanceDtoToJSON,
 } from '../models/index';
@@ -38,6 +41,12 @@ export interface AccountsetsAccountSetIdReportsCashJournalGetRequest {
     accountSetId: string;
     startDate?: Date;
     endDate?: Date;
+}
+
+export interface AccountsetsAccountSetIdReportsIncomeStatementGetRequest {
+    accountSetId: string;
+    year?: number;
+    month?: number;
 }
 
 export interface AccountsetsAccountSetIdReportsTrialBalanceGetRequest {
@@ -102,6 +111,31 @@ export interface ReportsApiInterface {
     /**
      */
     accountsetsAccountSetIdReportsCashJournalGet(requestParameters: AccountsetsAccountSetIdReportsCashJournalGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashJournalDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsIncomeStatementGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsIncomeStatementGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsIncomeStatementGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsIncomeStatementGetRaw(requestParameters: AccountsetsAccountSetIdReportsIncomeStatementGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IncomeStatementDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdReportsIncomeStatementGet(requestParameters: AccountsetsAccountSetIdReportsIncomeStatementGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IncomeStatementDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdReportsTrialBalanceGet without sending the request
@@ -234,6 +268,57 @@ export class ReportsApi extends runtime.BaseAPI implements ReportsApiInterface {
      */
     async accountsetsAccountSetIdReportsCashJournalGet(requestParameters: AccountsetsAccountSetIdReportsCashJournalGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashJournalDto> {
         const response = await this.accountsetsAccountSetIdReportsCashJournalGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsIncomeStatementGet without sending the request
+     */
+    async accountsetsAccountSetIdReportsIncomeStatementGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsIncomeStatementGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdReportsIncomeStatementGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['year'] != null) {
+            queryParameters['year'] = requestParameters['year'];
+        }
+
+        if (requestParameters['month'] != null) {
+            queryParameters['month'] = requestParameters['month'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Reports/income-statement`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsIncomeStatementGetRaw(requestParameters: AccountsetsAccountSetIdReportsIncomeStatementGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IncomeStatementDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdReportsIncomeStatementGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => IncomeStatementDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsIncomeStatementGet(requestParameters: AccountsetsAccountSetIdReportsIncomeStatementGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IncomeStatementDto> {
+        const response = await this.accountsetsAccountSetIdReportsIncomeStatementGetRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, Upload } from "lucide-react"
+import { CheckCircle2, ClipboardCheck, FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, Undo2, Upload } from "lucide-react"
 import { Alert, Button, Card, Col, DatePicker, Drawer, Radio, Row, Space, Statistic, Table, Tag, Typography, theme } from "antd"
 import dayjs, { type Dayjs } from "dayjs"
 
@@ -77,8 +77,12 @@ const ENTRY_COLUMNS = [
 function getVoucherColumns(ops: {
     onEdit: (v: VoucherListItemDto) => void
     onDelete: (v: VoucherListItemDto) => void
+    onReview: (v: VoucherListItemDto) => void
+    onUnreview: (v: VoucherListItemDto) => void
+    onPost: (v: VoucherListItemDto) => void
     openingId: string | null
     deletingId: string | null
+    workflowId: string | null
 }) {
     return [
         {
@@ -88,7 +92,7 @@ function getVoucherColumns(ops: {
             render: (_: unknown, r: VoucherListItemDto) => (
                 <Space size={4}>
                     <Text strong>{r.voucherNo}</Text>
-                    <Tag color={r.isBalanced ? (r.status === 1 ? "blue" : "green") : "red"} style={{ fontSize: 11, lineHeight: "18px", padding: "0 4px" }}>
+                    <Tag color={r.isBalanced ? (r.status === 1 ? "blue" : r.status === 2 ? "green" : "purple") : "red"} style={{ fontSize: 11, lineHeight: "18px", padding: "0 4px" }}>
                         {r.statusText}
                     </Tag>
                 </Space>
@@ -133,7 +137,7 @@ function getVoucherColumns(ops: {
         {
             title: "操作",
             key: "actions",
-            width: 80,
+            width: 130,
             render: (_: unknown, r: VoucherListItemDto) => (
                 <Space size={0}>
                     {r.status === 1 && (
@@ -146,15 +150,47 @@ function getVoucherColumns(ops: {
                             title="编辑凭证"
                         />
                     )}
-                    <Button
-                        type="text"
-                        size="small"
-                        danger
-                        icon={<Trash2 size={16} />}
-                        loading={ops.deletingId === r.id}
-                        onClick={() => ops.onDelete(r)}
-                        title="删除凭证"
-                    />
+                    {r.status === 1 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<CheckCircle2 size={16} />}
+                            loading={ops.workflowId === r.id}
+                            onClick={() => ops.onReview(r)}
+                            title="审核凭证"
+                        />
+                    )}
+                    {r.status === 2 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<Undo2 size={16} />}
+                            loading={ops.workflowId === r.id}
+                            onClick={() => ops.onUnreview(r)}
+                            title="反审核（退回草稿）"
+                        />
+                    )}
+                    {r.status === 2 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<ClipboardCheck size={16} />}
+                            loading={ops.workflowId === r.id}
+                            onClick={() => ops.onPost(r)}
+                            title="过账（登记入账锁定）"
+                        />
+                    )}
+                    {r.status !== 3 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<Trash2 size={16} />}
+                            loading={ops.deletingId === r.id}
+                            onClick={() => ops.onDelete(r)}
+                            title="删除凭证"
+                        />
+                    )}
                 </Space>
             ),
         },
@@ -176,6 +212,7 @@ export default function VoucherManagePage() {
     const [editing, setEditing] = useState<VoucherDetailDto | null>(null)
     const [openingId, setOpeningId] = useState<string | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
+    const [workflowId, setWorkflowId] = useState<string | null>(null)
     const [dateRange, setDateRange] = useState<DateRange | null>(null)
 
     // ── 凭证导入相关状态 ──
@@ -262,6 +299,37 @@ export default function VoucherManagePage() {
     function handleCreate() {
         setEditing(null)
         setOpen(true)
+    }
+
+    /** 凭证状态流转（审核/反审核/过账）：调用后刷新列表。 */
+    async function handleWorkflow(v: VoucherListItemDto, action: "review" | "unreview" | "post") {
+        if (workflowId || !v.id) return
+        if (action === "post" && !window.confirm(`确定过账凭证「${v.voucherNo}」吗？过账后凭证将登记入账并锁定，不可再修改或删除。`)) return
+        setWorkflowId(v.id)
+        setError(null)
+        try {
+            const api = new VouchersApi(apiConfig(token))
+            const params = { accountSetId, id: v.id }
+            const updated =
+                action === "review"
+                    ? await api.accountsetsAccountSetIdVouchersIdReviewPost(params)
+                    : action === "unreview"
+                        ? await api.accountsetsAccountSetIdVouchersIdUnreviewPost(params)
+                        : await api.accountsetsAccountSetIdVouchersIdPostPost(params)
+            // 就地更新该张凭证的状态与审核人，避免整表重拉。
+            setVouchers((prev) =>
+                prev.map((x) =>
+                    x.id === v.id
+                        ? { ...x, status: updated.status, statusText: updated.statusText, reviewer: updated.reviewer }
+                        : x,
+                ),
+            )
+        } catch (err) {
+            const fallback = action === "review" ? "审核失败，请重试。" : action === "unreview" ? "反审核失败，请重试。" : "过账失败，请重试。"
+            setError(await apiErrorMessage(err, fallback))
+        } finally {
+            setWorkflowId(null)
+        }
     }
 
     function handleSaved() {
@@ -356,7 +424,16 @@ export default function VoucherManagePage() {
                 rowKey="id"
                 dataSource={vouchers}
                 loading={loading}
-                columns={getVoucherColumns({ onEdit: handleEdit, onDelete: handleDelete, openingId, deletingId })}
+                columns={getVoucherColumns({
+                    onEdit: handleEdit,
+                    onDelete: handleDelete,
+                    onReview: (v) => void handleWorkflow(v, "review"),
+                    onUnreview: (v) => void handleWorkflow(v, "unreview"),
+                    onPost: (v) => void handleWorkflow(v, "post"),
+                    openingId,
+                    deletingId,
+                    workflowId,
+                })}
                 expandable={{
                     defaultExpandAllRows: true,
                     expandIcon: () => null,

@@ -1,0 +1,935 @@
+[23:18:36.452  INF] Executed DbCommand (25ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:18:36.601  INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[23:18:36.655  INF] Executed DbCommand (18ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+[23:18:36.676  INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[23:18:36.689  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+[23:18:36.702  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:18:36.705  INF] No migrations were applied. The database is already up to date.
+[23:18:36.938  INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM users AS u)
+[23:18:36.957  INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM account_sets AS a)
+[23:18:37.029  INF] User profile is available. Using 'C:\Users\Sprin\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[23:18:37.099  INF] Now listening on: http://localhost:5271
+[23:18:37.100  INF] Application started. Press Ctrl+C to shut down.
+[23:18:37.100  INF] Hosting environment: Development
+[23:18:37.101  INF] Content root path: g:\Github\Kuaiji\src\KuaiJi
+[23:19:49.719 dad2f8c9e98e537493f1c1160bcb8095 INF] Request starting HTTP/1.1 GET http://localhost:5271/openapi/v1.json - null null
+[23:19:51.037 dad2f8c9e98e537493f1c1160bcb8095 INF] Executing endpoint 'HTTP: GET /openapi/{documentName}.json'
+[23:19:51.199 dad2f8c9e98e537493f1c1160bcb8095 INF] Executed endpoint 'HTTP: GET /openapi/{documentName}.json'
+[23:19:51.202 dad2f8c9e98e537493f1c1160bcb8095 INF] Request finished HTTP/1.1 GET http://localhost:5271/openapi/v1.json - 200 null application/json;charset=utf-8 1484.5493ms
+[23:19:51.421 a247fdf35ff754bf0e410cecc48b48a0 INF] Request starting HTTP/1.1 GET http://localhost:5271/openapi/v1.json - null null
+[23:19:51.424 a247fdf35ff754bf0e410cecc48b48a0 INF] Executing endpoint 'HTTP: GET /openapi/{documentName}.json'
+[23:19:51.449 a247fdf35ff754bf0e410cecc48b48a0 INF] Executed endpoint 'HTTP: GET /openapi/{documentName}.json'
+[23:19:51.450 a247fdf35ff754bf0e410cecc48b48a0 INF] Request finished HTTP/1.1 GET http://localhost:5271/openapi/v1.json - 200 null application/json;charset=utf-8 28.7585ms
+[23:28:27.744  INF] Executed DbCommand (24ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:28:27.912  INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[23:28:27.969  INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+[23:28:27.990  INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[23:28:28.002  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+[23:28:28.016  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:28:28.020  INF] No migrations were applied. The database is already up to date.
+[23:28:28.278  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM users AS u)
+[23:28:28.295  INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM account_sets AS a)
+[23:28:28.346  INF] User profile is available. Using 'C:\Users\Sprin\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[23:28:28.402  INF] Now listening on: http://localhost:5271
+[23:28:28.403  INF] Application started. Press Ctrl+C to shut down.
+[23:28:28.404  INF] Hosting environment: Development
+[23:28:28.404  INF] Content root path: G:\Github\Kuaiji\src\KuaiJi
+[23:29:26.834 422b551dff4d53ff9b036adcfc66803c INF] Request starting HTTP/1.1 POST http://localhost:5271/auth/login - application/json 42
+[23:29:26.852 422b551dff4d53ff9b036adcfc66803c INF] CORS policy execution successful.
+[23:29:26.871 422b551dff4d53ff9b036adcfc66803c INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Login (KuaiJi)'
+[23:29:26.884 422b551dff4d53ff9b036adcfc66803c INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.DTOs.LoginResult]] Login(KuaiJi.Application.DTOs.LoginCommand) on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[23:29:26.892 422b551dff4d53ff9b036adcfc66803c WRN] You do not have a valid license key for the Lucky Penny software MediatR. This is allowed for development and testing scenarios. If you are running in production you are required to have a licensed version. Please visit https://luckypennysoftware.com to obtain a valid license.
+[23:29:27.003 422b551dff4d53ff9b036adcfc66803c INF] Executed DbCommand (18ms) [Parameters=[@username='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u.id, u.display_name, u.password_hash, u.username
+FROM users AS u
+WHERE u.username = @username
+LIMIT 2
+[23:29:27.103 422b551dff4d53ff9b036adcfc66803c INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.DTOs.LoginResult'.
+[23:29:27.114 422b551dff4d53ff9b036adcfc66803c INF] Executed action KuaiJi.Controllers.AuthController.Login (KuaiJi) in 226.2415ms
+[23:29:27.116 422b551dff4d53ff9b036adcfc66803c INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Login (KuaiJi)'
+[23:29:27.120 422b551dff4d53ff9b036adcfc66803c INF] Request finished HTTP/1.1 POST http://localhost:5271/auth/login - 200 null application/json; charset=utf-8 287.893ms
+[23:29:27.129 7db81eaa5b3619c5836ff66e80967707 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets - null null
+[23:29:27.158 7db81eaa5b3619c5836ff66e80967707 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:29:27.163 7db81eaa5b3619c5836ff66e80967707 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:29:27.243 7db81eaa5b3619c5836ff66e80967707 INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+ORDER BY a.name
+[23:29:27.253 7db81eaa5b3619c5836ff66e80967707 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:27.272 7db81eaa5b3619c5836ff66e80967707 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 107.7766ms
+[23:29:27.273 7db81eaa5b3619c5836ff66e80967707 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:29:27.274 747edaf49103a510caf5fbd20e7aaed1 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets - null null
+[23:29:27.275 7db81eaa5b3619c5836ff66e80967707 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets - 200 null application/json; charset=utf-8 145.5735ms
+[23:29:27.278 747edaf49103a510caf5fbd20e7aaed1 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:29:27.278 747edaf49103a510caf5fbd20e7aaed1 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:29:27.296 747edaf49103a510caf5fbd20e7aaed1 INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+ORDER BY a.name
+[23:29:27.297 747edaf49103a510caf5fbd20e7aaed1 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:27.298 747edaf49103a510caf5fbd20e7aaed1 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 18.841ms
+[23:29:27.298 747edaf49103a510caf5fbd20e7aaed1 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:29:27.299 747edaf49103a510caf5fbd20e7aaed1 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets - 200 null application/json; charset=utf-8 25.0732ms
+[23:29:29.023 2292d0811cfc31564b5692b3c5fea029 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal - null null
+[23:29:29.026 2292d0811cfc31564b5692b3c5fea029 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:29.032 2292d0811cfc31564b5692b3c5fea029 INF] Route matched with {action = "GetCashJournal", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.CashJournalDto]] GetCashJournal(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:29.063 2292d0811cfc31564b5692b3c5fea029 INF] Executed DbCommand (14ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:29.106 2292d0811cfc31564b5692b3c5fea029 INF] Executed DbCommand (13ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:29.223 2292d0811cfc31564b5692b3c5fea029 INF] Executed DbCommand (14ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:29.241 2292d0811cfc31564b5692b3c5fea029 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.CashJournalDto'.
+[23:29:29.248 2292d0811cfc31564b5692b3c5fea029 INF] Executed action KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi) in 214.4443ms
+[23:29:29.248 2292d0811cfc31564b5692b3c5fea029 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:29.249 2292d0811cfc31564b5692b3c5fea029 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal - 200 null application/json; charset=utf-8 226.3011ms
+[23:29:29.250 bfa640d59cd665c8db90792bff54c4c7 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal - null null
+[23:29:29.253 bfa640d59cd665c8db90792bff54c4c7 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:29.254 bfa640d59cd665c8db90792bff54c4c7 INF] Route matched with {action = "GetCashJournal", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.CashJournalDto]] GetCashJournal(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:29.268 bfa640d59cd665c8db90792bff54c4c7 INF] Executed DbCommand (11ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:29.282 bfa640d59cd665c8db90792bff54c4c7 INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:29.301 bfa640d59cd665c8db90792bff54c4c7 INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:29.303 bfa640d59cd665c8db90792bff54c4c7 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.CashJournalDto'.
+[23:29:29.304 bfa640d59cd665c8db90792bff54c4c7 INF] Executed action KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi) in 49.2379ms
+[23:29:29.305 bfa640d59cd665c8db90792bff54c4c7 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:29.305 bfa640d59cd665c8db90792bff54c4c7 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal - 200 null application/json; charset=utf-8 54.9978ms
+[23:29:29.336 a7143976d626580af27f159c995b346c INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal?startDate=2025-11-04&endDate=2026-06-30 - null null
+[23:29:29.337 a7143976d626580af27f159c995b346c INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:29.338 a7143976d626580af27f159c995b346c INF] Route matched with {action = "GetCashJournal", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.CashJournalDto]] GetCashJournal(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:29.359 a7143976d626580af27f159c995b346c INF] Executed DbCommand (11ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:29.373 a7143976d626580af27f159c995b346c INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:29.391 a7143976d626580af27f159c995b346c INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:29.394 a7143976d626580af27f159c995b346c INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.CashJournalDto'.
+[23:29:29.395 a7143976d626580af27f159c995b346c INF] Executed action KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi) in 55.9687ms
+[23:29:29.395 a7143976d626580af27f159c995b346c INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:29.396 a7143976d626580af27f159c995b346c INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal?startDate=2025-11-04&endDate=2026-06-30 - 200 null application/json; charset=utf-8 60.3281ms
+[23:29:29.419 9ce868a356df28d501e301d8690c532f INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal?startDate=2025-11-04&endDate=2026-06-30 - null null
+[23:29:29.420 9ce868a356df28d501e301d8690c532f INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:29.421 9ce868a356df28d501e301d8690c532f INF] Route matched with {action = "GetCashJournal", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.CashJournalDto]] GetCashJournal(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:29.434 9ce868a356df28d501e301d8690c532f INF] Executed DbCommand (11ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:29.449 9ce868a356df28d501e301d8690c532f INF] Executed DbCommand (13ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:29.470 9ce868a356df28d501e301d8690c532f INF] Executed DbCommand (14ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:29.472 9ce868a356df28d501e301d8690c532f INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.CashJournalDto'.
+[23:29:29.473 9ce868a356df28d501e301d8690c532f INF] Executed action KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi) in 51.0249ms
+[23:29:29.473 9ce868a356df28d501e301d8690c532f INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:29.474 9ce868a356df28d501e301d8690c532f INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal?startDate=2025-11-04&endDate=2026-06-30 - 200 null application/json; charset=utf-8 55.2463ms
+[23:29:31.607 8a6503fc05bc894557f4141baf9eaaed INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement - null null
+[23:29:31.609 8a6503fc05bc894557f4141baf9eaaed INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:31.615 8a6503fc05bc894557f4141baf9eaaed INF] Route matched with {action = "GetIncomeStatement", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.IncomeStatementDto]] GetIncomeStatement(System.Guid, System.Nullable`1[System.Int32], System.Nullable`1[System.Int32], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:31.633 8a6503fc05bc894557f4141baf9eaaed INF] Executed DbCommand (14ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:31.653 8a6503fc05bc894557f4141baf9eaaed INF] Executed DbCommand (19ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:31.695 8a6503fc05bc894557f4141baf9eaaed INF] Executed DbCommand (18ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:31.701 8a6503fc05bc894557f4141baf9eaaed INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.IncomeStatementDto'.
+[23:29:31.703 8a6503fc05bc894557f4141baf9eaaed INF] Executed action KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi) in 87.6875ms
+[23:29:31.704 8a6503fc05bc894557f4141baf9eaaed INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:31.705 8a6503fc05bc894557f4141baf9eaaed INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement - 200 null application/json; charset=utf-8 97.4779ms
+[23:29:31.707 ff6f5a12ce549c494362e704114535b5 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement - null null
+[23:29:31.708 ff6f5a12ce549c494362e704114535b5 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:31.709 ff6f5a12ce549c494362e704114535b5 INF] Route matched with {action = "GetIncomeStatement", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.IncomeStatementDto]] GetIncomeStatement(System.Guid, System.Nullable`1[System.Int32], System.Nullable`1[System.Int32], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:31.721 17b98a7064ca3bca6601442dc4b87261 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement?year=2026&month=6 - null null
+[23:29:31.722 17b98a7064ca3bca6601442dc4b87261 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:31.723 17b98a7064ca3bca6601442dc4b87261 INF] Route matched with {action = "GetIncomeStatement", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.IncomeStatementDto]] GetIncomeStatement(System.Guid, System.Nullable`1[System.Int32], System.Nullable`1[System.Int32], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:31.723 ff6f5a12ce549c494362e704114535b5 INF] Executed DbCommand (13ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:31.742 ff6f5a12ce549c494362e704114535b5 INF] Executed DbCommand (18ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:31.762 ff6f5a12ce549c494362e704114535b5 INF] Executed DbCommand (15ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:31.766 ff6f5a12ce549c494362e704114535b5 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.IncomeStatementDto'.
+[23:29:31.766 ff6f5a12ce549c494362e704114535b5 INF] Executed action KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi) in 57.1175ms
+[23:29:31.767 ff6f5a12ce549c494362e704114535b5 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:31.767 ff6f5a12ce549c494362e704114535b5 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement - 200 null application/json; charset=utf-8 60.1849ms
+[23:29:31.795 17b98a7064ca3bca6601442dc4b87261 INF] Executed DbCommand (12ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:31.819 17b98a7064ca3bca6601442dc4b87261 INF] Executed DbCommand (22ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:31.837 17b98a7064ca3bca6601442dc4b87261 INF] Executed DbCommand (13ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:31.841 17b98a7064ca3bca6601442dc4b87261 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.IncomeStatementDto'.
+[23:29:31.842 17b98a7064ca3bca6601442dc4b87261 INF] Executed action KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi) in 118.5822ms
+[23:29:31.842 17b98a7064ca3bca6601442dc4b87261 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:31.843 17b98a7064ca3bca6601442dc4b87261 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement?year=2026&month=6 - 200 null application/json; charset=utf-8 121.9781ms
+[23:29:31.844 50604972198a0961907e093e1bbc0c74 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement?year=2026&month=6 - null null
+[23:29:31.846 50604972198a0961907e093e1bbc0c74 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:31.846 50604972198a0961907e093e1bbc0c74 INF] Route matched with {action = "GetIncomeStatement", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.IncomeStatementDto]] GetIncomeStatement(System.Guid, System.Nullable`1[System.Int32], System.Nullable`1[System.Int32], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:31.861 50604972198a0961907e093e1bbc0c74 INF] Executed DbCommand (13ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:31.872 50604972198a0961907e093e1bbc0c74 INF] Executed DbCommand (10ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:31.888 50604972198a0961907e093e1bbc0c74 INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:31.890 50604972198a0961907e093e1bbc0c74 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.IncomeStatementDto'.
+[23:29:31.890 50604972198a0961907e093e1bbc0c74 INF] Executed action KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi) in 43.3523ms
+[23:29:31.891 50604972198a0961907e093e1bbc0c74 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:31.891 50604972198a0961907e093e1bbc0c74 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement?year=2026&month=6 - 200 null application/json; charset=utf-8 47.0352ms
+[23:29:35.988 768919890a13fc0ae0f95568223189fc INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement?year=2026&month=6 - null null
+[23:29:35.989 768919890a13fc0ae0f95568223189fc INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:35.990 768919890a13fc0ae0f95568223189fc INF] Route matched with {action = "GetIncomeStatement", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.IncomeStatementDto]] GetIncomeStatement(System.Guid, System.Nullable`1[System.Int32], System.Nullable`1[System.Int32], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:36.000 768919890a13fc0ae0f95568223189fc INF] Executed DbCommand (9ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:36.015 768919890a13fc0ae0f95568223189fc INF] Executed DbCommand (13ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:36.045 768919890a13fc0ae0f95568223189fc INF] Executed DbCommand (15ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:36.047 768919890a13fc0ae0f95568223189fc INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.IncomeStatementDto'.
+[23:29:36.048 768919890a13fc0ae0f95568223189fc INF] Executed action KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi) in 57.1227ms
+[23:29:36.049 768919890a13fc0ae0f95568223189fc INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetIncomeStatement (KuaiJi)'
+[23:29:36.049 768919890a13fc0ae0f95568223189fc INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/income-statement?year=2026&month=6 - 200 null application/json; charset=utf-8 61.2521ms
+[23:29:37.041 2f972772a304700be43fa64ddb9a6c8c INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/trial-balance - null null
+[23:29:37.043 2f972772a304700be43fa64ddb9a6c8c INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi)'
+[23:29:37.049 2f972772a304700be43fa64ddb9a6c8c INF] Route matched with {action = "GetTrialBalance", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.TrialBalanceDto]] GetTrialBalance(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:37.066 2f972772a304700be43fa64ddb9a6c8c INF] Executed DbCommand (11ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:37.081 2f972772a304700be43fa64ddb9a6c8c INF] Executed DbCommand (14ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.106 2f972772a304700be43fa64ddb9a6c8c INF] Executed DbCommand (16ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:37.109 2f972772a304700be43fa64ddb9a6c8c INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.TrialBalanceDto'.
+[23:29:37.112 2f972772a304700be43fa64ddb9a6c8c INF] Executed action KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi) in 61.0561ms
+[23:29:37.112 2f972772a304700be43fa64ddb9a6c8c INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi)'
+[23:29:37.113 2f972772a304700be43fa64ddb9a6c8c INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/trial-balance - 200 null application/json; charset=utf-8 71.2345ms
+[23:29:37.114 05995f5f3f80955a76e9c8ef283c3392 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/trial-balance - null null
+[23:29:37.115 05995f5f3f80955a76e9c8ef283c3392 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi)'
+[23:29:37.115 05995f5f3f80955a76e9c8ef283c3392 INF] Route matched with {action = "GetTrialBalance", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.TrialBalanceDto]] GetTrialBalance(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:37.126 05995f5f3f80955a76e9c8ef283c3392 INF] Executed DbCommand (9ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:37.140 05995f5f3f80955a76e9c8ef283c3392 INF] Executed DbCommand (13ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.157 866b374dbceb8b35ef858db9b437939c INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/trial-balance?startDate=2025-11-04&endDate=2026-06-30 - null null
+[23:29:37.157 05995f5f3f80955a76e9c8ef283c3392 INF] Executed DbCommand (16ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:37.158 866b374dbceb8b35ef858db9b437939c INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi)'
+[23:29:37.160 05995f5f3f80955a76e9c8ef283c3392 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.TrialBalanceDto'.
+[23:29:37.160 866b374dbceb8b35ef858db9b437939c INF] Route matched with {action = "GetTrialBalance", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.TrialBalanceDto]] GetTrialBalance(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:37.160 05995f5f3f80955a76e9c8ef283c3392 INF] Executed action KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi) in 44.2159ms
+[23:29:37.162 05995f5f3f80955a76e9c8ef283c3392 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi)'
+[23:29:37.162 05995f5f3f80955a76e9c8ef283c3392 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/trial-balance - 200 null application/json; charset=utf-8 48.4063ms
+[23:29:37.173 866b374dbceb8b35ef858db9b437939c INF] Executed DbCommand (11ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:37.183 866b374dbceb8b35ef858db9b437939c INF] Executed DbCommand (9ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.197 866b374dbceb8b35ef858db9b437939c INF] Executed DbCommand (13ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:37.199 866b374dbceb8b35ef858db9b437939c INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.TrialBalanceDto'.
+[23:29:37.199 866b374dbceb8b35ef858db9b437939c INF] Executed action KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi) in 38.131ms
+[23:29:37.200 866b374dbceb8b35ef858db9b437939c INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi)'
+[23:29:37.200 866b374dbceb8b35ef858db9b437939c INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/trial-balance?startDate=2025-11-04&endDate=2026-06-30 - 200 null application/json; charset=utf-8 43.1748ms
+[23:29:37.210 0ae35701caf5cc710317d17809b14431 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/trial-balance?startDate=2025-11-04&endDate=2026-06-30 - null null
+[23:29:37.211 0ae35701caf5cc710317d17809b14431 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi)'
+[23:29:37.212 0ae35701caf5cc710317d17809b14431 INF] Route matched with {action = "GetTrialBalance", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.TrialBalanceDto]] GetTrialBalance(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:37.220 0ae35701caf5cc710317d17809b14431 INF] Executed DbCommand (7ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:37.234 0ae35701caf5cc710317d17809b14431 INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.245 0ae35701caf5cc710317d17809b14431 INF] Executed DbCommand (9ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:37.246 0ae35701caf5cc710317d17809b14431 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.TrialBalanceDto'.
+[23:29:37.247 0ae35701caf5cc710317d17809b14431 INF] Executed action KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi) in 34.1601ms
+[23:29:37.247 0ae35701caf5cc710317d17809b14431 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetTrialBalance (KuaiJi)'
+[23:29:37.248 0ae35701caf5cc710317d17809b14431 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/trial-balance?startDate=2025-11-04&endDate=2026-06-30 - 200 null application/json; charset=utf-8 38.172ms
+[23:29:37.490 3a352c9b34e9a186393a0d87cbbd2938 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Vouchers - null null
+[23:29:37.490 094508a76175e8ff033f59d9a8a75c84 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Accounts?leafOnly=true - null null
+[23:29:37.491 3a352c9b34e9a186393a0d87cbbd2938 INF] Executing endpoint 'KuaiJi.Controllers.VouchersController.GetAll (KuaiJi)'
+[23:29:37.492 094508a76175e8ff033f59d9a8a75c84 INF] Executing endpoint 'KuaiJi.Controllers.AccountsController.GetAll (KuaiJi)'
+[23:29:37.497 094508a76175e8ff033f59d9a8a75c84 INF] Route matched with {action = "GetAll", controller = "Accounts"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.Accounts.AccountDto]]] GetAll(System.Guid, Boolean, System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountsController (KuaiJi).
+[23:29:37.498 3a352c9b34e9a186393a0d87cbbd2938 INF] Route matched with {action = "GetAll", controller = "Vouchers"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.Vouchers.VoucherListItemDto]]] GetAll(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.VouchersController (KuaiJi).
+[23:29:37.509 3a352c9b34e9a186393a0d87cbbd2938 INF] Executed DbCommand (7ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:37.513 094508a76175e8ff033f59d9a8a75c84 INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.516 094508a76175e8ff033f59d9a8a75c84 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.Accounts.AccountDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:37.523 3a352c9b34e9a186393a0d87cbbd2938 INF] Executed DbCommand (13ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.530 094508a76175e8ff033f59d9a8a75c84 INF] Executed action KuaiJi.Controllers.AccountsController.GetAll (KuaiJi) in 31.7309ms
+[23:29:37.531 094508a76175e8ff033f59d9a8a75c84 INF] Executed endpoint 'KuaiJi.Controllers.AccountsController.GetAll (KuaiJi)'
+[23:29:37.532 094508a76175e8ff033f59d9a8a75c84 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Accounts?leafOnly=true - 200 null application/json; charset=utf-8 41.9085ms
+[23:29:37.533 21d28d269aac9451b1072e8fef7317e7 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Accounts?leafOnly=true - null null
+[23:29:37.534 21d28d269aac9451b1072e8fef7317e7 INF] Executing endpoint 'KuaiJi.Controllers.AccountsController.GetAll (KuaiJi)'
+[23:29:37.535 21d28d269aac9451b1072e8fef7317e7 INF] Route matched with {action = "GetAll", controller = "Accounts"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.Accounts.AccountDto]]] GetAll(System.Guid, Boolean, System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountsController (KuaiJi).
+[23:29:37.539 3a352c9b34e9a186393a0d87cbbd2938 INF] Executed DbCommand (14ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:37.544 3a352c9b34e9a186393a0d87cbbd2938 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.Vouchers.VoucherListItemDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:37.545 21d28d269aac9451b1072e8fef7317e7 INF] Executed DbCommand (9ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.547 21d28d269aac9451b1072e8fef7317e7 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.Accounts.AccountDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:37.548 21d28d269aac9451b1072e8fef7317e7 INF] Executed action KuaiJi.Controllers.AccountsController.GetAll (KuaiJi) in 12.2673ms
+[23:29:37.548 21d28d269aac9451b1072e8fef7317e7 INF] Executed endpoint 'KuaiJi.Controllers.AccountsController.GetAll (KuaiJi)'
+[23:29:37.549 21d28d269aac9451b1072e8fef7317e7 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Accounts?leafOnly=true - 200 null application/json; charset=utf-8 15.6134ms
+[23:29:37.552 3a352c9b34e9a186393a0d87cbbd2938 INF] Executed action KuaiJi.Controllers.VouchersController.GetAll (KuaiJi) in 52.2854ms
+[23:29:37.552 3a352c9b34e9a186393a0d87cbbd2938 INF] Executed endpoint 'KuaiJi.Controllers.VouchersController.GetAll (KuaiJi)'
+[23:29:37.553 3a352c9b34e9a186393a0d87cbbd2938 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Vouchers - 200 null application/json; charset=utf-8 63.3159ms
+[23:29:37.554 0e05751f84c8b78fd37860d641b81efd INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Vouchers - null null
+[23:29:37.556 0e05751f84c8b78fd37860d641b81efd INF] Executing endpoint 'KuaiJi.Controllers.VouchersController.GetAll (KuaiJi)'
+[23:29:37.556 0e05751f84c8b78fd37860d641b81efd INF] Route matched with {action = "GetAll", controller = "Vouchers"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.Vouchers.VoucherListItemDto]]] GetAll(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.VouchersController (KuaiJi).
+[23:29:37.570 0e05751f84c8b78fd37860d641b81efd INF] Executed DbCommand (12ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:37.583 0e05751f84c8b78fd37860d641b81efd INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.602 0e05751f84c8b78fd37860d641b81efd INF] Executed DbCommand (17ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:37.604 0e05751f84c8b78fd37860d641b81efd INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.Vouchers.VoucherListItemDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:37.605 0e05751f84c8b78fd37860d641b81efd INF] Executed action KuaiJi.Controllers.VouchersController.GetAll (KuaiJi) in 48.1979ms
+[23:29:37.606 0e05751f84c8b78fd37860d641b81efd INF] Executed endpoint 'KuaiJi.Controllers.VouchersController.GetAll (KuaiJi)'
+[23:29:37.606 0e05751f84c8b78fd37860d641b81efd INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Vouchers - 200 null application/json; charset=utf-8 51.6674ms
+[23:29:37.862 c8a63f074f6b80c6a4c21dab24158182 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal - null null
+[23:29:37.864 c8a63f074f6b80c6a4c21dab24158182 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:37.864 c8a63f074f6b80c6a4c21dab24158182 INF] Route matched with {action = "GetCashJournal", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.CashJournalDto]] GetCashJournal(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:37.873 c8a63f074f6b80c6a4c21dab24158182 INF] Executed DbCommand (7ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:37.887 c8a63f074f6b80c6a4c21dab24158182 INF] Executed DbCommand (13ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.897 c8a63f074f6b80c6a4c21dab24158182 INF] Executed DbCommand (8ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:37.899 c8a63f074f6b80c6a4c21dab24158182 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.CashJournalDto'.
+[23:29:37.899 c8a63f074f6b80c6a4c21dab24158182 INF] Executed action KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi) in 34.1465ms
+[23:29:37.900 c8a63f074f6b80c6a4c21dab24158182 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:37.901 c8a63f074f6b80c6a4c21dab24158182 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal - 200 null application/json; charset=utf-8 38.2958ms
+[23:29:37.902 15cc61b35c43f929982d54229ea7b008 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal - null null
+[23:29:37.903 15cc61b35c43f929982d54229ea7b008 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:37.904 15cc61b35c43f929982d54229ea7b008 INF] Route matched with {action = "GetCashJournal", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.CashJournalDto]] GetCashJournal(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:37.917 15cc61b35c43f929982d54229ea7b008 INF] Executed DbCommand (11ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:37.928 15cc61b35c43f929982d54229ea7b008 INF] Executed DbCommand (10ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.941 15cc61b35c43f929982d54229ea7b008 INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:37.942 15cc61b35c43f929982d54229ea7b008 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.CashJournalDto'.
+[23:29:37.943 15cc61b35c43f929982d54229ea7b008 INF] Executed action KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi) in 37.8248ms
+[23:29:37.943 15cc61b35c43f929982d54229ea7b008 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:37.944 15cc61b35c43f929982d54229ea7b008 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal - 200 null application/json; charset=utf-8 42.3638ms
+[23:29:37.954 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal?startDate=2025-11-04&endDate=2026-06-30 - null null
+[23:29:37.955 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:37.955 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Route matched with {action = "GetCashJournal", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.CashJournalDto]] GetCashJournal(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:37.964 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Executed DbCommand (8ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:37.977 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:37.988 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Executed DbCommand (9ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:37.989 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.CashJournalDto'.
+[23:29:37.990 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Executed action KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi) in 33.8917ms
+[23:29:37.990 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:37.991 8b7e3b95eba6d8fda7a7cd64069cdd42 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal?startDate=2025-11-04&endDate=2026-06-30 - 200 null application/json; charset=utf-8 37.0226ms
+[23:29:38.025 637315fcf8c7c90ccb3fe56387540085 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal?startDate=2025-11-04&endDate=2026-06-30 - null null
+[23:29:38.026 637315fcf8c7c90ccb3fe56387540085 INF] Executing endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:38.027 637315fcf8c7c90ccb3fe56387540085 INF] Route matched with {action = "GetCashJournal", controller = "Reports"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.Reports.CashJournalDto]] GetCashJournal(System.Guid, System.Nullable`1[System.DateOnly], System.Nullable`1[System.DateOnly], System.Threading.CancellationToken) on controller KuaiJi.Controllers.ReportsController (KuaiJi).
+[23:29:38.039 637315fcf8c7c90ccb3fe56387540085 INF] Executed DbCommand (11ms) [Parameters=[@id='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+WHERE a.id = @id
+LIMIT 2
+[23:29:38.049 637315fcf8c7c90ccb3fe56387540085 INF] Executed DbCommand (8ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:38.065 637315fcf8c7c90ccb3fe56387540085 INF] Executed DbCommand (14ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT v.id, v.account_set_id, v.attachment_count, v.date, v.number, v.preparer, v.reviewer, v.status, v.word, v0.id, v0.account_id, v0.credit, v0.debit, v0.line_number, v0.summary, v0.voucher_id
+FROM vouchers AS v
+LEFT JOIN voucher_entries AS v0 ON v.id = v0.voucher_id
+WHERE v.account_set_id = @accountSetId
+ORDER BY v.date, v.word, v.number, v.id
+[23:29:38.066 637315fcf8c7c90ccb3fe56387540085 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.Reports.CashJournalDto'.
+[23:29:38.067 637315fcf8c7c90ccb3fe56387540085 INF] Executed action KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi) in 39.5541ms
+[23:29:38.068 637315fcf8c7c90ccb3fe56387540085 INF] Executed endpoint 'KuaiJi.Controllers.ReportsController.GetCashJournal (KuaiJi)'
+[23:29:38.069 637315fcf8c7c90ccb3fe56387540085 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Reports/cash-journal?startDate=2025-11-04&endDate=2026-06-30 - 200 null application/json; charset=utf-8 44.1819ms
+[23:29:39.638 6f07e2d9680f9c484ea8beaab6726563 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Accounts - null null
+[23:29:39.640 6f07e2d9680f9c484ea8beaab6726563 INF] Executing endpoint 'KuaiJi.Controllers.AccountsController.GetAll (KuaiJi)'
+[23:29:39.641 6f07e2d9680f9c484ea8beaab6726563 INF] Route matched with {action = "GetAll", controller = "Accounts"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.Accounts.AccountDto]]] GetAll(System.Guid, Boolean, System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountsController (KuaiJi).
+[23:29:39.656 6f07e2d9680f9c484ea8beaab6726563 INF] Executed DbCommand (11ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:39.665 6f07e2d9680f9c484ea8beaab6726563 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.Accounts.AccountDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:39.666 6f07e2d9680f9c484ea8beaab6726563 INF] Executed action KuaiJi.Controllers.AccountsController.GetAll (KuaiJi) in 24.0053ms
+[23:29:39.667 6f07e2d9680f9c484ea8beaab6726563 INF] Executed endpoint 'KuaiJi.Controllers.AccountsController.GetAll (KuaiJi)'
+[23:29:39.667 6f07e2d9680f9c484ea8beaab6726563 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Accounts - 200 null application/json; charset=utf-8 28.9758ms
+[23:29:39.669 594039066e0235285c0e8fd42863ec5f INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Accounts - null null
+[23:29:39.670 594039066e0235285c0e8fd42863ec5f INF] Executing endpoint 'KuaiJi.Controllers.AccountsController.GetAll (KuaiJi)'
+[23:29:39.670 594039066e0235285c0e8fd42863ec5f INF] Route matched with {action = "GetAll", controller = "Accounts"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.Accounts.AccountDto]]] GetAll(System.Guid, Boolean, System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountsController (KuaiJi).
+[23:29:39.683 594039066e0235285c0e8fd42863ec5f INF] Executed DbCommand (12ms) [Parameters=[@accountSetId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_set_id, a.category, a.code, a.direction, a.is_enabled, a.is_leaf, a.is_preset, a.level, a.mnemonic, a.name, a.parent_id
+FROM accounts AS a
+WHERE a.account_set_id = @accountSetId
+ORDER BY a.code
+[23:29:39.700 594039066e0235285c0e8fd42863ec5f INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.Accounts.AccountDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:39.701 594039066e0235285c0e8fd42863ec5f INF] Executed action KuaiJi.Controllers.AccountsController.GetAll (KuaiJi) in 29.5751ms
+[23:29:39.701 594039066e0235285c0e8fd42863ec5f INF] Executed endpoint 'KuaiJi.Controllers.AccountsController.GetAll (KuaiJi)'
+[23:29:39.701 594039066e0235285c0e8fd42863ec5f INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets/f23ecd0a-6cc3-4da2-82f7-0b1c4bd57e3a/Accounts - 200 null application/json; charset=utf-8 32.4867ms
+[23:29:40.386 b241cf4e2bef1212dfd74788992e967b INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:29:40.388 b241cf4e2bef1212dfd74788992e967b INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:29:40.388 b241cf4e2bef1212dfd74788992e967b INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:29:40.399 b241cf4e2bef1212dfd74788992e967b INF] Executed DbCommand (9ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+ORDER BY a.name
+[23:29:40.400 b241cf4e2bef1212dfd74788992e967b INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:40.401 b241cf4e2bef1212dfd74788992e967b INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 11.8346ms
+[23:29:40.401 b241cf4e2bef1212dfd74788992e967b INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:29:40.402 b241cf4e2bef1212dfd74788992e967b INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 15.5711ms
+[23:29:40.403 5319761f3ae5d92ff01443cd86f207ba INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:29:40.404 5319761f3ae5d92ff01443cd86f207ba INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:29:40.404 5319761f3ae5d92ff01443cd86f207ba INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:29:40.459 5319761f3ae5d92ff01443cd86f207ba INF] Executed DbCommand (54ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.company_name, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_type
+FROM account_sets AS a
+ORDER BY a.name
+[23:29:40.460 5319761f3ae5d92ff01443cd86f207ba INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:29:40.461 5319761f3ae5d92ff01443cd86f207ba INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 55.7616ms
+[23:29:40.462 5319761f3ae5d92ff01443cd86f207ba INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:29:40.462 5319761f3ae5d92ff01443cd86f207ba INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 59.4151ms
+[23:49:10.232  INF] Executed DbCommand (22ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:49:10.391  INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[23:49:10.439  INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+[23:49:10.456  INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[23:49:10.468  INF] Executed DbCommand (11ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+[23:49:10.479  INF] Executed DbCommand (11ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:49:10.483  INF] Applying migration '20260726154841_AddAccountSetExtensions'.
+[23:49:10.504  INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE accounts ADD opening_balance numeric(18,2) NOT NULL DEFAULT 0.0;
+[23:49:10.516  INF] Executed DbCommand (11ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE account_sets ADD closed_period integer NOT NULL DEFAULT 0;
+[23:49:10.528  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE account_sets ADD income_tax_rate numeric(5,2) NOT NULL DEFAULT 25.0;
+[23:49:10.539  INF] Executed DbCommand (11ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE account_sets ADD taxpayer_number character varying(50);
+[23:49:10.551  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE account_sets ADD vat_rate numeric(5,2) NOT NULL DEFAULT 13.0;
+[23:49:10.564  INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE account_sets ADD voucher_words character varying(100) NOT NULL DEFAULT '记,收,付,转';
+[23:49:10.575  INF] Executed DbCommand (11ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260726154841_AddAccountSetExtensions', '10.0.10');
+[23:49:21.440  INF] Executed DbCommand (23ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:49:21.591  INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[23:49:21.639  INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+[23:49:21.657  INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[23:49:21.669  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+[23:49:21.683  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[23:49:21.686  INF] No migrations were applied. The database is already up to date.
+[23:49:21.903  INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM users AS u)
+[23:49:21.921  INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM account_sets AS a)
+[23:49:21.972  INF] User profile is available. Using 'C:\Users\Sprin\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[23:49:22.029  INF] Now listening on: http://localhost:5271
+[23:49:22.031  INF] Application started. Press Ctrl+C to shut down.
+[23:49:22.031  INF] Hosting environment: Development
+[23:49:22.032  INF] Content root path: g:\Github\Kuaiji\src\KuaiJi
+[23:50:02.095 06e780c2dddde2ee3d538bf12f42dd17 INF] Request starting HTTP/1.1 GET http://localhost:5271/openapi/v1.json - null null
+[23:50:02.778 06e780c2dddde2ee3d538bf12f42dd17 INF] Executing endpoint 'HTTP: GET /openapi/{documentName}.json'
+[23:50:02.953 06e780c2dddde2ee3d538bf12f42dd17 INF] Executed endpoint 'HTTP: GET /openapi/{documentName}.json'
+[23:50:02.956 06e780c2dddde2ee3d538bf12f42dd17 INF] Request finished HTTP/1.1 GET http://localhost:5271/openapi/v1.json - 200 null application/json;charset=utf-8 862.3705ms
+[23:50:03.173 4d8361e50d57f1a4335bcb933ad972a5 INF] Request starting HTTP/1.1 GET http://localhost:5271/openapi/v1.json - null null
+[23:50:03.176 4d8361e50d57f1a4335bcb933ad972a5 INF] Executing endpoint 'HTTP: GET /openapi/{documentName}.json'
+[23:50:03.210 4d8361e50d57f1a4335bcb933ad972a5 INF] Executed endpoint 'HTTP: GET /openapi/{documentName}.json'
+[23:50:03.211 4d8361e50d57f1a4335bcb933ad972a5 INF] Request finished HTTP/1.1 GET http://localhost:5271/openapi/v1.json - 200 null application/json;charset=utf-8 37.2629ms
+[23:50:04.426 68662a40a3327971a7441d2ead87641a INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:50:04.523 68662a40a3327971a7441d2ead87641a INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:04.541 68662a40a3327971a7441d2ead87641a INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:50:04.658 68662a40a3327971a7441d2ead87641a INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 111.8838ms
+[23:50:04.660 68662a40a3327971a7441d2ead87641a INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:04.663 68662a40a3327971a7441d2ead87641a INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 499 null null 237.5937ms
+[23:50:04.867 5012ce5eff87cd4a1b3db22d867b5add INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[23:50:04.873 5012ce5eff87cd4a1b3db22d867b5add INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:50:04.875 5012ce5eff87cd4a1b3db22d867b5add INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[23:50:04.879 5012ce5eff87cd4a1b3db22d867b5add WRN] You do not have a valid license key for the Lucky Penny software MediatR. This is allowed for development and testing scenarios. If you are running in production you are required to have a licensed version. Please visit https://luckypennysoftware.com to obtain a valid license.
+[23:50:04.922 5012ce5eff87cd4a1b3db22d867b5add INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.DTOs.UserDto'.
+[23:50:04.925 5012ce5eff87cd4a1b3db22d867b5add INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 49.5964ms
+[23:50:04.926 5012ce5eff87cd4a1b3db22d867b5add INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:50:04.927 5012ce5eff87cd4a1b3db22d867b5add INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 60.0653ms
+[23:50:04.927 facd1391026a064399df4d632bc8ef6c INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[23:50:04.931 facd1391026a064399df4d632bc8ef6c INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:50:04.931 facd1391026a064399df4d632bc8ef6c INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[23:50:04.932 facd1391026a064399df4d632bc8ef6c INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.DTOs.UserDto'.
+[23:50:04.933 facd1391026a064399df4d632bc8ef6c INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 1.0747ms
+[23:50:04.934 facd1391026a064399df4d632bc8ef6c INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:50:04.934 facd1391026a064399df4d632bc8ef6c INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 6.6821ms
+[23:50:05.003 a2f2cb935e0501ce1d8932684b5d1db4 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets - null null
+[23:50:05.005 a2f2cb935e0501ce1d8932684b5d1db4 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:05.005 a2f2cb935e0501ce1d8932684b5d1db4 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:50:05.023 15228e2806e69b86a5da81218d128878 INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:50:05.024 15228e2806e69b86a5da81218d128878 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:05.025 15228e2806e69b86a5da81218d128878 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:50:05.072 15228e2806e69b86a5da81218d128878 INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:50:05.084 15228e2806e69b86a5da81218d128878 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:50:05.091 15228e2806e69b86a5da81218d128878 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 65.5043ms
+[23:50:05.092 15228e2806e69b86a5da81218d128878 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:05.093 15228e2806e69b86a5da81218d128878 INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 70.4767ms
+[23:50:05.093 f5eb28a7664ef6343b1a0a738058f3a8 INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:50:05.095 f5eb28a7664ef6343b1a0a738058f3a8 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:05.096 f5eb28a7664ef6343b1a0a738058f3a8 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:50:05.118 f5eb28a7664ef6343b1a0a738058f3a8 INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:50:05.119 f5eb28a7664ef6343b1a0a738058f3a8 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:50:05.121 f5eb28a7664ef6343b1a0a738058f3a8 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 18.5682ms
+[23:50:05.121 f5eb28a7664ef6343b1a0a738058f3a8 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:05.122 f5eb28a7664ef6343b1a0a738058f3a8 INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 29.032ms
+[23:50:05.155 a2f2cb935e0501ce1d8932684b5d1db4 INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:50:05.157 a2f2cb935e0501ce1d8932684b5d1db4 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:50:05.158 a2f2cb935e0501ce1d8932684b5d1db4 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 151.4622ms
+[23:50:05.159 a2f2cb935e0501ce1d8932684b5d1db4 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:05.160 a2f2cb935e0501ce1d8932684b5d1db4 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets - 200 null application/json; charset=utf-8 156.6198ms
+[23:50:05.162 42b844e3d65c33c67dd8ddf983a6352b INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets - null null
+[23:50:05.163 42b844e3d65c33c67dd8ddf983a6352b INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:05.164 42b844e3d65c33c67dd8ddf983a6352b INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:50:05.179 42b844e3d65c33c67dd8ddf983a6352b INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:50:05.180 42b844e3d65c33c67dd8ddf983a6352b INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:50:05.182 42b844e3d65c33c67dd8ddf983a6352b INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 16.7353ms
+[23:50:05.183 42b844e3d65c33c67dd8ddf983a6352b INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:05.184 42b844e3d65c33c67dd8ddf983a6352b INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets - 200 null application/json; charset=utf-8 22.0607ms
+[23:50:14.621 a7ba464a211363839bf15acb2d676b9b INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:50:14.622 a7ba464a211363839bf15acb2d676b9b INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:14.623 a7ba464a211363839bf15acb2d676b9b INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:50:14.639 a7ba464a211363839bf15acb2d676b9b INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:50:14.640 a7ba464a211363839bf15acb2d676b9b INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:50:14.641 a7ba464a211363839bf15acb2d676b9b INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 16.7351ms
+[23:50:14.641 a7ba464a211363839bf15acb2d676b9b INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:14.642 a7ba464a211363839bf15acb2d676b9b INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 20.5114ms
+[23:50:15.964 aefbd0ddebd321f90a30596a9a60670a INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:50:15.965 aefbd0ddebd321f90a30596a9a60670a INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:15.966 aefbd0ddebd321f90a30596a9a60670a INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:50:15.979 aefbd0ddebd321f90a30596a9a60670a INF] Executed DbCommand (11ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:50:15.980 aefbd0ddebd321f90a30596a9a60670a INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:50:15.981 aefbd0ddebd321f90a30596a9a60670a INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 14.195ms
+[23:50:15.981 aefbd0ddebd321f90a30596a9a60670a INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:50:15.982 aefbd0ddebd321f90a30596a9a60670a INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 17.7308ms
+[23:51:40.178 712311bb4715e27eb0b86a7e2b4fa23d INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:51:40.180 712311bb4715e27eb0b86a7e2b4fa23d INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:51:40.180 712311bb4715e27eb0b86a7e2b4fa23d INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:51:40.197 712311bb4715e27eb0b86a7e2b4fa23d INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:51:40.198 712311bb4715e27eb0b86a7e2b4fa23d INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:51:40.199 712311bb4715e27eb0b86a7e2b4fa23d INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 17.7381ms
+[23:51:40.199 712311bb4715e27eb0b86a7e2b4fa23d INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:51:40.200 712311bb4715e27eb0b86a7e2b4fa23d INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 21.6335ms
+[23:52:37.720 1fb5347011d6c79ea2d2f61fdc792a54 INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:52:37.721 1fb5347011d6c79ea2d2f61fdc792a54 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:52:37.721 1fb5347011d6c79ea2d2f61fdc792a54 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:52:37.734 1fb5347011d6c79ea2d2f61fdc792a54 INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:52:37.735 1fb5347011d6c79ea2d2f61fdc792a54 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:52:37.736 1fb5347011d6c79ea2d2f61fdc792a54 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 13.9253ms
+[23:52:37.737 1fb5347011d6c79ea2d2f61fdc792a54 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:52:37.737 1fb5347011d6c79ea2d2f61fdc792a54 INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 17.2695ms
+[23:52:43.999 a7dba98d58e2ab3a907d081d88604b49 INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:52:44.000 a7dba98d58e2ab3a907d081d88604b49 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:52:44.001 a7dba98d58e2ab3a907d081d88604b49 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:52:44.015 a7dba98d58e2ab3a907d081d88604b49 INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:52:44.016 a7dba98d58e2ab3a907d081d88604b49 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:52:44.017 a7dba98d58e2ab3a907d081d88604b49 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 15.3107ms
+[23:52:44.017 a7dba98d58e2ab3a907d081d88604b49 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:52:44.018 a7dba98d58e2ab3a907d081d88604b49 INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 19.3264ms
+[23:53:33.547 189e1243e4df508cdbd7bff7210d135e INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[23:53:33.548 189e1243e4df508cdbd7bff7210d135e INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:53:33.549 189e1243e4df508cdbd7bff7210d135e INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[23:53:33.551 189e1243e4df508cdbd7bff7210d135e INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.DTOs.UserDto'.
+[23:53:33.551 189e1243e4df508cdbd7bff7210d135e INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 1.7247ms
+[23:53:33.552 189e1243e4df508cdbd7bff7210d135e INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:53:33.552 189e1243e4df508cdbd7bff7210d135e INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 5.8769ms
+[23:53:33.554 94fca69ef8b0afacf26fbbee7528b4f2 INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[23:53:33.555 94fca69ef8b0afacf26fbbee7528b4f2 INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:53:33.555 94fca69ef8b0afacf26fbbee7528b4f2 INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[23:53:33.556 94fca69ef8b0afacf26fbbee7528b4f2 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.DTOs.UserDto'.
+[23:53:33.556 94fca69ef8b0afacf26fbbee7528b4f2 INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 0.4815ms
+[23:53:33.556 94fca69ef8b0afacf26fbbee7528b4f2 INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:53:33.557 94fca69ef8b0afacf26fbbee7528b4f2 INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 3.1277ms
+[23:53:33.618 fde3db327f76119959a1f03c19600281 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets - null null
+[23:53:33.620 fde3db327f76119959a1f03c19600281 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:53:33.620 fde3db327f76119959a1f03c19600281 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:53:33.633 dacd2c55aa687378bf634cd91d5fb78d INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:53:33.634 fde3db327f76119959a1f03c19600281 INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:53:33.635 dacd2c55aa687378bf634cd91d5fb78d INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:53:33.635 fde3db327f76119959a1f03c19600281 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:53:33.635 dacd2c55aa687378bf634cd91d5fb78d INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:53:33.636 fde3db327f76119959a1f03c19600281 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 15.0015ms
+[23:53:33.637 fde3db327f76119959a1f03c19600281 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:53:33.638 fde3db327f76119959a1f03c19600281 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets - 200 null application/json; charset=utf-8 19.8122ms
+[23:53:33.638 08f78929de5968dd9641ed700a390f3c INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets - null null
+[23:53:33.640 08f78929de5968dd9641ed700a390f3c INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:53:33.641 08f78929de5968dd9641ed700a390f3c INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:53:33.651 dacd2c55aa687378bf634cd91d5fb78d INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:53:33.652 dacd2c55aa687378bf634cd91d5fb78d INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:53:33.653 dacd2c55aa687378bf634cd91d5fb78d INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 16.2088ms
+[23:53:33.653 dacd2c55aa687378bf634cd91d5fb78d INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:53:33.654 dacd2c55aa687378bf634cd91d5fb78d INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 20.5588ms
+[23:53:33.655 61f66b255b2d5ec09891b6b5a5bdc918 INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:53:33.655 08f78929de5968dd9641ed700a390f3c INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:53:33.656 61f66b255b2d5ec09891b6b5a5bdc918 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:53:33.657 08f78929de5968dd9641ed700a390f3c INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:53:33.657 61f66b255b2d5ec09891b6b5a5bdc918 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:53:33.657 08f78929de5968dd9641ed700a390f3c INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 16.0471ms
+[23:53:33.659 08f78929de5968dd9641ed700a390f3c INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:53:33.659 08f78929de5968dd9641ed700a390f3c INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets - 200 null application/json; charset=utf-8 20.989ms
+[23:53:33.672 61f66b255b2d5ec09891b6b5a5bdc918 INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:53:33.673 61f66b255b2d5ec09891b6b5a5bdc918 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:53:33.674 61f66b255b2d5ec09891b6b5a5bdc918 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 16.0719ms
+[23:53:33.675 61f66b255b2d5ec09891b6b5a5bdc918 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:53:33.675 61f66b255b2d5ec09891b6b5a5bdc918 INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 20.2115ms
+[23:54:26.984 0bae43c07465e1308e9583f3b6cd43fc INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:54:26.986 0bae43c07465e1308e9583f3b6cd43fc INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:26.986 0bae43c07465e1308e9583f3b6cd43fc INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:54:27.010 0bae43c07465e1308e9583f3b6cd43fc INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 22.44ms
+[23:54:27.011 0bae43c07465e1308e9583f3b6cd43fc INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:27.012 0bae43c07465e1308e9583f3b6cd43fc INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 499 null null 27.2479ms
+[23:54:27.105 67c4566ec8b20bc1df68987fc1f731a2 INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[23:54:27.107 67c4566ec8b20bc1df68987fc1f731a2 INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:54:27.108 67c4566ec8b20bc1df68987fc1f731a2 INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[23:54:27.109 67c4566ec8b20bc1df68987fc1f731a2 INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.DTOs.UserDto'.
+[23:54:27.110 67c4566ec8b20bc1df68987fc1f731a2 INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 1.2522ms
+[23:54:27.111 67c4566ec8b20bc1df68987fc1f731a2 INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:54:27.111 67c4566ec8b20bc1df68987fc1f731a2 INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 6.5669ms
+[23:54:27.113 bb6cf035205d9ef82fd7d16998592dcb INF] Request starting HTTP/1.1 GET http://localhost:5271/auth/me - application/json null
+[23:54:27.115 bb6cf035205d9ef82fd7d16998592dcb INF] Executing endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:54:27.115 bb6cf035205d9ef82fd7d16998592dcb INF] Route matched with {action = "Me", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.ActionResult`1[KuaiJi.Application.DTOs.UserDto] Me() on controller KuaiJi.Controllers.AuthController (KuaiJi).
+[23:54:27.116 bb6cf035205d9ef82fd7d16998592dcb INF] Executing OkObjectResult, writing value of type 'KuaiJi.Application.DTOs.UserDto'.
+[23:54:27.116 bb6cf035205d9ef82fd7d16998592dcb INF] Executed action KuaiJi.Controllers.AuthController.Me (KuaiJi) in 0.5796ms
+[23:54:27.117 bb6cf035205d9ef82fd7d16998592dcb INF] Executed endpoint 'KuaiJi.Controllers.AuthController.Me (KuaiJi)'
+[23:54:27.117 bb6cf035205d9ef82fd7d16998592dcb INF] Request finished HTTP/1.1 GET http://localhost:5271/auth/me - 200 null application/json; charset=utf-8 3.9347ms
+[23:54:27.174 f808ad9a2eee22b5941f4d7663b310aa INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets - null null
+[23:54:27.176 f808ad9a2eee22b5941f4d7663b310aa INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:27.176 f808ad9a2eee22b5941f4d7663b310aa INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:54:27.192 45b36cfbc13e2ea55f36a8ebb112bf20 INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:54:27.193 45b36cfbc13e2ea55f36a8ebb112bf20 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:27.193 45b36cfbc13e2ea55f36a8ebb112bf20 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:54:27.261 45b36cfbc13e2ea55f36a8ebb112bf20 INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:54:27.262 45b36cfbc13e2ea55f36a8ebb112bf20 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:54:27.263 45b36cfbc13e2ea55f36a8ebb112bf20 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 69.0417ms
+[23:54:27.264 45b36cfbc13e2ea55f36a8ebb112bf20 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:27.265 45b36cfbc13e2ea55f36a8ebb112bf20 INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 73.0634ms
+[23:54:27.265 f808ad9a2eee22b5941f4d7663b310aa INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:54:27.266 35ca6418f562706c5cb9f52a6a4a92a0 INF] Request starting HTTP/1.1 GET http://localhost:5271/AccountSets - null null
+[23:54:27.266 f808ad9a2eee22b5941f4d7663b310aa INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:54:27.267 35ca6418f562706c5cb9f52a6a4a92a0 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:27.267 f808ad9a2eee22b5941f4d7663b310aa INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 90.5591ms
+[23:54:27.268 35ca6418f562706c5cb9f52a6a4a92a0 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:54:27.268 f808ad9a2eee22b5941f4d7663b310aa INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:27.269 cdca44cc43b37ff176dd5a4a83a054e2 INF] Request starting HTTP/1.1 GET http://localhost:5271/accountsets - null null
+[23:54:27.270 f808ad9a2eee22b5941f4d7663b310aa INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets - 200 null application/json; charset=utf-8 95.3116ms
+[23:54:27.271 cdca44cc43b37ff176dd5a4a83a054e2 INF] Executing endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:27.272 cdca44cc43b37ff176dd5a4a83a054e2 INF] Route matched with {action = "GetAll", controller = "AccountSets"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult`1[System.Collections.Generic.IReadOnlyList`1[KuaiJi.Application.AccountSets.AccountSetDto]]] GetAll(System.Threading.CancellationToken) on controller KuaiJi.Controllers.AccountSetsController (KuaiJi).
+[23:54:27.280 35ca6418f562706c5cb9f52a6a4a92a0 INF] Executed DbCommand (10ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:54:27.282 35ca6418f562706c5cb9f52a6a4a92a0 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:54:27.282 35ca6418f562706c5cb9f52a6a4a92a0 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 13.0507ms
+[23:54:27.283 35ca6418f562706c5cb9f52a6a4a92a0 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:27.283 35ca6418f562706c5cb9f52a6a4a92a0 INF] Request finished HTTP/1.1 GET http://localhost:5271/AccountSets - 200 null application/json; charset=utf-8 17.629ms
+[23:54:27.287 cdca44cc43b37ff176dd5a4a83a054e2 INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT a.id, a.account_coding_scheme, a.base_currency, a.closed_period, a.company_name, a.income_tax_rate, a.is_current, a.name, a.standard, a.start_month, a.start_year, a.taxpayer_number, a.taxpayer_type, a.vat_rate, a.voucher_words
+FROM account_sets AS a
+ORDER BY a.name
+[23:54:27.288 cdca44cc43b37ff176dd5a4a83a054e2 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[KuaiJi.Application.AccountSets.AccountSetDto, KuaiJi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[23:54:27.288 cdca44cc43b37ff176dd5a4a83a054e2 INF] Executed action KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi) in 15.6794ms
+[23:54:27.289 cdca44cc43b37ff176dd5a4a83a054e2 INF] Executed endpoint 'KuaiJi.Controllers.AccountSetsController.GetAll (KuaiJi)'
+[23:54:27.289 cdca44cc43b37ff176dd5a4a83a054e2 INF] Request finished HTTP/1.1 GET http://localhost:5271/accountsets - 200 null application/json; charset=utf-8 19.8423ms

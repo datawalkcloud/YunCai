@@ -54,10 +54,25 @@ export interface AccountsetsAccountSetIdVouchersIdGetRequest {
     id: string;
 }
 
+export interface AccountsetsAccountSetIdVouchersIdPostPostRequest {
+    accountSetId: string;
+    id: string;
+}
+
 export interface AccountsetsAccountSetIdVouchersIdPutRequest {
     accountSetId: string;
     id: string;
     updateVoucherRequest: UpdateVoucherRequest;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdReviewPostRequest {
+    accountSetId: string;
+    id: string;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdUnreviewPostRequest {
+    accountSetId: string;
+    id: string;
 }
 
 export interface AccountsetsAccountSetIdVouchersImportPostRequest {
@@ -171,6 +186,29 @@ export interface VouchersApiInterface {
     accountsetsAccountSetIdVouchersIdGet(requestParameters: AccountsetsAccountSetIdVouchersIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdPostPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdPostPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdPostPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdPostPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdPostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdPostPost(requestParameters: AccountsetsAccountSetIdVouchersIdPostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersIdPut without sending the request
      * @param {string} accountSetId 
      * @param {string} id 
@@ -196,9 +234,56 @@ export interface VouchersApiInterface {
     accountsetsAccountSetIdVouchersIdPut(requestParameters: AccountsetsAccountSetIdVouchersIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdReviewPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdReviewPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdReviewPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdReviewPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdReviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdReviewPost(requestParameters: AccountsetsAccountSetIdVouchersIdReviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdUnreviewPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdUnreviewPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdUnreviewPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdUnreviewPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdUnreviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdUnreviewPost(requestParameters: AccountsetsAccountSetIdVouchersIdUnreviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersImportPost without sending the request
      * @param {string} accountSetId 
      * @param {Blob} [file] 
+     * @param {number} [conflict] 
      * @throws {RequiredError}
      * @memberof VouchersApiInterface
      */
@@ -208,6 +293,7 @@ export interface VouchersApiInterface {
      * 
      * @param {string} accountSetId 
      * @param {Blob} [file] 
+     * @param {number} [conflict] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof VouchersApiInterface
@@ -443,6 +529,57 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdPostPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdPostPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdPostPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdPostPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdPostPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/post`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdPostPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdPostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdPostPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VoucherDetailDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdPostPost(requestParameters: AccountsetsAccountSetIdVouchersIdPostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
+        const response = await this.accountsetsAccountSetIdVouchersIdPostPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersIdPut without sending the request
      */
     async accountsetsAccountSetIdVouchersIdPutRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdPutRequest): Promise<runtime.RequestOpts> {
@@ -504,6 +641,108 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdReviewPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdReviewPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdReviewPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdReviewPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdReviewPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/review`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdReviewPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdReviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdReviewPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VoucherDetailDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdReviewPost(requestParameters: AccountsetsAccountSetIdVouchersIdReviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
+        const response = await this.accountsetsAccountSetIdVouchersIdReviewPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdUnreviewPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdUnreviewPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdUnreviewPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdUnreviewPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdUnreviewPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/unreview`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdUnreviewPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdUnreviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdUnreviewPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VoucherDetailDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdUnreviewPost(requestParameters: AccountsetsAccountSetIdVouchersIdUnreviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
+        const response = await this.accountsetsAccountSetIdVouchersIdUnreviewPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersImportPost without sending the request
      */
     async accountsetsAccountSetIdVouchersImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersImportPostRequest): Promise<runtime.RequestOpts> {
@@ -539,8 +778,8 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
         }
 
         if (requestParameters['conflict'] != null) {
-            formParams.append('conflict', String(requestParameters['conflict']));
-        }
+            formParams.append('conflict', new Blob([JSON.stringify(requestParameters['conflict'])], { type: "application/json", }));
+                    }
 
 
         let urlPath = `/accountsets/{accountSetId}/Vouchers/import`;
