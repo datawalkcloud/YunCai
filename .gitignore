@@ -1,3 +1,5 @@
 bin
 obj
 /src/.vs
+/.vs
+/src/KuaiJi/Logs
