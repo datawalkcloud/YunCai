@@ -50,6 +50,7 @@ builder.Services.AddScoped<KuaiJi.Domain.Users.IUserRepository, KuaiJi.Infrastru
 builder.Services.AddScoped<KuaiJi.Domain.AccountSets.IAccountSetRepository, KuaiJi.Infrastructure.AccountSets.AccountSetRepository>();
 builder.Services.AddScoped<KuaiJi.Domain.Accounting.IAccountRepository, KuaiJi.Infrastructure.Accounting.AccountRepository>();
 builder.Services.AddScoped<KuaiJi.Domain.Journals.IJournalRepository, KuaiJi.Infrastructure.Journals.JournalRepository>();
+builder.Services.AddScoped<KuaiJi.Domain.Journals.IEntryCategoryRepository, KuaiJi.Infrastructure.Journals.EntryCategoryRepository>();
 builder.Services.AddScoped<KuaiJi.Domain.Vouchers.IVoucherRepository, KuaiJi.Infrastructure.Vouchers.VoucherRepository>();
 builder.Services.AddScoped<KuaiJi.Application.Vouchers.IVoucherImportReader, KuaiJi.Infrastructure.Vouchers.XlsVoucherImportReader>();
 builder.Services.AddScoped<KuaiJi.Application.Vouchers.VoucherImportService>();
@@ -58,6 +59,10 @@ builder.Services.AddScoped<KuaiJi.Application.Accounts.AccountAutoCreateService>
 builder.Services.AddScoped<KuaiJi.Application.Accounts.IAccountImportReader, KuaiJi.Infrastructure.Accounting.XlsxAccountImportReader>();
 builder.Services.AddScoped<KuaiJi.Application.Accounts.AccountImportService>();
 builder.Services.AddScoped<KuaiJi.Application.Accounts.OpeningBalanceService>();
+builder.Services.AddScoped<KuaiJi.Application.Journals.JournalService>();
+builder.Services.AddScoped<KuaiJi.Application.Journals.EntryCategoryService>();
+builder.Services.AddScoped<KuaiJi.Application.Journals.IJournalImportReader, KuaiJi.Infrastructure.Journals.XlsJournalImportReader>();
+builder.Services.AddScoped<KuaiJi.Application.Journals.JournalImportService>();
 builder.Services.AddScoped<KuaiJi.Application.Reports.TrialBalanceService>();
 builder.Services.AddScoped<KuaiJi.Application.Reports.BalanceSheetService>();
 builder.Services.AddScoped<KuaiJi.Application.Reports.CashJournalService>();

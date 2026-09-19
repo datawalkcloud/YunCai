@@ -297,6 +297,10 @@ namespace KuaiJi.Controllers
                 return BadRequest(new { message = "账套下仍有科目、凭证或日记账，无法删除。" });
             }
 
+            // 收支类别仅为记账归类的字典数据，随账套一并清理，不阻止删除。
+            var categories = await _context.EntryCategories.Where(c => c.AccountSetId == id).ToListAsync(cancellationToken);
+            _context.EntryCategories.RemoveRange(categories);
+
             _accountSetRepository.Remove(accountSet);
             await _accountSetRepository.SaveChangesAsync(cancellationToken);
             return NoContent();

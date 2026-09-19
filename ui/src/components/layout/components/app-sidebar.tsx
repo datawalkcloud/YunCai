@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate, useParams } from "react-router"
-import { BookOpen, Building2, FileText, GalleryVerticalEnd, House, ListTree, LogOut, Scale, Sigma, Table2, TrendingUp } from "lucide-react"
+import { BookOpen, Building2, FileText, GalleryVerticalEnd, House, ListTree, LogOut, Scale, Sigma, Table2, Tags, TrendingUp } from "lucide-react"
 import { Button, Menu, Select, Typography, theme } from "antd"
 import type { MenuProps } from "antd"
 
@@ -14,7 +14,10 @@ const navGroups = [
   },
   {
     label: "资金",
-    items: [{ title: "现金日记账", path: "funds/cash-journal", icon: BookOpen }],
+    items: [
+      { title: "现金日记账", path: "funds/cash-journal", icon: BookOpen },
+      { title: "收支类别", path: "funds/entry-categories", icon: Tags },
+    ],
   },
   {
     label: "凭证",

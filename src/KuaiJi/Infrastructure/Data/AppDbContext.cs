@@ -22,6 +22,8 @@ namespace KuaiJi.Infrastructure.Data
 
         public DbSet<Journal> Journals { get; set; } = null!;
 
+        public DbSet<EntryCategory> EntryCategories { get; set; } = null!;
+
         public DbSet<Voucher> Vouchers { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -46,7 +48,9 @@ namespace KuaiJi.Infrastructure.Data
                 entity.ToTable("account_sets");
                 entity.HasKey(e => e.Id);
 
-                entity.Property(e => e.Id).HasColumnName("id");
+                // 主键由领域层生成（Guid.NewGuid），须声明非存储生成，
+                // 否则经导航集合新增的实体会被 EF 误判为已存在而生成 UPDATE。
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
                 entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
                 entity.Property(e => e.CompanyName).HasColumnName("company_name").IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Standard).HasColumnName("standard").HasConversion<int>().IsRequired();
@@ -71,7 +75,7 @@ namespace KuaiJi.Infrastructure.Data
                 entity.ToTable("accounts");
                 entity.HasKey(e => e.Id);
 
-                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
                 entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
                 entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(32);
                 entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
@@ -112,7 +116,7 @@ namespace KuaiJi.Infrastructure.Data
                 entity.ToTable("vouchers");
                 entity.HasKey(e => e.Id);
 
-                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
                 entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
                 entity.Property(e => e.Word).HasColumnName("word").IsRequired().HasMaxLength(8);
                 entity.Property(e => e.Number).HasColumnName("number").IsRequired();
@@ -148,7 +152,7 @@ namespace KuaiJi.Infrastructure.Data
                 entity.ToTable("voucher_entries");
                 entity.HasKey(e => e.Id);
 
-                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
                 entity.Property(e => e.VoucherId).HasColumnName("voucher_id").IsRequired();
                 entity.Property(e => e.LineNumber).HasColumnName("line_number").IsRequired();
                 entity.Property(e => e.Summary).HasColumnName("summary").IsRequired().HasMaxLength(200);
@@ -165,7 +169,7 @@ namespace KuaiJi.Infrastructure.Data
                 entity.ToTable("journals");
                 entity.HasKey(e => e.Id);
 
-                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
                 entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
                 entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
                 entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
@@ -196,7 +200,7 @@ namespace KuaiJi.Infrastructure.Data
                 entity.ToTable("journal_entries");
                 entity.HasKey(e => e.Id);
 
-                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
                 entity.Property(e => e.JournalId).HasColumnName("journal_id").IsRequired();
                 entity.Property(e => e.Sequence).HasColumnName("sequence").IsRequired();
                 entity.Property(e => e.Date).HasColumnName("date").IsRequired();
@@ -210,6 +214,26 @@ namespace KuaiJi.Infrastructure.Data
 
                 entity.HasIndex(e => e.JournalId);
                 entity.HasIndex(e => e.VoucherId);
+            });
+
+            modelBuilder.Entity<EntryCategory>(entity =>
+            {
+                entity.ToTable("entry_categories");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(EntryCategory.MaxNameLength);
+
+                // 同一账套同一类型内类别名称唯一。
+                entity.HasIndex(e => new { e.AccountSetId, e.Type, e.Name }).IsUnique();
+
+                // 收支类别归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

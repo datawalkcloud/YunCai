@@ -25,7 +25,6 @@ namespace KuaiJi.Migrations
             modelBuilder.Entity("KuaiJi.Domain.AccountSets.AccountSet", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -119,7 +118,6 @@ namespace KuaiJi.Migrations
             modelBuilder.Entity("KuaiJi.Domain.Accounting.Account", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -188,10 +186,37 @@ namespace KuaiJi.Migrations
                     b.ToTable("accounts", (string)null);
                 });
 
+            modelBuilder.Entity("KuaiJi.Domain.Journals.EntryCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId", "Type", "Name")
+                        .IsUnique();
+
+                    b.ToTable("entry_categories", (string)null);
+                });
+
             modelBuilder.Entity("KuaiJi.Domain.Journals.Journal", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -227,7 +252,6 @@ namespace KuaiJi.Migrations
             modelBuilder.Entity("KuaiJi.Domain.Journals.JournalEntry", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -318,7 +342,6 @@ namespace KuaiJi.Migrations
             modelBuilder.Entity("KuaiJi.Domain.Vouchers.Voucher", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -369,7 +392,6 @@ namespace KuaiJi.Migrations
             modelBuilder.Entity("KuaiJi.Domain.Vouchers.VoucherEntry", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -422,6 +444,15 @@ namespace KuaiJi.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("KuaiJi.Domain.Journals.EntryCategory", b =>
+                {
+                    b.HasOne("KuaiJi.Domain.AccountSets.AccountSet", null)
+                        .WithMany()
+                        .HasForeignKey("AccountSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("KuaiJi.Domain.Journals.Journal", b =>

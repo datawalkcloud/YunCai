@@ -147,7 +147,10 @@ namespace KuaiJi.Application.Journals
         };
     }
 
-    /// <summary>建账请求。对应科目须为货币资金末级科目（库存现金 / 银行存款），且账套内该科目尚未建账。</summary>
+    /// <summary>
+    /// 建账请求。指定 <see cref="AccountId"/> 时对应科目须为货币资金末级科目（库存现金 / 银行存款），且账套内该科目尚未建账；
+    /// 省略时系统按类型自动在 1001 / 1002 下创建与账簿同名的明细科目并绑定。
+    /// </summary>
     public sealed class CreateJournalRequest
     {
         /// <summary>日记账类型（1=现金，2=银行存款）。</summary>
@@ -155,7 +158,8 @@ namespace KuaiJi.Application.Journals
 
         public string Name { get; init; } = null!;
 
-        public Guid AccountId { get; init; }
+        /// <summary>对应的货币资金末级科目；省略时由系统自动创建明细科目。</summary>
+        public Guid? AccountId { get; init; }
 
         public decimal OpeningBalance { get; init; }
     }

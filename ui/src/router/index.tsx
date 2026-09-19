@@ -5,6 +5,7 @@ import Login from "@/pages/login/Login";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import CashJournal from "@/pages/funds/cash-journal";
+import EntryCategories from "@/pages/funds/entry-categories";
 import TrialBalance from "@/pages/ledger/trial-balance";
 import VoucherManage from "@/pages/vouchers/manage";
 import BalanceSheet from "@/pages/reports/balance-sheet";
@@ -97,6 +98,7 @@ const router = createBrowserRouter([
                 children: [
                     { index: true, element: <Home /> },
                     { path: "funds/cash-journal", element: <CashJournal /> },
+                    { path: "funds/entry-categories", element: <EntryCategories /> },
                     { path: "ledger/trial-balance", element: <TrialBalance /> },
                     { path: "vouchers/manage", element: <VoucherManage /> },
                     { path: "reports/balance-sheet", element: <BalanceSheet /> },

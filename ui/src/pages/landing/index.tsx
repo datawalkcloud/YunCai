@@ -5,16 +5,14 @@ import {
     ArrowUp,
     BarChart3,
     BookOpen,
-    Check,
     CheckCircle2,
     ChevronDown,
     Cloud,
-    Copy,
     FileText,
-    Folder,
     GalleryVerticalEnd,
     LayoutDashboard,
     ListChecks,
+    ListTree,
     Lock,
     ScaleIcon,
     ShieldCheck,
@@ -98,52 +96,52 @@ const BENTO_STATS = [
 const FEATURES = [
     {
         icon: FileText,
-        tag: "VOUCHER",
+        tag: "凭证处理",
         title: "凭证管理",
         desc: "录入、编辑、审核记账凭证，自动校验借贷平衡，支持金额大写。",
         bars: [72, 48, 60],
     },
     {
         icon: Upload,
-        tag: "IMPORT",
+        tag: "批量建账",
         title: "凭证导入",
         desc: "从 Excel 一键批量导入历史凭证，快速完成建账初始化。",
         bars: [56, 80, 40],
     },
     {
         icon: Table2,
-        tag: "TRIAL-BALANCE",
+        tag: "总账查询",
         title: "科目余额表",
         desc: "按期间实时汇总各科目发生额与余额，随时掌握账务全貌。",
         bars: [64, 44, 76],
     },
     {
         icon: ScaleIcon,
-        tag: "BALANCE-SHEET",
+        tag: "财务报表",
         title: "资产负债表",
         desc: "遵循会企 01 表标准行次，从凭证实时归集，报表随点随出。",
         bars: [52, 68, 36],
     },
     {
         icon: BookOpen,
-        tag: "CASH-JOURNAL",
+        tag: "资金管理",
         title: "现金日记账",
         desc: "自动从库存现金凭证派生序时账，逐笔余额一目了然。",
         bars: [76, 40, 58],
     },
     {
         icon: LayoutDashboard,
-        tag: "ACCOUNT-SETS",
+        tag: "多公司",
         title: "多账套管理",
         desc: "一个账号管理多家公司账套，随时切换互不干扰。",
         bars: [44, 62, 70],
     },
 ]
 
-/** 代码 token：kw=橙色关键字，str=绿色字符串/金额，dim=弱化。 */
+/** 单据行 token：kw=橙色强调（借贷方向/单据名），str=绿色金额，dim=弱化。 */
 type Tok = { t: string; c?: "kw" | "str" | "dim" }
 
-/** 功能详解 Tab（连体文件夹舌 + 代码窗口 + UI mock）。 */
+/** 功能详解 Tab（连体标签舌 + 单据窗口 + UI mock）。 */
 const HIGHLIGHTS = [
     {
         key: "voucher",
@@ -153,14 +151,14 @@ const HIGHLIGHTS = [
         titleMuted: "一气呵成。",
         desc: "结构化的分录录入界面，实时校验借贷平衡与金额大写，避免手工核算出错。历史凭证可从 Excel 批量导入，建账不再是负担。",
         points: ["借贷自动平衡校验", "金额大写自动生成", "Excel 批量导入历史凭证"],
-        file: "记-0007.PZ",
+        file: "记账凭证 记-0007",
         code: [
-            [{ t: "凭证", c: "kw" as const }, { t: " 记-0007 · 2026-07-25 {" }],
-            [{ t: "  借", c: "kw" as const }, { t: "  银行存款" }, { t: "            120,000.00", c: "str" as const }],
-            [{ t: "  贷", c: "kw" as const }, { t: "  主营业务收入" }, { t: "        113,207.55", c: "str" as const }],
-            [{ t: "  贷", c: "kw" as const }, { t: "  应交税费·增值税" }, { t: "      6,792.45", c: "str" as const }],
-            [{ t: "}" }],
-            [{ t: "✓ 借贷平衡 · 壹拾贰万元整", c: "dim" as const }],
+            [{ t: "记账凭证", c: "kw" as const }, { t: "  记-0007 · 2026-07-25" }],
+            [{ t: "借", c: "kw" as const }, { t: "  银行存款" }, { t: "              120,000.00", c: "str" as const }],
+            [{ t: "贷", c: "kw" as const }, { t: "  主营业务收入" }, { t: "          113,207.55", c: "str" as const }],
+            [{ t: "贷", c: "kw" as const }, { t: "  应交税费——应交增值税" }, { t: "  6,792.45", c: "str" as const }],
+            [{ t: "合计", c: "kw" as const }, { t: "  壹拾贰万元整" }, { t: "        120,000.00", c: "str" as const }],
+            [{ t: "✓ 借贷平衡，凭证可保存", c: "dim" as const }],
         ],
         mockLabel: "凭证审核",
         mockRows: [
@@ -177,13 +175,13 @@ const HIGHLIGHTS = [
         titleMuted: "无需等待。",
         desc: "科目余额表、资产负债表、现金日记账全部从凭证实时归集计算，按会计准则标准行次呈现，任意期间随时查看。",
         points: ["会企 01 表标准行次", "任意期间即时切换", "资产负债恒等式自动平衡"],
-        file: "BALANCE-SHEET.2026-07",
+        file: "资产负债表 2026-07",
         code: [
-            [{ t: "报表", c: "kw" as const }, { t: " 资产负债表 · 2026-07 {" }],
-            [{ t: "  资产总计" }, { t: "          1,286,400.00", c: "str" as const }],
-            [{ t: "  负债合计" }, { t: "            486,400.00", c: "str" as const }],
-            [{ t: "  所有者权益合计" }, { t: "      800,000.00", c: "str" as const }],
-            [{ t: "}" }],
+            [{ t: "资产负债表", c: "kw" as const }, { t: "  会企01表 · 2026年07月" }],
+            [{ t: "资产总计" }, { t: "            1,286,400.00", c: "str" as const }],
+            [{ t: "负债合计" }, { t: "              486,400.00", c: "str" as const }],
+            [{ t: "所有者权益合计" }, { t: "        800,000.00", c: "str" as const }],
+            [{ t: "负债和所有者权益总计" }, { t: "  1,286,400.00", c: "str" as const }],
             [{ t: "✓ 资产 = 负债 + 所有者权益", c: "dim" as const }],
         ],
         mockLabel: "期间切换",
@@ -200,15 +198,14 @@ const HIGHLIGHTS = [
         title: "多账套隔离，",
         titleMuted: "数据更安心。",
         desc: "一个账号即可管理多家公司账套，数据彼此隔离；登录鉴权保护每一次访问，账务数据只有你能看见。",
-        points: ["多账套数据隔离", "登录令牌鉴权", "随时切换互不干扰"],
-        file: "ACCOUNT-SETS.CONF",
+        points: ["多账套数据隔离", "登录后才能访问账务", "随时切换互不干扰"],
+        file: "我的账套",
         code: [
-            [{ t: "账套", c: "kw" as const }, { t: " {" }],
-            [{ t: "  杭州数从科技有限公司" }, { t: "   ← 当前", c: "str" as const }],
-            [{ t: "  示例贸易有限公司" }, { t: "       已隔离", c: "dim" as const }],
-            [{ t: "  示例咨询有限公司" }, { t: "       已隔离", c: "dim" as const }],
-            [{ t: "}" }],
-            [{ t: "✓ JWT 鉴权 · 账套级数据隔离", c: "dim" as const }],
+            [{ t: "账套列表", c: "kw" as const }, { t: "  共 3 个" }],
+            [{ t: "杭州数从科技有限公司" }, { t: "   当前在用", c: "str" as const }],
+            [{ t: "示例贸易有限公司" }, { t: "       数据隔离", c: "dim" as const }],
+            [{ t: "示例咨询有限公司" }, { t: "       数据隔离", c: "dim" as const }],
+            [{ t: "✓ 登录鉴权 · 账套间数据完全隔离", c: "dim" as const }],
         ],
         mockLabel: "访问控制",
         mockRows: [
@@ -273,26 +270,7 @@ function GradientPill({
     )
 }
 
-/** 命令复制框：等宽字体 + 复制图标（mastra hero 的 npm create 框）。 */
-function CommandPill({ command }: { command: string }) {
-    const [copied, setCopied] = useState(false)
-    const copy = () => {
-        navigator.clipboard?.writeText(command).catch(() => {})
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-    }
-    return (
-        <button
-            type="button"
-            onClick={copy}
-            title="复制"
-            className="inline-flex h-[50px] items-center gap-3 rounded-full border-[1.5px] border-transparent pl-[22px] pr-5 font-mono text-[14.5px] tracking-[0.055em] text-[#e6e6e6] transition-[filter] hover:brightness-125 [background:linear-gradient(#1c1c1c,#1c1c1c)_padding-box,linear-gradient(to_bottom,#383838,rgba(43,43,43,0))_border-box]"
-        >
-            {command}
-            {copied ? <Check className="size-[18px] text-[#98fc82]" /> : <Copy className="size-[18px] text-[#939393]" />}
-        </button>
-    )
-}
+/** 命令复制框已移除：会计软件不存在命令行安装，改用副按钮引导浏览功能。 */
 
 /** 标签舌（lip）：从上沿挂出的凸起圆角舌，两肩反向圆角内凹。 */
 function Lip({
@@ -334,11 +312,11 @@ function SectionTitle({ white, muted }: { white: string; muted: string }) {
     )
 }
 
-/** 代码窗口：无红绿灯，左上角文件名胶囊，橙关键字/绿字符串高亮。 */
+/** 单据窗口：左上角单据名胶囊，橙色强调/绿色金额高亮，模拟凭证与报表版式。 */
 function CodeWindow({ file, code }: { file: string; code: Tok[][] }) {
     return (
         <div className="rounded-[24px] bg-[#080808] p-6">
-            <span className="inline-flex rounded-lg bg-[#1c1c1c] px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-[#d9d9d9]">
+            <span className="inline-flex rounded-lg bg-[#1c1c1c] px-3 py-1.5 font-mono text-[11px] tracking-widest text-[#d9d9d9]">
                 {file}
             </span>
             <pre className="mt-5 overflow-x-auto font-mono text-[13.5px] leading-7">
@@ -472,10 +450,12 @@ export default function LandingPage() {
                                 ，好会计打通从凭证到财务报表的全流程，告别繁琐的手工核算。
                             </p>
                             <div className="flex flex-wrap items-center gap-3 pt-1">
-                                <CommandPill command="kuaiji import 凭证.xls" />
                                 <GradientPill large onClick={() => navigate(primaryHref)}>
                                     {primaryLabel}
                                     <ArrowRight className="size-4" />
+                                </GradientPill>
+                                <GradientPill large href="#features">
+                                    了解核心功能
                                 </GradientPill>
                             </div>
                             <ul className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-xs uppercase tracking-widest text-[#707070]">
@@ -497,18 +477,25 @@ export default function LandingPage() {
                                 <div className="h-4 w-1/3 rounded-full bg-[#141414]" />
                                 <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#141414] px-4 py-3">
                                     <div className="h-3 w-24 rounded-full bg-[#262626]" />
-                                    <span className="flex size-7 items-center justify-center rounded-full bg-[#262626]">
-                                        <ArrowUp className="size-3.5 text-[#939393]" />
+                                    <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-widest text-[#98fc82]">
+                                        <CheckCircle2 className="size-3.5" />
+                                        借贷平衡
                                     </span>
                                 </div>
                             </div>
                             <div className="absolute left-0 top-14 w-64 rounded-[24px] bg-[#141414] p-6 shadow-[0_24px_80px_-16px_rgba(0,0,0,0.95)]">
-                                <p className="text-[15px] text-[#939393]">我的账套</p>
+                                <p className="text-[15px] text-[#939393]">账务导航</p>
                                 <ul className="mt-4 flex flex-col gap-3.5 text-[15px] text-[#d9d9d9]">
-                                    {["记账凭证", "科目余额表", "资产负债表", "现金日记账", "多账套"].map((t, i) => (
-                                        <li key={t} className="flex items-center gap-2.5">
-                                            <Folder className={"size-4 " + (i === 0 ? "text-[#2adb5c]" : "text-[#707070]")} />
-                                            {t}
+                                    {[
+                                        { label: "记账凭证", icon: FileText },
+                                        { label: "科目余额表", icon: Table2 },
+                                        { label: "资产负债表", icon: ScaleIcon },
+                                        { label: "现金日记账", icon: BookOpen },
+                                        { label: "会计科目", icon: ListTree },
+                                    ].map((t, i) => (
+                                        <li key={t.label} className="flex items-center gap-2.5">
+                                            <t.icon className={"size-4 " + (i === 0 ? "text-[#2adb5c]" : "text-[#707070]")} />
+                                            {t.label}
                                         </li>
                                     ))}
                                 </ul>
@@ -723,10 +710,12 @@ export default function LandingPage() {
                             登录好会计，立即体验高效、准确、清晰的在线记账。
                         </p>
                         <div className="flex flex-wrap items-center justify-center gap-3">
-                            <CommandPill command="kuaiji import 凭证.xls" />
                             <GradientPill large onClick={() => navigate(primaryHref)}>
                                 {authed ? "进入控制台" : "登录使用"}
                                 <ArrowRight className="size-4" />
+                            </GradientPill>
+                            <GradientPill large href="#workflow">
+                                查看使用流程
                             </GradientPill>
                         </div>
                     </div>

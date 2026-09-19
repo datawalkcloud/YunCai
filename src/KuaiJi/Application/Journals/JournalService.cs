@@ -66,39 +66,61 @@ namespace KuaiJi.Application.Journals
         }
 
         /// <summary>
-        /// 建账：校验对应科目为货币资金末级科目、且账套内该科目尚未建账后，创建一本日记账。
+        /// 建账：指定科目时校验其为货币资金末级科目且尚未建账；
+        /// 省略科目时按类型自动在 1001 / 1002 下创建与账簿同名的明细科目并绑定。
         /// </summary>
         public async Task<JournalDetailDto> CreateAsync(Guid accountSetId, CreateJournalRequest request, CancellationToken cancellationToken = default)
         {
-            await EnsureAccountSetExists(accountSetId, cancellationToken);
+            var accountSet = accountSetId == Guid.Empty
+                ? null
+                : await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken);
+            if (accountSet is null)
+            {
+                throw new JournalException("指定的账套不存在。");
+            }
 
             if (!Enum.IsDefined(typeof(JournalType), request.Type))
             {
                 throw new JournalException("日记账类型无效。");
             }
 
-            var account = await _accountRepository.GetByIdAsync(accountSetId, request.AccountId, cancellationToken)
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                throw new JournalException("账簿名称不能为空。");
+            }
+
+            var type = (JournalType)request.Type;
+
+            Account account;
+            if (request.AccountId is { } accountId)
+            {
+                account = await _accountRepository.GetByIdAsync(accountSetId, accountId, cancellationToken)
                           ?? throw new JournalException("指定的会计科目不存在。");
 
-            if (!account.IsLeaf)
-            {
-                throw new JournalException($"科目「{account.Code} {account.Name}」不是末级科目，不能建立日记账。");
-            }
+                if (!account.IsLeaf)
+                {
+                    throw new JournalException($"科目「{account.Code} {account.Name}」不是末级科目，不能建立日记账。");
+                }
 
-            if (!CashCodePrefixes.Any(p => account.Code.StartsWith(p, StringComparison.Ordinal)))
-            {
-                throw new JournalException("日记账只能对应货币资金科目（库存现金 1001 / 银行存款 1002）。");
-            }
+                if (!CashCodePrefixes.Any(p => account.Code.StartsWith(p, StringComparison.Ordinal)))
+                {
+                    throw new JournalException("日记账只能对应货币资金科目（库存现金 1001 / 银行存款 1002）。");
+                }
 
-            if (await _journalRepository.GetByAccountIdAsync(accountSetId, request.AccountId, cancellationToken) is not null)
+                if (await _journalRepository.GetByAccountIdAsync(accountSetId, accountId, cancellationToken) is not null)
+                {
+                    throw new JournalException($"科目「{account.Code} {account.Name}」已建立日记账，不能重复建账。");
+                }
+            }
+            else
             {
-                throw new JournalException($"科目「{account.Code} {account.Name}」已建立日记账，不能重复建账。");
+                account = await EnsureMoneyAccountAsync(accountSet, type, request.Name.Trim(), cancellationToken);
             }
 
             Journal journal;
             try
             {
-                journal = Journal.Create(accountSetId, (JournalType)request.Type, request.Name, request.AccountId, request.OpeningBalance);
+                journal = Journal.Create(accountSetId, type, request.Name, account.Id, request.OpeningBalance);
             }
             catch (ArgumentException ex)
             {
@@ -106,9 +128,74 @@ namespace KuaiJi.Application.Journals
             }
 
             await _journalRepository.AddAsync(journal, cancellationToken);
+            // 与自动创建的明细科目共享同一工作单元，一次提交保证原子性。
             await _journalRepository.SaveChangesAsync(cancellationToken);
 
             return await BuildDetail(accountSetId, journal, cancellationToken);
+        }
+
+        /// <summary>
+        /// 确保账簿对应的货币资金明细科目存在：同名且未建账的明细科目直接复用；
+        /// 否则按编码方案在上级科目（现金 1001 / 银行存款 1002）下顺序取号新建明细科目。
+        /// </summary>
+        private async Task<Account> EnsureMoneyAccountAsync(AccountSet accountSet, JournalType type, string name, CancellationToken cancellationToken)
+        {
+            var parentCode = type == JournalType.Cash ? "1001" : "1002";
+            var parent = await _accountRepository.GetByCodeAsync(accountSet.Id, parentCode, cancellationToken)
+                         ?? throw new JournalException($"账套中不存在科目「{parentCode}」，无法自动创建明细科目，请先在科目管理中补建。");
+
+            var siblings = await _accountRepository.GetChildrenAsync(accountSet.Id, parent.Id, cancellationToken);
+
+            // 同名明细科目：未建账则复用，已建账则视为重复账户。
+            var sameName = siblings.FirstOrDefault(a => string.Equals(a.Name, name, StringComparison.Ordinal));
+            if (sameName is not null)
+            {
+                if (!sameName.IsLeaf)
+                {
+                    throw new JournalException($"科目「{sameName.Code} {sameName.Name}」不是末级科目，不能建立日记账。");
+                }
+
+                if (await _journalRepository.GetByAccountIdAsync(accountSet.Id, sameName.Id, cancellationToken) is not null)
+                {
+                    throw new JournalException($"账户「{name}」已存在（科目 {sameName.Code}），请换一个名称。");
+                }
+
+                return sameName;
+            }
+
+            // 按编码方案确定明细科目编码长度，并在兄弟科目中顺序取下一个可用号。
+            var scheme = AccountSet.ParseCodingScheme(accountSet.AccountCodingScheme);
+            var childLevel = parent.Level + 1;
+            if (childLevel > scheme.Length)
+            {
+                throw new JournalException($"科目编码方案「{accountSet.AccountCodingScheme}」不支持在「{parent.Code} {parent.Name}」下创建明细科目。");
+            }
+
+            var suffixLength = scheme[childLevel - 1];
+            var maxSuffix = siblings
+                .Select(a => a.Code.Length > parent.Code.Length && int.TryParse(a.Code[parent.Code.Length..], out var n) ? n : 0)
+                .DefaultIfEmpty(0)
+                .Max();
+            var next = maxSuffix + 1;
+            if (next >= Math.Pow(10, suffixLength))
+            {
+                throw new JournalException($"科目「{parent.Code} {parent.Name}」下的明细科目编号已用尽，无法再创建新账户。");
+            }
+
+            var code = parent.Code + next.ToString($"D{suffixLength}");
+
+            Account child;
+            try
+            {
+                child = parent.AddChild(code, name);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new JournalException(ex.Message);
+            }
+
+            await _accountRepository.AddAsync(child, cancellationToken);
+            return child;
         }
 
         /// <summary>改账：修改账簿名称与期初余额；不存在时返回 null。</summary>
