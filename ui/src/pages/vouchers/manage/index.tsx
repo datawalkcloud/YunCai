@@ -1,7 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import { CheckCircle2, ClipboardCheck, FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, Undo2, Upload } from "lucide-react"
-import { Alert, Button, Card, Col, DatePicker, Drawer, Radio, Row, Space, Statistic, Table, Tag, Typography, theme } from "antd"
-import dayjs, { type Dayjs } from "dayjs"
+import { Fragment, useCallback, useEffect, useRef, useState } from "react"
+import {
+    CheckCircle2,
+    ChevronDown,
+    ChevronRight,
+    CircleAlert,
+    ClipboardCheck,
+    FileSpreadsheet,
+    Pencil,
+    Plus,
+    RefreshCw,
+    Trash2,
+    Undo2,
+    Upload,
+} from "lucide-react"
+import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
+import dayjs from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -16,16 +29,31 @@ import {
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { DateRangeField, parseDate } from "@/components/fields/date-fields"
+import { Alert, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Spinner } from "@/components/ui/spinner"
+import { Stat } from "@/components/stats/stat"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import VoucherForm from "./voucher-form"
-
-const { Title, Text } = Typography
-const { RangePicker } = DatePicker
 
 /** 日期范围。 */
 interface DateRange {
     startDate: string
     endDate: string
 }
+
+/** 每页条数候选，等价原 antd 分页的 showSizeChanger。 */
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+
+/** 原 antd 分页默认每页 20 条。 */
+const DEFAULT_PAGE_SIZE = 20
 
 function formatAmount(n: number): string {
     return Math.abs(n).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -36,42 +64,88 @@ function formatDate(d?: Date): string {
     return d ? d.toISOString().slice(0, 10) : ""
 }
 
-function toDayjsArray(dr: DateRange | null): [Dayjs, Dayjs] | null {
-    return dr ? [dayjs(dr.startDate), dayjs(dr.endDate)] : null
-}
-
 const ACCEPT = ".xls,.xlsx"
 
-/** 单条分录的表格列（卡片内嵌用）。 */
-const ENTRY_COLUMNS = [
-    { title: "摘要", dataIndex: "summary", ellipsis: true },
-    {
-        title: "科目",
-        key: "account",
-        render: (_: unknown, r: VoucherEntryDto) => (
-            <span>
-                <Text style={{ fontSize: 12 }} type="secondary">{r.accountCode} </Text>
-                {r.accountName}
+const features = tableFeatures({})
+const voucherColumn = createColumnHelper<typeof features, VoucherListItemDto>()
+
+/** 行以凭证 id 为键，等价原先的 rowKey="id"。 */
+const getRowId = (row: VoucherListItemDto) => row.id ?? ""
+
+/** 各列的对齐方式按列 id 取用，避免写行内样式。 */
+const COLUMN_CLASS: Record<string, { head: string, cell: string }> = {
+    voucherNo: { head: "text-left", cell: "text-left" },
+    date: { head: "text-left", cell: "text-left whitespace-nowrap" },
+    totalDebit: { head: "text-right", cell: "text-right tabular-nums" },
+    totalCredit: { head: "text-right", cell: "text-right tabular-nums" },
+    preparer: { head: "text-left", cell: "text-left" },
+    actions: { head: "text-right", cell: "text-right" },
+}
+
+/** 借贷金额文本：负数用破坏色标注，正值回归常规前景色。 */
+function AmountText({ value }: { value: number | undefined }) {
+    const v = value ?? 0
+    return <span className={cn("font-medium", v < 0 && "text-destructive")}>{formatAmount(v)}</span>
+}
+
+/** 状态徽标配色：不平衡为红，已过账为灰，草稿/已审核为主色。 */
+function statusBadgeVariant(r: VoucherListItemDto): "default" | "secondary" | "destructive" {
+    if (!r.isBalanced) return "destructive"
+    return r.status === 3 ? "secondary" : "default"
+}
+
+/** 展开行的分录明细（内嵌子表、无表头），等价原 ENTRY_COLUMNS + showHeader={false}。 */
+function EntryTable({ entries }: { entries: VoucherEntryDto[] }) {
+    return (
+        <Table>
+            <TableBody>
+                {entries.map((e) => (
+                    <TableRow key={e.id}>
+                        <TableCell className="w-full">
+                            <div className="truncate">{e.summary}</div>
+                        </TableCell>
+                        <TableCell>
+                            <span className="text-muted-foreground">{e.accountCode} </span>
+                            {e.accountName}
+                        </TableCell>
+                        {(["debit", "credit"] as const).map((key) => {
+                            const v = e[key]
+                            return (
+                                <TableCell key={key} className="text-right tabular-nums">
+                                    {v != null && v !== 0 ? (
+                                        <span className={cn(v < 0 && "text-destructive")}>{formatAmount(v)}</span>
+                                    ) : null}
+                                </TableCell>
+                            )
+                        })}
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    )
+}
+
+/** 展开行底部的制单与借贷合计条。 */
+function EntryTotals({ record }: { record: VoucherListItemDto }) {
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted px-4 py-2 text-sm">
+            <span className="text-muted-foreground">
+                制单：{record.preparer ?? "—"}
+                {record.reviewer ? ` · 审核：${record.reviewer}` : ""}
             </span>
-        ),
-    },
-    {
-        title: "借方",
-        dataIndex: "debit",
-        align: "right" as const,
-        width: 100,
-        render: (v?: number) =>
-            v != null && v !== 0 ? <Text style={{ color: v < 0 ? "#ff4d4f" : undefined }}>{formatAmount(v)}</Text> : null,
-    },
-    {
-        title: "贷方",
-        dataIndex: "credit",
-        align: "right" as const,
-        width: 100,
-        render: (v?: number) =>
-            v != null && v !== 0 ? <Text style={{ color: v < 0 ? "#ff4d4f" : undefined }}>{formatAmount(v)}</Text> : null,
-    },
-]
+            <div className="flex items-center gap-4">
+                <span>
+                    <span className="text-muted-foreground">借方 </span>
+                    <AmountText value={record.totalDebit} />
+                </span>
+                <span>
+                    <span className="text-muted-foreground">贷方 </span>
+                    <AmountText value={record.totalCredit} />
+                </span>
+            </div>
+        </div>
+    )
+}
 
 /** 凭证列表主表格列（接收操作回调）。 */
 function getVoucherColumns(ops: {
@@ -80,121 +154,139 @@ function getVoucherColumns(ops: {
     onReview: (v: VoucherListItemDto) => void
     onUnreview: (v: VoucherListItemDto) => void
     onPost: (v: VoucherListItemDto) => void
+    onToggle: (id: string) => void
+    expandedIds: Set<string>
     openingId: string | null
     deletingId: string | null
     workflowId: string | null
 }) {
     return [
-        {
-            title: "凭证号",
-            dataIndex: "voucherNo",
-            width: 140,
-            render: (_: unknown, r: VoucherListItemDto) => (
-                <Space size={4}>
-                    <Text strong>{r.voucherNo}</Text>
-                    <Tag color={r.isBalanced ? (r.status === 1 ? "blue" : r.status === 2 ? "green" : "purple") : "red"} style={{ fontSize: 11, lineHeight: "18px", padding: "0 4px" }}>
-                        {r.statusText}
-                    </Tag>
-                </Space>
-            ),
-        },
-        {
-            title: "日期",
-            dataIndex: "date",
-            width: 110,
-            render: (_: unknown, r: VoucherListItemDto) => <Text>{formatDate(r.date)}</Text>,
-        },
-        {
-            title: "借方合计",
-            dataIndex: "totalDebit",
-            align: "right" as const,
-            width: 120,
-            render: (v?: number) => (
-                <Text strong style={{ color: (v ?? 0) < 0 ? "#ff4d4f" : "#2adb5c" }}>
-                    {formatAmount(v ?? 0)}
-                </Text>
-            ),
-        },
-        {
-            title: "贷方合计",
-            dataIndex: "totalCredit",
-            align: "right" as const,
-            width: 120,
-            render: (v?: number) => (
-                <Text strong style={{ color: (v ?? 0) < 0 ? "#ff4d4f" : "#2adb5c" }}>
-                    {formatAmount(v ?? 0)}
-                </Text>
-            ),
-        },
-        {
-            title: "制单人",
-            dataIndex: "preparer",
-            width: 90,
-            render: (_: unknown, r: VoucherListItemDto) => (
-                <Text type="secondary">{r.preparer ?? "—"}</Text>
-            ),
-        },
-        {
-            title: "操作",
-            key: "actions",
-            width: 130,
-            render: (_: unknown, r: VoucherListItemDto) => (
-                <Space size={0}>
-                    {r.status === 1 && (
+        voucherColumn.display({
+            id: "voucherNo",
+            header: "凭证号",
+            cell: ({ row }) => {
+                const r = row.original
+                const id = r.id ?? ""
+                const expanded = ops.expandedIds.has(id)
+                return (
+                    <div className="flex items-center gap-1">
                         <Button
-                            type="text"
-                            size="small"
-                            icon={<Pencil size={16} />}
-                            loading={ops.openingId === r.id}
-                            onClick={() => ops.onEdit(r)}
-                            title="编辑凭证"
-                        />
-                    )}
-                    {r.status === 1 && (
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<CheckCircle2 size={16} />}
-                            loading={ops.workflowId === r.id}
-                            onClick={() => ops.onReview(r)}
-                            title="审核凭证"
-                        />
-                    )}
-                    {r.status === 2 && (
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<Undo2 size={16} />}
-                            loading={ops.workflowId === r.id}
-                            onClick={() => ops.onUnreview(r)}
-                            title="反审核（退回草稿）"
-                        />
-                    )}
-                    {r.status === 2 && (
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<ClipboardCheck size={16} />}
-                            loading={ops.workflowId === r.id}
-                            onClick={() => ops.onPost(r)}
-                            title="过账（登记入账锁定）"
-                        />
-                    )}
-                    {r.status !== 3 && (
-                        <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<Trash2 size={16} />}
-                            loading={ops.deletingId === r.id}
-                            onClick={() => ops.onDelete(r)}
-                            title="删除凭证"
-                        />
-                    )}
-                </Space>
+                            variant="ghost"
+                            size="icon-xs"
+                            title={expanded ? "收起分录" : "展开分录"}
+                            aria-expanded={expanded}
+                            onClick={() => ops.onToggle(id)}
+                        >
+                            {expanded ? <ChevronDown /> : <ChevronRight />}
+                        </Button>
+                        <span className="font-medium">{r.voucherNo}</span>
+                        <Badge variant={statusBadgeVariant(r)}>{r.statusText}</Badge>
+                    </div>
+                )
+            },
+        }),
+        voucherColumn.display({
+            id: "date",
+            header: "日期",
+            cell: ({ row }) => <span>{formatDate(row.original.date)}</span>,
+        }),
+        voucherColumn.display({
+            id: "totalDebit",
+            header: "借方合计",
+            cell: ({ row }) => <AmountText value={row.original.totalDebit} />,
+        }),
+        voucherColumn.display({
+            id: "totalCredit",
+            header: "贷方合计",
+            cell: ({ row }) => <AmountText value={row.original.totalCredit} />,
+        }),
+        voucherColumn.display({
+            id: "preparer",
+            header: "制单人",
+            cell: ({ row }) => (
+                <span className="text-muted-foreground">{row.original.preparer ?? "—"}</span>
             ),
-        },
+        }),
+        voucherColumn.display({
+            id: "actions",
+            header: "操作",
+            cell: ({ row }) => {
+                const r = row.original
+                return (
+                    <div className="flex items-center justify-end gap-0">
+                        {r.status === 1 && (
+                            <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                disabled={ops.openingId === r.id}
+                                onClick={() => ops.onEdit(r)}
+                                title="编辑凭证"
+                            >
+                                {ops.openingId === r.id ? <Spinner /> : <Pencil />}
+                            </Button>
+                        )}
+                        {r.status === 1 && (
+                            <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                disabled={ops.workflowId === r.id}
+                                onClick={() => ops.onReview(r)}
+                                title="审核凭证"
+                            >
+                                {ops.workflowId === r.id ? <Spinner /> : <CheckCircle2 />}
+                            </Button>
+                        )}
+                        {r.status === 2 && (
+                            <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                disabled={ops.workflowId === r.id}
+                                onClick={() => ops.onUnreview(r)}
+                                title="反审核（退回草稿）"
+                            >
+                                {ops.workflowId === r.id ? <Spinner /> : <Undo2 />}
+                            </Button>
+                        )}
+                        {r.status === 2 && (
+                            <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                disabled={ops.workflowId === r.id}
+                                onClick={() => ops.onPost(r)}
+                                title="过账（登记入账锁定）"
+                            >
+                                {ops.workflowId === r.id ? <Spinner /> : <ClipboardCheck />}
+                            </Button>
+                        )}
+                        {r.status !== 3 && (
+                            <Button
+                                variant="destructive"
+                                size="icon-xs"
+                                disabled={ops.deletingId === r.id}
+                                onClick={() => ops.onDelete(r)}
+                                title="删除凭证"
+                            >
+                                {ops.deletingId === r.id ? <Spinner /> : <Trash2 />}
+                            </Button>
+                        )}
+                    </div>
+                )
+            },
+        }),
     ]
+}
+
+/** 生成分页页码序列：页数过多时首尾保留、中间折叠为省略号。 */
+function pageItems(current: number, total: number): (number | "gap")[] {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+    const items: (number | "gap")[] = [1]
+    const start = Math.max(2, current - 1)
+    const end = Math.min(total - 1, current + 1)
+    if (start > 2) items.push("gap")
+    for (let p = start; p <= end; p++) items.push(p)
+    if (end < total - 1) items.push("gap")
+    items.push(total)
+    return items
 }
 
 export default function VoucherManagePage() {
@@ -202,7 +294,6 @@ export default function VoucherManagePage() {
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
-    const { token: t } = theme.useToken()
 
     const [vouchers, setVouchers] = useState<VoucherListItemDto[]>([])
     const [accounts, setAccounts] = useState<AccountDto[]>([])
@@ -214,6 +305,12 @@ export default function VoucherManagePage() {
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [workflowId, setWorkflowId] = useState<string | null>(null)
     const [dateRange, setDateRange] = useState<DateRange | null>(null)
+    // 展开的分录行集合；原先 defaultExpandAllRows 等价于加载后全部纳入该集合。
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
+
+    // 客户端分页：直接对数组切页，不启用表格分页特性。
+    const [pageIndex, setPageIndex] = useState(0)
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
 
     // ── 凭证导入相关状态 ──
     const importInputRef = useRef<HTMLInputElement>(null)
@@ -259,6 +356,20 @@ export default function VoucherManagePage() {
             window.history.replaceState(null, "", window.location.pathname + window.location.search)
         }
     }, [])
+
+    // 列表变化后默认展开全部分录，等价原 defaultExpandAllRows。
+    useEffect(() => {
+        setExpandedIds(new Set(vouchers.map((v) => v.id ?? "")))
+    }, [vouchers])
+
+    function toggleExpand(id: string) {
+        setExpandedIds((prev) => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
 
     async function handleDelete(v: VoucherListItemDto) {
         if (deletingId || !v.id) return
@@ -376,283 +487,379 @@ export default function VoucherManagePage() {
         }
     }
 
+    const columns = getVoucherColumns({
+        onEdit: handleEdit,
+        onDelete: handleDelete,
+        onReview: (v) => void handleWorkflow(v, "review"),
+        onUnreview: (v) => void handleWorkflow(v, "unreview"),
+        onPost: (v) => void handleWorkflow(v, "post"),
+        onToggle: toggleExpand,
+        expandedIds,
+        openingId,
+        deletingId,
+        workflowId,
+    })
+
+    // 数据变少时把页码夹回有效范围，避免停留在空页。
+    const pageCount = Math.max(1, Math.ceil(vouchers.length / pageSize))
+    const currentPage = Math.min(pageIndex, pageCount - 1)
+    const pageRows = vouchers.slice(currentPage * pageSize, currentPage * pageSize + pageSize)
+
+    const table = useTable({ features, columns, data: pageRows, getRowId })
+    const headerGroups = table.getHeaderGroups()
+    const rows = table.getRowModel().rows
+    const leafCount = table.getLeafHeaders().length
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex flex-col gap-1">
-                    <Title level={3} style={{ margin: 0 }}>凭证管理</Title>
-                    <Text type="secondary">
+                <div className="flex flex-col gap-1 min-w-0">
+                    <h1 className="text-lg font-semibold">凭证管理</h1>
+                    <span className="text-muted-foreground">
                         账套：{currentSet?.name ?? (accountSetId || "未指定")}
                         {currentSet?.isCurrent ? "（当前）" : ""}
                         ，共 {vouchers.length} 张凭证。
-                    </Text>
+                    </span>
                 </div>
-                <Space>
-                    <Button icon={<RefreshCw size={16} />} onClick={() => void load()} loading={loading} disabled={!accountSetId}>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" onClick={() => void load()} disabled={!accountSetId || loading}>
+                        {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
                         刷新
                     </Button>
-                    <Button icon={<Upload size={16} />} onClick={() => setImportOpen(true)} disabled={!accountSetId}>
+                    <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!accountSetId}>
+                        <Upload data-icon="inline-start" />
                         导入凭证
                     </Button>
-                    <Button type="primary" icon={<Plus size={16} />} onClick={handleCreate} disabled={!accountSetId}>
+                    <Button onClick={handleCreate} disabled={!accountSetId}>
+                        <Plus data-icon="inline-start" />
                         新增凭证
                     </Button>
-                </Space>
+                </div>
             </div>
 
-            <Space wrap>
+            <div className="flex flex-wrap items-center gap-2">
                 <span>日期范围：</span>
-                <RangePicker
-                    value={toDayjsArray(dateRange)}
-                    onChange={(dates) => {
-                        if (dates && dates[0] && dates[1]) {
+                <DateRangeField
+                    value={
+                        dateRange
+                            ? {
+                                  from: parseDate(dateRange.startDate),
+                                  to: parseDate(dateRange.endDate),
+                              }
+                            : undefined
+                    }
+                    onChange={(range) => {
+                        if (range?.from && range.to) {
                             setDateRange({
-                                startDate: dates[0].format("YYYY-MM-DD"),
-                                endDate: dates[1].format("YYYY-MM-DD"),
+                                startDate: dayjs(range.from).format("YYYY-MM-DD"),
+                                endDate: dayjs(range.to).format("YYYY-MM-DD"),
                             })
+                        } else if (!range?.from) {
+                            setDateRange(null)
                         }
                     }}
                     disabled={!accountSetId}
                     allowClear
                 />
-            </Space>
+            </div>
 
-            {error && <Alert type="error" showIcon message={error} />}
+            {error && (
+                <Alert variant="destructive">
+                    <CircleAlert />
+                    <AlertTitle>{error}</AlertTitle>
+                </Alert>
+            )}
 
             {/* 凭证列表 */}
-            <Table<VoucherListItemDto>
-                rowKey="id"
-                dataSource={vouchers}
-                loading={loading}
-                columns={getVoucherColumns({
-                    onEdit: handleEdit,
-                    onDelete: handleDelete,
-                    onReview: (v) => void handleWorkflow(v, "review"),
-                    onUnreview: (v) => void handleWorkflow(v, "unreview"),
-                    onPost: (v) => void handleWorkflow(v, "post"),
-                    openingId,
-                    deletingId,
-                    workflowId,
-                })}
-                expandable={{
-                    defaultExpandAllRows: true,
-                    expandIcon: () => null,
-                    indentSize: 0,
-                    expandedRowRender: (record) => (
-                        <div className="pb-2">
-                            {/* 分录明细 */}
-                            {record.entries && record.entries.length > 0 && (
-                                <Table<VoucherEntryDto>
-                                    rowKey="id"
-                                    columns={ENTRY_COLUMNS}
-                                    dataSource={record.entries}
-                                    pagination={false}
-                                    size="small"
-                                    showHeader={false}
-                                    locale={{ emptyText: null }}
+            <div className="flex flex-col gap-2">
+                <Table>
+                    <TableHeader>
+                        {headerGroups.map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => (
+                                    <TableHead key={header.id} className={COLUMN_CLASS[header.column.id]?.head}>
+                                        <table.FlexRender header={header} />
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody>
+                        {loading && rows.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={leafCount} className="py-8 text-center">
+                                    <Spinner />
+                                </TableCell>
+                            </TableRow>
+                        ) : rows.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={leafCount} className="py-8 text-center text-muted-foreground">
+                                    暂无凭证，点击右上角「新增凭证」开始记账。
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            rows.map((row) => {
+                                const record = row.original
+                                const id = record.id ?? ""
+                                const expanded = expandedIds.has(id)
+                                return (
+                                    <Fragment key={row.id}>
+                                        <TableRow>
+                                            {row.getAllCells().map((cell) => (
+                                                <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
+                                                    <table.FlexRender cell={cell} />
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                        {/* 展开行：分录明细 + 合计条，等价原 expandedRowRender */}
+                                        {expanded && (
+                                            <TableRow>
+                                                <TableCell colSpan={leafCount} className="p-0">
+                                                    <div className="flex flex-col pb-2">
+                                                        {(record.entries?.length ?? 0) > 0 && (
+                                                            <EntryTable entries={record.entries ?? []} />
+                                                        )}
+                                                        <EntryTotals record={record} />
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </Fragment>
+                                )
+                            })
+                        )}
+                    </TableBody>
+                </Table>
+
+                {/* 客户端分页 */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-muted-foreground whitespace-nowrap">共 {vouchers.length} 张凭证</span>
+                    <Select
+                        value={String(pageSize)}
+                        onValueChange={(v) => {
+                            setPageSize(Number(v))
+                            setPageIndex(0)
+                        }}
+                    >
+                        <SelectTrigger size="sm" className="w-auto">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {PAGE_SIZE_OPTIONS.map((n) => (
+                                <SelectItem key={n} value={String(n)}>{`${n} 条/页`}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Pagination className="mx-0 w-auto justify-end">
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    text="上一页"
+                                    onClick={() => setPageIndex(Math.max(0, currentPage - 1))}
                                 />
+                            </PaginationItem>
+                            {pageItems(currentPage + 1, pageCount).map((item, i) =>
+                                item === "gap" ? (
+                                    <PaginationItem key={`gap-${i}`}>
+                                        <PaginationEllipsis />
+                                    </PaginationItem>
+                                ) : (
+                                    <PaginationItem key={item}>
+                                        <PaginationLink
+                                            isActive={item === currentPage + 1}
+                                            onClick={() => setPageIndex(item - 1)}
+                                        >
+                                            {item}
+                                        </PaginationLink>
+                                    </PaginationItem>
+                                ),
                             )}
-                            {/* 合计行 */}
-                            <div
-                                className="flex items-center justify-between px-4 py-2 text-sm"
-                                style={{ borderTop: `1px solid #f0f0f0`, background: "rgba(0,0,0,0.02)" }}
-                            >
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                    制单：{record.preparer ?? "—"}
-                                    {record.reviewer ? ` · 审核：${record.reviewer}` : ""}
-                                </Text>
-                                <Space size={16}>
-                                    <span>
-                                        <Text type="secondary" style={{ fontSize: 12 }}>借方 </Text>
-                                        <Text strong style={{ color: (record.totalDebit ?? 0) < 0 ? "#ff4d4f" : "#2adb5c" }}>{formatAmount(record.totalDebit ?? 0)}</Text>
-                                    </span>
-                                    <span>
-                                        <Text type="secondary" style={{ fontSize: 12 }}>贷方 </Text>
-                                        <Text strong style={{ color: (record.totalCredit ?? 0) < 0 ? "#ff4d4f" : "#2adb5c" }}>{formatAmount(record.totalCredit ?? 0)}</Text>
-                                    </span>
-                                </Space>
-                            </div>
-                        </div>
-                    ),
-                }}
-                pagination={{
-                    pageSize: 20,
-                    showSizeChanger: true,
-                    showTotal: (total) => `共 ${total} 张凭证`,
-                }}
-                size="middle"
-                locale={{ emptyText: "暂无凭证，点击右上角「新增凭证」开始记账。" }}
-            />
+                            <PaginationItem>
+                                <PaginationNext
+                                    text="下一页"
+                                    onClick={() => setPageIndex(Math.min(pageCount - 1, currentPage + 1))}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            </div>
 
             {/* 新增 / 编辑凭证抽屉 */}
-            <Drawer
+            <Sheet
                 open={open}
-                onClose={() => {
+                onOpenChange={(next) => {
+                    if (next) return
                     setOpen(false)
                     setEditing(null)
                 }}
-                width={1120}
-                title={editing ? `编辑凭证 ${editing.voucherNo}` : "新增凭证"}
             >
-                {open && (
-                    <VoucherForm
-                        key={editing?.id ?? "new"}
-                        accountSetId={accountSetId}
-                        accounts={accounts}
-                        preparer={user?.displayName}
-                        token={token ?? undefined}
-                        initial={editing ?? undefined}
-                        onSaved={handleSaved}
-                        onCancel={() => {
-                            setOpen(false)
-                            setEditing(null)
-                        }}
-                    />
-                )}
-            </Drawer>
+                <SheetContent className="sm:max-w-6xl" aria-describedby={undefined}>
+                    <SheetHeader>
+                        <SheetTitle>{editing ? `编辑凭证 ${editing.voucherNo}` : "新增凭证"}</SheetTitle>
+                    </SheetHeader>
+                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 pb-4">
+                        {open && (
+                            <VoucherForm
+                                key={editing?.id ?? "new"}
+                                accountSetId={accountSetId}
+                                accounts={accounts}
+                                preparer={user?.displayName}
+                                token={token ?? undefined}
+                                initial={editing ?? undefined}
+                                onSaved={handleSaved}
+                                onCancel={() => {
+                                    setOpen(false)
+                                    setEditing(null)
+                                }}
+                            />
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
 
             {/* 导入凭证抽屉 */}
-            <Drawer
+            <Sheet
                 open={importOpen}
-                onClose={() => {
+                onOpenChange={(next) => {
+                    if (next) return
                     setImportOpen(false)
                     pickImportFile(null)
                 }}
-                width={640}
-                title="导入凭证"
             >
-                <div className="flex flex-col gap-4">
-                    <Text type="secondary">
-                        支持导入其他平台导出的记账凭证文件（.xls / .xlsx）。系统按凭证号聚合分录、自动补建缺失科目，
-                        借贷金额原样保留。
-                    </Text>
+                <SheetContent className="sm:max-w-2xl">
+                    <SheetHeader>
+                        <SheetTitle>导入凭证</SheetTitle>
+                        <SheetDescription>
+                            支持导入其他平台导出的记账凭证文件（.xls / .xlsx）。系统按凭证号聚合分录、自动补建缺失科目，
+                            借贷金额原样保留。
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 pb-4">
+                        <div className="flex flex-col gap-1">
+                            <span className="font-medium">导入到账套</span>
+                            <span className="text-muted-foreground">
+                                {currentSet?.name ?? accountSetId}
+                                {currentSet?.isCurrent ? "（当前）" : ""}
+                            </span>
+                        </div>
 
-                    <div className="flex flex-col gap-2">
-                        <Text strong>导入到账套</Text>
-                        <Text type="secondary">
-                            {currentSet?.name ?? accountSetId}
-                            {currentSet?.isCurrent ? "（当前）" : ""}
-                        </Text>
-                    </div>
+                        {/* 冲突策略 */}
+                        <div className="flex flex-col gap-2">
+                            <span className="font-medium">重复凭证处理</span>
+                            <ToggleGroup
+                                type="single"
+                                variant="outline"
+                                size="sm"
+                                spacing={0}
+                                value={String(importConflict)}
+                                // 单选组取消选择时回传空串，保持原有两项必选其一的语义
+                                onValueChange={(v) => {
+                                    if (v) setImportConflict(v === "1" ? 1 : 0)
+                                }}
+                            >
+                                <ToggleGroupItem value="0">跳过</ToggleGroupItem>
+                                <ToggleGroupItem value="1">覆盖</ToggleGroupItem>
+                            </ToggleGroup>
+                        </div>
 
-                    {/* 冲突策略 */}
-                    <div className="flex flex-col gap-2">
-                        <Text strong>重复凭证处理</Text>
-                        <Radio.Group
-                            value={importConflict}
-                            onChange={(e) => setImportConflict(e.target.value)}
-                            optionType="button"
-                            buttonStyle="solid"
-                            size="small"
+                        {/* 文件拖放 / 选择区 */}
+                        <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => importInputRef.current?.click()}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") importInputRef.current?.click()
+                            }}
+                            onDragOver={(e) => {
+                                e.preventDefault()
+                                setImportDragging(true)
+                            }}
+                            onDragLeave={() => setImportDragging(false)}
+                            onDrop={onImportDrop}
+                            className={cn(
+                                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
+                                importDragging ? "border-primary bg-muted" : "border-border",
+                            )}
                         >
-                            <Radio.Button value={0}>跳过</Radio.Button>
-                            <Radio.Button value={1}>覆盖</Radio.Button>
-                        </Radio.Group>
-                    </div>
-
-                    {/* 文件拖放 / 选择区 */}
-                    <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => importInputRef.current?.click()}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") importInputRef.current?.click()
-                        }}
-                        onDragOver={(e) => {
-                            e.preventDefault()
-                            setImportDragging(true)
-                        }}
-                        onDragLeave={() => setImportDragging(false)}
-                        onDrop={onImportDrop}
-                        style={{
-                            borderColor: importDragging ? t.colorPrimary : t.colorBorder,
-                            background: importDragging ? t.colorPrimaryBg : undefined,
-                        }}
-                        className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors"
-                    >
-                        <FileSpreadsheet size={40} color={t.colorTextSecondary} />
-                        {importFile ? (
-                            <div className="flex flex-col gap-1">
-                                <Text strong>{importFile.name}</Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                    {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
-                                </Text>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col gap-1">
-                                <Text strong>点击选择，或拖拽文件到此处</Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>支持 .xls / .xlsx，最大 10MB</Text>
-                            </div>
-                        )}
-                        <input
-                            ref={importInputRef}
-                            type="file"
-                            accept={ACCEPT}
-                            className="hidden"
-                            onChange={(e) => pickImportFile(e.target.files?.[0] ?? null)}
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <Button
-                            type="primary"
-                            icon={<Upload size={16} />}
-                            loading={importing}
-                            onClick={handleImport}
-                            disabled={!importFile || !accountSetId}
-                        >
-                            {importing ? "导入中…" : "开始导入"}
-                        </Button>
-                        {importFile && !importing && <Button onClick={() => pickImportFile(null)}>清除</Button>}
-                    </div>
-
-                    {importError && <Alert type="error" showIcon message={importError} />}
-
-                    {/* 导入结果 */}
-                    {importResult && (
-                        <Card title="导入结果" size="small">
-                            <Row gutter={[16, 16]}>
-                                <ImportStat label="解析行数" value={importResult.totalRows ?? 0} />
-                                <ImportStat label="导入凭证" value={importResult.importedVouchers ?? 0} />
-                                <ImportStat label="导入分录" value={importResult.importedEntries ?? 0} />
-                                <ImportStat label="新建科目" value={importResult.createdAccounts ?? 0} />
-                                <ImportStat label="覆盖凭证" value={importResult.overwrittenVouchers ?? 0} muted />
-                                <ImportStat label="跳过凭证" value={importResult.skippedVouchers ?? 0} muted />
-                            </Row>
-
-                            {importResult.warnings && importResult.warnings.length > 0 && (
-                                <div className="mt-4 flex flex-col gap-2">
-                                    <Text type="secondary">告警（{importResult.warnings.length}）</Text>
-                                    <ul
-                                        className="max-h-64 overflow-auto rounded-md p-3 text-sm"
-                                        style={{ border: `1px solid ${t.colorBorderSecondary}`, background: t.colorFillQuaternary }}
-                                    >
-                                        {importResult.warnings.map((w, i) => (
-                                            <li key={i} className={cn("py-0.5")} style={{ color: t.colorTextSecondary }}>
-                                                · {w}
-                                            </li>
-                                        ))}
-                                    </ul>
+                            <FileSpreadsheet className="size-10 text-muted-foreground" />
+                            {importFile ? (
+                                <div className="flex flex-col gap-1">
+                                    <span className="font-medium truncate">{importFile.name}</span>
+                                    <span className="text-muted-foreground">
+                                        {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-1">
+                                    <span className="font-medium">点击选择，或拖拽文件到此处</span>
+                                    <span className="text-muted-foreground">支持 .xls / .xlsx，最大 10MB</span>
                                 </div>
                             )}
-                        </Card>
-                    )}
-                </div>
-            </Drawer>
-        </div>
-    )
-}
+                            <input
+                                ref={importInputRef}
+                                type="file"
+                                accept={ACCEPT}
+                                className="hidden"
+                                onChange={(e) => pickImportFile(e.target.files?.[0] ?? null)}
+                            />
+                        </div>
 
-function ImportStat({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
-    return (
-        <Col xs={12} sm={8} lg={muted ? 24 : 4} flex="auto">
-            <Card size="small">
-                <Statistic
-                    title={label}
-                    value={value}
-                    valueStyle={muted ? { color: "rgba(0,0,0,0.45)" } : undefined}
-                />
-            </Card>
-        </Col>
+                        <div className="flex items-center gap-3">
+                            <Button onClick={() => void handleImport()} disabled={!importFile || !accountSetId || importing}>
+                                {importing ? <Spinner data-icon="inline-start" /> : <Upload data-icon="inline-start" />}
+                                {importing ? "导入中…" : "开始导入"}
+                            </Button>
+                            {importFile && !importing && (
+                                <Button variant="outline" onClick={() => pickImportFile(null)}>清除</Button>
+                            )}
+                        </div>
+
+                        {importError && (
+                            <Alert variant="destructive">
+                                <CircleAlert />
+                                <AlertTitle>{importError}</AlertTitle>
+                            </Alert>
+                        )}
+
+                        {/* 导入结果 */}
+                        {importResult && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>导入结果</CardTitle>
+                                </CardHeader>
+                                <CardContent className="flex flex-col gap-4">
+                                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                                        <Stat label="解析行数" value={importResult.totalRows ?? 0} />
+                                        <Stat label="导入凭证" value={importResult.importedVouchers ?? 0} />
+                                        <Stat label="导入分录" value={importResult.importedEntries ?? 0} />
+                                        <Stat label="新建科目" value={importResult.createdAccounts ?? 0} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-1">
+                                        <Stat label="覆盖凭证" value={importResult.overwrittenVouchers ?? 0} muted />
+                                        <Stat label="跳过凭证" value={importResult.skippedVouchers ?? 0} muted />
+                                    </div>
+
+                                    {importResult.warnings && importResult.warnings.length > 0 && (
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-muted-foreground">
+                                                告警（{importResult.warnings.length}）
+                                            </span>
+                                            <ul className="max-h-64 overflow-auto rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
+                                                {importResult.warnings.map((w, i) => (
+                                                    <li key={i} className="py-0.5">
+                                                        · {w}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
+        </div>
     )
 }

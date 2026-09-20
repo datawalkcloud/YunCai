@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ReloadOutlined } from "@ant-design/icons"
-import { Alert, Button, Card, DatePicker, Space, Spin, Typography } from "antd"
-import dayjs, { type Dayjs } from "dayjs"
+import { RefreshCw } from "lucide-react"
+import dayjs from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type IncomeStatementLineDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { PeriodField } from "@/components/fields/date-fields"
+import { Alert, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Spinner } from "@/components/ui/spinner"
 
 type RowKind = "item" | "total"
 
@@ -94,8 +98,9 @@ function fmt(value: number, force = false): string {
     })
 }
 
-function toDayjs(p: Period | null): Dayjs | null {
-    return p ? dayjs(`${p.year}-${String(p.month).padStart(2, "0")}-01`) : null
+/** 期间 → 当月 1 日的 Date，与 PeriodField 的落值形状一致。 */
+function toPeriodDate(p: Period | null): Date | undefined {
+    return p ? dayjs(`${p.year}-${String(p.month).padStart(2, "0")}-01`).toDate() : undefined
 }
 
 /** 依据后端行次金额，构建完整的利润表行序列（含营业利润、利润总额、净利润三条合计行）。 */
@@ -129,6 +134,12 @@ function buildRows(map: AmountMap): { rows: StatementLine[]; net: { current: num
 
 const cellCls = "border border-border px-3 py-1.5 align-middle"
 const amountCls = cn(cellCls, "text-right tabular-nums")
+
+/** 明细项缩进：单元格基础左内边距 12px，每级再加 16px（会企02表模板目前仅 0/1 两级）。 */
+function indentCls(indent: number): string | undefined {
+    if (indent <= 0) return undefined
+    return indent >= 2 ? "pl-11" : "pl-7"
+}
 
 export default function IncomeStatementPage() {
     const { user, token } = useAuth()
@@ -184,50 +195,58 @@ export default function IncomeStatementPage() {
     }, [lines])
 
     return (
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
-            <div>
-                <Typography.Title level={3} style={{ marginBottom: 4 }}>利润表</Typography.Title>
-                <Typography.Text type="secondary">
+        <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-1">
+                <h1 className="text-lg font-semibold">利润表</h1>
+                <span className="text-muted-foreground">
                     账套：{currentSet?.name ?? (accountSetId || "未指定")}
                     。按《企业会计准则》会企02表格式编制，金额由凭证实时汇总。
-                </Typography.Text>
+                </span>
             </div>
 
             <Card>
-                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                <CardContent className="flex flex-col gap-4">
                     <div className="relative text-center">
                         <div className="text-lg font-bold">利润表</div>
                         <div className="absolute right-0 top-0 text-sm text-muted-foreground">会企02表</div>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-                        <Space wrap>
+                        <div className="flex flex-wrap items-center gap-2">
                             <span>会计期间：</span>
-                            <DatePicker
-                                picker="month"
-                                value={toDayjs(period)}
-                                onChange={(d) => d && setPeriod({ year: d.year(), month: d.month() + 1 })}
+                            <PeriodField
+                                value={toPeriodDate(period)}
+                                onChange={(d) => d && setPeriod({ year: dayjs(d).year(), month: dayjs(d).month() + 1 })}
                                 disabled={!accountSetId}
                                 allowClear={false}
                             />
                             <Button
-                                icon={<ReloadOutlined spin={loading} />}
+                                variant="outline"
                                 onClick={() => void load()}
                                 disabled={loading || !accountSetId}
                             >
+                                {loading ? (
+                                    <Spinner data-icon="inline-start" />
+                                ) : (
+                                    <RefreshCw data-icon="inline-start" />
+                                )}
                                 刷新
                             </Button>
-                        </Space>
+                        </div>
                         <span>编制单位：{user?.displayName ?? "——"}</span>
                         <span>{periodText}</span>
                         <span>单位：元</span>
                     </div>
 
-                    {error && <Alert type="error" message={error} showIcon />}
+                    {error && (
+                        <Alert variant="destructive">
+                            <AlertTitle>{error}</AlertTitle>
+                        </Alert>
+                    )}
 
                     {loading && !loaded ? (
                         <div className="flex items-center justify-center py-16">
-                            <Spin />
+                            <Spinner />
                         </div>
                     ) : !accountSetId ? (
                         <div className="py-16 text-center text-sm text-muted-foreground">请先选择账套。</div>
@@ -254,10 +273,7 @@ export default function IncomeStatementPage() {
                                         const indent = (row as StatementLine & { indent?: number }).indent ?? 0
                                         return (
                                             <tr key={i}>
-                                                <td
-                                                    className={cn(cellCls, isTotal ? "font-medium" : undefined)}
-                                                    style={{ paddingLeft: 12 + indent * 16 }}
-                                                >
+                                                <td className={cn(cellCls, indentCls(indent), isTotal && "font-medium")}>
                                                     {row.label}
                                                 </td>
                                                 <td className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>
@@ -276,8 +292,8 @@ export default function IncomeStatementPage() {
                             </table>
                         </div>
                     )}
-                </Space>
+                </CardContent>
             </Card>
-        </Space>
+        </div>
     )
 }

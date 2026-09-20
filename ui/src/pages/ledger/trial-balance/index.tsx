@@ -1,14 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Alert, Card, DatePicker, Space, Table, Typography } from "antd"
-import type { ColumnsType } from "antd/es/table"
-import dayjs, { type Dayjs } from "dayjs"
+import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
+import dayjs from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type TrialBalanceRowDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-
-const { RangePicker } = DatePicker
+import { cn } from "@/lib/utils"
+import { DateRangeField, parseDate } from "@/components/fields/date-fields"
+import { Alert, AlertTitle } from "@/components/ui/alert"
+import { Card, CardContent } from "@/components/ui/card"
+import { Spinner } from "@/components/ui/spinner"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableFooter,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
 
 /** 选定的日期范围。 */
 interface DateRange {
@@ -25,6 +36,12 @@ const AMOUNT_KEYS = [
     "endingCredit",
 ] as const
 
+const features = tableFeatures({})
+const helper = createColumnHelper<typeof features, TrialBalanceRowDto>()
+
+/** 行以科目编码为键，等价原先的 rowKey="code"。 */
+const getRowId = (row: TrialBalanceRowDto) => row.code ?? ""
+
 function fmt(value: number, force = false): string {
     if (value === 0 && !force) return ""
     return value.toLocaleString("zh-CN", {
@@ -33,17 +50,38 @@ function fmt(value: number, force = false): string {
     })
 }
 
-function toDayjsArray(dr: DateRange | null): [Dayjs, Dayjs] | null {
-    return dr ? [dayjs(dr.startDate), dayjs(dr.endDate)] : null
-}
+/** 金额列（借贷方向）右对齐并使用等宽数字，表头与单元格一致。 */
+const amountIds: readonly string[] = AMOUNT_KEYS
+const isAmountColumn = (id: string) => amountIds.includes(id)
+const amountCls = "text-right tabular-nums"
 
-const amount = (dataIndex: string, title: string) => ({
-    title,
-    dataIndex,
-    align: "right" as const,
-    width: 120,
-    render: (v: number) => fmt(v ?? 0),
-})
+/** 生成一个金额叶子列：取值的格式化与原先的 render 一致。 */
+const amount = (accessor: (typeof AMOUNT_KEYS)[number], title: string) =>
+    helper.accessor(accessor, {
+        header: title,
+        cell: (info) => fmt(info.getValue() ?? 0),
+    })
+
+/** 多级表头：编码、名称为单层列，三组余额各带借方/贷方两个子列。 */
+const columns = helper.columns([
+    helper.accessor("code", { header: "科目编码" }),
+    helper.accessor("name", { header: "科目名称" }),
+    helper.group({
+        id: "opening",
+        header: "期初余额",
+        columns: helper.columns([amount("openingDebit", "借方"), amount("openingCredit", "贷方")]),
+    }),
+    helper.group({
+        id: "period",
+        header: "本期发生额",
+        columns: helper.columns([amount("periodDebit", "借方"), amount("periodCredit", "贷方")]),
+    }),
+    helper.group({
+        id: "ending",
+        header: "期末余额",
+        columns: helper.columns([amount("endingDebit", "借方"), amount("endingCredit", "贷方")]),
+    }),
+])
 
 export default function TrialBalancePage() {
     const { token } = useAuth()
@@ -108,84 +146,136 @@ export default function TrialBalancePage() {
         }
     }, [rows])
 
-    const columns: ColumnsType<TrialBalanceRowDto> = [
-        { title: "科目编码", dataIndex: "code", width: 120 },
-        { title: "科目名称", dataIndex: "name" },
-        { title: "期初余额", children: [amount("openingDebit", "借方"), amount("openingCredit", "贷方")] },
-        { title: "本期发生额", children: [amount("periodDebit", "借方"), amount("periodCredit", "贷方")] },
-        { title: "期末余额", children: [amount("endingDebit", "借方"), amount("endingCredit", "贷方")] },
-    ]
+    const table = useTable({ features, columns, data: rows, getRowId })
+    const leafCount = table.getLeafHeaders().length
 
     return (
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
-            <div>
-                <Typography.Title level={3} style={{ marginBottom: 4 }}>科目余额表</Typography.Title>
-                <Typography.Text type="secondary">
+        <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-1">
+                <h1 className="text-lg font-semibold">科目余额表</h1>
+                <span className="text-muted-foreground">
                     账套：{currentSet?.name ?? (accountSetId || "未指定")}
                     。汇总各科目的期初余额、本期发生额与期末余额，用于试算平衡与结账核对。
-                </Typography.Text>
+                </span>
             </div>
 
             <Card>
-                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                <CardContent className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <Space wrap>
+                        <div className="flex flex-wrap items-center gap-2">
                             <span>日期范围：</span>
-                            <RangePicker
-                                value={toDayjsArray(dateRange)}
-                                onChange={(dates) => {
-                                    if (dates && dates[0] && dates[1]) {
+                            <DateRangeField
+                                value={
+                                    dateRange
+                                        ? {
+                                              from: parseDate(dateRange.startDate),
+                                              to: parseDate(dateRange.endDate),
+                                          }
+                                        : undefined
+                                }
+                                onChange={(range) => {
+                                    if (range?.from && range.to) {
                                         setDateRange({
-                                            startDate: dates[0].format("YYYY-MM-DD"),
-                                            endDate: dates[1].format("YYYY-MM-DD"),
+                                            startDate: dayjs(range.from).format("YYYY-MM-DD"),
+                                            endDate: dayjs(range.to).format("YYYY-MM-DD"),
                                         })
+                                    } else if (!range?.from) {
+                                        // 清除后回到后端解析出的默认区间。
+                                        setDateRange(null)
                                     }
                                 }}
                                 disabled={!accountSetId}
                                 allowClear
                             />
-                        </Space>
-                        <Typography.Text type="secondary">单位：元</Typography.Text>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {loading && <Spinner />}
+                            <span className="text-muted-foreground">单位：元</span>
+                        </div>
                     </div>
 
-                    {error && <Alert type="error" message={error} showIcon />}
+                    {error && (
+                        <Alert variant="destructive">
+                            <AlertTitle>{error}</AlertTitle>
+                        </Alert>
+                    )}
 
-                    <Table<TrialBalanceRowDto>
-                        rowKey="code"
-                        columns={columns}
-                        dataSource={rows}
-                        loading={loading}
-                        pagination={false}
-                        size="small"
-                        bordered
-                        scroll={{ x: 900 }}
-                        locale={{ emptyText: accountSetId ? "该期间暂无科目余额数据。" : "请先选择账套。" }}
-                        summary={() =>
-                            rows.length > 0 ? (
-                                <Table.Summary fixed>
-                                    <Table.Summary.Row>
-                                        <Table.Summary.Cell index={0} colSpan={2}>合计</Table.Summary.Cell>
-                                        <Table.Summary.Cell index={2} align="right">{fmt(totals.openingDebit, true)}</Table.Summary.Cell>
-                                        <Table.Summary.Cell index={3} align="right">{fmt(totals.openingCredit, true)}</Table.Summary.Cell>
-                                        <Table.Summary.Cell index={4} align="right">{fmt(totals.periodDebit, true)}</Table.Summary.Cell>
-                                        <Table.Summary.Cell index={5} align="right">{fmt(totals.periodCredit, true)}</Table.Summary.Cell>
-                                        <Table.Summary.Cell index={6} align="right">{fmt(totals.endingDebit, true)}</Table.Summary.Cell>
-                                        <Table.Summary.Cell index={7} align="right">{fmt(totals.endingCredit, true)}</Table.Summary.Cell>
-                                    </Table.Summary.Row>
-                                </Table.Summary>
-                            ) : null
-                        }
-                    />
+                    <Table>
+                        <TableHeader>
+                            {table.getHeaderGroups().map((headerGroup) => (
+                                <TableRow key={headerGroup.id}>
+                                    {headerGroup.headers.map((header) =>
+                                        // rowSpan 为 0 表示被上层跨行表头覆盖，跳过该占位表头。
+                                        header.rowSpan === 0 ? null : (
+                                            <TableHead
+                                                key={header.id}
+                                                colSpan={header.colSpan}
+                                                rowSpan={header.rowSpan}
+                                                className={cn(
+                                                    isAmountColumn(header.column.id) && amountCls,
+                                                )}
+                                            >
+                                                <table.FlexRender header={header} />
+                                            </TableHead>
+                                        ),
+                                    )}
+                                </TableRow>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {loading && rows.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={leafCount} className="py-8 text-center">
+                                        <Spinner />
+                                    </TableCell>
+                                </TableRow>
+                            ) : rows.length === 0 ? (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={leafCount}
+                                        className="py-8 text-center text-muted-foreground"
+                                    >
+                                        {accountSetId ? "该期间暂无科目余额数据。" : "请先选择账套。"}
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                table.getRowModel().rows.map((row) => (
+                                    <TableRow key={row.id}>
+                                        {row.getAllCells().map((cell) => (
+                                            <TableCell
+                                                key={cell.id}
+                                                className={cn(isAmountColumn(cell.column.id) && amountCls)}
+                                            >
+                                                <table.FlexRender cell={cell} />
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                        {rows.length > 0 && (
+                            <TableFooter>
+                                <TableRow>
+                                    <TableCell colSpan={2}>合计</TableCell>
+                                    {AMOUNT_KEYS.map((key) => (
+                                        <TableCell key={key} className={amountCls}>
+                                            {fmt(totals[key], true)}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            </TableFooter>
+                        )}
+                    </Table>
 
                     {rows.length > 0 && (
-                        <Typography.Text type={balanced ? "secondary" : "danger"}>
+                        <span className={cn("text-muted-foreground", !balanced && "text-destructive")}>
                             {balanced
                                 ? `试算平衡：借方合计 = 贷方合计（${periodText}）`
                                 : "试算不平衡，请核对数据"}
-                        </Typography.Text>
+                        </span>
                     )}
-                </Space>
+                </CardContent>
             </Card>
-        </Space>
+        </div>
     )
 }

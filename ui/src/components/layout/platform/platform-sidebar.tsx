@@ -15,6 +15,7 @@ import {
   Sigma,
   Sun,
   Table2,
+  Tags,
   TrendingUp,
 } from "lucide-react"
 
@@ -29,8 +30,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
@@ -54,7 +53,10 @@ export const navGroups = [
   },
   {
     label: "资金",
-    items: [{ title: "现金日记账", path: "funds/cash-journal", icon: BookOpen }],
+    items: [
+      { title: "现金日记账", path: "funds/cash-journal", icon: BookOpen },
+      { title: "收支类别", path: "funds/entry-categories", icon: Tags },
+    ],
   },
   {
     label: "凭证",
@@ -102,21 +104,21 @@ export function PlatformSidebar() {
   }
 
   return (
-    <Sidebar variant="inset" collapsible="icon">
-      {/* 品牌 + 折叠开关 + 账套切换器（对应图中 Projects 选择框） */}
+    <Sidebar collapsible="icon">
+      {/* 品牌 + 账套切换器（对应图中 Projects 选择框） */}
       <SidebarHeader>
-        <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:justify-center">
-          <Link
-            to={base}
-            className="flex min-w-0 items-center gap-2 px-1 group-data-[collapsible=icon]:hidden"
-          >
-            <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded-lg">
-              <Calculator className="size-4" />
-            </span>
-            <span className="truncate text-[15px] font-semibold">好会计</span>
-          </Link>
-          <SidebarTrigger className="text-muted-foreground" />
-        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link to={base}>
+                <span className="bg-primary text-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
+                  <Calculator className="size-4" />
+                </span>
+                <span className="truncate">好会计</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
 
         {accountSets.length > 0 && (
           <SidebarMenu>
@@ -152,11 +154,10 @@ export function PlatformSidebar() {
         )}
       </SidebarHeader>
 
-      {/* 分组导航：分组之间用细分隔线隔开 */}
+      {/* 分组导航 */}
       <SidebarContent>
-        {navGroups.map((group, index) => (
-          <SidebarGroup key={group.label} className="py-0 first:pt-2">
-            {index > 0 && <SidebarSeparator className="mx-0 mb-2" />}
+        {navGroups.map((group) => (
+          <SidebarGroup key={group.label}>
             {group.items.length > 1 && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>

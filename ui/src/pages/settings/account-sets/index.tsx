@@ -1,32 +1,36 @@
-import { useCallback, useEffect, useState } from "react"
-import { Building2, Check, CheckCircle2, Copy, Edit3, Lock, LockOpen, Plus, RefreshCw, Trash2 } from "lucide-react"
+import { useCallback, useEffect, useState, type ReactNode } from "react"
 import {
-    Alert,
-    Button,
-    Card,
-    Col,
-    DatePicker,
-    Drawer,
-    Empty,
-    Form,
-    Input,
-    InputNumber,
-    Row,
-    Select,
-    Space,
-    Spin,
-    Tag,
-    Typography,
-    theme,
-} from "antd"
-import dayjs, { type Dayjs } from "dayjs"
+    Building2,
+    Check,
+    CheckCircle2,
+    CircleAlert,
+    Copy,
+    Edit3,
+    Lock,
+    LockOpen,
+    Plus,
+    RefreshCw,
+    Trash2,
+} from "lucide-react"
+import dayjs from "dayjs"
 
 import { useAuth } from "@/auth/AuthContext"
 import { useAccountSets } from "@/accountSets/AccountSetsContext"
 import { AccountSetsApi, type AccountSetDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-
-const { Title, Text } = Typography
+import { cn } from "@/lib/utils"
+import { Alert, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PeriodField, parseDate } from "@/components/fields/date-fields"
+import { NumberField } from "@/components/fields/number-field"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty"
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Spinner } from "@/components/ui/spinner"
 
 /** 会计准则枚举值（与后端 AccountingStandard 对应）及其显示名。 */
 const STANDARDS: { value: number; label: string }[] = [
@@ -40,6 +44,9 @@ const TAXPAYERS: { value: number; label: string }[] = [
     { value: 2, label: "小规模纳税人" },
 ]
 
+/** 科目编码方案格式：每级 1-2 位数字、以 "-" 分隔，最多 10 级。 */
+const CODING_SCHEME_PATTERN = /^\d{1,2}(-\d{1,2}){0,9}$/
+
 function standardLabel(value?: number): string {
     return STANDARDS.find((s) => s.value === value)?.label ?? "—"
 }
@@ -48,14 +55,14 @@ function taxpayerLabel(value?: number): string {
     return TAXPAYERS.find((t) => t.value === value)?.label ?? "—"
 }
 
-/** 新增表单字段。 */
-interface CreateForm {
+/** 账套表单字段。 */
+interface AccountSetForm {
     name: string
     company: string
     standard: number
     currency: string
     taxpayer: number
-    startPeriod: Dayjs
+    startPeriod?: Date
     codingScheme: string
     // 以下为编辑时才提交的涉税与凭证字信息（新增账套时由后端按纳税人性质预置）。
     taxpayerNumber?: string
@@ -64,10 +71,45 @@ interface CreateForm {
     voucherWords?: string
 }
 
+/** 表单错误集合。 */
+type AccountSetErrors = Partial<Record<keyof AccountSetForm, string>>
+
+/**
+ * 表单校验，提示文案与原 antd rules 逐条一致。
+ * 凭证字只在编辑态渲染（等价原条件挂载的 Form.Item），故也只在校验编辑态。
+ */
+function validateAccountSet(values: AccountSetForm, isEditing: boolean): AccountSetErrors {
+    const errors: AccountSetErrors = {}
+    if (!values.name) errors.name = "请填写账套名称"
+    if (!values.company) errors.company = "请填写单位名称"
+    if (!values.startPeriod) errors.startPeriod = "请选择启用期间"
+    if (!values.codingScheme) {
+        errors.codingScheme = "请填写科目编码方案"
+    } else if (!CODING_SCHEME_PATTERN.test(values.codingScheme)) {
+        errors.codingScheme = "格式须如 4-2-2-2，每级 1-2 位数字，最多 10 级"
+    }
+    if (isEditing && !values.voucherWords) errors.voucherWords = "请填写凭证字"
+    return errors
+}
+
+/** 必填标记，替代原 antd requiredMark。 */
+function Required() {
+    return <span className="text-destructive">*</span>
+}
+
+/** 卡片内的键值行，替代原嵌套 Row/Col 的两列布局。 */
+function KeyValue({ label, children }: { label: string, children: ReactNode }) {
+    return (
+        <div className="flex items-start justify-between gap-2">
+            <span className="shrink-0 text-muted-foreground">{label}</span>
+            <span className="min-w-0 text-right">{children}</span>
+        </div>
+    )
+}
+
 export default function AccountSetsPage() {
     const { token } = useAuth()
     const { refresh: refreshAccountSets } = useAccountSets()
-    const { token: t } = theme.useToken()
 
     const [sets, setSets] = useState<AccountSetDto[]>([])
     const [loading, setLoading] = useState(false)
@@ -77,7 +119,15 @@ export default function AccountSetsPage() {
     const [submitting, setSubmitting] = useState(false)
     const [open, setOpen] = useState(false)
     const [editing, setEditing] = useState<AccountSetDto | null>(null)
-    const [form] = Form.useForm<CreateForm>()
+    const [formValues, setFormValues] = useState<AccountSetForm>({
+        name: "",
+        company: "",
+        standard: STANDARDS[0].value,
+        currency: "人民币",
+        taxpayer: TAXPAYERS[0].value,
+        codingScheme: "4-2-2-2",
+    })
+    const [formErrors, setFormErrors] = useState<AccountSetErrors>({})
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -95,6 +145,26 @@ export default function AccountSetsPage() {
     useEffect(() => {
         void load()
     }, [load])
+
+    /** 整体预填表单，对应原 setFieldsValue。 */
+    function fillForm(next: AccountSetForm) {
+        setFormValues(next)
+        setFormErrors({})
+    }
+
+    /** 改单个字段，对应原控件的 onChange；已有错误时即时重算。 */
+    function setFormValue<K extends keyof AccountSetForm>(key: K, value: AccountSetForm[K]) {
+        const next: AccountSetForm = { ...formValues, [key]: value }
+        setFormValues(next)
+        if (Object.keys(formErrors).length > 0) setFormErrors(validateAccountSet(next, !!editing))
+    }
+
+    /** 提交前校验，对应原 validateFields。 */
+    function checkForm() {
+        const next = validateAccountSet(formValues, !!editing)
+        setFormErrors(next)
+        return Object.keys(next).length === 0
+    }
 
     async function setCurrent(id?: string) {
         if (!id || busyId) return
@@ -163,13 +233,13 @@ export default function AccountSetsPage() {
 
     function openCreate() {
         setEditing(null)
-        form.setFieldsValue({
+        fillForm({
             name: "",
             company: "",
             standard: STANDARDS[0].value,
             currency: "人民币",
             taxpayer: TAXPAYERS[0].value,
-            startPeriod: dayjs(),
+            startPeriod: dayjs().toDate(),
             codingScheme: "4-2-2-2",
         })
         setOpen(true)
@@ -177,14 +247,14 @@ export default function AccountSetsPage() {
 
     function openEdit(set: AccountSetDto) {
         setEditing(set)
-        form.setFieldsValue({
+        fillForm({
             name: set.name ?? "",
             company: set.companyName ?? "",
             standard: set.standard ?? STANDARDS[0].value,
             currency: set.baseCurrency ?? "人民币",
             taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
-            startPeriod: set.startPeriod ? dayjs(set.startPeriod) : dayjs(),
-            codingScheme: (set as any).accountCodingScheme ?? "4-2-2-2",
+            startPeriod: set.startPeriod ? parseDate(set.startPeriod) : dayjs().toDate(),
+            codingScheme: set.accountCodingScheme ?? "4-2-2-2",
             taxpayerNumber: set.taxpayerNumber ?? "",
             vatRate: set.vatRate,
             incomeTaxRate: set.incomeTaxRate,
@@ -195,21 +265,23 @@ export default function AccountSetsPage() {
 
     function openCopy(set: AccountSetDto) {
         setEditing(null)
-        form.setFieldsValue({
+        fillForm({
             name: `${set.name ?? ""}（副本）`,
             company: set.companyName ?? "",
             standard: set.standard ?? STANDARDS[0].value,
             currency: set.baseCurrency ?? "人民币",
             taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
-            startPeriod: set.startPeriod ? dayjs(set.startPeriod) : dayjs(),
-            codingScheme: (set as any).accountCodingScheme ?? "4-2-2-2",
+            startPeriod: set.startPeriod ? parseDate(set.startPeriod) : dayjs().toDate(),
+            codingScheme: set.accountCodingScheme ?? "4-2-2-2",
         })
         setOpen(true)
     }
 
     async function saveSet() {
-        const values = await form.validateFields()
+        if (!checkForm()) return
+        const values = formValues
         const period = values.startPeriod
+        if (!period) return
         setSubmitting(true)
         setListError(null)
         try {
@@ -240,8 +312,8 @@ export default function AccountSetsPage() {
                         standard: values.standard,
                         taxpayerType: values.taxpayer,
                         baseCurrency: values.currency.trim() || "人民币",
-                        startYear: period.year(),
-                        startMonth: period.month() + 1,
+                        startYear: dayjs(period).year(),
+                        startMonth: dayjs(period).month() + 1,
                         accountCodingScheme: values.codingScheme?.trim() || undefined,
                     },
                 })
@@ -257,231 +329,315 @@ export default function AccountSetsPage() {
     }
 
     return (
-        <Space direction="vertical" size="large" style={{ display: "flex" }}>
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                <div>
-                    <Title level={3} style={{ margin: 0 }}>账套</Title>
-                    <Text type="secondary">管理各单位的账簿账套，可在多套账之间切换当前账套。</Text>
+        <div className="flex w-full flex-col gap-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-1">
+                    <h1 className="text-lg font-semibold">账套</h1>
+                    <p className="text-muted-foreground">管理各单位的账簿账套，可在多套账之间切换当前账套。</p>
                 </div>
-                <Button icon={<RefreshCw size={16} className={loading ? "spin" : undefined} />} onClick={() => void load()} loading={loading}>
+                <Button variant="outline" onClick={() => void load()} disabled={loading}>
+                    {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
                     刷新
                 </Button>
             </div>
 
-            <Card
-                title="账套列表"
-                extra={
-                    <Button type="primary" icon={<Plus size={16} />} onClick={openCreate}>
-                        新增账套
-                    </Button>
-                }
-            >
-                {listError && <Alert type="error" showIcon message={listError} style={{ marginBottom: 16 }} />}
-                {loading && sets.length === 0 ? (
-                    <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
-                        <Spin />
-                    </div>
-                ) : sets.length === 0 ? (
-                    <Empty description="暂无账套，点击“新增账套”创建" />
-                ) : (
-                    <Row gutter={[16, 16]}>
-                        {sets.map((set) => (
-                            <Col key={set.id} xs={24} sm={12} xl={8}>
-                                <Card
-                                    size="small"
-                                    style={{
-                                        height: "100%",
-                                        borderColor: set.isCurrent ? t.colorPrimary : undefined,
-                                        borderLeftWidth: set.isCurrent ? 3 : undefined,
-                                    }}
-                                    styles={{ body: { display: "flex", flexDirection: "column", gap: 12, height: "100%" } }}
-                                >
-                                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    height: 36,
-                                                    width: 36,
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                    borderRadius: t.borderRadius,
-                                                    background: t.colorFillSecondary,
-                                                    color: t.colorTextSecondary,
-                                                }}
-                                            >
-                                                <Building2 size={20} />
+            <Card>
+                <CardHeader>
+                    <CardTitle>账套列表</CardTitle>
+                    <CardAction>
+                        <Button onClick={openCreate}>
+                            <Plus data-icon="inline-start" />
+                            新增账套
+                        </Button>
+                    </CardAction>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                    {listError && (
+                        <Alert variant="destructive">
+                            <CircleAlert />
+                            <AlertTitle>{listError}</AlertTitle>
+                        </Alert>
+                    )}
+
+                    {loading && sets.length === 0 ? (
+                        <div className="flex justify-center py-10">
+                            <Spinner />
+                        </div>
+                    ) : sets.length === 0 ? (
+                        <Empty>
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <Building2 />
+                                </EmptyMedia>
+                                <EmptyDescription>暂无账套，点击“新增账套”创建</EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            {sets.map((set) => (
+                                <Card key={set.id} size="sm" className={cn(set.isCurrent && "border-2 border-primary")}>
+                                    <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex min-w-0 items-center gap-2">
+                                                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                                                    <Building2 size={20} />
+                                                </div>
+                                                <div className="flex min-w-0 flex-col">
+                                                    <span className="truncate font-medium">{set.name}</span>
+                                                    <span className="truncate text-muted-foreground">{set.companyName}</span>
+                                                </div>
                                             </div>
-                                            <div style={{ display: "flex", flexDirection: "column" }}>
-                                                <Text strong>{set.name}</Text>
-                                                <Text type="secondary" style={{ fontSize: 12 }}>{set.companyName}</Text>
+                                            {set.isCurrent && (
+                                                <Badge>
+                                                    <CheckCircle2 data-icon="inline-start" />
+                                                    当前
+                                                </Badge>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-col gap-1">
+                                            <KeyValue label="会计准则">{standardLabel(set.standard)}</KeyValue>
+                                            <KeyValue label="本位币">{set.baseCurrency}</KeyValue>
+                                            <KeyValue label="纳税人性质">{taxpayerLabel(set.taxpayerType)}</KeyValue>
+                                            <KeyValue label="纳税人识别号">{set.taxpayerNumber || "—"}</KeyValue>
+                                            <KeyValue label="增值税 / 所得税">{set.vatRate ?? "—"}% / {set.incomeTaxRate ?? "—"}%</KeyValue>
+                                            <KeyValue label="凭证字">{set.voucherWords || "—"}</KeyValue>
+                                            <KeyValue label="启用期间">{set.startPeriod}</KeyValue>
+                                            <KeyValue label="已结至">{set.closedPeriod || "未结账"}</KeyValue>
+                                            <KeyValue label="编码方案">{set.accountCodingScheme ?? "—"}</KeyValue>
+                                        </div>
+
+                                        <div className="mt-auto flex items-center justify-between gap-2">
+                                            <Button
+                                                variant="outline"
+                                                disabled={set.isCurrent || busyId === set.id}
+                                                onClick={() => void setCurrent(set.id)}
+                                            >
+                                                {busyId === set.id
+                                                    ? <Spinner data-icon="inline-start" />
+                                                    : <Check data-icon="inline-start" />}
+                                                {set.isCurrent ? "当前账套" : "设为当前"}
+                                            </Button>
+                                            <div className="flex items-center gap-0">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-xs"
+                                                    disabled={busyId === set.id}
+                                                    onClick={() => void closePeriod(set)}
+                                                    title={set.nextCloseYear && set.nextCloseMonth ? `结账（${set.nextCloseYear} 年 ${set.nextCloseMonth} 月）` : "结账"}
+                                                >
+                                                    <Lock />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-xs"
+                                                    disabled={!set.closedPeriod || busyId === set.id}
+                                                    onClick={() => void reopenPeriod(set)}
+                                                    title={set.closedPeriod ? `反结账（退回 ${set.closedPeriod}）` : "尚未结账"}
+                                                >
+                                                    <LockOpen />
+                                                </Button>
+                                                <Button variant="ghost" size="icon-xs" onClick={() => openEdit(set)} title="编辑账套">
+                                                    <Edit3 />
+                                                </Button>
+                                                <Button variant="ghost" size="icon-xs" onClick={() => openCopy(set)} title="复制账套">
+                                                    <Copy />
+                                                </Button>
+                                                <Button
+                                                    variant="destructive"
+                                                    size="icon-xs"
+                                                    disabled={set.isCurrent || busyId === set.id}
+                                                    onClick={() => void removeSet(set)}
+                                                    title={set.isCurrent ? "当前账套不可删除" : "删除账套"}
+                                                >
+                                                    <Trash2 />
+                                                </Button>
                                             </div>
                                         </div>
-                                        {set.isCurrent && (
-                                            <Tag color="blue" icon={<CheckCircle2 size={12} style={{ verticalAlign: "-2px" }} />}>
-                                                当前
-                                            </Tag>
-                                        )}
-                                    </div>
-
-                                    <Row gutter={[8, 4]} style={{ fontSize: 12 }}>
-                                        <Col span={12}><Text type="secondary">会计准则</Text></Col>
-                                        <Col span={12} style={{ textAlign: "right" }}>{standardLabel(set.standard)}</Col>
-                                        <Col span={12}><Text type="secondary">本位币</Text></Col>
-                                        <Col span={12} style={{ textAlign: "right" }}>{set.baseCurrency}</Col>
-                                        <Col span={12}><Text type="secondary">纳税人性质</Text></Col>
-                                        <Col span={12} style={{ textAlign: "right" }}>{taxpayerLabel(set.taxpayerType)}</Col>
-                                        <Col span={12}><Text type="secondary">纳税人识别号</Text></Col>
-                                        <Col span={12} style={{ textAlign: "right" }}>{set.taxpayerNumber || "—"}</Col>
-                                        <Col span={12}><Text type="secondary">增值税 / 所得税</Text></Col>
-                                        <Col span={12} style={{ textAlign: "right" }}>{set.vatRate ?? "—"}% / {set.incomeTaxRate ?? "—"}%</Col>
-                                        <Col span={12}><Text type="secondary">凭证字</Text></Col>
-                                        <Col span={12} style={{ textAlign: "right" }}>{set.voucherWords || "—"}</Col>
-                                        <Col span={12}><Text type="secondary">启用期间</Text></Col>
-                                        <Col span={12} style={{ textAlign: "right" }}>{set.startPeriod}</Col>
-                                        <Col span={12}><Text type="secondary">已结至</Text></Col>
-                                        <Col span={12} style={{ textAlign: "right" }}>{set.closedPeriod || "未结账"}</Col>
-                                        <Col span={12}><Text type="secondary">编码方案</Text></Col>
-                                        <Col span={12} style={{ textAlign: "right" }}>{(set as any).accountCodingScheme ?? "—"}</Col>
-                                    </Row>
-
-                                    <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 4 }}>
-                                        <Button
-                                            type={set.isCurrent ? "default" : "primary"}
-                                            ghost={!set.isCurrent}
-                                            size="small"
-                                            disabled={set.isCurrent}
-                                            loading={busyId === set.id}
-                                            icon={<Check size={16} />}
-                                            onClick={() => void setCurrent(set.id)}
-                                        >
-                                            {set.isCurrent ? "当前账套" : "设为当前"}
-                                        </Button>
-                                        <Space size={0}>
-                                            <Button
-                                                type="text"
-                                                size="small"
-                                                icon={<Lock size={14} />}
-                                                disabled={busyId === set.id}
-                                                onClick={() => void closePeriod(set)}
-                                                title={set.nextCloseYear && set.nextCloseMonth ? `结账（${set.nextCloseYear} 年 ${set.nextCloseMonth} 月）` : "结账"}
-                                            />
-                                            <Button
-                                                type="text"
-                                                size="small"
-                                                icon={<LockOpen size={14} />}
-                                                disabled={!set.closedPeriod || busyId === set.id}
-                                                onClick={() => void reopenPeriod(set)}
-                                                title={set.closedPeriod ? `反结账（退回 ${set.closedPeriod}）` : "尚未结账"}
-                                            />
-                                            <Button
-                                                type="text"
-                                                size="small"
-                                                icon={<Edit3 size={14} />}
-                                                onClick={() => openEdit(set)}
-                                                title="编辑账套"
-                                            />
-                                            <Button
-                                                type="text"
-                                                size="small"
-                                                icon={<Copy size={14} />}
-                                                onClick={() => openCopy(set)}
-                                                title="复制账套"
-                                            />
-                                            <Button
-                                                type="text"
-                                                size="small"
-                                                danger
-                                                disabled={set.isCurrent || busyId === set.id}
-                                                icon={<Trash2 size={16} />}
-                                                onClick={() => void removeSet(set)}
-                                                title={set.isCurrent ? "当前账套不可删除" : "删除账套"}
-                                            />
-                                        </Space>
-                                    </div>
+                                    </CardContent>
                                 </Card>
-                            </Col>
-                        ))}
-                    </Row>
-                )}
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
             </Card>
 
-            <Drawer
-                title={editing ? "编辑账套" : "新增账套"}
-                open={open}
-                onClose={() => setOpen(false)}
-                width={480}
-                footer={
-                    <Space style={{ display: "flex", justifyContent: "flex-end" }}>
-                        <Button onClick={() => setOpen(false)}>取消</Button>
-                        <Button type="primary" icon={<Plus size={16} />} loading={submitting} onClick={() => void saveSet()}>
+            {/* 新增 / 编辑账套 */}
+            <Sheet open={open} onOpenChange={setOpen}>
+                <SheetContent className="sm:max-w-lg">
+                    <SheetHeader>
+                        <SheetTitle>{editing ? "编辑账套" : "新增账套"}</SheetTitle>
+                        <SheetDescription>
+                            {editing ? '修改账套基本信息后点击"保存"。' : '填写单位与核算信息后点击"创建账套"保存。'}
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4">
+                        <Field data-invalid={Boolean(formErrors.name)}>
+                            <FieldLabel htmlFor="account-set-name">账套名称 <Required /></FieldLabel>
+                            <Input
+                                id="account-set-name"
+                                value={formValues.name}
+                                onChange={(e) => setFormValue("name", e.target.value)}
+                                placeholder="如 华信科技 2026"
+                                aria-invalid={Boolean(formErrors.name)}
+                            />
+                            <FieldError>{formErrors.name}</FieldError>
+                        </Field>
+
+                        <Field data-invalid={Boolean(formErrors.company)}>
+                            <FieldLabel htmlFor="account-set-company">单位名称 <Required /></FieldLabel>
+                            <Input
+                                id="account-set-company"
+                                value={formValues.company}
+                                onChange={(e) => setFormValue("company", e.target.value)}
+                                placeholder="如 华信科技有限公司"
+                                aria-invalid={Boolean(formErrors.company)}
+                            />
+                            <FieldError>{formErrors.company}</FieldError>
+                        </Field>
+
+                        <Field>
+                            <FieldLabel htmlFor="account-set-standard">会计准则</FieldLabel>
+                            <Select
+                                value={String(formValues.standard)}
+                                onValueChange={(v) => setFormValue("standard", Number(v))}
+                            >
+                                <SelectTrigger id="account-set-standard" className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        {STANDARDS.map((s) => (
+                                            <SelectItem key={s.value} value={String(s.value)}>{s.label}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
+                        </Field>
+
+                        <Field>
+                            <FieldLabel htmlFor="account-set-currency">记账本位币</FieldLabel>
+                            <Input
+                                id="account-set-currency"
+                                value={formValues.currency}
+                                onChange={(e) => setFormValue("currency", e.target.value)}
+                                placeholder="人民币"
+                            />
+                        </Field>
+
+                        <Field>
+                            <FieldLabel htmlFor="account-set-taxpayer">纳税人性质</FieldLabel>
+                            <Select
+                                value={String(formValues.taxpayer)}
+                                onValueChange={(v) => setFormValue("taxpayer", Number(v))}
+                            >
+                                <SelectTrigger id="account-set-taxpayer" className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        {TAXPAYERS.map((t) => (
+                                            <SelectItem key={t.value} value={String(t.value)}>{t.label}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
+                        </Field>
+
+                        <Field data-invalid={Boolean(formErrors.startPeriod)}>
+                            <FieldLabel>启用期间 <Required /></FieldLabel>
+                            <PeriodField
+                                value={formValues.startPeriod}
+                                onChange={(v) => setFormValue("startPeriod", v)}
+                                disabled={!!editing}
+                                allowClear={false}
+                                className="w-full"
+                            />
+                            <FieldError>{formErrors.startPeriod}</FieldError>
+                        </Field>
+
+                        <Field data-invalid={Boolean(formErrors.codingScheme)}>
+                            <FieldLabel htmlFor="account-set-coding-scheme">科目编码方案 <Required /></FieldLabel>
+                            <Input
+                                id="account-set-coding-scheme"
+                                value={formValues.codingScheme}
+                                onChange={(e) => setFormValue("codingScheme", e.target.value)}
+                                placeholder="4-2-2-2"
+                                aria-invalid={Boolean(formErrors.codingScheme)}
+                            />
+                            <FieldDescription>
+                                {'以 "-" 分隔各级科目编码的位数，如 4-2-2-2 表示一级 4 位、二级 2 位、三级 2 位、四级 2 位。最多支持 10 级。'}
+                            </FieldDescription>
+                            <FieldError>{formErrors.codingScheme}</FieldError>
+                        </Field>
+
+                        {editing && (
+                            <>
+                                <Field>
+                                    <FieldLabel htmlFor="account-set-taxpayer-number">纳税人识别号</FieldLabel>
+                                    <Input
+                                        id="account-set-taxpayer-number"
+                                        value={formValues.taxpayerNumber ?? ""}
+                                        onChange={(e) => setFormValue("taxpayerNumber", e.target.value)}
+                                        placeholder="如 91330100MA27XXXXXX"
+                                        maxLength={50}
+                                    />
+                                </Field>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Field>
+                                        <FieldLabel htmlFor="account-set-vat-rate">增值税率（%）</FieldLabel>
+                                        <NumberField
+                                            id="account-set-vat-rate"
+                                            value={formValues.vatRate}
+                                            onChange={(v) => setFormValue("vatRate", v)}
+                                            min={0}
+                                            max={100}
+                                            precision={2}
+                                        />
+                                    </Field>
+                                    <Field>
+                                        <FieldLabel htmlFor="account-set-income-tax-rate">所得税率（%）</FieldLabel>
+                                        <NumberField
+                                            id="account-set-income-tax-rate"
+                                            value={formValues.incomeTaxRate}
+                                            onChange={(v) => setFormValue("incomeTaxRate", v)}
+                                            min={0}
+                                            max={100}
+                                            precision={2}
+                                        />
+                                    </Field>
+                                </div>
+
+                                <Field data-invalid={Boolean(formErrors.voucherWords)}>
+                                    <FieldLabel htmlFor="account-set-voucher-words">凭证字 <Required /></FieldLabel>
+                                    <Input
+                                        id="account-set-voucher-words"
+                                        value={formValues.voucherWords ?? ""}
+                                        onChange={(e) => setFormValue("voucherWords", e.target.value)}
+                                        placeholder="记,收,付,转"
+                                        maxLength={100}
+                                        aria-invalid={Boolean(formErrors.voucherWords)}
+                                    />
+                                    <FieldDescription>
+                                        以逗号分隔多个凭证字，制单时只能从中选择，如：记,收,付,转。
+                                    </FieldDescription>
+                                    <FieldError>{formErrors.voucherWords}</FieldError>
+                                </Field>
+                            </>
+                        )}
+                    </div>
+
+                    <SheetFooter className="sm:flex-row sm:justify-end">
+                        <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+                        <Button onClick={() => void saveSet()} disabled={submitting}>
+                            {submitting ? <Spinner data-icon="inline-start" /> : <Plus data-icon="inline-start" />}
                             {editing ? "保存" : "创建账套"}
                         </Button>
-                    </Space>
-                }
-            >
-                <Text type="secondary">
-                    {editing ? '修改账套基本信息后点击"保存"。' : '填写单位与核算信息后点击"创建账套"保存。'}
-                </Text>
-                <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark>
-                    <Form.Item label="账套名称" name="name" rules={[{ required: true, message: "请填写账套名称" }]}>
-                        <Input placeholder="如 华信科技 2026" />
-                    </Form.Item>
-                    <Form.Item label="单位名称" name="company" rules={[{ required: true, message: "请填写单位名称" }]}>
-                        <Input placeholder="如 华信科技有限公司" />
-                    </Form.Item>
-                    <Form.Item label="会计准则" name="standard">
-                        <Select options={STANDARDS} />
-                    </Form.Item>
-                    <Form.Item label="记账本位币" name="currency">
-                        <Input placeholder="人民币" />
-                    </Form.Item>
-                    <Form.Item label="纳税人性质" name="taxpayer">
-                        <Select options={TAXPAYERS} />
-                    </Form.Item>
-                    <Form.Item label="启用期间" name="startPeriod" rules={[{ required: true, message: "请选择启用期间" }]}>
-                        <DatePicker picker="month" style={{ width: "100%" }} disabled={!!editing} />
-                    </Form.Item>
-                    <Form.Item
-                        label="科目编码方案"
-                        name="codingScheme"
-                        rules={[
-                            { required: true, message: "请填写科目编码方案" },
-                            { pattern: /^\d{1,2}(-\d{1,2}){0,9}$/, message: "格式须如 4-2-2-2，每级 1-2 位数字，最多 10 级" },
-                        ]}
-                        extra={'以 "-" 分隔各级科目编码的位数，如 4-2-2-2 表示一级 4 位、二级 2 位、三级 2 位、四级 2 位。最多支持 10 级。'}
-                    >
-                        <Input placeholder="4-2-2-2" />
-                    </Form.Item>
-                    {editing && (
-                        <>
-                            <Form.Item label="纳税人识别号" name="taxpayerNumber">
-                                <Input placeholder="如 91330100MA27XXXXXX" maxLength={50} />
-                            </Form.Item>
-                            <Row gutter={12}>
-                                <Col span={12}>
-                                    <Form.Item label="增值税率（%）" name="vatRate">
-                                        <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item label="所得税率（%）" name="incomeTaxRate">
-                                        <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
-                            <Form.Item
-                                label="凭证字"
-                                name="voucherWords"
-                                rules={[{ required: true, message: "请填写凭证字" }]}
-                                extra='以逗号分隔多个凭证字，制单时只能从中选择，如：记,收,付,转。'
-                            >
-                                <Input placeholder="记,收,付,转" maxLength={100} />
-                            </Form.Item>
-                        </>
-                    )}
-                </Form>
-            </Drawer>
-        </Space>
+                    </SheetFooter>
+                </SheetContent>
+            </Sheet>
+        </div>
     )
 }

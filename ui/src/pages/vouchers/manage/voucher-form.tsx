@@ -1,11 +1,15 @@
 import { useMemo, useRef, useState } from "react"
 import { Plus, Save, Trash2 } from "lucide-react"
-import { Button, Input, Modal, Select } from "antd"
 
 import { useAccountSets } from "@/accountSets/AccountSetsContext"
 import { VouchersApi, type AccountDto, type CreateVoucherRequest, type UpdateVoucherRequest, type VoucherDetailDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Spinner } from "@/components/ui/spinner"
 
 /** 凭证分录行。借方与贷方以字符串保存，便于输入编辑；account 存科目 id。 */
 interface EntryRow {
@@ -134,6 +138,35 @@ function sanitizeAmount(v: string): string {
     return s
 }
 
+/** 分位竖线：元→角、千→百、百万→十万处用强调色分隔，其余常规边框色；末列（分）不画线。 */
+function digitCellCls(i: number): string {
+    if (i >= 10) return ""
+    if (i === 8) return "border-r border-destructive/40"
+    if (i === 5 || i === 2) return "border-r border-primary/40"
+    return "border-r border-border"
+}
+
+/** 借方 / 贷方金额的 11 个分位表头；竖排中文按字换行纵向排布。 */
+function AmountColumnHeader({ idPrefix }: { idPrefix: string }) {
+    return (
+        <div className="grid grid-cols-11">
+            {AMOUNT_COLUMNS.map((c, i) => (
+                <div
+                    key={`${idPrefix}-${i}`}
+                    className={cn(
+                        "flex h-12 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground",
+                        digitCellCls(i),
+                    )}
+                >
+                    {c.split("").map((ch, j) => (
+                        <span key={j}>{ch}</span>
+                    ))}
+                </div>
+            ))}
+        </div>
+    )
+}
+
 /** 借方 / 贷方金额分位小格；editable 时聚焦可直接输入完整数值，失焦后按位对齐到分位小格。 */
 function AmountCells({
     value,
@@ -149,29 +182,14 @@ function AmountCells({
     const [focused, setFocused] = useState(false)
     const cells = digitCells(value)
     const isNegative = value < 0
-    const redStyle = isNegative ? { color: "#ff4d4f" } : undefined
     return (
         <div className="relative">
-            <div className="grid grid-cols-11" style={redStyle}>
-                {cells.map((d, i) => {
-                    // 分位竖线：元→角粉红，千→百/百万→十万蓝色，其余浅灰
-                    const isYuanSep = i === 8
-                    const isQianSep = i === 5
-                    const isBaiwanSep = i === 2
-                    const colored = isYuanSep || isQianSep || isBaiwanSep
-                    return (
-                        <div
-                            key={i}
-                            className="flex h-[54px] items-center justify-center tabular-nums"
-                            style={i < 10 ? {
-                                borderRight: "1px solid",
-                                borderRightColor: colored ? (isYuanSep ? "#ffd6e7" : "#bae7ff") : undefined,
-                            } : undefined}
-                        >
-                            {focused ? "" : d}
-                        </div>
-                    )
-                })}
+            <div className={cn("grid grid-cols-11", isNegative && "text-destructive")}>
+                {cells.map((d, i) => (
+                    <div key={i} className={cn("flex h-[54px] items-center justify-center tabular-nums", digitCellCls(i))}>
+                        {focused ? "" : d}
+                    </div>
+                ))}
             </div>
             {editable && (
                 <input
@@ -364,9 +382,6 @@ export default function VoucherForm({
         setDirectionModal(null)
     }
 
-    const blankCls =
-        "h-7 rounded-none border-0 border-b border-input bg-transparent px-1 text-center shadow-none focus-visible:ring-0"
-
     return (
         <div className="flex flex-col gap-4">
             {/* 凭证标题 */}
@@ -375,45 +390,43 @@ export default function VoucherForm({
             {/* 凭证字号 / 日期 / 附件 */}
             <div className="flex items-end gap-4 text-sm whitespace-nowrap">
                 <div className="flex items-end gap-1 shrink-0">
-                    <Select
-                        variant="borderless"
-                        size="small"
-                        value={voucherWord}
-                        onChange={setVoucherWord}
-                        disabled={editing}
-                        options={voucherWordOptions.map((w) => ({ value: w, label: w }))}
-                        className="w-16 border-b border-input"
-                    />
+                    <Select value={voucherWord} onValueChange={setVoucherWord} disabled={editing}>
+                        <SelectTrigger size="sm" className="w-16">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {voucherWordOptions.map((w) => (
+                                <SelectItem key={w} value={w}>{w}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <span className="pb-1">字第</span>
                     <Input
-                        variant="borderless"
                         value={voucherNo}
                         onChange={(e) => setVoucherNo(e.target.value.replace(/\D/g, ""))}
                         placeholder="自动"
                         disabled={editing}
-                        className={cn(blankCls, "w-16")}
+                        className="w-16 text-center"
                     />
                     <span className="pb-1">号</span>
                 </div>
                 <div className="flex items-end gap-1 shrink-0">
                     <span className="pb-1">日期：</span>
                     <Input
-                        variant="borderless"
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className={cn(blankCls, "w-32")}
+                        className="w-32"
                     />
                 </div>
                 <div className="flex items-end gap-1 shrink-0">
                     <span className="pb-1">附单据</span>
                     <Input
-                        variant="borderless"
                         type="number"
                         min={0}
                         value={attachments}
                         onChange={(e) => setAttachments(e.target.value)}
-                        className={cn(blankCls, "w-12")}
+                        className="w-12 text-center"
                     />
                     <span className="pb-1">张</span>
                 </div>
@@ -424,13 +437,13 @@ export default function VoucherForm({
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[1040px] border-collapse text-sm">
                     <colgroup>
-                        <col style={{ width: 240 }} />
-                        <col style={{ width: 200 }} />
+                        <col className="w-60" />
+                        <col className="w-50" />
                         {AMOUNT_COLUMNS.map((_, i) => (
-                            <col key={`d-${i}`} style={{ width: 24 }} />
+                            <col key={`d-${i}`} className="w-6" />
                         ))}
                         {AMOUNT_COLUMNS.map((_, i) => (
-                            <col key={`c-${i}`} style={{ width: 24 }} />
+                            <col key={`c-${i}`} className="w-6" />
                         ))}
                     </colgroup>
                     <thead>
@@ -450,48 +463,10 @@ export default function VoucherForm({
                         </tr>
                         <tr>
                             <th colSpan={11} className={cn(thCls, "p-0 align-top")}>
-                                <div className="grid grid-cols-11">
-                                    {AMOUNT_COLUMNS.map((c, i) => {
-                                        const isYuanSep = i === 8
-                                        const isQianSep = i === 5
-                                        const isBaiwanSep = i === 2
-                                        const colored = isYuanSep || isQianSep || isBaiwanSep
-                                        return (
-                                            <div
-                                                key={`dh-${i}`}
-                                                className="flex h-12 items-center justify-center text-[10px] font-medium text-muted-foreground"
-                                                style={{
-                                                    ...(i < 10 ? { borderRight: "1px solid", borderRightColor: colored ? (isYuanSep ? "#ffd6e7" : "#bae7ff") : undefined } : {}),
-                                                    writingMode: "vertical-rl",
-                                                }}
-                                            >
-                                                {c}
-                                            </div>
-                                        )
-                                    })}
-                                </div>
+                                <AmountColumnHeader idPrefix="dh" />
                             </th>
                             <th colSpan={11} className={cn(thCls, "p-0 align-top")}>
-                                <div className="grid grid-cols-11">
-                                    {AMOUNT_COLUMNS.map((c, i) => {
-                                        const isYuanSep = i === 8
-                                        const isQianSep = i === 5
-                                        const isBaiwanSep = i === 2
-                                        const colored = isYuanSep || isQianSep || isBaiwanSep
-                                        return (
-                                            <div
-                                                key={`ch-${i}`}
-                                                className="flex h-12 items-center justify-center text-[10px] font-medium text-muted-foreground"
-                                                style={{
-                                                    ...(i < 10 ? { borderRight: "1px solid", borderRightColor: colored ? (isYuanSep ? "#ffd6e7" : "#bae7ff") : undefined } : {}),
-                                                    writingMode: "vertical-rl",
-                                                }}
-                                            >
-                                                {c}
-                                            </div>
-                                        )
-                                    })}
-                                </div>
+                                <AmountColumnHeader idPrefix="ch" />
                             </th>
                         </tr>
                     </thead>
@@ -507,15 +482,15 @@ export default function VoucherForm({
                                             className="h-9 w-full bg-transparent px-2 outline-none placeholder:text-muted-foreground"
                                         />
                                         <Button
-                                            type="text"
-                                            size="small"
-                                            danger
+                                            variant="destructive"
+                                            size="icon-xs"
                                             onClick={() => removeRow(entry.id)}
                                             disabled={entries.length <= 1}
                                             title="删除该行"
                                             className="mr-1 shrink-0"
-                                            icon={<Trash2 size={16} />}
-                                        />
+                                        >
+                                            <Trash2 />
+                                        </Button>
                                     </div>
                                 </td>
                                 <td className={tdCls}>
@@ -577,7 +552,8 @@ export default function VoucherForm({
 
             {/* 操作区 */}
             <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-                <Button size="small" onClick={addRow} icon={<Plus size={16} />}>
+                <Button variant="outline" size="sm" onClick={addRow}>
+                    <Plus data-icon="inline-start" />
                     添加分录
                 </Button>
                 <span className={cn("text-sm", balanced ? "text-muted-foreground" : "text-destructive")}>
@@ -588,36 +564,41 @@ export default function VoucherForm({
                             : `借贷不平衡，差额 ¥${Math.abs(totalDebit - totalCredit).toFixed(2)}`}
                 </span>
                 <div className="flex-1" />
-                <Button onClick={onCancel} disabled={saving}>
+                <Button variant="outline" onClick={onCancel} disabled={saving}>
                     取消
                 </Button>
-                <Button type="primary" onClick={handleSave} disabled={!canSave} loading={saving} icon={saving ? undefined : <Save size={16} />}>
+                <Button onClick={handleSave} disabled={!canSave}>
+                    {saving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
                     {saving ? "保存中…" : "保存凭证"}
                 </Button>
             </div>
 
             {/* 损益类科目方向警告弹窗 */}
-            <Modal
-                title="凭证录入提示"
+            <Dialog
                 open={directionModal !== null}
-                onCancel={() => setDirectionModal(null)}
-                footer={null}
-                width={520}
+                onOpenChange={(next) => {
+                    if (next) return
+                    setDirectionModal(null)
+                }}
             >
-                <div className="space-y-4">
-                    <div>
-                        <p className="font-medium text-amber-600">系统检测到当前凭证存在损益科目录入不规范的凭证行哦~</p>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                            收入类 要做在 贷方 ， 费用类 要做在 借方 。 如果要冲回，应该录入相同方向的红字，即负数。否则科目余额表和利润表数据会对不上
+                <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>
+                    <DialogHeader>
+                        <DialogTitle>凭证录入提示</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4">
+                        <div>
+                            <p className="font-medium text-foreground">系统检测到当前凭证存在损益科目录入不规范的凭证行哦~</p>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                收入类 要做在 贷方 ， 费用类 要做在 借方 。 如果要冲回，应该录入相同方向的红字，即负数。否则科目余额表和利润表数据会对不上
+                            </p>
+                        </div>
+                        <p className="text-sm">
+                            需要调整金额方向的凭证行：<span className="font-semibold">{directionModal?.issues.join("、")}</span>
                         </p>
                     </div>
-                    <p className="text-sm">
-                        需要调整金额方向的凭证行：<span className="font-semibold">{directionModal?.issues.join("、")}</span>
-                    </p>
-                    <div className="flex flex-col gap-2">
+                    <DialogFooter className="sm:flex-col">
                         <Button
-                            type="primary"
-                            block
+                            className="w-full"
                             onClick={() => {
                                 autoAdjustEntries()
                             }}
@@ -625,7 +606,8 @@ export default function VoucherForm({
                             批量调整，系统帮您自动调整所有金额方向
                         </Button>
                         <Button
-                            block
+                            variant="outline"
+                            className="w-full"
                             onClick={() => {
                                 setDirectionModal(null)
                                 // 重新获取 active 并保存
@@ -637,12 +619,12 @@ export default function VoucherForm({
                         >
                             继续保存，直接保存凭证
                         </Button>
-                        <Button block onClick={() => setDirectionModal(null)}>
+                        <Button variant="outline" className="w-full" onClick={() => setDirectionModal(null)}>
                             关闭弹窗，自行修改凭证后重新保存
                         </Button>
-                    </div>
-                </div>
-            </Modal>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

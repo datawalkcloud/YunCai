@@ -1,28 +1,54 @@
 import { useState } from "react"
 import { useLocation, useNavigate } from "react-router"
-import { LockOutlined, UserOutlined } from "@ant-design/icons"
-import { Alert, Button, Form, Input, Typography } from "antd"
+import { CircleAlert } from "lucide-react"
 
 import { useAuth } from "@/auth/AuthContext"
+import { Alert, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Field, FieldError, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 
 interface LoginFormValues {
   username: string
   password: string
 }
 
+type FieldErrors = Partial<Record<keyof LoginFormValues, string>>
+
 export function LoginForm() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
+  const [values, setValues] = useState<LoginFormValues>({ username: "", password: "" })
+  const [errors, setErrors] = useState<FieldErrors>({})
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   // 登录成功后回到来源页；无来源时进入应用控制台。
   const from = (location.state as { from?: string } | null)?.from ?? "/app"
 
-  async function handleFinish(values: LoginFormValues) {
+  function setValue(key: keyof LoginFormValues, value: string) {
+    setValues((prev) => ({ ...prev, [key]: value }))
+    setErrors((prev) => ({ ...prev, [key]: undefined }))
+  }
+
+  // 必填校验，提示文案与原表单的 required 规则逐条一致。
+  function validate(): FieldErrors {
+    const next: FieldErrors = {}
+    if (!values.username) next.username = "请输入用户名"
+    if (!values.password) next.password = "请输入密码"
+    return next
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     if (submitting) return
+
+    const nextErrors = validate()
+    setErrors(nextErrors)
+    if (Object.values(nextErrors).some(Boolean)) return
 
     setError(null)
     setSubmitting(true)
@@ -37,62 +63,56 @@ export function LoginForm() {
   }
 
   return (
-    <Form<LoginFormValues>
-      layout="vertical"
-      requiredMark={false}
-      onFinish={handleFinish}
-      disabled={submitting}
-      size="large"
-    >
-      <div style={{ textAlign: "center", marginBottom: 24 }}>
-        <Typography.Title level={3} style={{ marginBottom: 4 }}>
-          登录你的账户
-        </Typography.Title>
-        <Typography.Text type="secondary">输入用户名和密码登录好会计</Typography.Text>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 text-sm">
+      <div className="flex flex-col items-center gap-1 text-center">
+        <h1 className="text-lg font-semibold">登录你的账户</h1>
+        <span className="text-muted-foreground">输入用户名和密码登录好会计</span>
       </div>
 
-      <Form.Item
-        name="username"
-        label="用户名"
-        rules={[{ required: true, message: "请输入用户名" }]}
-      >
+      <Field data-invalid={Boolean(errors.username)} data-disabled={submitting}>
+        <FieldLabel htmlFor="username">用户名</FieldLabel>
         <Input
-          prefix={<UserOutlined />}
+          id="username"
           autoComplete="username"
           placeholder="admin"
+          value={values.username}
+          disabled={submitting}
+          aria-invalid={Boolean(errors.username)}
+          onChange={(e) => setValue("username", e.target.value)}
         />
-      </Form.Item>
+        <FieldError>{errors.username}</FieldError>
+      </Field>
 
-      <Form.Item
-        name="password"
-        label="密码"
-        rules={[{ required: true, message: "请输入密码" }]}
-      >
-        <Input.Password
-          prefix={<LockOutlined />}
+      <Field data-invalid={Boolean(errors.password)} data-disabled={submitting}>
+        <FieldLabel htmlFor="password">密码</FieldLabel>
+        <Input
+          id="password"
+          type="password"
           autoComplete="current-password"
           placeholder="请输入密码"
+          value={values.password}
+          disabled={submitting}
+          aria-invalid={Boolean(errors.password)}
+          onChange={(e) => setValue("password", e.target.value)}
         />
-      </Form.Item>
+        <FieldError>{errors.password}</FieldError>
+      </Field>
 
       {error && (
-        <Form.Item>
-          <Alert type="error" message={error} showIcon />
-        </Form.Item>
+        <Alert variant="destructive">
+          <CircleAlert />
+          <AlertTitle>{error}</AlertTitle>
+        </Alert>
       )}
 
-      <Form.Item style={{ marginBottom: 12 }}>
-        <Button type="primary" htmlType="submit" block loading={submitting}>
-          {submitting ? "登录中…" : "登录"}
-        </Button>
-      </Form.Item>
+      <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+        {submitting && <Spinner data-icon="inline-start" />}
+        {submitting ? "登录中…" : "登录"}
+      </Button>
 
-      <Typography.Paragraph
-        type="secondary"
-        style={{ textAlign: "center", fontSize: 12, marginBottom: 0 }}
-      >
+      <span className="text-muted-foreground text-center">
         演示账号：admin / admin123，user / user123
-      </Typography.Paragraph>
-    </Form>
+      </span>
+    </form>
   )
 }

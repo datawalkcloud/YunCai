@@ -1,14 +1,21 @@
 import { useRef, useState } from "react"
-import { FileSpreadsheet, Upload } from "lucide-react"
-import { Alert, Button, Card, Col, Row, Statistic, Typography, theme } from "antd"
+import { CircleAlert, FileSpreadsheet, Upload } from "lucide-react"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { VouchersApi, type VoucherImportResult } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
-
-const { Title, Text } = Typography
+import { Alert, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card"
+import { Spinner } from "@/components/ui/spinner"
+import { Stat } from "@/components/stats/stat"
 
 /** 允许的文件扩展名（与后端 NPOI 支持一致）。 */
 const ACCEPT = ".xls,.xlsx"
@@ -17,7 +24,6 @@ export default function ImportVoucherPage() {
     const { token } = useAuth()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const { token: t } = theme.useToken()
     const inputRef = useRef<HTMLInputElement>(null)
     const [file, setFile] = useState<File | null>(null)
     const [dragging, setDragging] = useState(false)
@@ -66,25 +72,27 @@ export default function ImportVoucherPage() {
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-1">
-                <Title level={3} style={{ margin: 0 }}>凭证导入</Title>
-                <Text type="secondary">
+                <h1 className="text-lg font-semibold">凭证导入</h1>
+                <span className="text-muted-foreground">
                     支持导入其他平台导出的记账凭证文件（.xls / .xlsx）。系统按凭证号聚合分录、自动补建缺失科目，
                     借贷金额原样保留。
-                </Text>
+                </span>
             </div>
 
             <Card>
-                <div className="flex flex-col gap-4">
+                <CardContent className="flex flex-col gap-4">
                     {/* 目标账套：由路由第一段决定，切换请使用左侧账套切换器 */}
                     <div className="flex flex-col gap-2">
-                        <Text strong>导入到账套</Text>
+                        <span className="font-medium">导入到账套</span>
                         {accountSetId ? (
-                            <Text type="secondary">
+                            <span className="text-muted-foreground">
                                 {currentSet?.name ?? accountSetId}
                                 {currentSet?.isCurrent ? "（当前）" : ""}
-                            </Text>
+                            </span>
                         ) : (
-                            <Text type="danger">未指定账套，请从左侧选择账套后再导入。</Text>
+                            <span className="text-destructive">
+                                未指定账套，请从左侧选择账套后再导入。
+                            </span>
                         )}
                     </div>
 
@@ -102,24 +110,25 @@ export default function ImportVoucherPage() {
                         }}
                         onDragLeave={() => setDragging(false)}
                         onDrop={onDrop}
-                        style={{
-                            borderColor: dragging ? t.colorPrimary : t.colorBorder,
-                            background: dragging ? t.colorPrimaryBg : undefined,
-                        }}
-                        className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors"
+                        className={cn(
+                            "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
+                            dragging ? "border-primary bg-muted" : "border-border",
+                        )}
                     >
-                        <FileSpreadsheet size={40} color={t.colorTextSecondary} />
+                        <FileSpreadsheet className="size-10 text-muted-foreground" />
                         {file ? (
                             <div className="flex flex-col gap-1">
-                                <Text strong>{file.name}</Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                <span className="font-medium">{file.name}</span>
+                                <span className="text-muted-foreground">
                                     {(file.size / 1024).toFixed(1)} KB · 点击可重新选择
-                                </Text>
+                                </span>
                             </div>
                         ) : (
                             <div className="flex flex-col gap-1">
-                                <Text strong>点击选择，或拖拽文件到此处</Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>支持 .xls / .xlsx，最大 10MB</Text>
+                                <span className="font-medium">点击选择，或拖拽文件到此处</span>
+                                <span className="text-muted-foreground">
+                                    支持 .xls / .xlsx，最大 10MB
+                                </span>
                             </div>
                         )}
                         <input
@@ -133,63 +142,64 @@ export default function ImportVoucherPage() {
 
                     <div className="flex items-center gap-3">
                         <Button
-                            type="primary"
-                            icon={<Upload size={16} />}
-                            loading={importing}
                             onClick={handleImport}
-                            disabled={!file || !accountSetId}
+                            disabled={!file || !accountSetId || importing}
                         >
+                            {importing ? (
+                                <Spinner data-icon="inline-start" />
+                            ) : (
+                                <Upload data-icon="inline-start" />
+                            )}
                             {importing ? "导入中…" : "开始导入"}
                         </Button>
-                        {file && !importing && <Button onClick={() => pickFile(null)}>清除</Button>}
+                        {file && !importing && (
+                            <Button variant="outline" onClick={() => pickFile(null)}>
+                                清除
+                            </Button>
+                        )}
                     </div>
 
-                    {error && <Alert type="error" showIcon message={error} />}
-                </div>
+                    {error && (
+                        <Alert variant="destructive">
+                            <CircleAlert />
+                            <AlertTitle>{error}</AlertTitle>
+                        </Alert>
+                    )}
+                </CardContent>
             </Card>
 
             {/* 导入结果 */}
             {result && (
-                <Card title="导入结果">
-                    <Row gutter={[16, 16]}>
-                        <Stat label="解析行数" value={result.totalRows ?? 0} />
-                        <Stat label="导入凭证" value={result.importedVouchers ?? 0} />
-                        <Stat label="导入分录" value={result.importedEntries ?? 0} />
-                        <Stat label="新建科目" value={result.createdAccounts ?? 0} />
-                        <Stat label="跳过凭证" value={result.skippedVouchers ?? 0} muted />
-                    </Row>
-
-                    {result.warnings && result.warnings.length > 0 && (
-                        <div className="mt-4 flex flex-col gap-2">
-                            <Text type="secondary">告警（{result.warnings.length}）</Text>
-                            <ul
-                                className="max-h-64 overflow-auto rounded-md p-3 text-sm"
-                                style={{ border: `1px solid ${t.colorBorderSecondary}`, background: t.colorFillQuaternary }}
-                            >
-                                {result.warnings.map((w, i) => (
-                                    <li key={i} className={cn("py-0.5")} style={{ color: t.colorTextSecondary }}>
-                                        · {w}
-                                    </li>
-                                ))}
-                            </ul>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>导入结果</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-4">
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                            <Stat label="解析行数" value={result.totalRows ?? 0} />
+                            <Stat label="导入凭证" value={result.importedVouchers ?? 0} />
+                            <Stat label="导入分录" value={result.importedEntries ?? 0} />
+                            <Stat label="新建科目" value={result.createdAccounts ?? 0} />
+                            <Stat label="跳过凭证" value={result.skippedVouchers ?? 0} muted />
                         </div>
-                    )}
+
+                        {result.warnings && result.warnings.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                                <span className="text-muted-foreground">
+                                    告警（{result.warnings.length}）
+                                </span>
+                                <ul className="max-h-64 overflow-auto rounded-md border border-border bg-muted p-3 text-sm">
+                                    {result.warnings.map((w, i) => (
+                                        <li key={i} className="py-0.5 text-muted-foreground">
+                                            · {w}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </CardContent>
                 </Card>
             )}
         </div>
-    )
-}
-
-function Stat({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
-    return (
-        <Col xs={12} sm={8} lg={muted ? 24 : 4} flex="auto">
-            <Card size="small">
-                <Statistic
-                    title={label}
-                    value={value}
-                    valueStyle={muted ? { color: "rgba(0,0,0,0.45)" } : undefined}
-                />
-            </Card>
-        </Col>
     )
 }

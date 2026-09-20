@@ -13,7 +13,7 @@ import IncomeStatement from "@/pages/reports/income-statement";
 import Accounts from "@/pages/settings/accounts";
 import AccountSets from "@/pages/settings/account-sets";
 import OpeningBalances from "@/pages/settings/opening-balances";
-import Layout from "@/components/layout/Layout";
+import PlatformLayout from "@/components/layout/platform/PlatformLayout";
 import { useAuth } from "@/auth/AuthContext";
 import { AccountSetsProvider, useAccountSets } from "@/accountSets/AccountSetsContext";
 
@@ -94,7 +94,7 @@ const router = createBrowserRouter([
             {
                 // 账套 id 作为路由第一段，其下所有页面均归属该账套。
                 path: ":accountSetId",
-                element: <Layout />,
+                element: <PlatformLayout />,
                 children: [
                     { index: true, element: <Home /> },
                     { path: "funds/cash-journal", element: <CashJournal /> },

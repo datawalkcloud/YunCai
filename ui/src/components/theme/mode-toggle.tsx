@@ -1,6 +1,6 @@
-import { MoonOutlined, SunOutlined } from "@ant-design/icons"
-import { Button } from "antd"
+import { Moon, Sun } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { useTheme } from "./theme-provider"
 
 /** 浅色 / 深色主题切换按钮。 */
@@ -10,11 +10,12 @@ export function ModeToggle() {
 
   return (
     <Button
-      type="text"
-      shape="circle"
-      icon={isDark ? <MoonOutlined /> : <SunOutlined />}
+      variant="ghost"
+      size="icon"
       onClick={toggleTheme}
       title={isDark ? "切换到浅色" : "切换到深色"}
-    />
+    >
+      {isDark ? <Moon /> : <Sun />}
+    </Button>
   )
 }
