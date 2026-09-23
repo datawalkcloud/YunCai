@@ -11,6 +11,14 @@ import { PeriodField } from "@/components/fields/date-fields"
 import { Alert, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
 import { Spinner } from "@/components/ui/spinner"
 
 type RowKind = "item" | "total"
@@ -251,46 +259,44 @@ export default function IncomeStatementPage() {
                     ) : !accountSetId ? (
                         <div className="py-16 text-center text-sm text-muted-foreground">请先选择账套。</div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[560px] border-collapse text-sm">
-                                <colgroup>
-                                    <col />
-                                    <col style={{ width: 64 }} />
-                                    <col style={{ width: 160 }} />
-                                    <col style={{ width: 160 }} />
-                                </colgroup>
-                                <thead>
-                                    <tr className="bg-muted/50 text-muted-foreground">
-                                        <th className={cn(cellCls, "text-left font-medium")}>项目</th>
-                                        <th className={cn(cellCls, "text-center font-medium")}>行次</th>
-                                        <th className={cn(cellCls, "text-right font-medium")}>本期金额</th>
-                                        <th className={cn(cellCls, "text-right font-medium")}>本年累计金额</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((row, i) => {
-                                        const isTotal = row.kind === "total"
-                                        const indent = (row as StatementLine & { indent?: number }).indent ?? 0
-                                        return (
-                                            <tr key={i}>
-                                                <td className={cn(cellCls, indentCls(indent), isTotal && "font-medium")}>
-                                                    {row.label}
-                                                </td>
-                                                <td className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>
-                                                    {row.line}
-                                                </td>
-                                                <td className={cn(amountCls, isTotal && "font-medium")}>
-                                                    {fmt(row.current, isTotal)}
-                                                </td>
-                                                <td className={cn(amountCls, isTotal && "font-medium")}>
-                                                    {fmt(row.yearToDate, isTotal)}
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                        <Table className="min-w-[560px] border-collapse">
+                            <colgroup>
+                                <col />
+                                <col className="w-16" />
+                                <col className="w-40" />
+                                <col className="w-40" />
+                            </colgroup>
+                            <TableHeader>
+                                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                    <TableHead className={cn(cellCls, "text-left font-medium text-muted-foreground")}>项目</TableHead>
+                                    <TableHead className={cn(cellCls, "text-center font-medium text-muted-foreground")}>行次</TableHead>
+                                    <TableHead className={cn(cellCls, "text-right font-medium text-muted-foreground")}>本期金额</TableHead>
+                                    <TableHead className={cn(cellCls, "text-right font-medium text-muted-foreground")}>本年累计金额</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {rows.map((row, i) => {
+                                    const isTotal = row.kind === "total"
+                                    const indent = (row as StatementLine & { indent?: number }).indent ?? 0
+                                    return (
+                                        <TableRow key={i} className="hover:bg-transparent">
+                                            <TableCell className={cn(cellCls, "whitespace-normal", indentCls(indent), isTotal && "font-medium")}>
+                                                {row.label}
+                                            </TableCell>
+                                            <TableCell className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>
+                                                {row.line}
+                                            </TableCell>
+                                            <TableCell className={cn(amountCls, isTotal && "font-medium")}>
+                                                {fmt(row.current, isTotal)}
+                                            </TableCell>
+                                            <TableCell className={cn(amountCls, isTotal && "font-medium")}>
+                                                {fmt(row.yearToDate, isTotal)}
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
                     )}
                 </CardContent>
             </Card>

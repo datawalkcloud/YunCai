@@ -11,6 +11,14 @@ import { PeriodField } from "@/components/fields/date-fields"
 import { Alert, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
 import { Spinner } from "@/components/ui/spinner"
 
 type RowKind = "section" | "item" | "total"
@@ -177,30 +185,30 @@ function HalfRow({ row }: { row?: SheetLine }) {
     if (!row) {
         return (
             <>
-                <td className={cellCls} />
-                <td className={cellCls} />
-                <td className={amountCls} />
-                <td className={amountCls} />
+                <TableCell className={cellCls} />
+                <TableCell className={cellCls} />
+                <TableCell className={amountCls} />
+                <TableCell className={amountCls} />
             </>
         )
     }
     if (row.kind === "section") {
         return (
             <>
-                <td className={cn(cellCls, "font-medium")}>{row.label}</td>
-                <td className={cellCls} />
-                <td className={amountCls} />
-                <td className={amountCls} />
+                <TableCell className={cn(cellCls, "whitespace-normal font-medium")}>{row.label}</TableCell>
+                <TableCell className={cellCls} />
+                <TableCell className={amountCls} />
+                <TableCell className={amountCls} />
             </>
         )
     }
     const isTotal = row.kind === "total"
     return (
         <>
-            <td className={cn(cellCls, isTotal ? "font-medium" : "pl-6")}>{row.label}</td>
-            <td className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>{row.line}</td>
-            <td className={cn(amountCls, isTotal && "font-medium")}>{fmt(row.ending, isTotal)}</td>
-            <td className={cn(amountCls, isTotal && "font-medium")}>{fmt(row.opening, isTotal)}</td>
+            <TableCell className={cn(cellCls, "whitespace-normal", isTotal ? "font-medium" : "pl-6")}>{row.label}</TableCell>
+            <TableCell className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>{row.line}</TableCell>
+            <TableCell className={cn(amountCls, isTotal && "font-medium")}>{fmt(row.ending, isTotal)}</TableCell>
+            <TableCell className={cn(amountCls, isTotal && "font-medium")}>{fmt(row.opening, isTotal)}</TableCell>
         </>
     )
 }
@@ -327,42 +335,40 @@ export default function BalanceSheetPage() {
                     ) : !accountSetId ? (
                         <div className="py-16 text-center text-sm text-muted-foreground">请先选择账套。</div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[900px] border-collapse text-sm">
-                                <colgroup>
-                                    <col />
-                                    <col style={{ width: 48 }} />
-                                    <col style={{ width: 130 }} />
-                                    <col style={{ width: 130 }} />
-                                    <col />
-                                    <col style={{ width: 48 }} />
-                                    <col style={{ width: 130 }} />
-                                    <col style={{ width: 130 }} />
-                                </colgroup>
-                                <thead>
-                                    <tr className="bg-muted/50 text-muted-foreground">
-                                        <th className={cn(cellCls, "text-left font-medium")}>资产</th>
-                                        <th className={cn(cellCls, "text-center font-medium")}>行次</th>
-                                        <th className={cn(cellCls, "text-right font-medium")}>期末余额</th>
-                                        <th className={cn(cellCls, "text-right font-medium")}>年初余额</th>
-                                        <th className={cn(cellCls, "text-left font-medium")}>
-                                            负债和所有者权益（或股东权益）
-                                        </th>
-                                        <th className={cn(cellCls, "text-center font-medium")}>行次</th>
-                                        <th className={cn(cellCls, "text-right font-medium")}>期末余额</th>
-                                        <th className={cn(cellCls, "text-right font-medium")}>年初余额</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {Array.from({ length: rowCount }).map((_, i) => (
-                                        <tr key={i}>
-                                            <HalfRow row={assetRows[i]} />
-                                            <HalfRow row={liabilityRows[i]} />
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <Table className="min-w-[900px] border-collapse">
+                            <colgroup>
+                                <col />
+                                <col className="w-12" />
+                                <col className="w-[130px]" />
+                                <col className="w-[130px]" />
+                                <col />
+                                <col className="w-12" />
+                                <col className="w-[130px]" />
+                                <col className="w-[130px]" />
+                            </colgroup>
+                            <TableHeader>
+                                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                    <TableHead className={cn(cellCls, "whitespace-normal text-left font-medium text-muted-foreground")}>资产</TableHead>
+                                    <TableHead className={cn(cellCls, "text-center font-medium text-muted-foreground")}>行次</TableHead>
+                                    <TableHead className={cn(cellCls, "text-right font-medium text-muted-foreground")}>期末余额</TableHead>
+                                    <TableHead className={cn(cellCls, "text-right font-medium text-muted-foreground")}>年初余额</TableHead>
+                                    <TableHead className={cn(cellCls, "whitespace-normal text-left font-medium text-muted-foreground")}>
+                                        负债和所有者权益（或股东权益）
+                                    </TableHead>
+                                    <TableHead className={cn(cellCls, "text-center font-medium text-muted-foreground")}>行次</TableHead>
+                                    <TableHead className={cn(cellCls, "text-right font-medium text-muted-foreground")}>期末余额</TableHead>
+                                    <TableHead className={cn(cellCls, "text-right font-medium text-muted-foreground")}>年初余额</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {Array.from({ length: rowCount }).map((_, i) => (
+                                    <TableRow key={i} className="hover:bg-transparent">
+                                        <HalfRow row={assetRows[i]} />
+                                        <HalfRow row={liabilityRows[i]} />
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     )}
 
                     {loaded && !loading && (
