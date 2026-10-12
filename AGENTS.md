@@ -1,6 +1,6 @@
 # AGENTS.md
 
-面向 AI 编码助手 / 新成员的项目指南。KuaiJi（快记）是一个前后端分离的会计记账系统：ASP.NET Core 后端 + React SPA 前端，支持账套、科目、记账凭证、日记账及报表（科目余额表、资产负债表、现金日记账、利润表）。
+面向 AI 编码助手 / 新成员的项目指南。KuaiJi（快记）是一个前后端分离的会计记账系统：ASP.NET Core 后端（模块化 DDD）+ React SPA 前端，覆盖账套、科目、凭证、资金出纳、发票、工资、固定资产、票据、电子档案、期末结转结账及全套报表（科目余额表、资产负债表、利润表/季报、现金流量表、部门/项目利润表、自定义报表等）。
 
 ## 技术栈
 
@@ -8,27 +8,39 @@
 | --- | --- |
 | 后端 | .NET 10 / ASP.NET Core Web API、EF Core + PostgreSQL（Npgsql）、MediatR、Serilog、JWT Bearer 认证 |
 | Excel | MiniExcel（.xlsx 读取）、NPOI 2.8（.xls 凭证解析，csproj 中已接受 OSMF EULA） |
-| 前端 | React 19 + TypeScript、Vite 8（rolldown）、Ant Design 6、Tailwind CSS 4、react-router 8、React Compiler（babel 插件） |
+| 前端 | React 19 + TypeScript、Vite 8（rolldown）、shadcn/radix-ui + lucide-react、Tailwind CSS 4、react-router 8、React Compiler（babel 插件） |
 | API 客户端 | openapi-generator（typescript-fetch），产物在 `ui/src/apis-gen/` |
 | Lint | oxlint（前端） |
 
-## 目录结构
+## 目录结构（模块化 DDD）
 
 ```
-src/KuaiJi/            后端（单项目分层）
-  Controllers/         API 控制器（Auth、AccountSets、Accounts、Vouchers、Reports）
-  Application/         应用服务、DTO、导入服务（AccountSets/Accounts/Journals/Vouchers/Reports）
-  Domain/              实体、枚举、仓储接口（按聚合分目录）
-  Infrastructure/      仓储实现、DbContext、Excel 读取器实现
-  Services/            JwtTokenService、PasswordHasher
-  Migrations/          EF Core 迁移（启动时自动执行 Migrate）
-ui/                    前端
-  src/apis-gen/        openapi-generator 生成代码，禁止手改，重新生成覆盖
-  src/api/             手写 API 封装
-  src/pages/           按业务模块分页面（vouchers、reports、ledger、funds、settings 等）
-  src/accountSets/     当前账套 Context
-  src/auth/            登录态 Context
+src/KuaiJi/                      后端（单项目，按限界上下文分模块；API 契约与旧版兼容）
+  Modules/<上下文>/               每个模块内分 Domain / Application / Infrastructure / Api
+    Identity/                     用户与认证（User、Jwt、PasswordHasher）
+    AccountSets/                  账套 + 币别/凭证字/重新初始化
+    Accounting/                   科目与期初
+    Assist/                       辅助核算档案（七类 AssistType）
+    Vouchers/                     凭证 + 凭证模板
+    Funds/                        日记账/收支类别/内部转账/票据（原 Journals+Drafts）
+    Ledgers/                      账簿查询（纯读：ILedgerSource + LedgerDataSetFactory）
+    Reports/                      财务报表（含现金流分类器 Domain/CashFlow、自定义报表聚合）
+    Closing/                      期末结转与结账
+    FixedAssets/ Invoices/ Salary/ Archives/ Auditing   资产/发票/工资/电子档案/操作日志
+  Shared/Infrastructure/          AppDbContext（28+ DbSet，全部实体配置）、LenientDateOnlyModelBinder
+  Program.cs                      组合根：全部 DI 注册在此（按模块全名 AddScoped）
+  Migrations/                     EF Core 迁移（启动时自动执行 Migrate）
+ui/                              前端
+  src/apis-gen/                   openapi-generator 生成代码，禁止手改，重新生成覆盖
+  src/api/                        手写 API 封装（auth、accountSets）
+  src/pages/                      既有实页（vouchers、reports、ledger、funds、settings、closing、dashboard）
+  src/pages/lemon/                柠檬云风格页面（正式 UI 的一部分，已接真实 API；侧边栏菜单在
+                                  components/layout/dashboard/DashboardLayout.tsx，与实页互补共存）
+  src/accountSets/                当前账套 Context（useCurrentAccountSetId 从路由取账套）
+  src/auth/                       登录态 Context
 ```
+
+模块边界约定：跨模块只能引用对方 **Domain**（如 Accounting.Domain 的枚举）；Application/Infrastructure 不跨模块引用；新增业务一律放进对应模块（没有就新建），不要回填到根级分层。
 
 ## 常用命令
 
@@ -66,9 +78,16 @@ npm run gen                   # 重新生成 apis-gen（要求后端已在 5271 
 
 ## 领域须知（会计）
 
+- **账簿与报表只统计已过账凭证**（`VoucherStatus.Posted`）。草稿/已审核未过账的凭证不入账，因此制单后必须先去凭证页审核并过账，报表与科目余额表才有数字。
+- **查询区间一律归一到自然月**（起始日归到月初、截止日归到月末），见 `Modules/Ledgers/Application/LedgerDataSetFactory`；会计期间标识统一用 `yyyyMM` 整数。
+- **余额内部一律按「借 - 贷」净额累计**（`BalanceAmounts`），只在输出层用 `SplitBySign` 拆回借/贷两栏；新增账页请沿用该口径，不要再引入按方向分别累加的写法。
+- 账簿取数走 `Modules/Ledgers` 的 `ILedgerSource` + `LedgerDataSetFactory`（EF 投影查询 + 两级聚合）。**新增账页只做投影，不要各自读 `IVoucherRepository.GetAllAsync`**。
 - 项目实际使用**旧准则**（2001 版《企业会计制度》）科目编码体系，如实收资本为 `3001`（权益类）。
 - 新旧准则编码首位含义不同（旧：3=权益、4=成本；新：4=权益、5=成本），涉及 `InferCategoryAndDirection`、`BalanceSheetService` 等按编码首位/前四位分类的逻辑时，务必兼容两套体系，避免权益类被误判为成本类。
 - 科目编码有层级（编码方案控制各级位数，最多 10 级）；批量创建/导入科目时必须按编码长度排序，先建父级再建子级。
+- **期末结转与结账（`Modules/Closing`）**：先结转损益、再结账——账套 `CarriedPeriod`（已结转至）必须先于 `ClosedPeriod`（已结账至）推进；结转凭证由系统生成并直接过账（摘要「期末结转损益 / 结转未分配利润」，含 4103/3103 本年利润科目，识别与「撤销结转」均以此为准）；支持自定义结转模板（执行时按当月数据计算并校验平衡，模板凭证摘要用模板行摘要、不参与撤销识别）与批量结账；资产负债表把损益类余额并入未分配利润行、利润表剔除结转凭证，保证结转前后报表口径一致。
+- **出纳闭环（`Modules/Funds`）**：资金账户（日记账）支持启停用与开户行信息，停用只拦新流水（记账 / 导入 / 内部转账），历史数据与报表照常；内部转账自动在两端各登记一笔流水（类别「内部转账」、往来记为对方户名），已生成凭证的转账不可改删；批量生成凭证按合并方式（全部 / 日期 / 类别 / 方向）分组出票，对方科目优先取统一科目、其次取类别「默认对方科目」，任一流水无法确定对方科目则整单拒绝；收支类别可配智能匹配关键字（导入按摘要包含自动归类，同类取最长命中）；资金报表按 账户 / 类别 / 往来 汇总，出纳台账侧为全量流水（含未生成凭证），核对总账的总账侧仅统计已过账凭证 + 科目期初。
+- **报表新口径（`Modules/Reports`）**：现金流量表为直接法简化工作底稿——现金科目=一级编码 1001/1002/1012，每张凭证的现金净收付按比例分摊到对手方科目，由 `Domain/CashFlow/CashFlowClassifier` 归类到标准 35 行主表（投资/筹资区分、权益类对手方归筹资），三种页面（月/季/标准）共用一套 DTO；利润表/部门/项目利润表/费用明细表的行次归集统一走 `IncomeLineMapper`（含新旧准则编码兼容），结转凭证（含 4103/3103）一律剔除；所有者权益变动表、纳税统计表、财务概要共享 `AccountNetCalculator`（借-贷净额含期初）；自定义报表（数据透视表）为真实聚合 `CustomReport`（表 custom_reports），渲染=科目×12 个月（余额/发生额两种口径）。
 
 ## 常见陷阱
 
@@ -76,3 +95,8 @@ npm run gen                   # 重新生成 apis-gen（要求后端已在 5271 
 - **FormData 枚举参数**：前端用 `FormData.append()` 提交的枚举/标量参数，控制器参数必须加 `[FromForm]`，否则默认从 query string 绑定、永远是默认值。
 - **apis-gen 目录**：由 openapi-generator 生成，任何手改都会在下次 `npm run gen` 时丢失。
 - **凭证 .xls 导入**：走 NPOI 解析（`XlsVoucherImportReader`）；科目 .xlsx 导入走 MiniExcel（`XlsxAccountImportReader`），两条链路依赖库不同。
+- **EF 投影后再过滤/分组无法翻译**：把分录投影成自定义记录（`select new EntryRow(...)`）之后，再对其 `.Where(日期)` 或 `.GroupBy` 会抛 "The LINQ expression could not be translated"。日期条件必须写在查询表达式的 `where` 里（聚合则直接对实体 `join` 后 `group e by ...`），见 `Modules/Ledgers/Infrastructure/LedgerSource`。
+- **前端日期（DateOnly）序列化**：apis-gen 生成的 Date 参数按 `toISOString().substring(0,10)` 序列化（UTC），直接传本地 `new Date(2026, 0, 1)` 会在东八区回退一天；日期字段一律先构造 `new Date("YYYY-MM-DD")` 再交给生成的 API。
+- **apis-gen 日期运行时是 Date 对象**：生成客户端的 `FromJSON` 会把日期字段 `new Date(...)` 解析成真正的 Date（类型与运行时一致），前端展示用 `new Date(x).toISOString().substring(0,10)` 得 yyyy-MM-dd，不要直接 `String(x).slice(0,10)`（会渲染出英文星期）。
+- **改实体命名空间必须同步迁移快照**：`Migrations/AppDbContextModelSnapshot.cs` 以**实体全名字符串**（如 `"KuaiJi.Modules.Vouchers.Domain.Voucher"`）登记实体；改实体命名空间而不同步该文件，下次 `dotnet ef migrations add` 会生成全量删建。验证方法：加一个临时迁移看 Up/Down 是否为空，空则 `dotnet ef migrations remove` 撤掉。
+- **oxlint 存量警告**：根目录 `npx oxlint` 有 ~15 条既有 `react(only-export-components)` fast-refresh 提示（shadcn 组件与 router 辅助组件），不属于本次改动；lemon 页面文件保持 0 警告。

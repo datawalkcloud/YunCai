@@ -25,6 +25,18 @@ export interface UpdateEntryCategoryRequest {
      * @memberof UpdateEntryCategoryRequest
      */
     name?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateEntryCategoryRequest
+     */
+    smartKeywords?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateEntryCategoryRequest
+     */
+    voucherSubjectId?: string | null;
 }
 
 /**
@@ -45,6 +57,8 @@ export function UpdateEntryCategoryRequestFromJSONTyped(json: any, ignoreDiscrim
     return {
         
         'name': json['name'] == null ? undefined : json['name'],
+        'smartKeywords': json['smartKeywords'] == null ? undefined : json['smartKeywords'],
+        'voucherSubjectId': json['voucherSubjectId'] == null ? undefined : json['voucherSubjectId'],
     };
 }
 
@@ -60,6 +74,8 @@ export function UpdateEntryCategoryRequestToJSONTyped(value?: UpdateEntryCategor
     return {
         
         'name': value['name'],
+        'smartKeywords': value['smartKeywords'],
+        'voucherSubjectId': value['voucherSubjectId'],
     };
 }
 

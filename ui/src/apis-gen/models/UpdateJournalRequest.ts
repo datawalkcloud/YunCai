@@ -31,6 +31,24 @@ export interface UpdateJournalRequest {
      * @memberof UpdateJournalRequest
      */
     openingBalance?: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdateJournalRequest
+     */
+    isEnabled?: boolean | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateJournalRequest
+     */
+    bankName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateJournalRequest
+     */
+    bankAccountNo?: string | null;
 }
 
 /**
@@ -52,6 +70,9 @@ export function UpdateJournalRequestFromJSONTyped(json: any, ignoreDiscriminator
         
         'name': json['name'] == null ? undefined : json['name'],
         'openingBalance': json['openingBalance'] == null ? undefined : json['openingBalance'],
+        'isEnabled': json['isEnabled'] == null ? undefined : json['isEnabled'],
+        'bankName': json['bankName'] == null ? undefined : json['bankName'],
+        'bankAccountNo': json['bankAccountNo'] == null ? undefined : json['bankAccountNo'],
     };
 }
 
@@ -68,6 +89,9 @@ export function UpdateJournalRequestToJSONTyped(value?: UpdateJournalRequest | n
         
         'name': value['name'],
         'openingBalance': value['openingBalance'],
+        'isEnabled': value['isEnabled'],
+        'bankName': value['bankName'],
+        'bankAccountNo': value['bankAccountNo'],
     };
 }
 

@@ -5,9 +5,11 @@ import {
     CircleAlert,
     Download,
     FileSpreadsheet,
+    ListTree,
     Pencil,
     Plus,
     RefreshCw,
+    Tags,
     Trash2,
     Upload,
 } from "lucide-react"
@@ -15,13 +17,23 @@ import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-tab
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
-import { AccountsApi, AccountSetsApi, type AccountDto, type AccountImportResult } from "@/apis-gen"
+import { AccountsApi, AccountSetsApi, type AccountAssistTypeDto, type AccountDto, type AccountImportResult } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { ASSIST_TYPES, assistLabel } from "@/components/assist/constants"
+import { PageHeader, SectionCard } from "@/components/page/section"
+import { Tile } from "@/components/page/tile"
+import { StatusPill } from "@/components/page/status-pill"
+import { ICON_BTN, ICON_BTN_DANGER, PAGE_BTN_GHOST, PAGE_BTN_PRIMARY, SOFT_PANEL } from "@/components/page/styles"
+import {
+    fetchAccountAssistTypes,
+    setAccountAssistTypesCache,
+    useAccountAssistConfigs,
+    useAssistCategories,
+} from "@/components/assist/assist-store"
 import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
     Dialog,
     DialogContent,
@@ -43,7 +55,6 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet"
 import { Spinner } from "@/components/ui/spinner"
-import { Stat } from "@/components/stats/stat"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
@@ -130,6 +141,23 @@ interface EditForm {
     direction: number
     mnemonic: string
     isEnabled: boolean
+}
+
+/** 辅助核算设置弹窗的一行：七个固定类别各一行，勾选即挂到该科目上。 */
+interface AssistRow {
+    type: number
+    checked: boolean
+    isRequired: boolean
+}
+
+/** 把科目已有的维度配置映射为七个固定类别的展示行（未配置的默认必录）。 */
+function toAssistRows(configured: AccountAssistTypeDto[]): AssistRow[] {
+    const byType = new Map(configured.map((c) => [c.type as number, c]))
+    return ASSIST_TYPES.map((t) => ({
+        type: t.value,
+        checked: byType.has(t.value),
+        isRequired: byType.get(t.value)?.isRequired ?? true,
+    }))
 }
 
 const emptyCreateForm: CreateForm = {
@@ -236,6 +264,26 @@ export default function AccountsPage() {
     // 原 Modal.confirm（已有科目时二次确认）改为受控 Dialog。
     const [schemeConfirmOpen, setSchemeConfirmOpen] = useState(false)
     const [pendingScheme, setPendingScheme] = useState("")
+
+    // ── 辅助核算设置（类别开关在账套上，维度挂在科目上）──
+    const { categories: assistCategories } = useAssistCategories(accountSetId, token)
+    // 账套一个类别都没启用时不必逐科目回读维度，避免无谓请求。
+    const assistAnyEnabled = assistCategories.some((c) => c.isEnabled)
+    const assistAccountIds = useMemo(
+        () => (assistAnyEnabled ? accounts.map((a) => a.id) : []),
+        [assistAnyEnabled, accounts],
+    )
+    const { configs: assistConfigs, applyConfig: applyAssistConfig } = useAccountAssistConfigs(
+        accountSetId,
+        assistAccountIds,
+        token,
+    )
+    const [assistOpen, setAssistOpen] = useState(false)
+    const [assistTarget, setAssistTarget] = useState<AccountDto | null>(null)
+    const [assistRows, setAssistRows] = useState<AssistRow[]>([])
+    const [assistLoading, setAssistLoading] = useState(false)
+    const [assistSaving, setAssistSaving] = useState(false)
+    const [assistError, setAssistError] = useState("")
 
     const load = useCallback(async () => {
         if (!accountSetId) return
@@ -582,6 +630,47 @@ export default function AccountsPage() {
         }
     }
 
+    // ── 辅助核算设置处理 ──
+    async function openAssistDialog(account: AccountDto) {
+        if (!account.id) return
+        setAssistTarget(account)
+        setAssistRows([])
+        setAssistError("")
+        setAssistOpen(true)
+        setAssistLoading(true)
+        try {
+            // force 回读，确保弹窗里显示的是后端最新的必录口径。
+            setAssistRows(toAssistRows(await fetchAccountAssistTypes(accountSetId, account.id, token, true)))
+        } catch (err) {
+            setAssistError(await apiErrorMessage(err, "加载辅助核算设置失败，请重试。"))
+        } finally {
+            setAssistLoading(false)
+        }
+    }
+
+    async function saveAssistDialog() {
+        if (assistSaving || !assistTarget?.id) return
+        setAssistSaving(true)
+        setAssistError("")
+        try {
+            const list = await new AccountsApi(apiConfig(token)).accountsetsAccountSetIdAccountsIdAssistTypesPut({
+                accountSetId,
+                id: assistTarget.id,
+                accountAssistTypeRequest: assistRows
+                    .filter((r) => r.checked)
+                    .map((r) => ({ type: r.type, isRequired: r.isRequired })),
+            })
+            setAccountAssistTypesCache(accountSetId, assistTarget.id, list)
+            applyAssistConfig(assistTarget.id, list)
+            setAssistOpen(false)
+            setAssistTarget(null)
+        } catch (err) {
+            setAssistError(await apiErrorMessage(err, "保存辅助核算设置失败，请重试。"))
+        } finally {
+            setAssistSaving(false)
+        }
+    }
+
     const expandedSet = useMemo(() => new Set(expandedKeys.map((k) => String(k))), [expandedKeys])
 
     const columns = [
@@ -598,6 +687,7 @@ export default function AccountsPage() {
                             <Button
                                 variant="ghost"
                                 size="icon-xs"
+                                className={ICON_BTN}
                                 aria-label={expanded ? "收起下级科目" : "展开下级科目"}
                                 aria-expanded={expanded}
                                 onClick={() => toggleExpand(id)}
@@ -616,10 +706,25 @@ export default function AccountsPage() {
         helper.display({
             id: "name",
             header: "科目名称",
-            cell: ({ row }) =>
-                row.original.node.parentId == null
-                    ? <span className="font-medium">{row.original.node.name}</span>
-                    : <span>{row.original.node.name}</span>,
+            cell: ({ row }) => {
+                const node = row.original.node
+                // 已挂辅助核算的科目给一个轻量标记（星号表示该维度必录）。
+                const types = assistConfigs[node.id ?? ""] ?? []
+                return (
+                    <div className="flex flex-wrap items-center gap-1">
+                        {node.parentId == null ? (
+                            <span className="font-medium text-slate-800">{node.name}</span>
+                        ) : (
+                            <span>{node.name}</span>
+                        )}
+                        {types.length > 0 && (
+                            <StatusPill tone="gray">
+                                {types.map((t) => `${assistLabel(t.type)}${t.isRequired === false ? "" : "*"}`).join(" ")}
+                            </StatusPill>
+                        )}
+                    </div>
+                )
+            },
         }),
         helper.display({
             id: "level",
@@ -641,8 +746,8 @@ export default function AccountsPage() {
             header: "状态",
             cell: ({ row }) => (
                 row.original.node.isEnabled
-                    ? <Badge>启用</Badge>
-                    : <Badge variant="secondary">停用</Badge>
+                    ? <StatusPill tone="green">启用</StatusPill>
+                    : <StatusPill tone="gray">停用</StatusPill>
             ),
         }),
         helper.display({
@@ -652,12 +757,22 @@ export default function AccountsPage() {
                 const account = row.original.node
                 return (
                     <div className="flex items-center justify-end gap-0">
-                        <Button variant="ghost" size="icon-xs" title="编辑科目" onClick={() => openEditDrawer(account)}>
+                        <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            className={ICON_BTN}
+                            title="设置辅助核算"
+                            onClick={() => void openAssistDialog(account)}
+                        >
+                            <Tags />
+                        </Button>
+                        <Button variant="ghost" size="icon-xs" className={ICON_BTN} title="编辑科目" onClick={() => openEditDrawer(account)}>
                             <Pencil />
                         </Button>
                         <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="icon-xs"
+                            className={ICON_BTN_DANGER}
                             title={account.children ? "删除科目（需先删除下级）" : "删除科目"}
                             disabled={deletingId === account.id}
                             onClick={() => void removeAccount(account)}
@@ -682,49 +797,56 @@ export default function AccountsPage() {
     ]
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-lg font-semibold">科目</h1>
-                <span className="text-muted-foreground">
-                    账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                    {((currentSet as any)?.accountCodingScheme) ? ` · 编码方案：${(currentSet as any).accountCodingScheme}` : ""}
-                    。维护多级会计科目表，一级科目下可挂明细科目，用于凭证录入与账簿核算。
-                </span>
-            </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>科目列表</CardTitle>
-                    <CardAction className="flex flex-wrap items-center justify-end gap-2">
-                        <Button variant="outline" onClick={() => void load()} disabled={!accountSetId || loading}>
+        <div className="flex flex-col gap-5">
+            <PageHeader
+                icon={ListTree}
+                title="科目"
+                subtitle={
+                    <>
+                        账套：{currentSet?.name ?? (accountSetId || "未指定")}
+                        {((currentSet as any)?.accountCodingScheme) ? ` · 编码方案：${(currentSet as any).accountCodingScheme}` : ""}
+                        。维护多级会计科目表，一级科目下可挂明细科目，用于凭证录入与账簿核算。
+                    </>
+                }
+                actions={
+                    <>
+                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void load()} disabled={!accountSetId || loading}>
                             {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
                             刷新
                         </Button>
-                        <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!accountSetId}>
+                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => setImportOpen(true)} disabled={!accountSetId}>
                             <Upload data-icon="inline-start" />
                             导入科目
                         </Button>
-                        <Button variant="outline" onClick={openSchemeModal} disabled={!accountSetId}>
+                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={openSchemeModal} disabled={!accountSetId}>
                             <Pencil data-icon="inline-start" />
                             编码方案
                         </Button>
-                        <Button onClick={openDrawer} disabled={!accountSetId}>
+                        <Button className={PAGE_BTN_PRIMARY} onClick={openDrawer} disabled={!accountSetId}>
                             <Plus data-icon="inline-start" />
                             新增科目
                         </Button>
-                    </CardAction>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                    {loadError && (
-                        <Alert variant="destructive">
-                            <CircleAlert />
-                            <AlertTitle>{loadError}</AlertTitle>
-                        </Alert>
-                    )}
+                    </>
+                }
+            />
 
+            <SectionCard
+                title={<h3 className="text-[14px] font-semibold text-slate-800">科目列表</h3>}
+                bodyClassName="flex flex-col gap-4"
+            >
+                {loadError && (
+                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
+                        <CircleAlert />
+                        <AlertTitle>{loadError}</AlertTitle>
+                    </Alert>
+                )}
+
+                <div className={cn(SOFT_PANEL, "flex flex-wrap items-center gap-2 px-3 py-2")}>
                     <ToggleGroup
                         type="single"
                         variant="outline"
+                        size="sm"
+                        spacing={0}
                         value={filter === "全部" ? "全部" : String(filter)}
                         onValueChange={(v) => {
                             if (!v) return
@@ -738,52 +860,52 @@ export default function AccountsPage() {
                             </ToggleGroupItem>
                         ))}
                     </ToggleGroup>
+                </div>
 
-                    <Table>
-                        <TableHeader>
-                            {headerGroups.map((headerGroup) => (
-                                <TableRow key={headerGroup.id}>
-                                    {headerGroup.headers.map((header) => (
-                                        <TableHead key={header.id} className={COLUMN_CLASS[header.column.id]}>
-                                            <table.FlexRender header={header} />
-                                        </TableHead>
+                <Table>
+                    <TableHeader>
+                        {headerGroups.map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => (
+                                    <TableHead key={header.id} className={COLUMN_CLASS[header.column.id]}>
+                                        <table.FlexRender header={header} />
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody>
+                        {loading && accounts.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={COLUMN_COUNT} className="py-8 text-center">
+                                    <Spinner className="mx-auto size-5 text-slate-300" />
+                                </TableCell>
+                            </TableRow>
+                        ) : rows.length === 0 ? (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={COLUMN_COUNT}
+                                    className="py-8 text-center text-slate-400"
+                                >
+                                    {accountSetId
+                                        ? "暂无科目，可点击「新增科目」或通过凭证导入自动建立。"
+                                        : "请先选择账套。"}
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            rows.map((row) => (
+                                <TableRow key={row.id}>
+                                    {row.getAllCells().map((cell) => (
+                                        <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]}>
+                                            <table.FlexRender cell={cell} />
+                                        </TableCell>
                                     ))}
                                 </TableRow>
-                            ))}
-                        </TableHeader>
-                        <TableBody>
-                            {loading && accounts.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={COLUMN_COUNT} className="py-8 text-center">
-                                        <Spinner />
-                                    </TableCell>
-                                </TableRow>
-                            ) : rows.length === 0 ? (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={COLUMN_COUNT}
-                                        className="py-8 text-center text-muted-foreground"
-                                    >
-                                        {accountSetId
-                                            ? "暂无科目，可点击「新增科目」或通过凭证导入自动建立。"
-                                            : "请先选择账套。"}
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                rows.map((row) => (
-                                    <TableRow key={row.id}>
-                                        {row.getAllCells().map((cell) => (
-                                            <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]}>
-                                                <table.FlexRender cell={cell} />
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </SectionCard>
 
             {/* 新增科目抽屉 */}
             <Sheet open={open} onOpenChange={setOpen}>
@@ -938,7 +1060,7 @@ export default function AccountsPage() {
                         )}
 
                         {error && (
-                            <Alert variant="destructive">
+                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
                                 <CircleAlert />
                                 <AlertTitle>{error}</AlertTitle>
                             </Alert>
@@ -1042,7 +1164,7 @@ export default function AccountsPage() {
                                     </RadioGroup>
                                 </Field>
                                 {editError && (
-                                    <Alert variant="destructive">
+                                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
                                         <CircleAlert />
                                         <AlertTitle>{editError}</AlertTitle>
                                     </Alert>
@@ -1086,7 +1208,7 @@ export default function AccountsPage() {
                     <div className="flex flex-1 flex-col gap-4 overflow-auto px-4 pb-4">
                         <div className="flex flex-col gap-1">
                             <span className="font-medium">导入到账套</span>
-                            <span className="text-muted-foreground">
+                            <span className="text-[12.5px] text-slate-400">
                                 {currentSet?.name ?? accountSetId}
                                 {currentSet?.isCurrent ? "（当前）" : ""}
                             </span>
@@ -1116,10 +1238,10 @@ export default function AccountsPage() {
                             onDrop={onImportDrop}
                             className={cn(
                                 "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
-                                importDragging ? "border-primary bg-muted" : "border-border",
+                                importDragging ? "border-[#bfdbfe] bg-[#eef4ff]" : "border-slate-200",
                             )}
                         >
-                            <FileSpreadsheet size={40} strokeWidth={1.2} className="text-muted-foreground" />
+                            <FileSpreadsheet size={40} strokeWidth={1.2} className="text-slate-300" />
                             {importFile ? (
                                 <div className="flex flex-col gap-1">
                                     <span className="font-medium">{importFile.name}</span>
@@ -1156,7 +1278,7 @@ export default function AccountsPage() {
                         </div>
 
                         {importError && (
-                            <Alert variant="destructive">
+                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
                                 <CircleAlert />
                                 <AlertTitle>{importError}</AlertTitle>
                             </Alert>
@@ -1164,33 +1286,29 @@ export default function AccountsPage() {
 
                         {/* 导入结果 */}
                         {importResult && (
-                            <Card size="sm">
-                                <CardHeader>
-                                    <CardTitle>导入结果</CardTitle>
-                                </CardHeader>
-                                <CardContent className="flex flex-col gap-4">
-                                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                                        <Stat label="解析行数" value={importResult.totalRows ?? 0} />
-                                        <Stat label="导入科目" value={importResult.importedAccounts ?? 0} />
-                                        <Stat label="跳过科目" value={importResult.skippedAccounts ?? 0} muted />
-                                    </div>
+                            <div className={cn(SOFT_PANEL, "flex flex-col gap-4 p-4")}>
+                                <h3 className="text-[13px] font-semibold text-slate-800">导入结果</h3>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <Tile label="解析行数" value={importResult.totalRows ?? 0} tone="blue" icon={FileSpreadsheet} />
+                                    <Tile label="导入科目" value={importResult.importedAccounts ?? 0} tone="green" icon={Plus} />
+                                    <Tile label="跳过科目" value={importResult.skippedAccounts ?? 0} tone="gray" icon={ChevronRight} />
+                                </div>
 
-                                    {importResult.warnings && importResult.warnings.length > 0 && (
-                                        <div className="flex flex-col gap-2">
-                                            <span className="text-muted-foreground">
-                                                告警（{importResult.warnings.length}）
-                                            </span>
-                                            <ul className="max-h-64 overflow-auto rounded-md border border-border bg-muted p-3 text-muted-foreground">
-                                                {importResult.warnings.map((w, i) => (
-                                                    <li key={i} className={cn("py-0.5")}>
-                                                        · {w}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
+                                {importResult.warnings && importResult.warnings.length > 0 && (
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-[12.5px] text-slate-400">
+                                            告警（{importResult.warnings.length}）
+                                        </span>
+                                        <ul className="max-h-64 overflow-auto rounded-lg border border-slate-100 bg-white p-3 text-[12.5px] text-slate-500">
+                                            {importResult.warnings.map((w, i) => (
+                                                <li key={i} className={cn("py-0.5")}>
+                                                    · {w}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </SheetContent>
@@ -1225,7 +1343,7 @@ export default function AccountsPage() {
                             <div className="flex flex-wrap items-center gap-2">
                                 {Array.from({ length: schemeLevels }, (_, i) => (
                                     <div key={i} className="flex items-center gap-2">
-                                        {i > 0 && <span className="text-muted-foreground">-</span>}
+                                        {i > 0 && <span className="text-slate-400">-</span>}
                                         <Select
                                             value={String(schemeDigits[i] ?? 2)}
                                             onValueChange={(v) => handleSchemeDigitChange(i, Number(v))}
@@ -1245,22 +1363,20 @@ export default function AccountsPage() {
                         </Field>
 
                         {/* 示例预览 */}
-                        <Card size="sm">
-                            <CardContent className="flex flex-col gap-1">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <span className="text-muted-foreground">
-                                        编码方案：{schemeDigits.slice(0, schemeLevels).join("-")}
-                                    </span>
-                                    <code className="whitespace-nowrap font-medium tabular-nums">{schemePreview}</code>
-                                </div>
-                                <span className="text-muted-foreground">
-                                    各级总位数：{schemeTotalDigits.join(" → ")}
+                        <div className={cn(SOFT_PANEL, "flex flex-col gap-1 px-4 py-3")}>
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+                                <span className="text-slate-400">
+                                    编码方案：{schemeDigits.slice(0, schemeLevels).join("-")}
                                 </span>
-                            </CardContent>
-                        </Card>
+                                <code className="whitespace-nowrap text-[13px] font-medium text-slate-700 tabular-nums">{schemePreview}</code>
+                            </div>
+                            <span className="text-[12.5px] text-slate-400">
+                                各级总位数：{schemeTotalDigits.join(" → ")}
+                            </span>
+                        </div>
 
                         {schemeError && (
-                            <Alert variant="destructive">
+                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
                                 <CircleAlert />
                                 <AlertTitle>{schemeError}</AlertTitle>
                             </Alert>
@@ -1297,6 +1413,92 @@ export default function AccountsPage() {
                         >
                             {schemeSaving && <Spinner data-icon="inline-start" />}
                             确定
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 辅助核算设置弹窗：勾选该科目启用的类别，并可关闭「必录」 */}
+            <Dialog
+                open={assistOpen}
+                onOpenChange={(next) => {
+                    setAssistOpen(next)
+                    if (!next) setAssistTarget(null)
+                }}
+            >
+                <DialogContent aria-describedby="assist-setting-desc" className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{`辅助核算 — ${assistTarget?.code ?? ""} ${assistTarget?.name ?? ""}`}</DialogTitle>
+                        <DialogDescription id="assist-setting-desc">
+                            挂上辅助核算后，凭证里该科目分录必须录入对应类别的核算项目档案（标「必录」）。改动只影响后续制单，历史凭证取值不变。
+                        </DialogDescription>
+                    </DialogHeader>
+                    {assistLoading ? (
+                        <div className="flex items-center gap-2 py-4 text-slate-400">
+                            <Spinner />
+                            加载中…
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                            {assistRows.map((row) => {
+                                const meta = ASSIST_TYPES.find((t) => t.value === row.type)
+                                const enabledInSet = assistCategories.find((c) => c.type === row.type)?.isEnabled === true
+                                return (
+                                    <div key={row.type} className="flex items-center gap-3">
+                                        <label className="flex flex-1 items-center gap-2">
+                                            <Checkbox
+                                                checked={row.checked}
+                                                disabled={!enabledInSet && !row.checked}
+                                                onCheckedChange={(v) =>
+                                                    setAssistRows((prev) =>
+                                                        prev.map((r) => (r.type === row.type ? { ...r, checked: v === true } : r)),
+                                                    )
+                                                }
+                                            />
+                                            <span>{meta?.label ?? row.type}</span>
+                                            {!enabledInSet && !row.checked && (
+                                                <span className="text-[11px] text-slate-400">账套未启用</span>
+                                            )}
+                                        </label>
+                                        {row.checked && (
+                                            <label className="flex items-center gap-2 text-sm">
+                                                <Checkbox
+                                                    checked={row.isRequired}
+                                                    onCheckedChange={(v) =>
+                                                        setAssistRows((prev) =>
+                                                            prev.map((r) =>
+                                                                r.type === row.type ? { ...r, isRequired: v === true } : r,
+                                                            ),
+                                                        )
+                                                    }
+                                                />
+                                                必录
+                                            </label>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                    {assistError && (
+                        <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
+                            <CircleAlert />
+                            <AlertTitle>{assistError}</AlertTitle>
+                        </Alert>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setAssistOpen(false)
+                                setAssistTarget(null)
+                            }}
+                        >
+                            取消
+                        </Button>
+                        <Button onClick={() => void saveAssistDialog()} disabled={assistSaving || assistLoading}>
+                            {assistSaving && <Spinner data-icon="inline-start" />}
+                            保存
                         </Button>
                     </DialogFooter>
                 </DialogContent>

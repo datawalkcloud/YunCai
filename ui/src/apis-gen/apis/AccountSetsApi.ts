@@ -31,6 +31,11 @@ import {
     UpdateAccountSetRequestToJSON,
 } from '../models/index';
 
+export interface AccountSetsIdAssistTypesPutRequest {
+    id: string;
+    requestBody: Array<number>;
+}
+
 export interface AccountSetsIdClosePeriodPostRequest {
     id: string;
     closePeriodRequest: ClosePeriodRequest;
@@ -86,6 +91,29 @@ export interface AccountSetsApiInterface {
     /**
      */
     accountSetsGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountSetDto>>;
+
+    /**
+     * Creates request options for accountSetsIdAssistTypesPut without sending the request
+     * @param {string} id 
+     * @param {Array<number>} requestBody 
+     * @throws {RequiredError}
+     * @memberof AccountSetsApiInterface
+     */
+    accountSetsIdAssistTypesPutRequestOpts(requestParameters: AccountSetsIdAssistTypesPutRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} id 
+     * @param {Array<number>} requestBody 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountSetsApiInterface
+     */
+    accountSetsIdAssistTypesPutRaw(requestParameters: AccountSetsIdAssistTypesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountSetDto>>;
+
+    /**
+     */
+    accountSetsIdAssistTypesPut(requestParameters: AccountSetsIdAssistTypesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto>;
 
     /**
      * Creates request options for accountSetsIdClosePeriodPost without sending the request
@@ -277,6 +305,59 @@ export class AccountSetsApi extends runtime.BaseAPI implements AccountSetsApiInt
      */
     async accountSetsGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountSetDto>> {
         const response = await this.accountSetsGetRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountSetsIdAssistTypesPut without sending the request
+     */
+    async accountSetsIdAssistTypesPutRequestOpts(requestParameters: AccountSetsIdAssistTypesPutRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountSetsIdAssistTypesPut().'
+            );
+        }
+
+        if (requestParameters['requestBody'] == null) {
+            throw new runtime.RequiredError(
+                'requestBody',
+                'Required parameter "requestBody" was null or undefined when calling accountSetsIdAssistTypesPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/AccountSets/{id}/assist-types`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['requestBody'],
+        };
+    }
+
+    /**
+     */
+    async accountSetsIdAssistTypesPutRaw(requestParameters: AccountSetsIdAssistTypesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AccountSetDto>> {
+        const requestOptions = await this.accountSetsIdAssistTypesPutRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AccountSetDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountSetsIdAssistTypesPut(requestParameters: AccountSetsIdAssistTypesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto> {
+        const response = await this.accountSetsIdAssistTypesPutRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
-import { CircleAlert, CircleCheck, RefreshCw, Save, TriangleAlert, X } from "lucide-react"
+import { CircleAlert, CircleCheck, Coins, RefreshCw, Save, TriangleAlert, X } from "lucide-react"
 
 import { useAuth } from "@/auth/AuthContext"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { AccountsApi, type OpeningBalanceRowDto, type OpeningBalancesDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { cn } from "@/lib/utils"
+import { PageHeader, SectionCard } from "@/components/page/section"
+import { StatusPill } from "@/components/page/status-pill"
+import { PAGE_BTN_GHOST, PAGE_BTN_PRIMARY } from "@/components/page/styles"
 import { Alert, AlertAction, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { NumberField } from "@/components/fields/number-field"
 import { Spinner } from "@/components/ui/spinner"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -130,9 +132,9 @@ export default function OpeningBalancesPage() {
             id: "direction",
             header: "方向",
             cell: ({ row }) => (
-                <Badge variant={row.original.direction === 1 ? "default" : "secondary"}>
+                <StatusPill tone={row.original.direction === 1 ? "blue" : "purple"}>
                     {row.original.direction === 1 ? "借" : "贷"}
-                </Badge>
+                </StatusPill>
             ),
         }),
         column.display({
@@ -141,7 +143,7 @@ export default function OpeningBalancesPage() {
             cell: ({ row }) => {
                 const item = row.original
                 if (!item.isLeaf || !item.accountId) {
-                    return <span className="text-muted-foreground">{fmt(item.openingBalance)}</span>
+                    return <span className="text-slate-400">{fmt(item.openingBalance)}</span>
                 }
                 const id = item.accountId
                 return (
@@ -179,35 +181,34 @@ export default function OpeningBalancesPage() {
     const rows = table.getRowModel().rows
 
     return (
-        <div className="flex w-full flex-col gap-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-col gap-1">
-                    <h1 className="text-lg font-semibold">期初余额</h1>
-                    <p className="text-muted-foreground">
-                        录入账套启用期间的科目期初余额；末级科目按余额方向录入，反方向余额用负数。
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => void load()} disabled={loading}>
-                        {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
-                        刷新
-                    </Button>
-                    <Button disabled={!dirty || saving} onClick={() => void save()}>
-                        {saving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
-                        保存
-                    </Button>
-                </div>
-            </div>
+        <div className="flex w-full flex-col gap-5">
+            <PageHeader
+                icon={Coins}
+                title="期初余额"
+                subtitle="录入账套启用期间的科目期初余额；末级科目按余额方向录入，反方向余额用负数。"
+                actions={
+                    <>
+                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void load()} disabled={loading}>
+                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                            刷新
+                        </Button>
+                        <Button className={PAGE_BTN_PRIMARY} disabled={!dirty || saving} onClick={() => void save()}>
+                            {saving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
+                            保存
+                        </Button>
+                    </>
+                }
+            />
 
             {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
                     <CircleAlert />
                     <AlertTitle>{error}</AlertTitle>
                 </Alert>
             )}
 
             {savedTip && !dirty && (
-                <Alert>
+                <Alert className="rounded-2xl border-[#a7f3d0] bg-[#d1fae5] text-[#10b981]">
                     <CircleCheck />
                     <AlertTitle>期初余额已保存。</AlertTitle>
                     <AlertAction>
@@ -218,56 +219,61 @@ export default function OpeningBalancesPage() {
                 </Alert>
             )}
 
-            <Alert>
-                {totals.balanced ? <CircleCheck /> : <TriangleAlert />}
-                <AlertTitle>
-                    {totals.balanced
-                        ? `试算平衡：借方合计 ${fmt(totals.debit) || "0.00"}，贷方合计 ${fmt(totals.credit) || "0.00"}。`
-                        : `试算不平衡：借方合计 ${fmt(totals.debit) || "0.00"}，贷方合计 ${fmt(totals.credit) || "0.00"}，差额 ${fmt(Math.abs(totals.debit - totals.credit))}。`}
-                </AlertTitle>
-            </Alert>
-
-            <Card>
-                <CardContent>
-                    {loading && !data ? (
-                        <div className="flex justify-center py-10">
-                            <Spinner />
-                        </div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                {headerGroups.map((hg) => (
-                                    <TableRow key={hg.id}>
-                                        {hg.headers.map((h) => (
-                                            <TableHead key={h.id} className={COLUMN_CLASS[h.column.id]?.head}>
-                                                <table.FlexRender header={h} />
-                                            </TableHead>
-                                        ))}
-                                    </TableRow>
-                                ))}
-                            </TableHeader>
-                            <TableBody>
-                                {rows.map((row) => (
-                                    <TableRow key={row.id}>
-                                        {row.getAllCells().map((cell) => (
-                                            <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
-                                                <table.FlexRender cell={cell} />
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                ))}
-                                {rows.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
-                                            暂无数据
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+            <SectionCard bodyClassName="flex flex-col gap-4">
+                <div
+                    className={cn(
+                        "flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-[12.5px]",
+                        totals.balanced
+                            ? "border-slate-200 bg-muted text-slate-500"
+                            : "border-[#fecaca] bg-[#fef2f2] text-[#ef4444]",
                     )}
-                </CardContent>
-            </Card>
+                >
+                    {totals.balanced ? <CircleCheck className="size-4" /> : <TriangleAlert className="size-4" />}
+                    <span>
+                        {totals.balanced
+                            ? `试算平衡：借方合计 ${fmt(totals.debit) || "0.00"}，贷方合计 ${fmt(totals.credit) || "0.00"}。`
+                            : `试算不平衡：借方合计 ${fmt(totals.debit) || "0.00"}，贷方合计 ${fmt(totals.credit) || "0.00"}，差额 ${fmt(Math.abs(totals.debit - totals.credit))}。`}
+                    </span>
+                </div>
+
+                {loading && !data ? (
+                    <div className="flex justify-center py-10">
+                        <Spinner className="size-5 text-slate-300" />
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            {headerGroups.map((hg) => (
+                                <TableRow key={hg.id}>
+                                    {hg.headers.map((h) => (
+                                        <TableHead key={h.id} className={COLUMN_CLASS[h.column.id]?.head}>
+                                            <table.FlexRender header={h} />
+                                        </TableHead>
+                                    ))}
+                                </TableRow>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {rows.map((row) => (
+                                <TableRow key={row.id}>
+                                    {row.getAllCells().map((cell) => (
+                                        <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
+                                            <table.FlexRender cell={cell} />
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))}
+                            {rows.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={columns.length} className="py-8 text-center text-slate-400">
+                                        暂无数据
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                )}
+            </SectionCard>
         </div>
     )
 }

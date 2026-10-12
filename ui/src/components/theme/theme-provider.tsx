@@ -41,7 +41,7 @@ function applyTheme(theme: Theme): "light" | "dark" {
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "light",
 }: {
   children: ReactNode
   defaultTheme?: Theme

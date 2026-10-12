@@ -10,6 +10,10 @@ Name | Type
 `type` | number
 `typeText` | string
 `name` | string
+`smartKeywords` | string
+`voucherSubjectId` | string
+`voucherSubjectCode` | string
+`voucherSubjectName` | string
 
 ## Example
 
@@ -22,6 +26,10 @@ const example = {
   "type": null,
   "typeText": null,
   "name": null,
+  "smartKeywords": null,
+  "voucherSubjectId": null,
+  "voucherSubjectCode": null,
+  "voucherSubjectName": null,
 } satisfies EntryCategoryDto
 
 console.log(example)

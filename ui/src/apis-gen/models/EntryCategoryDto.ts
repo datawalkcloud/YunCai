@@ -43,6 +43,30 @@ export interface EntryCategoryDto {
      * @memberof EntryCategoryDto
      */
     name?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof EntryCategoryDto
+     */
+    smartKeywords?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EntryCategoryDto
+     */
+    voucherSubjectId?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EntryCategoryDto
+     */
+    voucherSubjectCode?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EntryCategoryDto
+     */
+    voucherSubjectName?: string | null;
 }
 
 /**
@@ -66,6 +90,10 @@ export function EntryCategoryDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'type': json['type'] == null ? undefined : json['type'],
         'typeText': json['typeText'] == null ? undefined : json['typeText'],
         'name': json['name'] == null ? undefined : json['name'],
+        'smartKeywords': json['smartKeywords'] == null ? undefined : json['smartKeywords'],
+        'voucherSubjectId': json['voucherSubjectId'] == null ? undefined : json['voucherSubjectId'],
+        'voucherSubjectCode': json['voucherSubjectCode'] == null ? undefined : json['voucherSubjectCode'],
+        'voucherSubjectName': json['voucherSubjectName'] == null ? undefined : json['voucherSubjectName'],
     };
 }
 
@@ -84,6 +112,10 @@ export function EntryCategoryDtoToJSONTyped(value?: EntryCategoryDto | null, ign
         'type': value['type'],
         'typeText': value['typeText'],
         'name': value['name'],
+        'smartKeywords': value['smartKeywords'],
+        'voucherSubjectId': value['voucherSubjectId'],
+        'voucherSubjectCode': value['voucherSubjectCode'],
+        'voucherSubjectName': value['voucherSubjectName'],
     };
 }
 

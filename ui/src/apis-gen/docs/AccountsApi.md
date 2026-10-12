@@ -6,6 +6,8 @@ All URIs are relative to *http://localhost:5271*
 |------------- | ------------- | -------------|
 | [**accountsetsAccountSetIdAccountsExportGet**](AccountsApi.md#accountsetsaccountsetidaccountsexportget) | **GET** /accountsets/{accountSetId}/Accounts/export |  |
 | [**accountsetsAccountSetIdAccountsGet**](AccountsApi.md#accountsetsaccountsetidaccountsget) | **GET** /accountsets/{accountSetId}/Accounts |  |
+| [**accountsetsAccountSetIdAccountsIdAssistTypesGet**](AccountsApi.md#accountsetsaccountsetidaccountsidassisttypesget) | **GET** /accountsets/{accountSetId}/Accounts/{id}/assist-types |  |
+| [**accountsetsAccountSetIdAccountsIdAssistTypesPut**](AccountsApi.md#accountsetsaccountsetidaccountsidassisttypesput) | **PUT** /accountsets/{accountSetId}/Accounts/{id}/assist-types |  |
 | [**accountsetsAccountSetIdAccountsIdDelete**](AccountsApi.md#accountsetsaccountsetidaccountsiddelete) | **DELETE** /accountsets/{accountSetId}/Accounts/{id} |  |
 | [**accountsetsAccountSetIdAccountsIdGet**](AccountsApi.md#accountsetsaccountsetidaccountsidget) | **GET** /accountsets/{accountSetId}/Accounts/{id} |  |
 | [**accountsetsAccountSetIdAccountsIdPut**](AccountsApi.md#accountsetsaccountsetidaccountsidput) | **PUT** /accountsets/{accountSetId}/Accounts/{id} |  |
@@ -139,6 +141,145 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdAccountsIdAssistTypesGet
+
+> Array&lt;AccountAssistTypeDto&gt; accountsetsAccountSetIdAccountsIdAssistTypesGet(accountSetId, id)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AccountsApi,
+} from '';
+import type { AccountsetsAccountSetIdAccountsIdAssistTypesGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new AccountsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdAccountsIdAssistTypesGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdAccountsIdAssistTypesGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**Array&lt;AccountAssistTypeDto&gt;**](AccountAssistTypeDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdAccountsIdAssistTypesPut
+
+> Array&lt;AccountAssistTypeDto&gt; accountsetsAccountSetIdAccountsIdAssistTypesPut(accountSetId, id, accountAssistTypeRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AccountsApi,
+} from '';
+import type { AccountsetsAccountSetIdAccountsIdAssistTypesPutRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new AccountsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Array<AccountAssistTypeRequest>
+    accountAssistTypeRequest: ...,
+  } satisfies AccountsetsAccountSetIdAccountsIdAssistTypesPutRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdAccountsIdAssistTypesPut(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **accountAssistTypeRequest** | `Array<AccountAssistTypeRequest>` |  | |
+
+### Return type
+
+[**Array&lt;AccountAssistTypeDto&gt;**](AccountAssistTypeDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
 - **Accept**: `text/plain`, `application/json`, `text/json`
 
 

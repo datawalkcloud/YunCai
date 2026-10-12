@@ -95,6 +95,24 @@ export interface JournalDetailDto {
     closingBalance?: number;
     /**
      * 
+     * @type {boolean}
+     * @memberof JournalDetailDto
+     */
+    isEnabled?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalDetailDto
+     */
+    bankName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalDetailDto
+     */
+    bankAccountNo?: string | null;
+    /**
+     * 
      * @type {Array<JournalEntryDto>}
      * @memberof JournalDetailDto
      */
@@ -129,6 +147,9 @@ export function JournalDetailDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'totalIncome': json['totalIncome'] == null ? undefined : json['totalIncome'],
         'totalExpense': json['totalExpense'] == null ? undefined : json['totalExpense'],
         'closingBalance': json['closingBalance'] == null ? undefined : json['closingBalance'],
+        'isEnabled': json['isEnabled'] == null ? undefined : json['isEnabled'],
+        'bankName': json['bankName'] == null ? undefined : json['bankName'],
+        'bankAccountNo': json['bankAccountNo'] == null ? undefined : json['bankAccountNo'],
         'entries': json['entries'] == null ? undefined : ((json['entries'] as Array<any>).map(JournalEntryDtoFromJSON)),
     };
 }
@@ -155,6 +176,9 @@ export function JournalDetailDtoToJSONTyped(value?: JournalDetailDto | null, ign
         'totalIncome': value['totalIncome'],
         'totalExpense': value['totalExpense'],
         'closingBalance': value['closingBalance'],
+        'isEnabled': value['isEnabled'],
+        'bankName': value['bankName'],
+        'bankAccountNo': value['bankAccountNo'],
         'entries': value['entries'] == null ? undefined : ((value['entries'] as Array<any>).map(JournalEntryDtoToJSON)),
     };
 }

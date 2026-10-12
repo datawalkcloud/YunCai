@@ -589,7 +589,7 @@ async function example() {
     // Blob (optional)
     file: BINARY_DATA_HERE,
     // number (optional)
-    conflict: ...,
+    conflict: 56,
   } satisfies AccountsetsAccountSetIdVouchersImportPostRequest;
 
   try {

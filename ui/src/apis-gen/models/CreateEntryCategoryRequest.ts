@@ -31,6 +31,18 @@ export interface CreateEntryCategoryRequest {
      * @memberof CreateEntryCategoryRequest
      */
     name?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEntryCategoryRequest
+     */
+    smartKeywords?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEntryCategoryRequest
+     */
+    voucherSubjectId?: string | null;
 }
 
 /**
@@ -52,6 +64,8 @@ export function CreateEntryCategoryRequestFromJSONTyped(json: any, ignoreDiscrim
         
         'type': json['type'] == null ? undefined : json['type'],
         'name': json['name'] == null ? undefined : json['name'],
+        'smartKeywords': json['smartKeywords'] == null ? undefined : json['smartKeywords'],
+        'voucherSubjectId': json['voucherSubjectId'] == null ? undefined : json['voucherSubjectId'],
     };
 }
 
@@ -68,6 +82,8 @@ export function CreateEntryCategoryRequestToJSONTyped(value?: CreateEntryCategor
         
         'type': value['type'],
         'name': value['name'],
+        'smartKeywords': value['smartKeywords'],
+        'voucherSubjectId': value['voucherSubjectId'],
     };
 }
 

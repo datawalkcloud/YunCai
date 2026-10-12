@@ -14,6 +14,7 @@ Name | Type
 `accountName` | string
 `debit` | number
 `credit` | number
+`assists` | [Array&lt;VoucherEntryAssistDto&gt;](VoucherEntryAssistDto.md)
 
 ## Example
 
@@ -30,6 +31,7 @@ const example = {
   "accountName": null,
   "debit": null,
   "credit": null,
+  "assists": null,
 } satisfies VoucherEntryDto
 
 console.log(example)

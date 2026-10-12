@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { VoucherEntryAssistDto } from './VoucherEntryAssistDto';
+import {
+    VoucherEntryAssistDtoFromJSON,
+    VoucherEntryAssistDtoFromJSONTyped,
+    VoucherEntryAssistDtoToJSON,
+    VoucherEntryAssistDtoToJSONTyped,
+} from './VoucherEntryAssistDto';
+
 /**
  * 
  * @export
@@ -67,6 +75,12 @@ export interface VoucherEntryDto {
      * @memberof VoucherEntryDto
      */
     credit?: number;
+    /**
+     * 
+     * @type {Array<VoucherEntryAssistDto>}
+     * @memberof VoucherEntryDto
+     */
+    assists?: Array<VoucherEntryAssistDto>;
 }
 
 /**
@@ -94,6 +108,7 @@ export function VoucherEntryDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'accountName': json['accountName'] == null ? undefined : json['accountName'],
         'debit': json['debit'] == null ? undefined : json['debit'],
         'credit': json['credit'] == null ? undefined : json['credit'],
+        'assists': json['assists'] == null ? undefined : ((json['assists'] as Array<any>).map(VoucherEntryAssistDtoFromJSON)),
     };
 }
 
@@ -116,6 +131,7 @@ export function VoucherEntryDtoToJSONTyped(value?: VoucherEntryDto | null, ignor
         'accountName': value['accountName'],
         'debit': value['debit'],
         'credit': value['credit'],
+        'assists': value['assists'] == null ? undefined : ((value['assists'] as Array<any>).map(VoucherEntryAssistDtoToJSON)),
     };
 }
 

@@ -66,7 +66,7 @@ export function LoginForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 text-sm">
       <div className="flex flex-col items-center gap-1 text-center">
         <h1 className="text-lg font-semibold">登录你的账户</h1>
-        <span className="text-muted-foreground">输入用户名和密码登录好会计</span>
+        <span className="text-muted-foreground">输入用户名和密码登录云财</span>
       </div>
 
       <Field data-invalid={Boolean(errors.username)} data-disabled={submitting}>

@@ -18,10 +18,13 @@ import type {
   CreateJournalRequest,
   GenerateVoucherRequest,
   GenerateVoucherResultDto,
+  GenerateVouchersBatchRequest,
+  GenerateVouchersBatchResultDto,
   JournalDetailDto,
   JournalEntryRequest,
   JournalImportResult,
   JournalListItemDto,
+  SetJournalEnabledRequest,
   UpdateJournalRequest,
 } from '../models/index';
 import {
@@ -31,6 +34,10 @@ import {
     GenerateVoucherRequestToJSON,
     GenerateVoucherResultDtoFromJSON,
     GenerateVoucherResultDtoToJSON,
+    GenerateVouchersBatchRequestFromJSON,
+    GenerateVouchersBatchRequestToJSON,
+    GenerateVouchersBatchResultDtoFromJSON,
+    GenerateVouchersBatchResultDtoToJSON,
     JournalDetailDtoFromJSON,
     JournalDetailDtoToJSON,
     JournalEntryRequestFromJSON,
@@ -39,6 +46,8 @@ import {
     JournalImportResultToJSON,
     JournalListItemDtoFromJSON,
     JournalListItemDtoToJSON,
+    SetJournalEnabledRequestFromJSON,
+    SetJournalEnabledRequestToJSON,
     UpdateJournalRequestFromJSON,
     UpdateJournalRequestToJSON,
 } from '../models/index';
@@ -50,6 +59,12 @@ export interface AccountsetsAccountSetIdJournalsGetRequest {
 export interface AccountsetsAccountSetIdJournalsIdDeleteRequest {
     accountSetId: string;
     id: string;
+}
+
+export interface AccountsetsAccountSetIdJournalsIdEnabledPatchRequest {
+    accountSetId: string;
+    id: string;
+    setJournalEnabledRequest: SetJournalEnabledRequest;
 }
 
 export interface AccountsetsAccountSetIdJournalsIdEntriesEntryIdDeleteRequest {
@@ -76,6 +91,12 @@ export interface AccountsetsAccountSetIdJournalsIdEntriesPostRequest {
     accountSetId: string;
     id: string;
     journalEntryRequest: JournalEntryRequest;
+}
+
+export interface AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest {
+    accountSetId: string;
+    id: string;
+    generateVouchersBatchRequest: GenerateVouchersBatchRequest;
 }
 
 export interface AccountsetsAccountSetIdJournalsIdExportGetRequest {
@@ -159,6 +180,31 @@ export interface JournalsApiInterface {
     /**
      */
     accountsetsAccountSetIdJournalsIdDelete(requestParameters: AccountsetsAccountSetIdJournalsIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdEnabledPatch without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {SetJournalEnabledRequest} setJournalEnabledRequest 
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdEnabledPatchRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdEnabledPatchRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {SetJournalEnabledRequest} setJournalEnabledRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdEnabledPatchRaw(requestParameters: AccountsetsAccountSetIdJournalsIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JournalDetailDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdJournalsIdEnabledPatch(requestParameters: AccountsetsAccountSetIdJournalsIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalDetailDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdJournalsIdEntriesEntryIdDelete without sending the request
@@ -263,6 +309,31 @@ export interface JournalsApiInterface {
     /**
      */
     accountsetsAccountSetIdJournalsIdEntriesPost(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalDetailDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdEntriesVouchersPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {GenerateVouchersBatchRequest} generateVouchersBatchRequest 
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdEntriesVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {GenerateVouchersBatchRequest} generateVouchersBatchRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdEntriesVouchersPostRaw(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateVouchersBatchResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdJournalsIdEntriesVouchersPost(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateVouchersBatchResultDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdJournalsIdExportGet without sending the request
@@ -502,6 +573,67 @@ export class JournalsApi extends runtime.BaseAPI implements JournalsApiInterface
      */
     async accountsetsAccountSetIdJournalsIdDelete(requestParameters: AccountsetsAccountSetIdJournalsIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.accountsetsAccountSetIdJournalsIdDeleteRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdEnabledPatch without sending the request
+     */
+    async accountsetsAccountSetIdJournalsIdEnabledPatchRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdEnabledPatchRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdJournalsIdEnabledPatch().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdJournalsIdEnabledPatch().'
+            );
+        }
+
+        if (requestParameters['setJournalEnabledRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setJournalEnabledRequest',
+                'Required parameter "setJournalEnabledRequest" was null or undefined when calling accountsetsAccountSetIdJournalsIdEnabledPatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/Journals/{id}/enabled`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetJournalEnabledRequestToJSON(requestParameters['setJournalEnabledRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdEnabledPatchRaw(requestParameters: AccountsetsAccountSetIdJournalsIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JournalDetailDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdJournalsIdEnabledPatchRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => JournalDetailDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdEnabledPatch(requestParameters: AccountsetsAccountSetIdJournalsIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalDetailDto> {
+        const response = await this.accountsetsAccountSetIdJournalsIdEnabledPatchRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**
@@ -759,6 +891,67 @@ export class JournalsApi extends runtime.BaseAPI implements JournalsApiInterface
      */
     async accountsetsAccountSetIdJournalsIdEntriesPost(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalDetailDto> {
         const response = await this.accountsetsAccountSetIdJournalsIdEntriesPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdEntriesVouchersPost without sending the request
+     */
+    async accountsetsAccountSetIdJournalsIdEntriesVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdJournalsIdEntriesVouchersPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdJournalsIdEntriesVouchersPost().'
+            );
+        }
+
+        if (requestParameters['generateVouchersBatchRequest'] == null) {
+            throw new runtime.RequiredError(
+                'generateVouchersBatchRequest',
+                'Required parameter "generateVouchersBatchRequest" was null or undefined when calling accountsetsAccountSetIdJournalsIdEntriesVouchersPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/Journals/{id}/entries/vouchers`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GenerateVouchersBatchRequestToJSON(requestParameters['generateVouchersBatchRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdEntriesVouchersPostRaw(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateVouchersBatchResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdJournalsIdEntriesVouchersPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GenerateVouchersBatchResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdEntriesVouchersPost(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateVouchersBatchResultDto> {
+        const response = await this.accountsetsAccountSetIdJournalsIdEntriesVouchersPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

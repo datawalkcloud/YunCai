@@ -10,6 +10,7 @@ Name | Type
 `accountId` | string
 `debit` | number
 `credit` | number
+`assists` | [Array&lt;VoucherEntryAssistRequest&gt;](VoucherEntryAssistRequest.md)
 
 ## Example
 
@@ -22,6 +23,7 @@ const example = {
   "accountId": null,
   "debit": null,
   "credit": null,
+  "assists": null,
 } satisfies CreateVoucherEntryRequest
 
 console.log(example)

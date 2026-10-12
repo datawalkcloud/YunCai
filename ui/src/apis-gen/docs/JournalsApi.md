@@ -6,10 +6,12 @@ All URIs are relative to *http://localhost:5271*
 |------------- | ------------- | -------------|
 | [**accountsetsAccountSetIdJournalsGet**](JournalsApi.md#accountsetsaccountsetidjournalsget) | **GET** /accountsets/{accountSetId}/Journals |  |
 | [**accountsetsAccountSetIdJournalsIdDelete**](JournalsApi.md#accountsetsaccountsetidjournalsiddelete) | **DELETE** /accountsets/{accountSetId}/Journals/{id} |  |
+| [**accountsetsAccountSetIdJournalsIdEnabledPatch**](JournalsApi.md#accountsetsaccountsetidjournalsidenabledpatch) | **PATCH** /accountsets/{accountSetId}/Journals/{id}/enabled |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesEntryIdDelete**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesentryiddelete) | **DELETE** /accountsets/{accountSetId}/Journals/{id}/entries/{entryId} |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesEntryIdPut**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesentryidput) | **PUT** /accountsets/{accountSetId}/Journals/{id}/entries/{entryId} |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesEntryIdVoucherPost**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesentryidvoucherpost) | **POST** /accountsets/{accountSetId}/Journals/{id}/entries/{entryId}/voucher |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesPost**](JournalsApi.md#accountsetsaccountsetidjournalsidentriespost) | **POST** /accountsets/{accountSetId}/Journals/{id}/entries |  |
+| [**accountsetsAccountSetIdJournalsIdEntriesVouchersPost**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesvoucherspost) | **POST** /accountsets/{accountSetId}/Journals/{id}/entries/vouchers |  |
 | [**accountsetsAccountSetIdJournalsIdExportGet**](JournalsApi.md#accountsetsaccountsetidjournalsidexportget) | **GET** /accountsets/{accountSetId}/Journals/{id}/export |  |
 | [**accountsetsAccountSetIdJournalsIdGet**](JournalsApi.md#accountsetsaccountsetidjournalsidget) | **GET** /accountsets/{accountSetId}/Journals/{id} |  |
 | [**accountsetsAccountSetIdJournalsIdImportPost**](JournalsApi.md#accountsetsaccountsetidjournalsidimportpost) | **POST** /accountsets/{accountSetId}/Journals/{id}/import |  |
@@ -142,6 +144,77 @@ No authorization required
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdJournalsIdEnabledPatch
+
+> JournalDetailDto accountsetsAccountSetIdJournalsIdEnabledPatch(accountSetId, id, setJournalEnabledRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  JournalsApi,
+} from '';
+import type { AccountsetsAccountSetIdJournalsIdEnabledPatchRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new JournalsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetJournalEnabledRequest
+    setJournalEnabledRequest: ...,
+  } satisfies AccountsetsAccountSetIdJournalsIdEnabledPatchRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdJournalsIdEnabledPatch(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **setJournalEnabledRequest** | [SetJournalEnabledRequest](SetJournalEnabledRequest.md) |  | |
+
+### Return type
+
+[**JournalDetailDto**](JournalDetailDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
 
 
 ### HTTP response details
@@ -423,6 +496,77 @@ example().catch(console.error);
 ### Return type
 
 [**JournalDetailDto**](JournalDetailDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdJournalsIdEntriesVouchersPost
+
+> GenerateVouchersBatchResultDto accountsetsAccountSetIdJournalsIdEntriesVouchersPost(accountSetId, id, generateVouchersBatchRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  JournalsApi,
+} from '';
+import type { AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new JournalsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // GenerateVouchersBatchRequest
+    generateVouchersBatchRequest: ...,
+  } satisfies AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdJournalsIdEntriesVouchersPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **generateVouchersBatchRequest** | [GenerateVouchersBatchRequest](GenerateVouchersBatchRequest.md) |  | |
+
+### Return type
+
+[**GenerateVouchersBatchResultDto**](GenerateVouchersBatchResultDto.md)
 
 ### Authorization
 

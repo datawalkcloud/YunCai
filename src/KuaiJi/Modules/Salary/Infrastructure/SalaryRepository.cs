@@ -1,0 +1,114 @@
+using KuaiJi.Modules.Salary.Domain;
+using KuaiJi.SharedKernel.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace KuaiJi.Modules.Salary.Infrastructure
+{
+    /// <summary>工资模块仓储实现（员工 / 五险一金 / 月度工资单）。</summary>
+    public class SalaryRepository : ISalaryRepository
+    {
+        private readonly AppDbContext _context;
+
+        public SalaryRepository(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        public Task<Employee?> GetEmployeeByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
+        {
+            return _context.Employees.AsNoTracking()
+                .FirstOrDefaultAsync(e => e.AccountSetId == accountSetId && e.Id == id, cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<Employee>> GetEmployeesAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        {
+            var list = await _context.Employees.AsNoTracking()
+                .Where(e => e.AccountSetId == accountSetId)
+                .OrderBy(e => e.Code)
+                .ToListAsync(cancellationToken);
+            return list;
+        }
+
+        public Task<bool> EmployeeCodeExistsAsync(Guid accountSetId, string code, Guid? excludeId = null, CancellationToken cancellationToken = default)
+        {
+            return _context.Employees
+                .AnyAsync(e => e.AccountSetId == accountSetId && e.Code == code && (excludeId == null || e.Id != excludeId), cancellationToken);
+        }
+
+        public async Task AddEmployeeAsync(Employee employee, CancellationToken cancellationToken = default)
+        {
+            await _context.Employees.AddAsync(employee, cancellationToken);
+        }
+
+        public void RemoveEmployee(Employee employee)
+        {
+            _context.Employees.Remove(employee);
+        }
+
+        public async Task<IReadOnlyList<InsuranceItem>> GetInsuranceAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        {
+            var list = await _context.InsuranceItems.AsNoTracking()
+                .Where(i => i.AccountSetId == accountSetId)
+                .OrderBy(i => i.SortOrder)
+                .ToListAsync(cancellationToken);
+            return list;
+        }
+
+        public Task<InsuranceItem?> GetInsuranceByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
+        {
+            return _context.InsuranceItems.AsNoTracking()
+                .FirstOrDefaultAsync(i => i.AccountSetId == accountSetId && i.Id == id, cancellationToken);
+        }
+
+        public Task<bool> InsuranceNameExistsAsync(Guid accountSetId, string name, Guid? excludeId = null, CancellationToken cancellationToken = default)
+        {
+            return _context.InsuranceItems
+                .AnyAsync(i => i.AccountSetId == accountSetId && i.Name == name && (excludeId == null || i.Id != excludeId), cancellationToken);
+        }
+
+        public async Task AddInsuranceAsync(InsuranceItem item, CancellationToken cancellationToken = default)
+        {
+            await _context.InsuranceItems.AddAsync(item, cancellationToken);
+        }
+
+        public void RemoveInsurance(InsuranceItem item)
+        {
+            _context.InsuranceItems.Remove(item);
+        }
+
+        public Task<SalaryBill?> GetBillByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
+        {
+            return _context.SalaryBills.AsNoTracking()
+                .FirstOrDefaultAsync(b => b.AccountSetId == accountSetId && b.Id == id, cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<SalaryBill>> GetBillsAsync(Guid accountSetId, int period, CancellationToken cancellationToken = default)
+        {
+            var list = await _context.SalaryBills.AsNoTracking()
+                .Where(b => b.AccountSetId == accountSetId && b.Period == period)
+                .ToListAsync(cancellationToken);
+            return list;
+        }
+
+        public Task<SalaryBill?> FindBillAsync(Guid accountSetId, int period, Guid employeeId, CancellationToken cancellationToken = default)
+        {
+            return _context.SalaryBills.AsNoTracking()
+                .FirstOrDefaultAsync(b => b.AccountSetId == accountSetId && b.Period == period && b.EmployeeId == employeeId, cancellationToken);
+        }
+
+        public async Task AddBillAsync(SalaryBill bill, CancellationToken cancellationToken = default)
+        {
+            await _context.SalaryBills.AddAsync(bill, cancellationToken);
+        }
+
+        public void RemoveBill(SalaryBill bill)
+        {
+            _context.SalaryBills.Remove(bill);
+        }
+
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            return _context.SaveChangesAsync(cancellationToken);
+        }
+    }
+}

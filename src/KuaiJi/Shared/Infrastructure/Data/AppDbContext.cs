@@ -1,0 +1,868 @@
+using KuaiJi.Modules.AccountSets.Domain;
+using KuaiJi.Modules.Accounting.Domain;
+using KuaiJi.Modules.Assist.Domain;
+using KuaiJi.Modules.Closing.Domain;
+using KuaiJi.Modules.Funds.Domain;
+using KuaiJi.Modules.Archives.Domain;
+using KuaiJi.Modules.FixedAssets.Domain;
+using KuaiJi.Modules.Invoices.Domain;
+using KuaiJi.Modules.Auditing.Domain;
+using KuaiJi.Modules.Reports.Domain;
+using KuaiJi.Modules.Salary.Domain;
+using KuaiJi.Modules.Identity.Domain;
+using KuaiJi.Modules.Vouchers.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+
+namespace KuaiJi.SharedKernel.Infrastructure.Data
+{
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        {
+        }
+
+        public DbSet<User> Users { get; set; } = null!;
+
+        public DbSet<AccountSet> AccountSets { get; set; } = null!;
+
+        public DbSet<Account> Accounts { get; set; } = null!;
+
+        public DbSet<Journal> Journals { get; set; } = null!;
+
+        public DbSet<EntryCategory> EntryCategories { get; set; } = null!;
+
+        public DbSet<Transfer> Transfers { get; set; } = null!;
+
+        public DbSet<Voucher> Vouchers { get; set; } = null!;
+
+        public DbSet<VoucherEntry> VoucherEntries { get; set; } = null!;
+
+        public DbSet<VoucherEntryAssist> VoucherEntryAssists { get; set; } = null!;
+
+        public DbSet<AssistItem> AssistItems { get; set; } = null!;
+
+        public DbSet<ClosingTemplate> ClosingTemplates { get; set; } = null!;
+
+        public DbSet<ClosingTemplateLine> ClosingTemplateLines { get; set; } = null!;
+
+        public DbSet<Currency> Currencies { get; set; } = null!;
+
+        public DbSet<VoucherWord> VoucherWords { get; set; } = null!;
+
+        public DbSet<VoucherTemplate> VoucherTemplates { get; set; } = null!;
+
+        public DbSet<VoucherTemplateLine> VoucherTemplateLines { get; set; } = null!;
+
+        public DbSet<Bill> Bills { get; set; } = null!;
+
+        public DbSet<FixedAssetCategory> FixedAssetCategories { get; set; } = null!;
+
+        public DbSet<FixedAsset> FixedAssets { get; set; } = null!;
+
+        public DbSet<FixedAssetChange> FixedAssetChanges { get; set; } = null!;
+
+        public DbSet<Invoice> Invoices { get; set; } = null!;
+
+        public DbSet<InvoiceLine> InvoiceLines { get; set; } = null!;
+
+        public DbSet<Employee> Employees { get; set; } = null!;
+
+        public DbSet<InsuranceItem> InsuranceItems { get; set; } = null!;
+
+        public DbSet<SalaryBill> SalaryBills { get; set; } = null!;
+
+        public DbSet<ArchiveItem> ArchiveItems { get; set; } = null!;
+
+        public DbSet<OperationLog> OperationLogs { get; set; } = null!;
+
+        public DbSet<CustomReport> CustomReports { get; set; } = null!;
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.ToTable("users");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.Username).HasColumnName("username").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.PasswordHash).HasColumnName("password_hash").IsRequired();
+                entity.Property(e => e.DisplayName).HasColumnName("display_name").HasMaxLength(100);
+
+                entity.HasIndex(e => e.Username).IsUnique();
+            });
+
+            modelBuilder.Entity<AccountSet>(entity =>
+            {
+                entity.ToTable("account_sets");
+                entity.HasKey(e => e.Id);
+
+                // 主键由领域层生成（Guid.NewGuid），须声明非存储生成，
+                // 否则经导航集合新增的实体会被 EF 误判为已存在而生成 UPDATE。
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.CompanyName).HasColumnName("company_name").IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Standard).HasColumnName("standard").HasConversion<int>().IsRequired();
+                entity.Property(e => e.TaxpayerType).HasColumnName("taxpayer_type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.BaseCurrency).HasColumnName("base_currency").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.StartYear).HasColumnName("start_year").IsRequired();
+                entity.Property(e => e.StartMonth).HasColumnName("start_month").IsRequired();
+                entity.Property(e => e.IsCurrent).HasColumnName("is_current").IsRequired();
+                entity.Property(e => e.AccountCodingScheme).HasColumnName("account_coding_scheme").IsRequired().HasMaxLength(50).HasDefaultValue(AccountSet.DefaultCodingScheme);
+                entity.Property(e => e.TaxpayerNumber).HasColumnName("taxpayer_number").HasMaxLength(50);
+                entity.Property(e => e.VatRate).HasColumnName("vat_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(13m);
+                entity.Property(e => e.IncomeTaxRate).HasColumnName("income_tax_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(25m);
+                entity.Property(e => e.VoucherWords).HasColumnName("voucher_words").IsRequired().HasMaxLength(100).HasDefaultValue(AccountSet.DefaultVoucherWords);
+                entity.Property(e => e.ClosedPeriod).HasColumnName("closed_period").IsRequired().HasDefaultValue(0);
+                entity.Property(e => e.CarriedPeriod).HasColumnName("carried_period").IsRequired().HasDefaultValue(0);
+                entity.Property(e => e.EnabledAssistTypes).HasColumnName("enabled_assist_types").IsRequired().HasMaxLength(50).HasDefaultValue(string.Empty);
+
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.HasIndex(e => e.IsCurrent);
+            });
+
+            modelBuilder.Entity<Account>(entity =>
+            {
+                entity.ToTable("accounts");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(32);
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Category).HasColumnName("category").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Direction).HasColumnName("direction").HasConversion<int>().IsRequired();
+                entity.Property(e => e.ParentId).HasColumnName("parent_id");
+                entity.Property(e => e.Level).HasColumnName("level").IsRequired();
+                entity.Property(e => e.IsLeaf).HasColumnName("is_leaf").IsRequired();
+                entity.Property(e => e.IsEnabled).HasColumnName("is_enabled").IsRequired();
+                entity.Property(e => e.IsPreset).HasColumnName("is_preset").IsRequired();
+                entity.Property(e => e.Mnemonic).HasColumnName("mnemonic").HasMaxLength(50);
+                entity.Property(e => e.OpeningBalance).HasColumnName("opening_balance").HasColumnType("numeric(18,2)").IsRequired().HasDefaultValue(0m);
+
+                // 科目编码在同一账套内唯一。
+                entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
+                entity.HasIndex(e => e.ParentId);
+
+                // 科目归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // 自引用：上级科目 -> 下级明细科目集合。删除时限制，避免误删带下级的科目。
+                entity.HasOne(e => e.Parent)
+                      .WithMany(e => e.Children)
+                      .HasForeignKey(e => e.ParentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // 科目包含若干辅助核算维度设置；科目删除时一并清除。
+                entity.HasMany(e => e.AssistTypes)
+                      .WithOne()
+                      .HasForeignKey(e => e.AccountId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // Children 通过背景字段 _children 访问，读写均走字段而非属性。
+                entity.Metadata
+                      .FindNavigation(nameof(Account.Children))!
+                      .SetPropertyAccessMode(PropertyAccessMode.Field);
+
+                // AssistTypes 同样通过背景字段访问。
+                entity.Metadata
+                      .FindNavigation(nameof(Account.AssistTypes))!
+                      .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<Voucher>(entity =>
+            {
+                entity.ToTable("vouchers");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Word).HasColumnName("word").IsRequired().HasMaxLength(8);
+                entity.Property(e => e.Number).HasColumnName("number").IsRequired();
+                entity.Property(e => e.Date).HasColumnName("date").IsRequired();
+                entity.Property(e => e.AttachmentCount).HasColumnName("attachment_count").IsRequired();
+                entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Preparer).HasColumnName("preparer").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Reviewer).HasColumnName("reviewer").HasMaxLength(50);
+
+                // 凭证字/号在同一期间内唯一，但外部平台按月重排号，故不设全局唯一约束；
+                // 仅按「账套+字+号+日期」建索引，供导入去重与列表检索使用。
+                entity.HasIndex(e => new { e.AccountSetId, e.Word, e.Number, e.Date });
+
+                // 凭证归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // 一张凭证包含多条分录；分录通过背景字段 _entries 访问。
+                entity.HasMany(e => e.Entries)
+                      .WithOne()
+                      .HasForeignKey(e => e.VoucherId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Metadata
+                      .FindNavigation(nameof(Voucher.Entries))!
+                      .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<VoucherEntry>(entity =>
+            {
+                entity.ToTable("voucher_entries");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.VoucherId).HasColumnName("voucher_id").IsRequired();
+                entity.Property(e => e.LineNumber).HasColumnName("line_number").IsRequired();
+                entity.Property(e => e.Summary).HasColumnName("summary").IsRequired().HasMaxLength(200);
+                entity.Property(e => e.AccountId).HasColumnName("account_id").IsRequired();
+                entity.Property(e => e.Debit).HasColumnName("debit").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Credit).HasColumnName("credit").HasColumnType("numeric(18,2)").IsRequired();
+
+                entity.HasIndex(e => e.VoucherId);
+                entity.HasIndex(e => e.AccountId);
+
+                // 一条分录可挂多个辅助核算取值；分录删除时一并清除。
+                entity.HasMany(e => e.Assists)
+                      .WithOne()
+                      .HasForeignKey(e => e.VoucherEntryId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Metadata
+                      .FindNavigation(nameof(VoucherEntry.Assists))!
+                      .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<VoucherEntryAssist>(entity =>
+            {
+                entity.ToTable("voucher_entry_assists");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.VoucherEntryId).HasColumnName("voucher_entry_id").IsRequired();
+                entity.Property(e => e.AccountId).HasColumnName("account_id").IsRequired();
+                entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.AssistItemId).HasColumnName("assist_item_id").IsRequired();
+
+                // 同一分录同一档案只登记一次（防御导入或并发产生的重复维度）。
+                entity.HasIndex(e => new { e.VoucherEntryId, e.Type, e.AssistItemId }).IsUnique();
+                entity.HasIndex(e => e.VoucherEntryId);
+                // 账簿按「科目 × 档案」聚合的覆盖索引。
+                entity.HasIndex(e => new { e.AccountId, e.AssistItemId });
+                entity.HasIndex(e => e.AssistItemId);
+
+                // 档案被分录引用时不允许级联删除档案，改由应用层做删除保护。
+                entity.HasOne<AssistItem>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AssistItemId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<AccountAssistType>(entity =>
+            {
+                entity.ToTable("account_assist_types");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountId).HasColumnName("account_id").IsRequired();
+                entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.IsRequired).HasColumnName("is_required").IsRequired().HasDefaultValue(true);
+
+                // 同一科目同一维度只保留一条。
+                entity.HasIndex(e => new { e.AccountId, e.Type }).IsUnique();
+
+                // 维度设置引用辅助核算类别为枚举，无需外键；删除科目时级联清除（见 Account 配置）。
+            });
+
+            modelBuilder.Entity<AssistItem>(entity =>
+            {
+                entity.ToTable("assist_items");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(AssistItem.MaxCodeLength);
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.ParentId).HasColumnName("parent_id");
+                entity.Property(e => e.Level).HasColumnName("level").IsRequired();
+                entity.Property(e => e.IsLeaf).HasColumnName("is_leaf").IsRequired();
+                entity.Property(e => e.IsEnabled).HasColumnName("is_enabled").IsRequired();
+                entity.Property(e => e.Contact).HasColumnName("contact").HasMaxLength(200);
+                entity.Property(e => e.Remark).HasColumnName("remark").HasMaxLength(500);
+
+                // 档案编码在同一账套同一类别内唯一。
+                entity.HasIndex(e => new { e.AccountSetId, e.Type, e.Code }).IsUnique();
+                // 账簿与档案列表均按「账套 + 类别」取数。
+                entity.HasIndex(e => new { e.AccountSetId, e.Type });
+                entity.HasIndex(e => e.ParentId);
+
+                // 档案归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // 自引用：上级档案 -> 下级档案集合。
+                entity.HasOne(e => e.Parent)
+                      .WithMany(e => e.Children)
+                      .HasForeignKey(e => e.ParentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.Metadata
+                      .FindNavigation(nameof(AssistItem.Children))!
+                      .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<Journal>(entity =>
+            {
+                entity.ToTable("journals");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.AccountId).HasColumnName("account_id").IsRequired();
+                entity.Property(e => e.OpeningBalance).HasColumnName("opening_balance").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.IsEnabled).HasColumnName("is_enabled").IsRequired().HasDefaultValue(true);
+                entity.Property(e => e.BankName).HasColumnName("bank_name").HasMaxLength(50);
+                entity.Property(e => e.BankAccountNo).HasColumnName("bank_account_no").HasMaxLength(50);
+
+                entity.HasIndex(e => new { e.AccountSetId, e.AccountId });
+
+                // 日记账归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // 一本日记账包含多条分录；分录通过背景字段 _entries 访问。
+                entity.HasMany(e => e.Entries)
+                      .WithOne()
+                      .HasForeignKey(e => e.JournalId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Metadata
+                      .FindNavigation(nameof(Journal.Entries))!
+                      .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<JournalEntry>(entity =>
+            {
+                entity.ToTable("journal_entries");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.JournalId).HasColumnName("journal_id").IsRequired();
+                entity.Property(e => e.Sequence).HasColumnName("sequence").IsRequired();
+                entity.Property(e => e.Date).HasColumnName("date").IsRequired();
+                entity.Property(e => e.Summary).HasColumnName("summary").IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Category).HasColumnName("category").HasMaxLength(50);
+                entity.Property(e => e.Counterparty).HasColumnName("counterparty").HasMaxLength(100);
+                entity.Property(e => e.Income).HasColumnName("income").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Expense).HasColumnName("expense").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Balance).HasColumnName("balance").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.VoucherId).HasColumnName("voucher_id");
+
+                entity.HasIndex(e => e.JournalId);
+                entity.HasIndex(e => e.VoucherId);
+            });
+
+            modelBuilder.Entity<EntryCategory>(entity =>
+            {
+                entity.ToTable("entry_categories");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(EntryCategory.MaxNameLength);
+                entity.Property(e => e.SmartKeywords).HasColumnName("smart_keywords").HasMaxLength(EntryCategory.MaxKeywordsLength);
+                entity.Property(e => e.VoucherSubjectId).HasColumnName("voucher_subject_id");
+
+                // 同一账套同一类型内类别名称唯一。
+                entity.HasIndex(e => new { e.AccountSetId, e.Type, e.Name }).IsUnique();
+
+                // 收支类别归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ClosingTemplate>(entity =>
+            {
+                entity.ToTable("closing_templates");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(ClosingTemplate.MaxNameLength);
+                entity.Property(e => e.IsEnabled).HasColumnName("is_enabled").IsRequired().HasDefaultValue(true);
+
+                // 同一账套内模板名唯一。
+                entity.HasIndex(e => new { e.AccountSetId, e.Name }).IsUnique();
+
+                // 模板归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // 模板包含若干行；整体替换模板行时旧行级联清除。
+                entity.HasMany(e => e.Lines)
+                      .WithOne()
+                      .HasForeignKey(l => l.TemplateId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Metadata
+                      .FindNavigation(nameof(ClosingTemplate.Lines))!
+                      .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<ClosingTemplateLine>(entity =>
+            {
+                entity.ToTable("closing_template_lines");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.TemplateId).HasColumnName("template_id").IsRequired();
+                entity.Property(e => e.LineNumber).HasColumnName("line_number").IsRequired();
+                entity.Property(e => e.Summary).HasColumnName("summary").IsRequired().HasMaxLength(ClosingTemplateLine.MaxSummaryLength);
+                entity.Property(e => e.AccountId).HasColumnName("account_id").IsRequired();
+                entity.Property(e => e.Direction).HasColumnName("direction").HasConversion<int>().IsRequired();
+                entity.Property(e => e.SourceType).HasColumnName("source_type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.SourceAccountId).HasColumnName("source_account_id");
+                entity.Property(e => e.Amount).HasColumnName("amount").HasColumnType("numeric(18,2)").IsRequired();
+
+                entity.HasIndex(e => e.TemplateId);
+            });
+
+            modelBuilder.Entity<Currency>(entity =>
+            {
+                entity.ToTable("currencies");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(Currency.MaxCodeLength);
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(Currency.MaxNameLength);
+                entity.Property(e => e.Rate).HasColumnName("rate").HasColumnType("numeric(18,6)").IsRequired();
+                entity.Property(e => e.IsBase).HasColumnName("is_base").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<VoucherWord>(entity =>
+            {
+                entity.ToTable("voucher_words");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Word).HasColumnName("word").IsRequired().HasMaxLength(VoucherWord.MaxWordLength);
+                entity.Property(e => e.PrintTitle).HasColumnName("print_title").IsRequired().HasMaxLength(VoucherWord.MaxPrintTitleLength);
+                entity.Property(e => e.IsDefault).HasColumnName("is_default").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Word }).IsUnique();
+                entity.HasIndex(e => new { e.AccountSetId, e.IsDefault });
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<VoucherTemplate>(entity =>
+            {
+                entity.ToTable("voucher_templates");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(VoucherTemplate.MaxNameLength);
+                entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Name }).IsUnique();
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(e => e.Lines)
+                      .WithOne()
+                      .HasForeignKey(l => l.TemplateId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Metadata
+                      .FindNavigation(nameof(VoucherTemplate.Lines))!
+                      .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<VoucherTemplateLine>(entity =>
+            {
+                entity.ToTable("voucher_template_lines");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.TemplateId).HasColumnName("template_id").IsRequired();
+                entity.Property(e => e.LineNumber).HasColumnName("line_number").IsRequired();
+                entity.Property(e => e.Summary).HasColumnName("summary").IsRequired().HasMaxLength(VoucherTemplate.MaxSummaryLength);
+                entity.Property(e => e.AccountId).HasColumnName("account_id").IsRequired();
+                entity.Property(e => e.IsDebit).HasColumnName("is_debit").IsRequired();
+
+                entity.HasIndex(e => e.TemplateId);
+            });
+
+            modelBuilder.Entity<Bill>(entity =>
+            {
+                entity.ToTable("bills");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Category).HasColumnName("category").HasMaxLength(50);
+                entity.Property(e => e.IssueDate).HasColumnName("issue_date").IsRequired();
+                entity.Property(e => e.BillNo).HasColumnName("bill_no").IsRequired().HasMaxLength(Bill.MaxBillNoLength);
+                entity.Property(e => e.Amount).HasColumnName("amount").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Kind).HasColumnName("kind").HasConversion<int>().IsRequired();
+                entity.Property(e => e.DueDate).HasColumnName("due_date");
+                entity.Property(e => e.Drawer).HasColumnName("drawer").HasMaxLength(100);
+                entity.Property(e => e.Acceptor).HasColumnName("acceptor").HasMaxLength(100);
+                entity.Property(e => e.Transferable).HasColumnName("transferable").IsRequired();
+                entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Remark).HasColumnName("remark").HasMaxLength(500);
+
+                entity.HasIndex(e => new { e.AccountSetId, e.BillNo }).IsUnique();
+                entity.HasIndex(e => new { e.AccountSetId, e.IssueDate });
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<FixedAssetCategory>(entity =>
+            {
+                entity.ToTable("fixed_asset_categories");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(FixedAssetCategory.MaxCodeLength);
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(FixedAssetCategory.MaxNameLength);
+                entity.Property(e => e.Method).HasColumnName("method").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Attr).HasColumnName("attr").HasConversion<int>().IsRequired();
+                entity.Property(e => e.SubjectAccountId).HasColumnName("subject_account_id").IsRequired();
+                entity.Property(e => e.Months).HasColumnName("months").IsRequired();
+                entity.Property(e => e.ResidualRate).HasColumnName("residual_rate").HasColumnType("numeric(5,2)").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<FixedAsset>(entity =>
+            {
+                entity.ToTable("fixed_assets");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(FixedAsset.MaxCodeLength);
+                entity.Property(e => e.CategoryId).HasColumnName("category_id").IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(FixedAsset.MaxNameLength);
+                entity.Property(e => e.Model).HasColumnName("model").HasMaxLength(FixedAsset.MaxTextLength);
+                entity.Property(e => e.Dept).HasColumnName("dept").HasMaxLength(FixedAsset.MaxTextLength);
+                entity.Property(e => e.StartDate).HasColumnName("start_date").IsRequired();
+                entity.Property(e => e.OriginValue).HasColumnName("origin_value").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.AccumulatedDepreciation).HasColumnName("accumulated_depreciation").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+                entity.Property(e => e.LastDepreciatedPeriod).HasColumnName("last_depreciated_period").IsRequired();
+                entity.Property(e => e.ClearedDate).HasColumnName("cleared_date");
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
+                entity.HasIndex(e => e.CategoryId);
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<FixedAssetChange>(entity =>
+            {
+                entity.ToTable("fixed_asset_changes");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.AssetId).HasColumnName("asset_id").IsRequired();
+                entity.Property(e => e.Kind).HasColumnName("kind").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Before).HasColumnName("before").IsRequired().HasMaxLength(FixedAssetChange.MaxTextLength);
+                entity.Property(e => e.After).HasColumnName("after").IsRequired().HasMaxLength(FixedAssetChange.MaxTextLength);
+                entity.Property(e => e.Period).HasColumnName("period").IsRequired();
+                entity.Property(e => e.Amount).HasColumnName("amount").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.AssetId });
+                entity.HasIndex(e => new { e.AccountSetId, e.Period });
+            });
+
+            modelBuilder.Entity<Invoice>(entity =>
+            {
+                entity.ToTable("invoices");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Direction).HasColumnName("direction").HasConversion<int>().IsRequired();
+                entity.Property(e => e.InvoiceType).HasColumnName("invoice_type").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.InputDate).HasColumnName("input_date").IsRequired();
+                entity.Property(e => e.IssueDate).HasColumnName("issue_date").IsRequired();
+                entity.Property(e => e.InvoiceNo).HasColumnName("invoice_no").IsRequired().HasMaxLength(Invoice.MaxInvoiceNoLength);
+                entity.Property(e => e.PartnerName).HasColumnName("partner_name").IsRequired().HasMaxLength(Invoice.MaxPartnerLength);
+                entity.Property(e => e.BizType).HasColumnName("biz_type").HasMaxLength(50);
+                entity.Property(e => e.Source).HasColumnName("source").HasMaxLength(50);
+                entity.Property(e => e.Remark).HasColumnName("remark").HasMaxLength(500);
+                entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+                entity.Property(e => e.AuthDate).HasColumnName("auth_date");
+                entity.Property(e => e.TaxPeriod).HasColumnName("tax_period");
+                entity.Property(e => e.VoucherId).HasColumnName("voucher_id");
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Direction, e.InvoiceNo }).IsUnique();
+                entity.HasIndex(e => new { e.AccountSetId, e.Direction, e.IssueDate });
+                entity.HasIndex(e => new { e.AccountSetId, e.Status });
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(e => e.Lines)
+                      .WithOne()
+                      .HasForeignKey(l => l.InvoiceId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Metadata
+                      .FindNavigation(nameof(Invoice.Lines))!
+                      .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<InvoiceLine>(entity =>
+            {
+                entity.ToTable("invoice_lines");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.InvoiceId).HasColumnName("invoice_id").IsRequired();
+                entity.Property(e => e.LineNumber).HasColumnName("line_number").IsRequired();
+                entity.Property(e => e.GoodsName).HasColumnName("goods_name").IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Amount).HasColumnName("amount").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.TaxRate).HasColumnName("tax_rate").HasColumnType("numeric(5,2)").IsRequired();
+                entity.Property(e => e.TaxAmount).HasColumnName("tax_amount").HasColumnType("numeric(18,2)").IsRequired();
+
+                entity.HasIndex(e => e.InvoiceId);
+            });
+
+            modelBuilder.Entity<Employee>(entity =>
+            {
+                entity.ToTable("employees");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(Employee.MaxCodeLength);
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(Employee.MaxNameLength);
+                entity.Property(e => e.Gender).HasColumnName("gender").HasConversion<int>().IsRequired();
+                entity.Property(e => e.IdType).HasColumnName("id_type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.IdNo).HasColumnName("id_no").HasMaxLength(30);
+                entity.Property(e => e.Dept).HasColumnName("dept").HasMaxLength(100);
+                entity.Property(e => e.Phone).HasColumnName("phone").HasMaxLength(20);
+                entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(100);
+                entity.Property(e => e.BirthDate).HasColumnName("birth_date");
+                entity.Property(e => e.HireDate).HasColumnName("hire_date");
+                entity.Property(e => e.LeaveDate).HasColumnName("leave_date");
+                entity.Property(e => e.BankName).HasColumnName("bank_name").HasMaxLength(100);
+                entity.Property(e => e.BankAccountNo).HasColumnName("bank_account_no").HasMaxLength(50);
+                entity.Property(e => e.Post).HasColumnName("post").HasMaxLength(50);
+                entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(50);
+                entity.Property(e => e.SubjectAccountId).HasColumnName("subject_account_id");
+                entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Remark).HasColumnName("remark").HasMaxLength(500);
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<InsuranceItem>(entity =>
+            {
+                entity.ToTable("insurance_items");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(InsuranceItem.MaxNameLength);
+                entity.Property(e => e.CompanyRate).HasColumnName("company_rate").HasColumnType("numeric(5,2)").IsRequired();
+                entity.Property(e => e.PersonalRate).HasColumnName("personal_rate").HasColumnType("numeric(5,2)");
+                entity.Property(e => e.SortOrder).HasColumnName("sort_order").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Name }).IsUnique();
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<SalaryBill>(entity =>
+            {
+                entity.ToTable("salary_bills");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Period).HasColumnName("period").IsRequired();
+                entity.Property(e => e.EmployeeId).HasColumnName("employee_id").IsRequired();
+                entity.Property(e => e.Gross).HasColumnName("gross").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Deductible).HasColumnName("deductible").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.PersonalDeduction).HasColumnName("personal_deduction").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.TaxThreshold).HasColumnName("tax_threshold").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Tax).HasColumnName("tax").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Adjust).HasColumnName("adjust").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.CompanyPart).HasColumnName("company_part").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.AccruedVoucherId).HasColumnName("accrued_voucher_id");
+                entity.Property(e => e.PaidVoucherId).HasColumnName("paid_voucher_id");
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Period, e.EmployeeId }).IsUnique();
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ArchiveItem>(entity =>
+            {
+                entity.ToTable("archive_items");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.FileName).HasColumnName("file_name").IsRequired().HasMaxLength(ArchiveItem.MaxFileNameLength);
+                entity.Property(e => e.Category).HasColumnName("category").HasMaxLength(50);
+                entity.Property(e => e.DocType).HasColumnName("doc_type").HasMaxLength(50);
+                entity.Property(e => e.Content).HasColumnName("content");
+                entity.Property(e => e.FileSize).HasColumnName("file_size").IsRequired();
+                entity.Property(e => e.RelatedDoc).HasColumnName("related_doc").HasMaxLength(50);
+                entity.Property(e => e.RelatedNo).HasColumnName("related_no").HasMaxLength(50);
+                entity.Property(e => e.VoucherText).HasColumnName("voucher_text").HasMaxLength(50);
+                entity.Property(e => e.Matter).HasColumnName("matter").HasMaxLength(200);
+                entity.Property(e => e.CheckStatus).HasColumnName("check_status").HasMaxLength(100);
+                entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Uploader).HasColumnName("uploader").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Source).HasColumnName("source").HasMaxLength(50);
+                entity.Property(e => e.UploadedAt).HasColumnName("uploaded_at").IsRequired();
+                entity.Property(e => e.IsArchived).HasColumnName("is_archived").IsRequired();
+                entity.Property(e => e.ArchivedAt).HasColumnName("archived_at");
+                entity.Property(e => e.ArchivedBy).HasColumnName("archived_by").HasMaxLength(50);
+
+                entity.HasIndex(e => new { e.AccountSetId, e.IsArchived });
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<OperationLog>(entity =>
+            {
+                entity.ToTable("operation_logs");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.UserName).HasColumnName("user_name").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Type).HasColumnName("type").IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Module).HasColumnName("module").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Log).HasColumnName("log").IsRequired().HasMaxLength(OperationLog.MaxLogLength);
+                entity.Property(e => e.Time).HasColumnName("time").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Time });
+            });
+
+            modelBuilder.Entity<Transfer>(entity =>
+            {
+                entity.ToTable("transfers");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Date).HasColumnName("date").IsRequired();
+                entity.Property(e => e.Summary).HasColumnName("summary").IsRequired().HasMaxLength(Transfer.MaxSummaryLength);
+                entity.Property(e => e.FromJournalId).HasColumnName("from_journal_id").IsRequired();
+                entity.Property(e => e.ToJournalId).HasColumnName("to_journal_id").IsRequired();
+                entity.Property(e => e.Amount).HasColumnName("amount").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Remark).HasColumnName("remark").HasMaxLength(500);
+                entity.Property(e => e.FromEntryId).HasColumnName("from_entry_id").IsRequired();
+                entity.Property(e => e.ToEntryId).HasColumnName("to_entry_id").IsRequired();
+                entity.Property(e => e.VoucherId).HasColumnName("voucher_id");
+
+                // 列表按账套 + 日期取数。
+                entity.HasIndex(e => new { e.AccountSetId, e.Date });
+
+                // 转账归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<CustomReport>(entity =>
+            {
+                entity.ToTable("custom_reports");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(CustomReport.MaxCodeLength);
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(CustomReport.MaxNameLength);
+                entity.Property(e => e.ValueType).HasColumnName("value_type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.CreatedBy).HasColumnName("created_by").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+                entity.Property(e => e.ModifiedBy).HasColumnName("modified_by").HasMaxLength(50);
+                entity.Property(e => e.ModifiedAt).HasColumnName("modified_at");
+
+                // 报表编码在同一账套内唯一。
+                entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
+
+                // 报表定义归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+        }
+    }
+}

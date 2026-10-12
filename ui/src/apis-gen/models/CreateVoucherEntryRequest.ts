@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { VoucherEntryAssistRequest } from './VoucherEntryAssistRequest';
+import {
+    VoucherEntryAssistRequestFromJSON,
+    VoucherEntryAssistRequestFromJSONTyped,
+    VoucherEntryAssistRequestToJSON,
+    VoucherEntryAssistRequestToJSONTyped,
+} from './VoucherEntryAssistRequest';
+
 /**
  * 
  * @export
@@ -43,6 +51,12 @@ export interface CreateVoucherEntryRequest {
      * @memberof CreateVoucherEntryRequest
      */
     credit?: number;
+    /**
+     * 
+     * @type {Array<VoucherEntryAssistRequest>}
+     * @memberof CreateVoucherEntryRequest
+     */
+    assists?: Array<VoucherEntryAssistRequest>;
 }
 
 /**
@@ -66,6 +80,7 @@ export function CreateVoucherEntryRequestFromJSONTyped(json: any, ignoreDiscrimi
         'accountId': json['accountId'] == null ? undefined : json['accountId'],
         'debit': json['debit'] == null ? undefined : json['debit'],
         'credit': json['credit'] == null ? undefined : json['credit'],
+        'assists': json['assists'] == null ? undefined : ((json['assists'] as Array<any>).map(VoucherEntryAssistRequestFromJSON)),
     };
 }
 
@@ -84,6 +99,7 @@ export function CreateVoucherEntryRequestToJSONTyped(value?: CreateVoucherEntryR
         'accountId': value['accountId'],
         'debit': value['debit'],
         'credit': value['credit'],
+        'assists': value['assists'] == null ? undefined : ((value['assists'] as Array<any>).map(VoucherEntryAssistRequestToJSON)),
     };
 }
 

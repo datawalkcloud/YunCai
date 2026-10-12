@@ -15,6 +15,8 @@
 
 import * as runtime from '../runtime';
 import type {
+  AccountAssistTypeDto,
+  AccountAssistTypeRequest,
   AccountDto,
   AccountImportResult,
   CreateAccountRequest,
@@ -23,6 +25,10 @@ import type {
   UpdateAccountRequest,
 } from '../models/index';
 import {
+    AccountAssistTypeDtoFromJSON,
+    AccountAssistTypeDtoToJSON,
+    AccountAssistTypeRequestFromJSON,
+    AccountAssistTypeRequestToJSON,
     AccountDtoFromJSON,
     AccountDtoToJSON,
     AccountImportResultFromJSON,
@@ -44,6 +50,17 @@ export interface AccountsetsAccountSetIdAccountsExportGetRequest {
 export interface AccountsetsAccountSetIdAccountsGetRequest {
     accountSetId: string;
     leafOnly?: boolean;
+}
+
+export interface AccountsetsAccountSetIdAccountsIdAssistTypesGetRequest {
+    accountSetId: string;
+    id: string;
+}
+
+export interface AccountsetsAccountSetIdAccountsIdAssistTypesPutRequest {
+    accountSetId: string;
+    id: string;
+    accountAssistTypeRequest: Array<AccountAssistTypeRequest>;
 }
 
 export interface AccountsetsAccountSetIdAccountsIdDeleteRequest {
@@ -135,6 +152,54 @@ export interface AccountsApiInterface {
     /**
      */
     accountsetsAccountSetIdAccountsGet(requestParameters: AccountsetsAccountSetIdAccountsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountDto>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdAccountsIdAssistTypesGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    accountsetsAccountSetIdAccountsIdAssistTypesGetRequestOpts(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    accountsetsAccountSetIdAccountsIdAssistTypesGetRaw(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<AccountAssistTypeDto>>>;
+
+    /**
+     */
+    accountsetsAccountSetIdAccountsIdAssistTypesGet(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountAssistTypeDto>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdAccountsIdAssistTypesPut without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Array<AccountAssistTypeRequest>} accountAssistTypeRequest 
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    accountsetsAccountSetIdAccountsIdAssistTypesPutRequestOpts(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesPutRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Array<AccountAssistTypeRequest>} accountAssistTypeRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountsApiInterface
+     */
+    accountsetsAccountSetIdAccountsIdAssistTypesPutRaw(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<AccountAssistTypeDto>>>;
+
+    /**
+     */
+    accountsetsAccountSetIdAccountsIdAssistTypesPut(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountAssistTypeDto>>;
 
     /**
      * Creates request options for accountsetsAccountSetIdAccountsIdDelete without sending the request
@@ -411,6 +476,118 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
      */
     async accountsetsAccountSetIdAccountsGet(requestParameters: AccountsetsAccountSetIdAccountsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountDto>> {
         const response = await this.accountsetsAccountSetIdAccountsGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdAccountsIdAssistTypesGet without sending the request
+     */
+    async accountsetsAccountSetIdAccountsIdAssistTypesGetRequestOpts(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdAccountsIdAssistTypesGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdAccountsIdAssistTypesGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Accounts/{id}/assist-types`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdAccountsIdAssistTypesGetRaw(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<AccountAssistTypeDto>>> {
+        const requestOptions = await this.accountsetsAccountSetIdAccountsIdAssistTypesGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(AccountAssistTypeDtoFromJSON));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdAccountsIdAssistTypesGet(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountAssistTypeDto>> {
+        const response = await this.accountsetsAccountSetIdAccountsIdAssistTypesGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdAccountsIdAssistTypesPut without sending the request
+     */
+    async accountsetsAccountSetIdAccountsIdAssistTypesPutRequestOpts(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesPutRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdAccountsIdAssistTypesPut().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdAccountsIdAssistTypesPut().'
+            );
+        }
+
+        if (requestParameters['accountAssistTypeRequest'] == null) {
+            throw new runtime.RequiredError(
+                'accountAssistTypeRequest',
+                'Required parameter "accountAssistTypeRequest" was null or undefined when calling accountsetsAccountSetIdAccountsIdAssistTypesPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/Accounts/{id}/assist-types`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['accountAssistTypeRequest']!.map(AccountAssistTypeRequestToJSON),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdAccountsIdAssistTypesPutRaw(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<AccountAssistTypeDto>>> {
+        const requestOptions = await this.accountsetsAccountSetIdAccountsIdAssistTypesPutRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(AccountAssistTypeDtoFromJSON));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdAccountsIdAssistTypesPut(requestParameters: AccountsetsAccountSetIdAccountsIdAssistTypesPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AccountAssistTypeDto>> {
+        const response = await this.accountsetsAccountSetIdAccountsIdAssistTypesPutRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

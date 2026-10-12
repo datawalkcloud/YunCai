@@ -1,7 +1,8 @@
 using System.Text;
-using KuaiJi.Infrastructure.Data;
+using KuaiJi.SharedKernel.Infrastructure.Binding;
+using KuaiJi.SharedKernel.Infrastructure.Data;
 using Microsoft.OpenApi;
-using KuaiJi.Services;
+using KuaiJi.Modules.Identity.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -17,7 +18,11 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Services.AddSerilog(Log.Logger);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // 前端生成的客户端会把日期参数序列化成 ISO 8601 带时间缀，DateOnly 默认绑定会 400。
+    options.ModelBinderProviders.Insert(0, new LenientDateOnlyModelBinderProvider());
+});
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi(options =>
 {
@@ -35,6 +40,13 @@ builder.Services.AddOpenApi(options =>
             schema.Pattern = null;
         }
 
+        // 「$ref + default」的组合（枚举参数的 C# 默认值会产出 default: 0）会让
+        // openapi-generator 误判类型并生成未定义的 numberToJSON，故引用型 schema 不输出默认值。
+        if (schema.Type is null && schema.Default is not null)
+        {
+            schema.Default = null;
+        }
+
         return Task.CompletedTask;
     });
 });
@@ -46,27 +58,74 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Progr
 
 // 认证相关服务
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
-builder.Services.AddScoped<KuaiJi.Domain.Users.IUserRepository, KuaiJi.Infrastructure.Persistence.UserRepository>();
-builder.Services.AddScoped<KuaiJi.Domain.AccountSets.IAccountSetRepository, KuaiJi.Infrastructure.AccountSets.AccountSetRepository>();
-builder.Services.AddScoped<KuaiJi.Domain.Accounting.IAccountRepository, KuaiJi.Infrastructure.Accounting.AccountRepository>();
-builder.Services.AddScoped<KuaiJi.Domain.Journals.IJournalRepository, KuaiJi.Infrastructure.Journals.JournalRepository>();
-builder.Services.AddScoped<KuaiJi.Domain.Journals.IEntryCategoryRepository, KuaiJi.Infrastructure.Journals.EntryCategoryRepository>();
-builder.Services.AddScoped<KuaiJi.Domain.Vouchers.IVoucherRepository, KuaiJi.Infrastructure.Vouchers.VoucherRepository>();
-builder.Services.AddScoped<KuaiJi.Application.Vouchers.IVoucherImportReader, KuaiJi.Infrastructure.Vouchers.XlsVoucherImportReader>();
-builder.Services.AddScoped<KuaiJi.Application.Vouchers.VoucherImportService>();
-builder.Services.AddScoped<KuaiJi.Application.Vouchers.VoucherService>();
-builder.Services.AddScoped<KuaiJi.Application.Accounts.AccountAutoCreateService>();
-builder.Services.AddScoped<KuaiJi.Application.Accounts.IAccountImportReader, KuaiJi.Infrastructure.Accounting.XlsxAccountImportReader>();
-builder.Services.AddScoped<KuaiJi.Application.Accounts.AccountImportService>();
-builder.Services.AddScoped<KuaiJi.Application.Accounts.OpeningBalanceService>();
-builder.Services.AddScoped<KuaiJi.Application.Journals.JournalService>();
-builder.Services.AddScoped<KuaiJi.Application.Journals.EntryCategoryService>();
-builder.Services.AddScoped<KuaiJi.Application.Journals.IJournalImportReader, KuaiJi.Infrastructure.Journals.XlsJournalImportReader>();
-builder.Services.AddScoped<KuaiJi.Application.Journals.JournalImportService>();
-builder.Services.AddScoped<KuaiJi.Application.Reports.TrialBalanceService>();
-builder.Services.AddScoped<KuaiJi.Application.Reports.BalanceSheetService>();
-builder.Services.AddScoped<KuaiJi.Application.Reports.CashJournalService>();
-builder.Services.AddScoped<KuaiJi.Application.Reports.IncomeStatementService>();
+builder.Services.AddScoped<KuaiJi.Modules.Identity.Domain.IUserRepository, KuaiJi.Modules.Identity.Infrastructure.UserRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Domain.IAccountSetRepository, KuaiJi.Modules.AccountSets.Infrastructure.AccountSetRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Accounting.Domain.IAccountRepository, KuaiJi.Modules.Accounting.Infrastructure.AccountRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Assist.Domain.IAssistItemRepository, KuaiJi.Modules.Assist.Infrastructure.AssistItemRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Domain.IJournalRepository, KuaiJi.Modules.Funds.Infrastructure.JournalRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Domain.IEntryCategoryRepository, KuaiJi.Modules.Funds.Infrastructure.EntryCategoryRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Domain.ITransferRepository, KuaiJi.Modules.Funds.Infrastructure.TransferRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Vouchers.Domain.IVoucherRepository, KuaiJi.Modules.Vouchers.Infrastructure.VoucherRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Closing.Domain.IClosingTemplateRepository, KuaiJi.Modules.Closing.Infrastructure.ClosingTemplateRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Vouchers.Application.IVoucherImportReader, KuaiJi.Modules.Vouchers.Infrastructure.XlsVoucherImportReader>();
+builder.Services.AddScoped<KuaiJi.Modules.Vouchers.Application.VoucherImportService>();
+builder.Services.AddScoped<KuaiJi.Modules.Vouchers.Application.VoucherService>();
+builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Domain.ICurrencyRepository, KuaiJi.Modules.AccountSets.Infrastructure.CurrencyRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Domain.IVoucherWordRepository, KuaiJi.Modules.AccountSets.Infrastructure.VoucherWordRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Vouchers.Domain.IVoucherTemplateRepository, KuaiJi.Modules.Vouchers.Infrastructure.VoucherTemplateRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Domain.IBillRepository, KuaiJi.Modules.Funds.Infrastructure.BillRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.FixedAssets.Domain.IFixedAssetRepository, KuaiJi.Modules.FixedAssets.Infrastructure.FixedAssetRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Invoices.Domain.IInvoiceRepository, KuaiJi.Modules.Invoices.Infrastructure.InvoiceRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Salary.Domain.ISalaryRepository, KuaiJi.Modules.Salary.Infrastructure.SalaryRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Archives.Domain.IArchiveRepository, KuaiJi.Modules.Archives.Infrastructure.ArchiveRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Auditing.Domain.IOperationLogRepository, KuaiJi.Modules.Auditing.Infrastructure.OperationLogRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Domain.IReinitRepository, KuaiJi.Modules.AccountSets.Infrastructure.ReinitRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.CurrencyService>();
+builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.VoucherWordService>();
+builder.Services.AddScoped<KuaiJi.Modules.Vouchers.Application.VoucherTemplateService>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Application.BillService>();
+builder.Services.AddScoped<KuaiJi.Modules.FixedAssets.Application.FixedAssetService>();
+builder.Services.AddScoped<KuaiJi.Modules.Invoices.Application.InvoiceService>();
+builder.Services.AddScoped<KuaiJi.Modules.Salary.Application.SalaryService>();
+builder.Services.AddScoped<KuaiJi.Modules.Archives.Application.ArchiveService>();
+builder.Services.AddScoped<KuaiJi.Modules.Auditing.Application.OperationLogService>();
+builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.ReinitService>();
+builder.Services.AddScoped<KuaiJi.Modules.Accounting.Application.AccountAutoCreateService>();
+builder.Services.AddScoped<KuaiJi.Modules.Accounting.Application.IAccountImportReader, KuaiJi.Modules.Accounting.Infrastructure.XlsxAccountImportReader>();
+builder.Services.AddScoped<KuaiJi.Modules.Accounting.Application.AccountImportService>();
+builder.Services.AddScoped<KuaiJi.Modules.Accounting.Application.OpeningBalanceService>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Application.JournalService>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Application.EntryCategoryService>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Application.IJournalImportReader, KuaiJi.Modules.Funds.Infrastructure.XlsJournalImportReader>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Application.JournalImportService>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Application.TransferService>();
+builder.Services.AddScoped<KuaiJi.Modules.Funds.Application.FundReportService>();
+builder.Services.AddScoped<KuaiJi.Modules.Assist.Application.AssistItemService>();
+builder.Services.AddScoped<KuaiJi.Modules.Accounting.Application.AccountAssistGuard>();
+builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.ILedgerSource, KuaiJi.Modules.Ledgers.Infrastructure.LedgerSource>();
+builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.LedgerDataSetFactory>();
+builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.SubsidiaryLedgerService>();
+builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.GeneralLedgerService>();
+builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.VoucherJournalService>();
+builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.VoucherSummaryService>();
+builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.AssistLedgerService>();
+builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.MultiColumnLedgerService>();
+builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.AgeingAnalysisService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.TrialBalanceService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.BalanceSheetService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.CashJournalService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.IncomeStatementService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.CashFlowService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.AssistIncomeService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.ExpenseDetailService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.EquityChangeService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.TaxStatisticsService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.FinancialSummaryService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.CustomReportService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.ReportExportService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Domain.ICustomReportRepository, KuaiJi.Modules.Reports.Infrastructure.CustomReportRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Closing.Application.ClosingService>();
+builder.Services.AddScoped<KuaiJi.Modules.Closing.Application.ClosingTemplateService>();
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
@@ -121,19 +180,19 @@ using (var scope = app.Services.CreateScope())
         if (!context.Users.Any())
         {
             context.Users.AddRange(
-                new KuaiJi.Domain.Users.User
+                new KuaiJi.Modules.Identity.Domain.User
                 {
                     Id = "1",
                     Username = "admin",
                     DisplayName = "管理员",
-                    PasswordHash = KuaiJi.Services.PasswordHasher.Hash("admin123")
+                    PasswordHash = KuaiJi.Modules.Identity.Infrastructure.PasswordHasher.Hash("admin123")
                 },
-                new KuaiJi.Domain.Users.User
+                new KuaiJi.Modules.Identity.Domain.User
                 {
                     Id = "2",
                     Username = "user",
                     DisplayName = "普通用户",
-                    PasswordHash = KuaiJi.Services.PasswordHasher.Hash("user123")
+                    PasswordHash = KuaiJi.Modules.Identity.Infrastructure.PasswordHasher.Hash("user123")
                 }
             );
             context.SaveChanges();
@@ -142,11 +201,11 @@ using (var scope = app.Services.CreateScope())
         // 创建默认账套（科目/日记账/凭证均需归属于某一账套），并置为当前账套。
         if (!context.AccountSets.Any())
         {
-            var defaultSet = KuaiJi.Domain.AccountSets.AccountSet.Create(
+            var defaultSet = KuaiJi.Modules.AccountSets.Domain.AccountSet.Create(
                 "默认账套",
                 "默认单位",
-                KuaiJi.Domain.AccountSets.AccountingStandard.Enterprise,
-                KuaiJi.Domain.AccountSets.TaxpayerType.General,
+                KuaiJi.Modules.AccountSets.Domain.AccountingStandard.Enterprise,
+                KuaiJi.Modules.AccountSets.Domain.TaxpayerType.General,
                 "人民币",
                 DateTime.UtcNow.Year,
                 1);

@@ -22,6 +22,7 @@ Name | Type
 `incomeTaxRate` | number
 `voucherWords` | string
 `closedPeriod` | string
+`carriedPeriod` | string
 `nextCloseYear` | number
 `nextCloseMonth` | number
 
@@ -48,6 +49,7 @@ const example = {
   "incomeTaxRate": null,
   "voucherWords": null,
   "closedPeriod": null,
+  "carriedPeriod": null,
   "nextCloseYear": null,
   "nextCloseMonth": null,
 } satisfies AccountSetDto

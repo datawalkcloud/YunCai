@@ -117,6 +117,12 @@ export interface AccountSetDto {
     closedPeriod?: string | null;
     /**
      * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    carriedPeriod?: string | null;
+    /**
+     * 
      * @type {number}
      * @memberof AccountSetDto
      */
@@ -162,6 +168,7 @@ export function AccountSetDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'incomeTaxRate': json['incomeTaxRate'] == null ? undefined : json['incomeTaxRate'],
         'voucherWords': json['voucherWords'] == null ? undefined : json['voucherWords'],
         'closedPeriod': json['closedPeriod'] == null ? undefined : json['closedPeriod'],
+        'carriedPeriod': json['carriedPeriod'] == null ? undefined : json['carriedPeriod'],
         'nextCloseYear': json['nextCloseYear'] == null ? undefined : json['nextCloseYear'],
         'nextCloseMonth': json['nextCloseMonth'] == null ? undefined : json['nextCloseMonth'],
     };
@@ -194,6 +201,7 @@ export function AccountSetDtoToJSONTyped(value?: AccountSetDto | null, ignoreDis
         'incomeTaxRate': value['incomeTaxRate'],
         'voucherWords': value['voucherWords'],
         'closedPeriod': value['closedPeriod'],
+        'carriedPeriod': value['carriedPeriod'],
         'nextCloseYear': value['nextCloseYear'],
         'nextCloseMonth': value['nextCloseMonth'],
     };

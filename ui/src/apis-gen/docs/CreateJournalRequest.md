@@ -10,6 +10,8 @@ Name | Type
 `name` | string
 `accountId` | string
 `openingBalance` | number
+`bankName` | string
+`bankAccountNo` | string
 
 ## Example
 
@@ -22,6 +24,8 @@ const example = {
   "name": null,
   "accountId": null,
   "openingBalance": null,
+  "bankName": null,
+  "bankAccountNo": null,
 } satisfies CreateJournalRequest
 
 console.log(example)

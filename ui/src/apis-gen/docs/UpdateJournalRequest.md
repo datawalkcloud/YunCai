@@ -8,6 +8,9 @@ Name | Type
 ------------ | -------------
 `name` | string
 `openingBalance` | number
+`isEnabled` | boolean
+`bankName` | string
+`bankAccountNo` | string
 
 ## Example
 
@@ -18,6 +21,9 @@ import type { UpdateJournalRequest } from ''
 const example = {
   "name": null,
   "openingBalance": null,
+  "isEnabled": null,
+  "bankName": null,
+  "bankAccountNo": null,
 } satisfies UpdateJournalRequest
 
 console.log(example)

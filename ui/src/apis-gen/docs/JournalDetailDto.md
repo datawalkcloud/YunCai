@@ -17,6 +17,9 @@ Name | Type
 `totalIncome` | number
 `totalExpense` | number
 `closingBalance` | number
+`isEnabled` | boolean
+`bankName` | string
+`bankAccountNo` | string
 `entries` | [Array&lt;JournalEntryDto&gt;](JournalEntryDto.md)
 
 ## Example
@@ -37,6 +40,9 @@ const example = {
   "totalIncome": null,
   "totalExpense": null,
   "closingBalance": null,
+  "isEnabled": null,
+  "bankName": null,
+  "bankAccountNo": null,
   "entries": null,
 } satisfies JournalDetailDto
 

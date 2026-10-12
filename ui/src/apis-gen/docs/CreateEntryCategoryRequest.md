@@ -8,6 +8,8 @@ Name | Type
 ------------ | -------------
 `type` | number
 `name` | string
+`smartKeywords` | string
+`voucherSubjectId` | string
 
 ## Example
 
@@ -18,6 +20,8 @@ import type { CreateEntryCategoryRequest } from ''
 const example = {
   "type": null,
   "name": null,
+  "smartKeywords": null,
+  "voucherSubjectId": null,
 } satisfies CreateEntryCategoryRequest
 
 console.log(example)

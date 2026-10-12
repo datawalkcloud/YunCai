@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Link, useNavigate } from "react-router"
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import {
     ArrowRight,
     ArrowUp,
@@ -9,10 +9,8 @@ import {
     ChevronDown,
     Cloud,
     FileText,
-    GalleryVerticalEnd,
     LayoutDashboard,
     ListChecks,
-    ListTree,
     Lock,
     ScaleIcon,
     ShieldCheck,
@@ -20,128 +18,47 @@ import {
     Upload,
     Wallet,
     Zap,
-} from "lucide-react"
+} from "lucide-react";
 
-import { useAuth } from "@/auth/AuthContext"
+import bannerFinanceImg from "@/assets/banner-finance-3d.png";
+import { useAuth } from "@/auth/AuthContext";
 
 /* ============================================================
- * mastra.ai 设计令牌（组件级复刻）
- * - 框卡（antigrid panel）：border-2 #161616 + 40px 圆角 + #0f0f0f 表面
- * - 内层小卡圆角 16px（rounded-2xl）
- * - 药丸按钮：双层渐变描边（padding-box + border-box）
- * - 标签舌（lip）：从面板边沿凸出的圆角舌，两肩用反向圆角内凹
+ * 云财官网落地页 —— 与仪表盘一致的浅色设计体系
+ * - 页面底 #f4f6fb，分区在白色/浅蓝之间交替
+ * - 卡片：白底 + rounded-2xl + 细边框 + 柔和阴影
+ * - 主色 #2f6bff，辅助绿 #22c55e
  * ============================================================ */
 
-/** 框卡基础样式。 */
-const PANEL = "rounded-[40px] border-2 border-[#161616] bg-[#0f0f0f]"
-
-/** 顶部导航锚点。 */
 const NAV_LINKS = [
-    { label: "功能", href: "#features", dot: true },
-    { label: "亮点", href: "#highlights", dot: true },
-    { label: "流程", href: "#workflow", dot: false },
-    { label: "常见问题", href: "#faq", dot: false },
-]
+    { label: "功能", href: "#features" },
+    { label: "亮点", href: "#highlights" },
+    { label: "流程", href: "#workflow" },
+    { label: "常见问题", href: "#faq" },
+];
 
-/** Logo 墙：适用行业词标（单色处理，字体各异模拟品牌字标）。 */
-const INDUSTRIES = [
-    { name: "科技研发", cls: "font-mono tracking-tight" },
-    { name: "贸易流通", cls: "font-serif italic" },
-    { name: "咨询服务", cls: "font-bold tracking-[0.3em]" },
-    { name: "电子商务", cls: "font-semibold" },
-    { name: "生产制造", cls: "font-mono uppercase" },
-    { name: "文化创意", cls: "font-serif" },
-]
+const INDUSTRIES = ["科技研发", "贸易流通", "咨询服务", "电子商务", "生产制造", "文化创意"];
 
-/** 数据指标 bento：首卡跨两列，大数字 + 描述。 */
 const BENTO_STATS = [
-    {
-        value: "100+",
-        label: "预置标准科目",
-        desc: "遵循企业会计准则的科目模板开箱即用，编码层级、余额方向全部预置，建账无需从零开始。",
-        tint: "rgba(42,219,92,0.06)",
-        wide: true,
-    },
-    {
-        value: "4",
-        label: "核心财务报表",
-        desc: "科目余额表、资产负债表、现金日记账、利润表。",
-        tint: "rgba(243,173,93,0.05)",
-        wide: false,
-    },
-    {
-        value: "实时",
-        label: "数据归集出表",
-        desc: "凭证保存即入账，报表随点随出。",
-        tint: "rgba(93,166,243,0.05)",
-        wide: false,
-    },
-    {
-        value: "多账套",
-        label: "一号管理多公司",
-        desc: "账套之间数据完全隔离，随时切换。",
-        tint: "rgba(42,219,92,0.04)",
-        wide: false,
-    },
-    {
-        value: "0",
-        label: "安装成本",
-        desc: "打开浏览器即用，换台设备也能继续工作。",
-        tint: "rgba(243,173,93,0.04)",
-        wide: false,
-    },
-]
+    { value: "100+", label: "预置标准科目", desc: "遵循企业会计准则的科目模板开箱即用，编码层级、余额方向全部预置，建账无需从零开始。", accent: "#2f6bff", wide: true },
+    { value: "4", label: "核心财务报表", desc: "科目余额表、资产负债表、现金日记账、利润表。", accent: "#22c55e", wide: false },
+    { value: "实时", label: "数据归集出表", desc: "凭证保存即入账，报表随点随出。", accent: "#8b5cf6", wide: false },
+    { value: "多账套", label: "一号管理多公司", desc: "账套之间数据完全隔离，随时切换。", accent: "#f59e0b", wide: false },
+    { value: "0", label: "安装成本", desc: "打开浏览器即用，换台设备也能继续工作。", accent: "#0ea5e9", wide: false },
+];
 
-/** 核心功能亮点（上文下图：底部配骨架示意）。 */
 const FEATURES = [
-    {
-        icon: FileText,
-        tag: "凭证处理",
-        title: "凭证管理",
-        desc: "录入、编辑、审核记账凭证，自动校验借贷平衡，支持金额大写。",
-        bars: [72, 48, 60],
-    },
-    {
-        icon: Upload,
-        tag: "批量建账",
-        title: "凭证导入",
-        desc: "从 Excel 一键批量导入历史凭证，快速完成建账初始化。",
-        bars: [56, 80, 40],
-    },
-    {
-        icon: Table2,
-        tag: "总账查询",
-        title: "科目余额表",
-        desc: "按期间实时汇总各科目发生额与余额，随时掌握账务全貌。",
-        bars: [64, 44, 76],
-    },
-    {
-        icon: ScaleIcon,
-        tag: "财务报表",
-        title: "资产负债表",
-        desc: "遵循会企 01 表标准行次，从凭证实时归集，报表随点随出。",
-        bars: [52, 68, 36],
-    },
-    {
-        icon: BookOpen,
-        tag: "资金管理",
-        title: "现金日记账",
-        desc: "自动从库存现金凭证派生序时账，逐笔余额一目了然。",
-        bars: [76, 40, 58],
-    },
-    {
-        icon: LayoutDashboard,
-        tag: "多公司",
-        title: "多账套管理",
-        desc: "一个账号管理多家公司账套，随时切换互不干扰。",
-        bars: [44, 62, 70],
-    },
-]
+    { icon: FileText, tag: "凭证处理", title: "凭证管理", desc: "录入、编辑、审核记账凭证，自动校验借贷平衡，支持金额大写。" },
+    { icon: Upload, tag: "批量建账", title: "凭证导入", desc: "从 Excel 一键批量导入历史凭证，快速完成建账初始化。" },
+    { icon: Table2, tag: "总账查询", title: "科目余额表", desc: "按期间实时汇总各科目发生额与余额，随时掌握账务全貌。" },
+    { icon: ScaleIcon, tag: "财务报表", title: "资产负债表", desc: "遵循会企 01 表标准行次，从凭证实时归集，报表随点随出。" },
+    { icon: BookOpen, tag: "资金管理", title: "现金日记账", desc: "自动从库存现金凭证派生序时账，逐笔余额一目了然。" },
+    { icon: LayoutDashboard, tag: "多公司", title: "多账套管理", desc: "一个账号管理多家公司账套，随时切换互不干扰。" },
+];
 
-/** 单据行 token：kw=橙色强调（借贷方向/单据名），str=绿色金额，dim=弱化。 */
-type Tok = { t: string; c?: "kw" | "str" | "dim" }
+/** 单据行 token：kw=蓝色强调（借贷方向/单据名），str=绿色金额，dim=弱化。 */
+type Tok = { t: string; c?: "kw" | "str" | "dim" };
 
-/** 功能详解 Tab（连体标签舌 + 单据窗口 + UI mock）。 */
 const HIGHLIGHTS = [
     {
         key: "voucher",
@@ -214,109 +131,98 @@ const HIGHLIGHTS = [
             { name: "匿名访问", state: "禁止", ok: false },
         ],
     },
-]
+];
 
-/** 使用流程步骤。 */
 const STEPS = [
     { icon: LayoutDashboard, title: "创建账套", desc: "填写公司信息与启用期间，快速建立你的账套。" },
     { icon: ListChecks, title: "初始化科目", desc: "使用预置标准科目模板，或按需增删调整。" },
     { icon: FileText, title: "录入凭证", desc: "手工录入或从 Excel 导入，系统自动校验平衡。" },
     { icon: BarChart3, title: "查看报表", desc: "余额表、资产负债表实时生成，随时掌握经营。" },
-]
+];
 
-/** 产品优势。 */
 const ADVANTAGES = [
     { icon: Zap, title: "开箱即用", desc: "预置标准科目与报表模板，无需复杂配置即可开始记账。" },
     { icon: Cloud, title: "在线随行", desc: "浏览器即可访问，数据集中存储，换台设备也能继续工作。" },
     { icon: Lock, title: "安全可靠", desc: "登录鉴权 + 账套隔离，保障财务数据的私密与安全。" },
     { icon: Wallet, title: "贴合准则", desc: "遵循企业会计准则科目编码与报表行次，出表即规范。" },
-]
+];
 
-/** 常见问题。 */
 const FAQS = [
-    { q: "需要安装客户端吗？", a: "不需要。好会计是在线系统，打开浏览器登录即可使用。" },
+    { q: "需要安装客户端吗？", a: "不需要。云财是在线系统，打开浏览器登录即可使用。" },
     { q: "可以管理多家公司吗？", a: "可以。一个账号支持创建多个账套，数据彼此隔离，可随时切换。" },
     { q: "历史凭证怎么导入？", a: "在「凭证导入」中上传符合模板的 Excel 文件即可批量导入历史凭证。" },
     { q: "报表数据是实时的吗？", a: "是的。科目余额表、资产负债表、现金日记账均从凭证实时归集计算。" },
-]
+];
 
-/** 双层渐变描边药丸按钮（mastra 全站按钮签名样式）。 */
-function GradientPill({
+/* ------------------------------------------------------------------ */
+/*  小组件                                                             */
+/* ------------------------------------------------------------------ */
+
+function Logo({ className = "size-8" }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 32 32" className={className} fill="none">
+            <defs>
+                <linearGradient id="landLogo" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#3b82f6" />
+                    <stop offset="1" stopColor="#22c55e" />
+                </linearGradient>
+            </defs>
+            <path d="M16 2 28 9v14l-12 7L4 23V9z" fill="url(#landLogo)" />
+            <path d="M10.5 16.5 14.5 20.5 22 11.5" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
+/** 药丸按钮：primary=蓝底白字，ghost=白底描边。 */
+function Pill({
     children,
     onClick,
     href,
+    variant = "primary",
     large,
 }: {
-    children: React.ReactNode
-    onClick?: () => void
-    href?: string
-    large?: boolean
+    children: React.ReactNode;
+    onClick?: () => void;
+    href?: string;
+    variant?: "primary" | "ghost";
+    large?: boolean;
 }) {
-    const cls =
-        "inline-flex items-center gap-2 rounded-full border-[1.5px] border-transparent text-[#e6e6e6] transition-[filter] hover:brightness-125 " +
-        "[background:linear-gradient(#1c1c1c,#1c1c1c)_padding-box,linear-gradient(to_bottom,#383838,rgba(43,43,43,0))_border-box] " +
-        (large ? "h-[50px] px-6 text-[15px] font-medium" : "h-[38px] px-[17px] text-sm font-medium")
+    const base =
+        "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-all " +
+        (variant === "primary"
+            ? "bg-[#2f6bff] text-white shadow-sm hover:bg-[#255be0]"
+            : "border border-slate-200 bg-white text-slate-700 hover:border-[#bcd3ff] hover:text-[#2f6bff]");
+    const size = large ? "h-[48px] px-6 text-[15px]" : "h-[40px] px-5 text-sm";
+    const cls = base + " " + size;
     if (href) {
         return (
             <a href={href} className={cls}>
                 {children}
             </a>
-        )
+        );
     }
     return (
         <button type="button" onClick={onClick} className={cls}>
             {children}
         </button>
-    )
+    );
 }
 
-/** 命令复制框已移除：会计软件不存在命令行安装，改用副按钮引导浏览功能。 */
-
-/** 标签舌（lip）：从上沿挂出的凸起圆角舌，两肩反向圆角内凹。 */
-function Lip({
-    children,
-    color,
-    textCls,
-    href,
-}: {
-    children: React.ReactNode
-    color: string
-    textCls: string
-    href?: string
-}) {
-    const inner = (
-        <span className={"relative flex items-center gap-2 rounded-b-[20px] px-6 py-2.5 text-sm font-medium " + textCls} style={{ backgroundColor: color }}>
-            {/* 左右肩：透明方块 + 反向圆角投影，形成内凹过渡 */}
-            <span className="pointer-events-none absolute -left-5 top-0 size-5 rounded-tr-[20px]" style={{ boxShadow: `5px -5px 0 ${color}` }} />
-            <span className="pointer-events-none absolute -right-5 top-0 size-5 rounded-tl-[20px]" style={{ boxShadow: `-5px -5px 0 ${color}` }} />
-            {children}
-        </span>
-    )
-    if (href) {
-        return (
-            <a href={href} className="group/lip relative z-10 mx-auto w-fit">
-                {inner}
-            </a>
-        )
-    }
-    return <span className="relative z-10 mx-auto w-fit">{inner}</span>
-}
-
-/** 居中大标题：白色前半句 + 灰色后半句（mastra 排版签名）。 */
-function SectionTitle({ white, muted }: { white: string; muted: string }) {
+/** 居中大标题：深色前半句 + 蓝色后半句。 */
+function SectionTitle({ dark, muted }: { dark: string; muted: string }) {
     return (
-        <h2 className="mx-auto max-w-3xl text-center text-3xl font-semibold leading-snug tracking-tight text-white md:text-[40px] md:leading-[1.25]">
-            {white}
-            <span className="text-[#939393]">{muted}</span>
+        <h2 className="mx-auto max-w-3xl text-center text-3xl font-semibold leading-snug tracking-tight text-slate-900 md:text-[40px] md:leading-[1.25]">
+            {dark}
+            <span className="text-[#2f6bff]">{muted}</span>
         </h2>
-    )
+    );
 }
 
-/** 单据窗口：左上角单据名胶囊，橙色强调/绿色金额高亮，模拟凭证与报表版式。 */
-function CodeWindow({ file, code }: { file: string; code: Tok[][] }) {
+/** 单据窗口：浅色版式，蓝色强调 / 绿色金额。 */
+function DocWindow({ file, code }: { file: string; code: Tok[][] }) {
     return (
-        <div className="rounded-[24px] bg-[#080808] p-6">
-            <span className="inline-flex rounded-lg bg-[#1c1c1c] px-3 py-1.5 font-mono text-[11px] tracking-widest text-[#d9d9d9]">
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <span className="inline-flex rounded-lg bg-[#eaf1ff] px-3 py-1.5 font-mono text-[11px] tracking-widest text-[#2f6bff]">
                 {file}
             </span>
             <pre className="mt-5 overflow-x-auto font-mono text-[13.5px] leading-7">
@@ -327,12 +233,12 @@ function CodeWindow({ file, code }: { file: string; code: Tok[][] }) {
                                 key={j}
                                 className={
                                     tok.c === "kw"
-                                        ? "text-[#f3ad5d]"
+                                        ? "text-[#2f6bff]"
                                         : tok.c === "str"
-                                          ? "text-[#98fc82]"
+                                          ? "text-[#16a34a]"
                                           : tok.c === "dim"
-                                            ? "text-[#939393]"
-                                            : "text-[#f0f0f0]"
+                                            ? "text-slate-400"
+                                            : "text-slate-700"
                                 }
                             >
                                 {tok.t}
@@ -342,320 +248,250 @@ function CodeWindow({ file, code }: { file: string; code: Tok[][] }) {
                 ))}
             </pre>
         </div>
-    )
+    );
 }
 
-/** Studio 风格 UI mock：胶囊小 tab + 状态列表（mastra 代码区右侧面板）。 */
-function StudioMock({ h }: { h: (typeof HIGHLIGHTS)[number] }) {
+/** 状态面板 mock：浅色卡片 + 状态列表。 */
+function StatusMock({ h }: { h: (typeof HIGHLIGHTS)[number] }) {
     return (
-        <div className="rounded-[24px] bg-[#141414] p-5">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <div className="flex items-center gap-2">
-                <span className="rounded-full border border-white/20 bg-[#1c1c1c] px-3 py-1 text-xs text-[#f0f0f0]">
-                    {h.mockLabel}
-                </span>
-                <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-[#939393]">明细</span>
-                <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-[#939393]">历史</span>
+                <span className="rounded-full bg-[#eaf1ff] px-3 py-1 text-xs font-medium text-[#2f6bff]">{h.mockLabel}</span>
+                <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-400">明细</span>
+                <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-400">历史</span>
             </div>
             <div className="mt-4 flex flex-col gap-2">
                 {h.mockRows.map((r) => (
-                    <div key={r.name} className="flex items-center justify-between rounded-2xl bg-[#1a1a1a] px-4 py-3">
-                        <span className="text-sm text-[#d9d9d9]">{r.name}</span>
-                        <span
-                            className={
-                                "flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest " +
-                                (r.ok ? "text-[#98fc82]" : "text-[#707070]")
-                            }
-                        >
-                            <span className={"size-1.5 rounded-full " + (r.ok ? "bg-[#98fc82]" : "bg-[#424242]")} />
+                    <div key={r.name} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                        <span className="text-sm text-slate-600">{r.name}</span>
+                        <span className={"flex items-center gap-1.5 text-[12px] font-medium " + (r.ok ? "text-[#16a34a]" : "text-slate-400")}>
+                            <span className={"size-1.5 rounded-full " + (r.ok ? "bg-[#22c55e]" : "bg-slate-300")} />
                             {r.state}
                         </span>
                     </div>
                 ))}
             </div>
-            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#1c1c1c]">
-                <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-[#2adb5c] to-[#98fc82]" />
+            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-[#2f6bff] to-[#22c55e]" />
             </div>
         </div>
-    )
+    );
 }
 
-/** 公开的官网首页：组件级复刻 mastra.ai 设计体系。 */
+/* ------------------------------------------------------------------ */
+/*  页面                                                               */
+/* ------------------------------------------------------------------ */
+
 export default function LandingPage() {
-    const { status } = useAuth()
-    const navigate = useNavigate()
-    const authed = status === "authenticated"
-    const primaryHref = authed ? "/app" : "/login"
-    const primaryLabel = authed ? "进入控制台" : "立即登录"
-    const [activeTab, setActiveTab] = useState(HIGHLIGHTS[0].key)
-    const active = HIGHLIGHTS.find((h) => h.key === activeTab) ?? HIGHLIGHTS[0]
+    const { status } = useAuth();
+    const navigate = useNavigate();
+    const authed = status === "authenticated";
+    const primaryHref = authed ? "/app" : "/login";
+    const primaryLabel = authed ? "进入控制台" : "立即登录";
+    const [activeTab, setActiveTab] = useState(HIGHLIGHTS[0].key);
+    const active = HIGHLIGHTS.find((h) => h.key === activeTab) ?? HIGHLIGHTS[0];
 
     return (
-        <div className="flex min-h-svh scroll-smooth flex-col bg-[#020202] text-[#d9d9d9] selection:bg-[#2adb5c]/30">
-            {/* 顶部导航：实底 #0f0f0f（非毛玻璃）+ 2px 下边框 + 深投影 */}
-            <header className="sticky top-0 z-50 h-16 border-b-2 border-[#161616] bg-[#0f0f0f] shadow-[0_4px_60px_rgba(0,0,0,0.75)]">
-                <div className="mx-auto flex h-full w-full max-w-[1328px] items-center justify-between px-4 md:px-6">
-                    <Link to="/" className="flex items-center gap-2 font-semibold text-white">
-                        <div className="flex size-8 items-center justify-center rounded-lg bg-[#2adb5c] text-black">
-                            <GalleryVerticalEnd className="size-4" />
-                        </div>
-                        <span className="text-lg">好会计</span>
+        <div id="top" className="flex min-h-svh scroll-smooth flex-col bg-[#f4f6fb] text-slate-600 antialiased">
+            {/* 顶部导航 */}
+            <header className="sticky top-0 z-50 h-16 border-b border-slate-100 bg-white/90 backdrop-blur">
+                <div className="mx-auto flex h-full w-full max-w-[1200px] items-center justify-between px-4 md:px-6">
+                    <Link to="/" className="flex items-center gap-2.5">
+                        <Logo />
+                        <span className="text-[17px] font-bold text-slate-800">云财</span>
                     </Link>
                     <nav className="hidden items-center gap-1 md:flex">
                         {NAV_LINKS.map((l) => (
                             <a
                                 key={l.href}
                                 href={l.href}
-                                className="flex items-center gap-2 rounded-full px-4 py-2 text-[15px] font-medium text-[#cccccc] transition-colors hover:text-white"
+                                className="rounded-full px-4 py-2 text-[15px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
                             >
-                                {l.dot && <span className="size-1 rounded-full bg-[#5a5a5a]" />}
                                 {l.label}
                             </a>
                         ))}
                     </nav>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                         {!authed && (
-                            <Link to="/login" className="hidden text-[15px] font-medium text-[#cccccc] transition-colors hover:text-white sm:block">
+                            <Link to="/login" className="hidden text-[15px] font-medium text-slate-500 transition-colors hover:text-[#2f6bff] sm:block">
                                 登录
                             </Link>
                         )}
-                        <GradientPill onClick={() => navigate(primaryHref)}>
-                            {authed ? "进入控制台" : "开始使用"}
-                        </GradientPill>
+                        <Pill onClick={() => navigate(primaryHref)}>{authed ? "进入控制台" : "开始使用"}</Pill>
                     </div>
                 </div>
             </header>
 
-            {/* 公告标签舌：琥珀实底，从 header 下沿挂出 */}
-            <div className="relative h-0">
-                <div className="absolute inset-x-0 top-0 flex justify-center">
-                    <Lip color="#f3ad5d" textCls="text-black" href="#features">
-                        新上线 <span className="size-1 rounded-full bg-black/40" /> Excel 凭证批量导入
-                        <ArrowRight className="size-3.5 transition-transform group-hover/lip:translate-x-0.5" />
-                    </Lip>
-                </div>
-            </div>
-
             <main className="flex-1">
-                {/* Hero：左文右 mock，54px 主标题 + 命令复制框 + 药丸组 */}
-                <section className="relative overflow-hidden">
-                    <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(50%_40%_at_70%_20%,rgba(42,219,92,0.06),transparent)]" />
-                    <div className="mx-auto grid w-full max-w-[1328px] items-center gap-12 px-4 pb-20 pt-24 md:px-6 md:pb-28 md:pt-32 lg:grid-cols-2">
-                        <div className="flex flex-col gap-7">
-                            <h1 className="text-5xl font-semibold leading-[1.1] tracking-tight text-[#f0f0f0] md:text-[54px]">
-                                让记账更简单
+                {/* Hero */}
+                <section className="relative overflow-hidden bg-gradient-to-b from-[#e7f0ff] via-[#eef4ff] to-[#f4f6fb]">
+                    <div className="mx-auto grid w-full max-w-[1200px] items-center gap-12 px-4 pb-20 pt-16 md:px-6 md:pb-28 md:pt-24 lg:grid-cols-2">
+                        <div className="flex flex-col gap-6">
+                            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#bcd3ff] bg-white px-3 py-1 text-[13px] font-medium text-[#2f6bff]">
+                                <span className="size-1.5 rounded-full bg-[#22c55e]" />
+                                新上线 · Excel 凭证批量导入
+                            </span>
+                            <h1 className="text-5xl font-bold leading-[1.1] tracking-tight text-slate-900 md:text-[56px]">
+                                让记账<span className="text-[#2f6bff]">更简单</span>
                             </h1>
-                            <p className="max-w-md text-lg leading-relaxed text-[#939393]">
-                                <span className="text-[#2adb5c]">录入</span>
-                                <span className="text-[#f0f0f0]">、归集、出表</span>
-                                ，好会计打通从凭证到财务报表的全流程，告别繁琐的手工核算。
+                            <p className="max-w-md text-lg leading-relaxed text-slate-500">
+                                录入、归集、出表，云财打通从凭证到财务报表的全流程，告别繁琐的手工核算。
                             </p>
                             <div className="flex flex-wrap items-center gap-3 pt-1">
-                                <GradientPill large onClick={() => navigate(primaryHref)}>
+                                <Pill large onClick={() => navigate(primaryHref)}>
                                     {primaryLabel}
                                     <ArrowRight className="size-4" />
-                                </GradientPill>
-                                <GradientPill large href="#features">
+                                </Pill>
+                                <Pill large variant="ghost" href="#features">
                                     了解核心功能
-                                </GradientPill>
+                                </Pill>
                             </div>
-                            <ul className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-xs uppercase tracking-widest text-[#707070]">
+                            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-500">
                                 {["无需安装", "实时归集", "多账套"].map((t) => (
                                     <li key={t} className="flex items-center gap-1.5">
-                                        <CheckCircle2 className="size-3.5 text-[#2adb5c]" />
+                                        <CheckCircle2 className="size-4 text-[#22c55e]" />
                                         {t}
                                     </li>
                                 ))}
                             </ul>
                         </div>
-                        {/* 右侧 mock：文件树卡叠加骨架气泡（mastra-project 母题） */}
-                        <div className="relative hidden min-h-[380px] lg:block">
-                            <div className="absolute right-0 top-0 flex w-[420px] flex-col gap-3 rounded-[24px] bg-[#0a0a0a] p-8">
-                                <div className="h-4 w-3/4 rounded-full bg-[#1a1a1a]" />
-                                <div className="h-4 w-1/2 rounded-full bg-[#1a1a1a]" />
-                                <div className="mt-2 h-1.5 w-2/5 rounded-full bg-gradient-to-r from-[#2adb5c] to-transparent" />
-                                <div className="h-4 w-2/3 rounded-full bg-[#141414]" />
-                                <div className="h-4 w-1/3 rounded-full bg-[#141414]" />
-                                <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#141414] px-4 py-3">
-                                    <div className="h-3 w-24 rounded-full bg-[#262626]" />
-                                    <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-widest text-[#98fc82]">
-                                        <CheckCircle2 className="size-3.5" />
-                                        借贷平衡
-                                    </span>
-                                </div>
+                        {/* 右侧插画 + 悬浮小卡 */}
+                        <div className="relative hidden min-h-[360px] items-center justify-center lg:flex">
+                            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(50%_50%_at_60%_40%,rgba(47,107,255,0.12),transparent)]" />
+                            <img src={bannerFinanceImg} alt="" className="h-[340px] w-auto drop-shadow-2xl" />
+                            <div className="absolute right-2 top-4 flex items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-lg">
+                                <CheckCircle2 className="size-5 text-[#22c55e]" />
+                                <span className="text-sm font-medium text-slate-700">借贷平衡</span>
                             </div>
-                            <div className="absolute left-0 top-14 w-64 rounded-[24px] bg-[#141414] p-6 shadow-[0_24px_80px_-16px_rgba(0,0,0,0.95)]">
-                                <p className="text-[15px] text-[#939393]">账务导航</p>
-                                <ul className="mt-4 flex flex-col gap-3.5 text-[15px] text-[#d9d9d9]">
-                                    {[
-                                        { label: "记账凭证", icon: FileText },
-                                        { label: "科目余额表", icon: Table2 },
-                                        { label: "资产负债表", icon: ScaleIcon },
-                                        { label: "现金日记账", icon: BookOpen },
-                                        { label: "会计科目", icon: ListTree },
-                                    ].map((t, i) => (
-                                        <li key={t.label} className="flex items-center gap-2.5">
-                                            <t.icon className={"size-4 " + (i === 0 ? "text-[#2adb5c]" : "text-[#707070]")} />
-                                            {t.label}
-                                        </li>
-                                    ))}
-                                </ul>
+                            <div className="absolute bottom-6 left-0 w-56 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg">
+                                <p className="text-[12px] text-slate-400">本月净利润</p>
+                                <p className="mt-1 text-2xl font-bold text-slate-800">¥ 448,100</p>
+                                <p className="mt-1 flex items-center gap-1 text-[12px] font-medium text-[#16a34a]">
+                                    <ArrowUp className="size-3.5" /> 18.7% 较上月
+                                </p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* Logo 墙：单行静态横排，单色词标，无边框单元格 */}
-                <section className="border-y-2 border-[#161616] bg-[#050505]">
-                    <div className="mx-auto flex w-full max-w-[1328px] flex-wrap items-center justify-center gap-x-12 gap-y-6 px-4 py-12 md:justify-between md:px-10">
+                {/* 行业词标 */}
+                <section className="border-y border-slate-100 bg-white">
+                    <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-center gap-x-12 gap-y-5 px-4 py-10 md:justify-between md:px-6">
                         {INDUSTRIES.map((it) => (
-                            <span
-                                key={it.name}
-                                className={"text-xl text-[#8a8a8a] transition-colors hover:text-white " + it.cls}
-                            >
-                                {it.name}
+                            <span key={it} className="text-lg font-medium text-slate-400">
+                                {it}
                             </span>
                         ))}
                     </div>
                 </section>
 
-                {/* 数据指标 bento：独立框卡 + 每卡专属色调渐变底 */}
-                <section className="mx-auto w-full max-w-[1328px] px-4 py-16 md:px-6 md:py-24">
-                    <SectionTitle white="数字说话。" muted="把专业留给系统，把简单交给你。" />
+                {/* 数据指标 */}
+                <section className="mx-auto w-full max-w-[1200px] px-4 py-16 md:px-6 md:py-24">
+                    <SectionTitle dark="数字说话。" muted="把专业留给系统，把简单交给你。" />
                     <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                         {BENTO_STATS.map((s) => (
                             <div
                                 key={s.label}
                                 className={
-                                    PANEL +
-                                    " relative overflow-hidden p-9 transition-colors hover:border-[#262626] " +
+                                    "rounded-2xl border border-slate-100 bg-white p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] " +
                                     (s.wide ? "sm:col-span-2" : "")
                                 }
                             >
-                                <div
-                                    className="pointer-events-none absolute inset-0"
-                                    style={{ background: `radial-gradient(80% 80% at 20% 0%, ${s.tint}, transparent)` }}
-                                />
-                                <div className="relative">
-                                    <p className="text-5xl font-semibold tracking-tight text-white">{s.value}</p>
-                                    <p className="mt-3 font-mono text-[11px] uppercase tracking-widest text-[#939393]">
-                                        {s.label}
-                                    </p>
-                                    <p className="mt-3 max-w-md text-[15px] leading-relaxed text-[#939393]">{s.desc}</p>
-                                </div>
+                                <p className="text-5xl font-bold tracking-tight" style={{ color: s.accent }}>
+                                    {s.value}
+                                </p>
+                                <p className="mt-3 text-[15px] font-semibold text-slate-800">{s.label}</p>
+                                <p className="mt-2 max-w-md text-[14px] leading-relaxed text-slate-500">{s.desc}</p>
                             </div>
                         ))}
                     </div>
                 </section>
 
-                {/* 功能亮点：上文下图卡片（标题+描述+骨架示意） */}
-                <section id="features" className="scroll-mt-20 bg-[#080808] py-16 md:py-24">
-                    <div className="mx-auto w-full max-w-[1328px] px-4 md:px-6">
-                        <SectionTitle white="凭证。报表。账套。" muted="覆盖日常财务的关键环节。" />
+                {/* 功能亮点 */}
+                <section id="features" className="scroll-mt-20 border-y border-slate-100 bg-white py-16 md:py-24">
+                    <div className="mx-auto w-full max-w-[1200px] px-4 md:px-6">
+                        <SectionTitle dark="凭证。报表。账套。" muted="覆盖日常财务的关键环节。" />
                         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                             {FEATURES.map((f) => (
                                 <div
                                     key={f.title}
-                                    className={PANEL + " group flex flex-col gap-4 p-9 transition-colors hover:border-[#262626]"}
+                                    className="group flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-md"
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <f.icon className="size-6 text-[#939393] opacity-60 transition-opacity group-hover:opacity-100" />
-                                        <span className="font-mono text-[10px] uppercase tracking-widest text-[#424242] transition-colors group-hover:text-[#707070]">
-                                            {f.tag}
-                                        </span>
-                                    </div>
-                                    <h3 className="text-[17px] font-semibold text-white">{f.title}</h3>
-                                    <p className="text-sm leading-relaxed text-[#939393]">{f.desc}</p>
-                                    {/* 底部骨架示意：一条绿色强调 + 两条灰条 */}
-                                    <div className="mt-auto flex flex-col gap-2 rounded-2xl bg-[#0a0a0a] p-4 pt-5">
-                                        <div
-                                            className="h-2 rounded-full bg-gradient-to-r from-[#2adb5c]/70 to-[#2adb5c]/10"
-                                            style={{ width: `${f.bars[0]}%` }}
-                                        />
-                                        <div className="h-2 rounded-full bg-[#1c1c1c]" style={{ width: `${f.bars[1]}%` }} />
-                                        <div className="h-2 rounded-full bg-[#1c1c1c]" style={{ width: `${f.bars[2]}%` }} />
-                                    </div>
+                                    <span className="flex size-11 items-center justify-center rounded-xl bg-[#eaf1ff] text-[#2f6bff]">
+                                        <f.icon className="size-5" />
+                                    </span>
+                                    <h3 className="mt-1 text-[17px] font-semibold text-slate-800">{f.title}</h3>
+                                    <p className="text-sm leading-relaxed text-slate-500">{f.desc}</p>
+                                    <span className="mt-auto pt-2 text-[12px] font-medium uppercase tracking-widest text-slate-300">{f.tag}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </section>
 
-                {/* 功能详解：连体文件夹舌 Tab + 代码窗口 + Studio mock */}
+                {/* 功能详解 Tab */}
                 <section id="highlights" className="scroll-mt-20 py-16 md:py-24">
-                    <div className="mx-auto w-full max-w-[1328px] px-4 md:px-6">
-                        <SectionTitle white="凭证、报表、多账套。" muted="一套系统全部搞定。" />
-                        <div className="mt-14">
-                            {/* Tab 行：激活项与下方面板同底连体，未激活为独立药丸 */}
-                            <div className="flex items-end gap-3 overflow-x-auto px-6 md:px-12">
-                                {HIGHLIGHTS.map((h) =>
-                                    h.key === activeTab ? (
-                                        <button
-                                            key={h.key}
-                                            type="button"
-                                            className="relative flex h-[64px] shrink-0 items-center gap-2.5 rounded-t-[24px] bg-[#101010] px-7 font-mono text-xs uppercase tracking-widest text-[#f0f0f0]"
-                                        >
-                                            {/* 连体肩：与面板同色的反向圆角 */}
-                                            <span className="pointer-events-none absolute -left-5 bottom-0 size-5 rounded-br-[20px] shadow-[5px_5px_0_#101010]" />
-                                            <span className="pointer-events-none absolute -right-5 bottom-0 size-5 rounded-bl-[20px] shadow-[-5px_5px_0_#101010]" />
-                                            <h.icon className="size-4" />
-                                            {h.tab}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            key={h.key}
-                                            type="button"
-                                            onClick={() => setActiveTab(h.key)}
-                                            className="mb-2 flex h-[52px] shrink-0 items-center gap-2.5 rounded-full bg-[#141414] px-7 font-mono text-xs uppercase tracking-widest text-[#939393] transition-colors hover:text-[#d9d9d9]"
-                                        >
-                                            <h.icon className="size-4 opacity-60" />
-                                            {h.tab}
-                                        </button>
-                                    ),
-                                )}
-                            </div>
-                            <div className="rounded-[40px] bg-[#101010] p-7 md:p-12">
-                                <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.15fr]">
-                                    <div>
-                                        <h3 className="text-2xl font-semibold tracking-tight text-white md:text-[28px]">
-                                            {active.title}
-                                            <span className="text-[#939393]">{active.titleMuted}</span>
-                                        </h3>
-                                        <p className="mt-4 leading-relaxed text-[#939393]">{active.desc}</p>
-                                        <ul className="mt-7 flex flex-col gap-3">
-                                            {active.points.map((p) => (
-                                                <li key={p} className="flex items-center gap-2.5 text-[15px] text-[#d9d9d9]">
-                                                    <CheckCircle2 className="size-4 shrink-0 text-[#2adb5c]" />
-                                                    {p}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                    <div className="flex flex-col gap-5">
-                                        <CodeWindow file={active.file} code={active.code} />
-                                        <StudioMock h={active} />
-                                    </div>
+                    <div className="mx-auto w-full max-w-[1200px] px-4 md:px-6">
+                        <SectionTitle dark="凭证、报表、多账套。" muted="一套系统全部搞定。" />
+                        {/* Tab 药丸 */}
+                        <div className="mt-10 flex flex-wrap justify-center gap-3">
+                            {HIGHLIGHTS.map((h) => (
+                                <button
+                                    key={h.key}
+                                    type="button"
+                                    onClick={() => setActiveTab(h.key)}
+                                    className={
+                                        "flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors " +
+                                        (h.key === activeTab
+                                            ? "bg-[#2f6bff] text-white shadow-sm"
+                                            : "border border-slate-200 bg-white text-slate-500 hover:text-slate-800")
+                                    }
+                                >
+                                    <h.icon className="size-4" />
+                                    {h.tab}
+                                </button>
+                            ))}
+                        </div>
+                        {/* 面板 */}
+                        <div className="mt-8 rounded-3xl border border-slate-100 bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.04)] md:p-12">
+                            <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.15fr]">
+                                <div>
+                                    <h3 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-[28px]">
+                                        {active.title}
+                                        <span className="text-[#2f6bff]">{active.titleMuted}</span>
+                                    </h3>
+                                    <p className="mt-4 leading-relaxed text-slate-500">{active.desc}</p>
+                                    <ul className="mt-7 flex flex-col gap-3">
+                                        {active.points.map((p) => (
+                                            <li key={p} className="flex items-center gap-2.5 text-[15px] text-slate-700">
+                                                <CheckCircle2 className="size-5 shrink-0 text-[#22c55e]" />
+                                                {p}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div className="flex flex-col gap-5">
+                                    <DocWindow file={active.file} code={active.code} />
+                                    <StatusMock h={active} />
                                 </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* 使用流程：框卡步骤 + 等宽序号 */}
-                <section id="workflow" className="scroll-mt-20 bg-[#080808] py-16 md:py-24">
-                    <div className="mx-auto w-full max-w-[1328px] px-4 md:px-6">
-                        <SectionTitle white="四步开始记账。" muted="从建账到出表，上手无门槛。" />
+                {/* 使用流程 */}
+                <section id="workflow" className="scroll-mt-20 border-y border-slate-100 bg-white py-16 md:py-24">
+                    <div className="mx-auto w-full max-w-[1200px] px-4 md:px-6">
+                        <SectionTitle dark="四步开始记账。" muted="从建账到出表，上手无门槛。" />
                         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                             {STEPS.map((s, i) => (
-                                <div
-                                    key={s.title}
-                                    className={PANEL + " group relative flex flex-col gap-4 p-9 transition-colors hover:border-[#262626]"}
-                                >
-                                    <span className="absolute right-8 top-8 font-mono text-2xl font-bold text-[#262626]">
-                                        {String(i + 1).padStart(2, "0")}
+                                <div key={s.title} className="relative flex flex-col gap-3 rounded-2xl border border-slate-100 bg-[#f8fafc] p-7">
+                                    <span className="absolute right-6 top-6 text-2xl font-bold text-slate-200">{String(i + 1).padStart(2, "0")}</span>
+                                    <span className="flex size-11 items-center justify-center rounded-xl bg-[#eaf1ff] text-[#2f6bff]">
+                                        <s.icon className="size-5" />
                                     </span>
-                                    <s.icon className="size-6 text-[#939393] opacity-60 transition-opacity group-hover:opacity-100" />
-                                    <h3 className="text-[17px] font-semibold text-white">{s.title}</h3>
-                                    <p className="text-sm leading-relaxed text-[#939393]">{s.desc}</p>
+                                    <h3 className="mt-1 text-[17px] font-semibold text-slate-800">{s.title}</h3>
+                                    <p className="text-sm leading-relaxed text-slate-500">{s.desc}</p>
                                 </div>
                             ))}
                         </div>
@@ -664,123 +500,119 @@ export default function LandingPage() {
 
                 {/* 产品优势 */}
                 <section className="py-16 md:py-24">
-                    <div className="mx-auto w-full max-w-[1328px] px-4 md:px-6">
-                        <SectionTitle white="为什么选择好会计。" muted="每个环节都为省心而设计。" />
+                    <div className="mx-auto w-full max-w-[1200px] px-4 md:px-6">
+                        <SectionTitle dark="为什么选择云财。" muted="每个环节都为省心而设计。" />
                         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                             {ADVANTAGES.map((a) => (
-                                <div
-                                    key={a.title}
-                                    className={PANEL + " group flex flex-col gap-4 p-9 transition-colors hover:border-[#262626]"}
-                                >
-                                    <a.icon className="size-6 text-[#939393] opacity-60 transition-opacity group-hover:opacity-100" />
-                                    <h3 className="text-[17px] font-semibold text-white">{a.title}</h3>
-                                    <p className="text-sm leading-relaxed text-[#939393]">{a.desc}</p>
+                                <div key={a.title} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                                    <span className="flex size-11 items-center justify-center rounded-xl bg-[#e6f8f0] text-[#10b981]">
+                                        <a.icon className="size-5" />
+                                    </span>
+                                    <h3 className="mt-1 text-[17px] font-semibold text-slate-800">{a.title}</h3>
+                                    <p className="text-sm leading-relaxed text-slate-500">{a.desc}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </section>
 
-                {/* 常见问题：单一大框卡 accordion，条目间分隔线 */}
+                {/* 常见问题 */}
                 <section id="faq" className="scroll-mt-20 pb-16 md:pb-24">
-                    <div className="mx-auto w-full max-w-[1328px] px-4 md:px-6">
-                        <SectionTitle white="常见问题。" muted="你可能想了解这些。" />
-                        <div className={PANEL + " mx-auto mt-12 max-w-4xl divide-y-2 divide-[#161616] overflow-hidden px-2"}>
+                    <div className="mx-auto w-full max-w-[1200px] px-4 md:px-6">
+                        <SectionTitle dark="常见问题。" muted="你可能想了解这些。" />
+                        <div className="mx-auto mt-12 max-w-3xl divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                             {FAQS.map((f) => (
-                                <details key={f.q} className="group px-5 [&_summary]:cursor-pointer">
-                                    <summary className="flex min-h-[70px] list-none items-center justify-between gap-4 py-5 text-[17px] font-medium text-white">
+                                <details key={f.q} className="group px-6 [&_summary]:cursor-pointer">
+                                    <summary className="flex min-h-[64px] list-none items-center justify-between gap-4 py-5 text-[16px] font-medium text-slate-800">
                                         {f.q}
-                                        <ChevronDown className="size-[18px] shrink-0 text-[#939393] transition-transform group-open:rotate-180" />
+                                        <ChevronDown className="size-[18px] shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
                                     </summary>
-                                    <p className="max-w-[760px] pb-6 text-[15px] leading-relaxed text-[#cccccc]">{f.a}</p>
+                                    <p className="max-w-[760px] pb-6 text-[15px] leading-relaxed text-slate-500">{f.a}</p>
                                 </details>
                             ))}
                         </div>
                     </div>
                 </section>
 
-                {/* 页脚 CTA：与 hero 同款超大标题 + 命令框 + 药丸组 */}
-                <section className="relative overflow-hidden border-t-2 border-[#161616] bg-[#080808] py-20 md:py-28">
-                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_60%_at_50%_100%,rgba(42,219,92,0.08),transparent)]" />
-                    <div className="relative mx-auto flex w-full max-w-[1328px] flex-col items-center gap-8 px-4 text-center md:px-6">
-                        <h2 className="max-w-2xl text-4xl font-semibold leading-[1.15] tracking-tight text-white md:text-[54px]">
-                            今天就开始使用好会计
-                        </h2>
-                        <p className="max-w-xl text-lg text-[#939393]">
-                            登录好会计，立即体验高效、准确、清晰的在线记账。
-                        </p>
-                        <div className="flex flex-wrap items-center justify-center gap-3">
-                            <GradientPill large onClick={() => navigate(primaryHref)}>
+                {/* 页脚 CTA */}
+                <section className="px-4 pb-20 md:px-6">
+                    <div className="relative mx-auto flex w-full max-w-[1200px] flex-col items-center gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-[#2f6bff] to-[#22c55e] px-6 py-16 text-center text-white md:py-20">
+                        <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-white/10" />
+                        <div className="pointer-events-none absolute -bottom-20 -left-10 size-72 rounded-full bg-white/10" />
+                        <h2 className="relative max-w-2xl text-4xl font-bold leading-[1.15] tracking-tight md:text-[48px]">今天就开始使用云财</h2>
+                        <p className="relative max-w-xl text-lg text-white/85">登录云财，立即体验高效、准确、清晰的在线记账。</p>
+                        <div className="relative flex flex-wrap items-center justify-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => navigate(primaryHref)}
+                                className="inline-flex h-[48px] items-center gap-2 rounded-full bg-white px-6 text-[15px] font-semibold text-[#2f6bff] shadow-sm transition-transform hover:-translate-y-0.5"
+                            >
                                 {authed ? "进入控制台" : "登录使用"}
                                 <ArrowRight className="size-4" />
-                            </GradientPill>
-                            <GradientPill large href="#workflow">
+                            </button>
+                            <a
+                                href="#workflow"
+                                className="inline-flex h-[48px] items-center gap-2 rounded-full border border-white/40 px-6 text-[15px] font-medium text-white transition-colors hover:bg-white/10"
+                            >
                                 查看使用流程
-                            </GradientPill>
+                            </a>
                         </div>
                     </div>
                 </section>
             </main>
 
-            {/* 页脚：多栏导航 + 订阅药丸 + 状态指示 + 回到顶部 */}
-            <footer className="border-t-2 border-[#161616] bg-[#0a0a0a]">
-                <div className="mx-auto grid w-full max-w-[1328px] gap-10 px-4 py-14 md:grid-cols-[1.5fr_1fr_1fr_1.5fr] md:px-6">
+            {/* 页脚 */}
+            <footer className="border-t border-slate-100 bg-white">
+                <div className="mx-auto grid w-full max-w-[1200px] gap-10 px-4 py-14 md:grid-cols-[1.5fr_1fr_1fr_1.5fr] md:px-6">
                     <div className="flex flex-col gap-3">
-                        <span className="flex items-center gap-2 font-semibold text-white">
-                            <div className="flex size-7 items-center justify-center rounded-md bg-[#2adb5c] text-black">
-                                <GalleryVerticalEnd className="size-4" />
-                            </div>
-                            好会计
+                        <span className="flex items-center gap-2.5">
+                            <Logo className="size-7" />
+                            <span className="text-[16px] font-bold text-slate-800">云财</span>
                         </span>
-                        <p className="max-w-sm text-sm leading-relaxed text-[#939393]">
-                            专为中小企业打造的在线记账系统，让财务工作更简单、更规范。
-                        </p>
+                        <p className="max-w-sm text-sm leading-relaxed text-slate-500">专为中小企业打造的在线记账系统，让财务工作更简单、更规范。</p>
                     </div>
                     <div className="flex flex-col gap-2.5 text-[15px]">
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-[#707070]">产品</span>
+                        <span className="text-[12px] font-medium uppercase tracking-widest text-slate-400">产品</span>
                         {NAV_LINKS.map((l) => (
-                            <a key={l.href} href={l.href} className="w-fit text-[#999] transition-colors hover:text-white">
+                            <a key={l.href} href={l.href} className="w-fit text-slate-500 transition-colors hover:text-[#2f6bff]">
                                 {l.label}
                             </a>
                         ))}
                     </div>
                     <div className="flex flex-col gap-2.5 text-[15px]">
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-[#707070]">开始使用</span>
-                        <Link to={primaryHref} className="w-fit text-[#999] transition-colors hover:text-white">
+                        <span className="text-[12px] font-medium uppercase tracking-widest text-slate-400">开始使用</span>
+                        <Link to={primaryHref} className="w-fit text-slate-500 transition-colors hover:text-[#2f6bff]">
                             {authed ? "进入控制台" : "登录"}
                         </Link>
                     </div>
                     <div className="flex flex-col gap-3">
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-[#707070]">订阅更新</span>
+                        <span className="text-[12px] font-medium uppercase tracking-widest text-slate-400">订阅更新</span>
                         <form className="flex items-center gap-2" onSubmit={(e) => e.preventDefault()}>
                             <input
                                 type="email"
                                 placeholder="you@company.com"
-                                className="h-9 w-full max-w-52 rounded-full border border-[#424242] bg-[#262626] px-4 text-xs text-[#f0f0f0] outline-none placeholder:text-[#707070] focus:border-[#5a5a5a]"
+                                className="h-9 w-full max-w-52 rounded-full border border-slate-200 bg-white px-4 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-[#2f6bff]"
                             />
-                            <button
-                                type="submit"
-                                className="h-9 shrink-0 rounded-full bg-[#262626] px-4 text-xs font-medium text-white transition-colors hover:bg-[#333]"
-                            >
+                            <button type="submit" className="h-9 shrink-0 rounded-full bg-[#2f6bff] px-4 text-xs font-medium text-white transition-colors hover:bg-[#255be0]">
                                 订阅
                             </button>
                         </form>
-                        <p className="mt-1 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-[#939393]">
-                            <span className="size-2 rounded-full bg-[#2adb5c]" />
+                        <p className="mt-1 flex items-center gap-2 text-[12px] text-slate-400">
+                            <span className="size-2 rounded-full bg-[#22c55e]" />
                             系统运行正常
                         </p>
                     </div>
                 </div>
-                <div className="border-t-2 border-[#161616]">
-                    <div className="mx-auto flex w-full max-w-[1328px] items-center justify-between px-4 py-6 font-mono text-xs text-[#707070] md:px-6">
-                        <span>© {new Date().getFullYear()} 好会计. 保留所有权利.</span>
+                <div className="border-t border-slate-100">
+                    <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between px-4 py-6 text-xs text-slate-400 md:px-6">
+                        <span>© {new Date().getFullYear()} 云财. 保留所有权利.</span>
                         <a
                             href="#top"
                             onClick={(e) => {
-                                e.preventDefault()
-                                window.scrollTo({ top: 0, behavior: "smooth" })
+                                e.preventDefault();
+                                window.scrollTo({ top: 0, behavior: "smooth" });
                             }}
-                            className="flex items-center gap-1.5 transition-colors hover:text-white"
+                            className="flex items-center gap-1.5 transition-colors hover:text-[#2f6bff]"
                         >
                             回到顶部
                             <ArrowUp className="size-3.5" />
@@ -789,5 +621,5 @@ export default function LandingPage() {
                 </div>
             </footer>
         </div>
-    )
+    );
 }

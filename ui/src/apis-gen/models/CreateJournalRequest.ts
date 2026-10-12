@@ -43,6 +43,18 @@ export interface CreateJournalRequest {
      * @memberof CreateJournalRequest
      */
     openingBalance?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateJournalRequest
+     */
+    bankName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateJournalRequest
+     */
+    bankAccountNo?: string | null;
 }
 
 /**
@@ -66,6 +78,8 @@ export function CreateJournalRequestFromJSONTyped(json: any, ignoreDiscriminator
         'name': json['name'] == null ? undefined : json['name'],
         'accountId': json['accountId'] == null ? undefined : json['accountId'],
         'openingBalance': json['openingBalance'] == null ? undefined : json['openingBalance'],
+        'bankName': json['bankName'] == null ? undefined : json['bankName'],
+        'bankAccountNo': json['bankAccountNo'] == null ? undefined : json['bankAccountNo'],
     };
 }
 
@@ -84,6 +98,8 @@ export function CreateJournalRequestToJSONTyped(value?: CreateJournalRequest | n
         'name': value['name'],
         'accountId': value['accountId'],
         'openingBalance': value['openingBalance'],
+        'bankName': value['bankName'],
+        'bankAccountNo': value['bankAccountNo'],
     };
 }
 

@@ -19,10 +19,11 @@ import { useAccountSets } from "@/accountSets/AccountSetsContext"
 import { AccountSetsApi, type AccountSetDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { PageHeader, SectionCard } from "@/components/page/section"
+import { StatusPill } from "@/components/page/status-pill"
+import { CARD_BTN, CARD_BTN_PRIMARY, ICON_BTN, ICON_BTN_DANGER, PAGE_BTN_GHOST } from "@/components/page/styles"
 import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PeriodField, parseDate } from "@/components/fields/date-fields"
 import { NumberField } from "@/components/fields/number-field"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty"
@@ -94,15 +95,15 @@ function validateAccountSet(values: AccountSetForm, isEditing: boolean): Account
 
 /** 必填标记，替代原 antd requiredMark。 */
 function Required() {
-    return <span className="text-destructive">*</span>
+    return <span className="text-[#ef4444]">*</span>
 }
 
 /** 卡片内的键值行，替代原嵌套 Row/Col 的两列布局。 */
 function KeyValue({ label, children }: { label: string, children: ReactNode }) {
     return (
-        <div className="flex items-start justify-between gap-2">
-            <span className="shrink-0 text-muted-foreground">{label}</span>
-            <span className="min-w-0 text-right">{children}</span>
+        <div className="flex items-start justify-between gap-2 text-[12.5px]">
+            <span className="shrink-0 text-slate-400">{label}</span>
+            <span className="min-w-0 text-right text-slate-700">{children}</span>
         </div>
     )
 }
@@ -329,138 +330,145 @@ export default function AccountSetsPage() {
     }
 
     return (
-        <div className="flex w-full flex-col gap-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-col gap-1">
-                    <h1 className="text-lg font-semibold">账套</h1>
-                    <p className="text-muted-foreground">管理各单位的账簿账套，可在多套账之间切换当前账套。</p>
-                </div>
-                <Button variant="outline" onClick={() => void load()} disabled={loading}>
-                    {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
-                    刷新
-                </Button>
-            </div>
+        <div className="flex w-full flex-col gap-5">
+            <PageHeader
+                icon={Building2}
+                title="账套"
+                subtitle="管理各单位的账簿账套，可在多套账之间切换当前账套。"
+                actions={
+                    <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void load()} disabled={loading}>
+                        {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                        刷新
+                    </Button>
+                }
+            />
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>账套列表</CardTitle>
-                    <CardAction>
-                        <Button onClick={openCreate}>
-                            <Plus data-icon="inline-start" />
-                            新增账套
-                        </Button>
-                    </CardAction>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                    {listError && (
-                        <Alert variant="destructive">
-                            <CircleAlert />
-                            <AlertTitle>{listError}</AlertTitle>
-                        </Alert>
-                    )}
+            <SectionCard
+                title={<h3 className="text-[14px] font-semibold text-slate-800">账套列表</h3>}
+                action={
+                    <Button className={CARD_BTN_PRIMARY} onClick={openCreate}>
+                        <Plus data-icon="inline-start" />
+                        新增账套
+                    </Button>
+                }
+                bodyClassName="flex flex-col gap-4"
+            >
+                {listError && (
+                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
+                        <CircleAlert />
+                        <AlertTitle>{listError}</AlertTitle>
+                    </Alert>
+                )}
 
-                    {loading && sets.length === 0 ? (
-                        <div className="flex justify-center py-10">
-                            <Spinner />
-                        </div>
-                    ) : sets.length === 0 ? (
-                        <Empty>
-                            <EmptyHeader>
-                                <EmptyMedia variant="icon">
-                                    <Building2 />
-                                </EmptyMedia>
-                                <EmptyDescription>暂无账套，点击“新增账套”创建</EmptyDescription>
-                            </EmptyHeader>
-                        </Empty>
-                    ) : (
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                            {sets.map((set) => (
-                                <Card key={set.id} size="sm" className={cn(set.isCurrent && "border-2 border-primary")}>
-                                    <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex min-w-0 items-center gap-2">
-                                                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                                                    <Building2 size={20} />
-                                                </div>
-                                                <div className="flex min-w-0 flex-col">
-                                                    <span className="truncate font-medium">{set.name}</span>
-                                                    <span className="truncate text-muted-foreground">{set.companyName}</span>
-                                                </div>
-                                            </div>
-                                            {set.isCurrent && (
-                                                <Badge>
-                                                    <CheckCircle2 data-icon="inline-start" />
-                                                    当前
-                                                </Badge>
-                                            )}
+                {loading && sets.length === 0 ? (
+                    <div className="flex justify-center py-10">
+                        <Spinner className="size-5 text-slate-300" />
+                    </div>
+                ) : sets.length === 0 ? (
+                    <Empty>
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                                <Building2 />
+                            </EmptyMedia>
+                            <EmptyDescription>暂无账套，点击“新增账套”创建</EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
+                ) : (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {sets.map((set) => (
+                            <div
+                                key={set.id}
+                                className={cn(
+                                    "flex flex-col gap-3 rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
+                                    set.isCurrent ? "border-[#bfdbfe] ring-1 ring-[#dbeafe]" : "border-slate-100",
+                                )}
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#eef4ff] text-[#2f6bff]">
+                                            <Building2 size={20} />
                                         </div>
-
-                                        <div className="flex flex-col gap-1">
-                                            <KeyValue label="会计准则">{standardLabel(set.standard)}</KeyValue>
-                                            <KeyValue label="本位币">{set.baseCurrency}</KeyValue>
-                                            <KeyValue label="纳税人性质">{taxpayerLabel(set.taxpayerType)}</KeyValue>
-                                            <KeyValue label="纳税人识别号">{set.taxpayerNumber || "—"}</KeyValue>
-                                            <KeyValue label="增值税 / 所得税">{set.vatRate ?? "—"}% / {set.incomeTaxRate ?? "—"}%</KeyValue>
-                                            <KeyValue label="凭证字">{set.voucherWords || "—"}</KeyValue>
-                                            <KeyValue label="启用期间">{set.startPeriod}</KeyValue>
-                                            <KeyValue label="已结至">{set.closedPeriod || "未结账"}</KeyValue>
-                                            <KeyValue label="编码方案">{set.accountCodingScheme ?? "—"}</KeyValue>
+                                        <div className="flex min-w-0 flex-col">
+                                            <span className="truncate text-[13px] font-medium text-slate-800">{set.name}</span>
+                                            <span className="truncate text-[12px] text-slate-400">{set.companyName}</span>
                                         </div>
+                                    </div>
+                                    {set.isCurrent && (
+                                        <StatusPill tone="green">
+                                            <CheckCircle2 className="size-3" />
+                                            当前
+                                        </StatusPill>
+                                    )}
+                                </div>
 
-                                        <div className="mt-auto flex items-center justify-between gap-2">
-                                            <Button
-                                                variant="outline"
-                                                disabled={set.isCurrent || busyId === set.id}
-                                                onClick={() => void setCurrent(set.id)}
-                                            >
-                                                {busyId === set.id
-                                                    ? <Spinner data-icon="inline-start" />
-                                                    : <Check data-icon="inline-start" />}
-                                                {set.isCurrent ? "当前账套" : "设为当前"}
-                                            </Button>
-                                            <div className="flex items-center gap-0">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-xs"
-                                                    disabled={busyId === set.id}
-                                                    onClick={() => void closePeriod(set)}
-                                                    title={set.nextCloseYear && set.nextCloseMonth ? `结账（${set.nextCloseYear} 年 ${set.nextCloseMonth} 月）` : "结账"}
-                                                >
-                                                    <Lock />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-xs"
-                                                    disabled={!set.closedPeriod || busyId === set.id}
-                                                    onClick={() => void reopenPeriod(set)}
-                                                    title={set.closedPeriod ? `反结账（退回 ${set.closedPeriod}）` : "尚未结账"}
-                                                >
-                                                    <LockOpen />
-                                                </Button>
-                                                <Button variant="ghost" size="icon-xs" onClick={() => openEdit(set)} title="编辑账套">
-                                                    <Edit3 />
-                                                </Button>
-                                                <Button variant="ghost" size="icon-xs" onClick={() => openCopy(set)} title="复制账套">
-                                                    <Copy />
-                                                </Button>
-                                                <Button
-                                                    variant="destructive"
-                                                    size="icon-xs"
-                                                    disabled={set.isCurrent || busyId === set.id}
-                                                    onClick={() => void removeSet(set)}
-                                                    title={set.isCurrent ? "当前账套不可删除" : "删除账套"}
-                                                >
-                                                    <Trash2 />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                <div className="flex flex-col gap-1">
+                                    <KeyValue label="会计准则">{standardLabel(set.standard)}</KeyValue>
+                                    <KeyValue label="本位币">{set.baseCurrency}</KeyValue>
+                                    <KeyValue label="纳税人性质">{taxpayerLabel(set.taxpayerType)}</KeyValue>
+                                    <KeyValue label="纳税人识别号">{set.taxpayerNumber || "—"}</KeyValue>
+                                    <KeyValue label="增值税 / 所得税">{set.vatRate ?? "—"}% / {set.incomeTaxRate ?? "—"}%</KeyValue>
+                                    <KeyValue label="凭证字">{set.voucherWords || "—"}</KeyValue>
+                                    <KeyValue label="启用期间">{set.startPeriod}</KeyValue>
+                                    <KeyValue label="已结至">{set.closedPeriod || "未结账"}</KeyValue>
+                                    <KeyValue label="编码方案">{set.accountCodingScheme ?? "—"}</KeyValue>
+                                </div>
+
+                                <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                                    <Button
+                                        variant="outline"
+                                        className={CARD_BTN}
+                                        disabled={set.isCurrent || busyId === set.id}
+                                        onClick={() => void setCurrent(set.id)}
+                                    >
+                                        {busyId === set.id
+                                            ? <Spinner data-icon="inline-start" />
+                                            : <Check data-icon="inline-start" />}
+                                        {set.isCurrent ? "当前账套" : "设为当前"}
+                                    </Button>
+                                    <div className="flex items-center gap-0">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            className={ICON_BTN}
+                                            disabled={busyId === set.id}
+                                            onClick={() => void closePeriod(set)}
+                                            title={set.nextCloseYear && set.nextCloseMonth ? `结账（${set.nextCloseYear} 年 ${set.nextCloseMonth} 月）` : "结账"}
+                                        >
+                                            <Lock />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            className={ICON_BTN}
+                                            disabled={!set.closedPeriod || busyId === set.id}
+                                            onClick={() => void reopenPeriod(set)}
+                                            title={set.closedPeriod ? `反结账（退回 ${set.closedPeriod}）` : "尚未结账"}
+                                        >
+                                            <LockOpen />
+                                        </Button>
+                                        <Button variant="ghost" size="icon-xs" className={ICON_BTN} onClick={() => openEdit(set)} title="编辑账套">
+                                            <Edit3 />
+                                        </Button>
+                                        <Button variant="ghost" size="icon-xs" className={ICON_BTN} onClick={() => openCopy(set)} title="复制账套">
+                                            <Copy />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            className={ICON_BTN_DANGER}
+                                            disabled={set.isCurrent || busyId === set.id}
+                                            onClick={() => void removeSet(set)}
+                                            title={set.isCurrent ? "当前账套不可删除" : "删除账套"}
+                                        >
+                                            <Trash2 />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </SectionCard>
 
             {/* 新增 / 编辑账套 */}
             <Sheet open={open} onOpenChange={setOpen}>

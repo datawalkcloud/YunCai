@@ -778,8 +778,8 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
         }
 
         if (requestParameters['conflict'] != null) {
-            formParams.append('conflict', new Blob([JSON.stringify(requestParameters['conflict'])], { type: "application/json", }));
-                    }
+            formParams.append('conflict', requestParameters['conflict'] as any);
+        }
 
 
         let urlPath = `/accountsets/{accountSetId}/Vouchers/import`;

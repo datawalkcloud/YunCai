@@ -91,6 +91,24 @@ export interface JournalListItemDto {
      * @memberof JournalListItemDto
      */
     entryCount?: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof JournalListItemDto
+     */
+    isEnabled?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalListItemDto
+     */
+    bankName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalListItemDto
+     */
+    bankAccountNo?: string | null;
 }
 
 /**
@@ -122,6 +140,9 @@ export function JournalListItemDtoFromJSONTyped(json: any, ignoreDiscriminator: 
         'totalIncome': json['totalIncome'] == null ? undefined : json['totalIncome'],
         'totalExpense': json['totalExpense'] == null ? undefined : json['totalExpense'],
         'entryCount': json['entryCount'] == null ? undefined : json['entryCount'],
+        'isEnabled': json['isEnabled'] == null ? undefined : json['isEnabled'],
+        'bankName': json['bankName'] == null ? undefined : json['bankName'],
+        'bankAccountNo': json['bankAccountNo'] == null ? undefined : json['bankAccountNo'],
     };
 }
 
@@ -148,6 +169,9 @@ export function JournalListItemDtoToJSONTyped(value?: JournalListItemDto | null,
         'totalIncome': value['totalIncome'],
         'totalExpense': value['totalExpense'],
         'entryCount': value['entryCount'],
+        'isEnabled': value['isEnabled'],
+        'bankName': value['bankName'],
+        'bankAccountNo': value['bankAccountNo'],
     };
 }
 

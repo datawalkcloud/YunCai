@@ -1,0 +1,228 @@
+using KuaiJi.Modules.Closing.Application;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace KuaiJi.Modules.Closing.Api
+{
+    /// <summary>
+    /// 期末结转与结账接口。按自然月顺序执行「期末检查 → 结转损益 → 结账」，
+    /// 并支持反结账与撤销结转；结转生成的凭证自动过账并进入账簿与报表。
+    /// </summary>
+    [ApiController]
+    [Route("accountsets/{accountSetId:guid}/closing")]
+    [Authorize]
+    public class ClosingController : ControllerBase
+    {
+        private readonly ClosingService _closingService;
+        private readonly ClosingTemplateService _templateService;
+
+        public ClosingController(ClosingService closingService, ClosingTemplateService templateService)
+        {
+            _closingService = closingService;
+            _templateService = templateService;
+        }
+
+        /// <summary>获取期末结转总体状态（含逐月状态卡片与下一步待处理期间）。</summary>
+        [HttpGet]
+        public async Task<ActionResult<ClosingStatusDto>> GetStatus(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _closingService.GetStatusAsync(accountSetId, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>期末检查：返回检查项明细与「可否结转 / 可否结账」结论。</summary>
+        [HttpGet("checks")]
+        public async Task<ActionResult<ClosingCheckResultDto>> Check(
+            Guid accountSetId,
+            [FromQuery] int year,
+            [FromQuery] int month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _closingService.CheckAsync(accountSetId, year, month, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>结转损益：生成结转凭证（损益类 → 本年利润，可选 → 未分配利润）并自动过账。</summary>
+        [HttpPost("carry-forward")]
+        public async Task<ActionResult<CarryForwardResultDto>> CarryForward(
+            Guid accountSetId,
+            [FromBody] CarryForwardRequest request,
+            CancellationToken cancellationToken)
+        {
+            // 制单/审核人取当前登录用户的显示名（与凭证接口一致）。
+            var operatorName = User.FindFirst("displayName")?.Value
+                               ?? User.FindFirst("unique_name")?.Value
+                               ?? "未知";
+            try
+            {
+                return Ok(await _closingService.CarryForwardAsync(accountSetId, operatorName, request, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>结账：把下一个待结期间标记为已结账（须先完成结转，且期间内凭证全部已过账）。</summary>
+        [HttpPost("close")]
+        public async Task<ActionResult<ClosingStatusDto>> Close(
+            Guid accountSetId,
+            [FromBody] ClosingPeriodRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _closingService.CloseAsync(accountSetId, request.Year, request.Month, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>反结账：撤销最近一次结账（已结期间退回一个月）；结转进度保持不变。</summary>
+        [HttpPost("reopen")]
+        public async Task<ActionResult<ClosingStatusDto>> Reopen(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _closingService.ReopenAsync(accountSetId, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>撤销结转：删除最近一次结转生成的凭证并退回结转进度（已结账的期间须先反结账）。</summary>
+        [HttpPost("cancel-carry")]
+        public async Task<ActionResult<CancelCarryResultDto>> CancelCarry(
+            Guid accountSetId,
+            [FromBody] ClosingPeriodRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var message = await _closingService.CancelCarryAsync(accountSetId, request.Year, request.Month, cancellationToken);
+                return Ok(new CancelCarryResultDto { Message = message });
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /* ---------------- 结转模板 ---------------- */
+
+        /// <summary>获取账套下全部结转模板（含行明细）。</summary>
+        [HttpGet("templates")]
+        public async Task<ActionResult<IReadOnlyList<ClosingTemplateDto>>> GetTemplates(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _templateService.ListAsync(accountSetId, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>新建结转模板。</summary>
+        [HttpPost("templates")]
+        public async Task<ActionResult<ClosingTemplateDto>> CreateTemplate(
+            Guid accountSetId,
+            [FromBody] SaveClosingTemplateRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _templateService.CreateAsync(accountSetId, request, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>编辑结转模板（整体替换行）。</summary>
+        [HttpPut("templates/{templateId:guid}")]
+        public async Task<ActionResult<ClosingTemplateDto>> UpdateTemplate(
+            Guid accountSetId,
+            Guid templateId,
+            [FromBody] SaveClosingTemplateRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var template = await _templateService.UpdateAsync(accountSetId, templateId, request, cancellationToken);
+                return template is null ? NotFound() : Ok(template);
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>删除结转模板。</summary>
+        [HttpDelete("templates/{templateId:guid}")]
+        public async Task<IActionResult> DeleteTemplate(Guid accountSetId, Guid templateId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var deleted = await _templateService.DeleteAsync(accountSetId, templateId, cancellationToken);
+                return deleted ? NoContent() : NotFound();
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>按月预览结转模板：计算各模板将生成的金额与平衡情况。</summary>
+        [HttpGet("templates/preview")]
+        public async Task<ActionResult<ClosingTemplatePreviewDto>> PreviewTemplates(
+            Guid accountSetId,
+            [FromQuery] int year,
+            [FromQuery] int month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _templateService.PreviewAsync(accountSetId, year, month, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /* ---------------- 批量结账 ---------------- */
+
+        /// <summary>批量结账：连续结账至最新已结转期间（中途受阻时保留已结部分并说明原因）。</summary>
+        [HttpPost("close-batch")]
+        public async Task<ActionResult<CloseBatchResultDto>> CloseBatch(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _closingService.CloseBatchAsync(accountSetId, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+    }
+}

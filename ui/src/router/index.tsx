@@ -3,19 +3,90 @@ import type { ReactNode } from "react";
 
 import Login from "@/pages/login/Login";
 import Landing from "@/pages/landing";
-import Home from "@/pages/home";
+import DashboardHome from "@/pages/dashboard";
 import CashJournal from "@/pages/funds/cash-journal";
 import EntryCategories from "@/pages/funds/entry-categories";
+import Transfer from "@/pages/funds/transfer";
+import FundReport from "@/pages/funds/report";
+import FundReconciliation from "@/pages/funds/reconciliation";
 import TrialBalance from "@/pages/ledger/trial-balance";
+import SubsidiaryLedger from "@/pages/ledger/subsidiary";
+import GeneralLedger from "@/pages/ledger/general";
+import VoucherJournal from "@/pages/ledger/journal";
+import VoucherSummary from "@/pages/ledger/voucher-summary";
+import MultiColumnLedger from "@/pages/ledger/multi-column";
+import AssistBalance from "@/pages/ledger/assist-balance";
+import AssistSubsidiary from "@/pages/ledger/assist-subsidiary";
+import AssistCombine from "@/pages/ledger/assist-combine";
+import AgeingAnalysis from "@/pages/ledger/ageing";
 import VoucherManage from "@/pages/vouchers/manage";
 import BalanceSheet from "@/pages/reports/balance-sheet";
 import IncomeStatement from "@/pages/reports/income-statement";
 import Accounts from "@/pages/settings/accounts";
 import AccountSets from "@/pages/settings/account-sets";
 import OpeningBalances from "@/pages/settings/opening-balances";
-import PlatformLayout from "@/components/layout/platform/PlatformLayout";
+import AssistItems from "@/pages/settings/assist-items";
+import Closing from "@/pages/closing";
+import ComingSoon from "@/pages/dev/ComingSoon";
+import DashboardLayout from "@/components/layout/dashboard/DashboardLayout";
 import { useAuth } from "@/auth/AuthContext";
 import { AccountSetsProvider, useAccountSets } from "@/accountSets/AccountSetsContext";
+
+// 柠檬云风格页面：已接入真实后端，挂载在账套路由下（与既有实页互补）。
+import LemonERecord from "@/pages/lemon/lemon-erecord";
+import { VoucherNew } from "@/pages/lemon/lemon-vouchers";
+import { LemonDepositJournal, LemonDraft, LemonAccountSettings } from "@/pages/lemon/lemon-funds";
+import {
+    LemonInvoiceFetch,
+    LemonSalesInvoice,
+    LemonPurchaseInvoice,
+    LemonExpenseBill,
+    LemonInvoiceSummary,
+    LemonInvoiceRisk,
+    LemonSpb,
+    LemonTaxLogin,
+    LemonBankLink,
+} from "@/pages/lemon/lemon-invoice";
+import LemonPro from "@/pages/lemon/lemon-pro";
+import {
+    LemonSalaryEmployee,
+    LemonSalaryInsurance,
+    LemonSalaryManage,
+    LemonSalarySummary,
+} from "@/pages/lemon/lemon-salary";
+import {
+    LemonAssetCategory,
+    LemonAssetCheck,
+    LemonAssetDepreciation,
+    LemonAssetManage,
+    LemonAssetSummary,
+} from "@/pages/lemon/lemon-assets";
+import {
+    LemonIncomeQuarter,
+    LemonCashFlow,
+    LemonCashFlowQuarter,
+    LemonStandardCashFlow,
+    LemonDepartmentIncome,
+    LemonProjectIncome,
+    LemonPivot,
+    LemonExpenseDetail,
+    LemonEquityChange,
+    LemonTaxReport,
+    LemonFinancialSummary,
+} from "@/pages/lemon/lemon-reports";
+import {
+    LemonCurrency,
+    LemonVoucherWord,
+    LemonVoucherTemplate,
+    LemonPermission,
+    LemonBoss,
+    LemonBackup,
+    LemonLog,
+    LemonEisRelation,
+    LemonScmRelation,
+    LemonImportOld,
+    LemonReinit,
+} from "@/pages/lemon/lemon-settings";
 
 /** 校验令牌期间的占位界面，避免闪烁跳转。 */
 function AuthLoading() {
@@ -94,18 +165,80 @@ const router = createBrowserRouter([
             {
                 // 账套 id 作为路由第一段，其下所有页面均归属该账套。
                 path: ":accountSetId",
-                element: <PlatformLayout />,
+                element: <DashboardLayout />,
                 children: [
-                    { index: true, element: <Home /> },
+                    { index: true, element: <DashboardHome /> },
+                    { path: "dev", element: <ComingSoon /> },
                     { path: "funds/cash-journal", element: <CashJournal /> },
                     { path: "funds/entry-categories", element: <EntryCategories /> },
+                    { path: "funds/transfer", element: <Transfer /> },
+                    { path: "funds/report", element: <FundReport /> },
+                    { path: "funds/reconciliation", element: <FundReconciliation /> },
                     { path: "ledger/trial-balance", element: <TrialBalance /> },
+                    { path: "ledger/subsidiary", element: <SubsidiaryLedger /> },
+                    { path: "ledger/general", element: <GeneralLedger /> },
+                    { path: "ledger/journal", element: <VoucherJournal /> },
+                    { path: "ledger/voucher-summary", element: <VoucherSummary /> },
+                    { path: "ledger/multi-column", element: <MultiColumnLedger /> },
+                    { path: "ledger/assist-balance", element: <AssistBalance /> },
+                    { path: "ledger/assist-subsidiary", element: <AssistSubsidiary /> },
+                    { path: "ledger/assist-combine", element: <AssistCombine /> },
+                    { path: "ledger/ageing", element: <AgeingAnalysis /> },
                     { path: "vouchers/manage", element: <VoucherManage /> },
                     { path: "reports/balance-sheet", element: <BalanceSheet /> },
                     { path: "reports/income-statement", element: <IncomeStatement /> },
                     { path: "settings/accounts", element: <Accounts /> },
                     { path: "settings/account-sets", element: <AccountSets /> },
                     { path: "settings/opening-balances", element: <OpeningBalances /> },
+                    { path: "settings/assist-items", element: <AssistItems /> },
+                    { path: "closing", element: <Closing /> },
+                    // —— 按柠檬云菜单层级补齐的页面（复刻实现，mock 数据） ——
+                    { path: "vouchers/new", element: <VoucherNew /> },
+                    { path: "vouchers/erecord", element: <LemonERecord /> },
+                    { path: "vouchers/spb", element: <LemonSpb /> },
+                    { path: "funds/deposit-journal", element: <LemonDepositJournal /> },
+                    { path: "funds/draft", element: <LemonDraft /> },
+                    { path: "funds/bank-link", element: <LemonBankLink /> },
+                    { path: "funds/account", element: <LemonAccountSettings /> },
+                    { path: "invoices/fetch", element: <LemonInvoiceFetch /> },
+                    { path: "invoices/sales", element: <LemonSalesInvoice /> },
+                    { path: "invoices/purchase", element: <LemonPurchaseInvoice /> },
+                    { path: "invoices/expense", element: <LemonExpenseBill /> },
+                    { path: "invoices/summary", element: <LemonInvoiceSummary /> },
+                    { path: "invoices/risk", element: <LemonInvoiceRisk /> },
+                    { path: "salary/manage", element: <LemonSalaryManage /> },
+                    { path: "salary/employee", element: <LemonSalaryEmployee /> },
+                    { path: "salary/summary", element: <LemonSalarySummary /> },
+                    { path: "salary/insurance", element: <LemonSalaryInsurance /> },
+                    { path: "assets/manage", element: <LemonAssetManage /> },
+                    { path: "assets/depreciation", element: <LemonAssetDepreciation /> },
+                    { path: "assets/summary", element: <LemonAssetSummary /> },
+                    { path: "assets/category", element: <LemonAssetCategory /> },
+                    { path: "assets/check", element: <LemonAssetCheck /> },
+                    { path: "reports/income-quarter", element: <LemonIncomeQuarter /> },
+                    { path: "reports/cash-flow", element: <LemonCashFlow /> },
+                    { path: "reports/cash-flow-quarter", element: <LemonCashFlowQuarter /> },
+                    { path: "reports/standard-cash-flow", element: <LemonStandardCashFlow /> },
+                    { path: "reports/department-income", element: <LemonDepartmentIncome /> },
+                    { path: "reports/project-income", element: <LemonProjectIncome /> },
+                    { path: "reports/pivot", element: <LemonPivot /> },
+                    { path: "reports/expense", element: <LemonExpenseDetail /> },
+                    { path: "reports/equity-change", element: <LemonEquityChange /> },
+                    { path: "reports/tax", element: <LemonTaxReport /> },
+                    { path: "reports/financial-summary", element: <LemonFinancialSummary /> },
+                    { path: "tax/login", element: <LemonTaxLogin /> },
+                    { path: "settings/currency", element: <LemonCurrency /> },
+                    { path: "settings/voucher-word", element: <LemonVoucherWord /> },
+                    { path: "settings/voucher-template", element: <LemonVoucherTemplate /> },
+                    { path: "settings/permission", element: <LemonPermission /> },
+                    { path: "settings/boss", element: <LemonBoss /> },
+                    { path: "settings/backup", element: <LemonBackup /> },
+                    { path: "settings/log", element: <LemonLog /> },
+                    { path: "settings/eis-relation", element: <LemonEisRelation /> },
+                    { path: "settings/scm-relation", element: <LemonScmRelation /> },
+                    { path: "settings/import-old", element: <LemonImportOld /> },
+                    { path: "settings/reinit", element: <LemonReinit /> },
+                    { path: "pro", element: <LemonPro /> },
                 ],
             },
         ],

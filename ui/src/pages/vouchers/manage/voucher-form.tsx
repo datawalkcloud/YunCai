@@ -1,23 +1,31 @@
-import { useMemo, useRef, useState } from "react"
+import { Fragment, useMemo, useRef, useState } from "react"
 import { Plus, Save, Trash2 } from "lucide-react"
 
 import { useAccountSets } from "@/accountSets/AccountSetsContext"
-import { VouchersApi, type AccountDto, type CreateVoucherRequest, type UpdateVoucherRequest, type VoucherDetailDto } from "@/apis-gen"
+import { VouchersApi, type AccountDto, type CreateVoucherRequest, type UpdateVoucherRequest, type VoucherDetailDto, type VoucherEntryDto } from "@/apis-gen"
+import { amountToChineseUppercase } from "@/lib/amount-uppercase"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { AssistItemSelect } from "@/components/assist/assist-item-select"
+import { assistLabel } from "@/components/assist/constants"
+import { useAccountAssistConfigs } from "@/components/assist/assist-store"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 
-/** 凭证分录行。借方与贷方以字符串保存，便于输入编辑；account 存科目 id。 */
+/**
+ * 凭证分录行。借方与贷方以字符串保存，便于输入编辑；account 存科目 id；
+ * assists 为「辅助核算类别 → 已选档案 id」，只在所选科目挂了辅助核算时使用。
+ */
 interface EntryRow {
     id: number
     summary: string
     accountId: string
     debit: string
     credit: string
+    assists: Record<number, string>
 }
 
 /** 金额分位列，从高位到低位（最高支持到亿位，角、分为小数位）。 */
@@ -25,6 +33,15 @@ const AMOUNT_COLUMNS = ["亿", "千万", "百万", "十万", "万", "千", "百"
 
 function today(): string {
     return new Date().toISOString().slice(0, 10)
+}
+
+/** 分录已挂的辅助核算（类别 → 档案 id）。录入界面每个类别只选一个档案，同类型多档案时取首个。 */
+function assistsOf(entry: VoucherEntryDto): Record<number, string> {
+    const assists: Record<number, string> = {}
+    for (const a of entry.assists ?? []) {
+        if (a.type != null && a.assistItemId) assists[a.type] = a.assistItemId
+    }
+    return assists
 }
 
 /** 编辑模式下将凭证详情的分录映射为可编辑行；无分录时给两条空行。 */
@@ -37,11 +54,12 @@ function toEntryRows(detail?: VoucherDetailDto): EntryRow[] {
             accountId: e.accountId ?? "",
             debit: e.debit != null && e.debit !== 0 ? String(e.debit) : "",
             credit: e.credit != null && e.credit !== 0 ? String(e.credit) : "",
+            assists: assistsOf(e),
         }))
     }
     return [
-        { id: 1, summary: "", accountId: "", debit: "", credit: "" },
-        { id: 2, summary: "", accountId: "", debit: "", credit: "" },
+        { id: 1, summary: "", accountId: "", debit: "", credit: "", assists: {} },
+        { id: 2, summary: "", accountId: "", debit: "", credit: "", assists: {} },
     ]
 }
 
@@ -91,34 +109,6 @@ function digitCells(value: number): string[] {
         cells[cells.length - 1 - i] = str[str.length - 1 - i]
     }
     return cells
-}
-
-/** 人民币金额大写。 */
-function digitUppercase(n: number): string {
-    if (n === 0) return "零元整"
-    const fraction = ["角", "分"]
-    const digit = ["零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"]
-    const unit = [
-        ["元", "万", "亿"],
-        ["", "拾", "佰", "仟"],
-    ]
-    const head = n < 0 ? "负" : ""
-    let num = Math.abs(n)
-    let s = ""
-    for (let i = 0; i < fraction.length; i++) {
-        s += (digit[Math.floor(num * 10 * Math.pow(10, i)) % 10] + fraction[i]).replace(/零./, "")
-    }
-    s = s || "整"
-    num = Math.floor(num)
-    for (let i = 0; i < unit[0].length && num > 0; i++) {
-        let p = ""
-        for (let j = 0; j < unit[1].length && num > 0; j++) {
-            p = digit[num % 10] + unit[1][j] + p
-            num = Math.floor(num / 10)
-        }
-        s = p.replace(/(零.)*零$/, "").replace(/^$/, "零") + unit[0][i] + s
-    }
-    return head + s.replace(/(零.)*零元/, "元").replace(/(零.)*零$/, "").replace(/^整$/, "零元整")
 }
 
 const thCls = "border border-border px-1 py-1 text-center font-medium text-muted-foreground"
@@ -254,6 +244,11 @@ export default function VoucherForm({
 
     const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a] as const)), [accounts])
 
+    // 分录所选科目的辅助核算维度：只为实际用到的科目发请求（模块级缓存去重）。
+    const entryAccountIds = useMemo(() => entries.map((e) => e.accountId), [entries])
+    const { configs: assistConfigs } = useAccountAssistConfigs(accountSetId, entryAccountIds, token)
+    const assistTypesOf = (accountId: string) => assistConfigs[accountId] ?? []
+
     const { totalDebit, totalCredit } = useMemo(() => {
         let debit = 0
         let credit = 0
@@ -272,11 +267,23 @@ export default function VoucherForm({
         setError(null)
     }
 
+    /** 有任一字段填了内容即视为有效分录行（空行不提交）。 */
+    const isActiveEntry = (e: EntryRow) =>
+        Boolean(e.summary.trim()) || Boolean(e.accountId) || toAmount(e.debit) !== 0 || toAmount(e.credit) !== 0
+
     function addRow() {
         setEntries((prev) => [
             ...prev,
-            { id: nextId.current++, summary: "", accountId: "", debit: "", credit: "" },
+            { id: nextId.current++, summary: "", accountId: "", debit: "", credit: "", assists: {} },
         ])
+    }
+
+    /** 选择某类别的核算项目档案；itemId 为空串表示取消选择。 */
+    function updateAssist(entryId: number, type: number, itemId: string) {
+        setEntries((prev) =>
+            prev.map((e) => (e.id === entryId ? { ...e, assists: { ...e.assists, [type]: itemId } } : e)),
+        )
+        setError(null)
     }
 
     function removeRow(id: number) {
@@ -285,12 +292,19 @@ export default function VoucherForm({
 
     // 实际执行保存的 API 调用。
     async function doSave(entriesToSave: EntryRow[]) {
-        const mappedEntries = entriesToSave.map((e) => ({
-            summary: e.summary.trim(),
-            accountId: e.accountId,
-            debit: toAmount(e.debit),
-            credit: toAmount(e.credit),
-        }))
+        const mappedEntries = entriesToSave.map((e) => {
+            const assists = Object.entries(e.assists)
+                .filter(([, itemId]) => Boolean(itemId))
+                .map(([type, itemId]) => ({ type: Number(type), itemId }))
+            return {
+                summary: e.summary.trim(),
+                accountId: e.accountId,
+                debit: toAmount(e.debit),
+                credit: toAmount(e.credit),
+                // 未挂辅助核算时不带该字段，保持与改动前完全一致的请求体。
+                assists: assists.length > 0 ? assists : undefined,
+            }
+        })
         const dateValue = new Date(date)
         const attachmentCount = Number.parseInt(attachments, 10) > 0 ? Number.parseInt(attachments, 10) : 0
 
@@ -334,9 +348,7 @@ export default function VoucherForm({
         if (!canSave) return
 
         // 仅提交有内容的分录行；逐行校验摘要、科目与借贷单边非零。
-        const active = entries.filter(
-            (e) => e.summary.trim() || e.accountId || toAmount(e.debit) !== 0 || toAmount(e.credit) !== 0,
-        )
+        const active = entries.filter(isActiveEntry)
         if (active.length === 0) {
             setError("请至少录入一条分录。")
             return
@@ -350,6 +362,18 @@ export default function VoucherForm({
             const hasCredit = credit !== 0
             if (hasDebit === hasCredit) {
                 return setError("每条分录只能填写借方或贷方其一，且金额不能为零。")
+            }
+        }
+
+        // 辅助核算必录校验：行号按表格中的可见行序（与用户所见一致）。
+        for (let i = 0; i < entries.length; i++) {
+            const e = entries[i]
+            if (!isActiveEntry(e)) continue
+            const missing = assistTypesOf(e.accountId)
+                .filter((c) => c.isRequired !== false && !e.assists[c.type as number])
+                .map((c) => assistLabel(c.type))
+            if (missing.length > 0) {
+                return setError(`第 ${i + 1} 行 ${missing.join("、")} 未选择核算项目。`)
             }
         }
 
@@ -471,8 +495,12 @@ export default function VoucherForm({
                         </tr>
                     </thead>
                     <tbody>
-                        {entries.map((entry) => (
-                            <tr key={entry.id}>
+                        {entries.map((entry) => {
+                            // 本行科目挂了的辅助核算维度；为空则不展开辅助核算行。
+                            const assistTypes = assistTypesOf(entry.accountId)
+                            return (
+                            <Fragment key={entry.id}>
+                            <tr>
                                 <td className={tdCls}>
                                     <div className="flex items-center">
                                         <input
@@ -496,7 +524,10 @@ export default function VoucherForm({
                                 <td className={tdCls}>
                                     <select
                                         value={entry.accountId}
-                                        onChange={(e) => updateEntry(entry.id, { accountId: e.target.value })}
+                                        onChange={(e) =>
+                                            // 换科目后原辅助核算取值不再适用，清空重选。
+                                            updateEntry(entry.id, { accountId: e.target.value, assists: {} })
+                                        }
                                         className="h-9 w-full bg-transparent px-1 text-sm outline-none"
                                     >
                                         <option value="">请选择科目</option>
@@ -524,10 +555,40 @@ export default function VoucherForm({
                                     />
                                 </td>
                             </tr>
-                        ))}
+                            {assistTypes.length > 0 && (
+                                // 辅助核算录入行：每维度一个档案下拉，必录项标红星。
+                                <tr>
+                                    <td className={cn(tdCls, "bg-muted/30 px-2 py-1")} colSpan={24}>
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                            {assistTypes.map((cfg) => (
+                                                <div key={cfg.type} className="flex items-center gap-1">
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {assistLabel(cfg.type)}
+                                                        {cfg.isRequired !== false && (
+                                                            <span className="text-destructive">*</span>
+                                                        )}
+                                                    </span>
+                                                    <AssistItemSelect
+                                                        accountSetId={accountSetId}
+                                                        token={token}
+                                                        type={cfg.type as number}
+                                                        value={entry.assists[cfg.type as number] ?? ""}
+                                                        onChange={(itemId) =>
+                                                            updateAssist(entry.id, cfg.type as number, itemId)
+                                                        }
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                            </Fragment>
+                            )
+                        })}
                         <tr className="font-medium">
                             <td className={cn(tdCls, "px-2 py-2")} colSpan={2}>
-                                合计：{digitUppercase(totalDebit)}
+                                合计：{amountToChineseUppercase(totalDebit)}
                             </td>
                             <td className={tdCls} colSpan={11}>
                                 <AmountCells value={totalDebit} />
@@ -611,9 +672,7 @@ export default function VoucherForm({
                             onClick={() => {
                                 setDirectionModal(null)
                                 // 重新获取 active 并保存
-                                const active = entries.filter(
-                                    (e) => e.summary.trim() || e.accountId || toAmount(e.debit) !== 0 || toAmount(e.credit) !== 0,
-                                )
+                                const active = entries.filter(isActiveEntry)
                                 doSave(active)
                             }}
                         >

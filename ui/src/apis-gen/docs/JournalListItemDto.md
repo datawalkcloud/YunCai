@@ -18,6 +18,9 @@ Name | Type
 `totalIncome` | number
 `totalExpense` | number
 `entryCount` | number
+`isEnabled` | boolean
+`bankName` | string
+`bankAccountNo` | string
 
 ## Example
 
@@ -38,6 +41,9 @@ const example = {
   "totalIncome": null,
   "totalExpense": null,
   "entryCount": null,
+  "isEnabled": null,
+  "bankName": null,
+  "bankAccountNo": null,
 } satisfies JournalListItemDto
 
 console.log(example)

@@ -6,6 +6,7 @@ import {
     CircleAlert,
     ClipboardCheck,
     FileSpreadsheet,
+    FileText,
     Pencil,
     Plus,
     RefreshCw,
@@ -29,16 +30,26 @@ import {
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { PageHeader, SectionCard } from "@/components/page/section"
+import { Tile, type TileTone } from "@/components/page/tile"
+import { StatusPill as StatusPillBase } from "@/components/page/status-pill"
+import {
+    DATE_FIELD,
+    ICON_BTN,
+    ICON_BTN_DANGER,
+    ICON_BTN_SUCCESS,
+    PAGE_BTN_GHOST,
+    PAGE_BTN_PRIMARY,
+    SOFT_PANEL,
+    voucherStatusTone,
+} from "@/components/page/styles"
 import { DateRangeField, parseDate } from "@/components/fields/date-fields"
 import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Spinner } from "@/components/ui/spinner"
-import { Stat } from "@/components/stats/stat"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import VoucherForm from "./voucher-form"
@@ -82,64 +93,69 @@ const COLUMN_CLASS: Record<string, { head: string, cell: string }> = {
     actions: { head: "text-right", cell: "text-right" },
 }
 
-/** 借贷金额文本：负数用破坏色标注，正值回归常规前景色。 */
+/** 借贷金额文本：负数用红色标注，正值回归常规前景色。 */
 function AmountText({ value }: { value: number | undefined }) {
     const v = value ?? 0
-    return <span className={cn("font-medium", v < 0 && "text-destructive")}>{formatAmount(v)}</span>
+    return <span className={cn("font-medium", v < 0 ? "text-[#ef4444]" : "text-slate-700")}>{formatAmount(v)}</span>
 }
 
-/** 状态徽标配色：不平衡为红，已过账为灰，草稿/已审核为主色。 */
-function statusBadgeVariant(r: VoucherListItemDto): "default" | "secondary" | "destructive" {
-    if (!r.isBalanced) return "destructive"
-    return r.status === 3 ? "secondary" : "default"
+/** 状态胶囊：配色口径见共享的 voucherStatusTone。 */
+function StatusPill({ record }: { record: VoucherListItemDto }) {
+    return (
+        <StatusPillBase tone={voucherStatusTone(record.status, record.isBalanced)}>
+            {record.statusText}
+        </StatusPillBase>
+    )
 }
 
 /** 展开行的分录明细（内嵌子表、无表头），等价原 ENTRY_COLUMNS + showHeader={false}。 */
 function EntryTable({ entries }: { entries: VoucherEntryDto[] }) {
     return (
-        <Table>
-            <TableBody>
+        <table className="w-full text-[12.5px]">
+            <tbody>
                 {entries.map((e) => (
-                    <TableRow key={e.id}>
-                        <TableCell className="w-full">
+                    <tr key={e.id} className="border-b border-slate-100 last:border-0">
+                        <td className="max-w-[320px] py-2 pr-3 pl-4 text-slate-600">
                             <div className="truncate">{e.summary}</div>
-                        </TableCell>
-                        <TableCell>
-                            <span className="text-muted-foreground">{e.accountCode} </span>
+                        </td>
+                        <td className="py-2 pr-3 whitespace-nowrap text-slate-600">
+                            <span className="text-slate-400">{e.accountCode} </span>
                             {e.accountName}
-                        </TableCell>
+                        </td>
                         {(["debit", "credit"] as const).map((key) => {
                             const v = e[key]
                             return (
-                                <TableCell key={key} className="text-right tabular-nums">
+                                <td key={key} className="w-[130px] py-2 pr-4 text-right tabular-nums">
                                     {v != null && v !== 0 ? (
-                                        <span className={cn(v < 0 && "text-destructive")}>{formatAmount(v)}</span>
+                                        <span className={cn(v < 0 ? "text-[#ef4444]" : "text-slate-700")}>
+                                            {formatAmount(v)}
+                                        </span>
                                     ) : null}
-                                </TableCell>
+                                </td>
                             )
                         })}
-                    </TableRow>
+                    </tr>
                 ))}
-            </TableBody>
-        </Table>
+            </tbody>
+        </table>
     )
 }
 
 /** 展开行底部的制单与借贷合计条。 */
 function EntryTotals({ record }: { record: VoucherListItemDto }) {
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted px-4 py-2 text-sm">
-            <span className="text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white/70 px-4 py-2 text-[12.5px]">
+            <span className="text-slate-400">
                 制单：{record.preparer ?? "—"}
                 {record.reviewer ? ` · 审核：${record.reviewer}` : ""}
             </span>
-            <div className="flex items-center gap-4">
-                <span>
-                    <span className="text-muted-foreground">借方 </span>
+            <div className="flex items-center gap-2">
+                <span className="rounded-lg bg-[#dbeafe] px-2.5 py-1 text-slate-600">
+                    <span className="text-slate-400">借方 </span>
                     <AmountText value={record.totalDebit} />
                 </span>
-                <span>
-                    <span className="text-muted-foreground">贷方 </span>
+                <span className="rounded-lg bg-[#d1fae5] px-2.5 py-1 text-slate-600">
+                    <span className="text-slate-400">贷方 </span>
                     <AmountText value={record.totalCredit} />
                 </span>
             </div>
@@ -169,18 +185,19 @@ function getVoucherColumns(ops: {
                 const id = r.id ?? ""
                 const expanded = ops.expandedIds.has(id)
                 return (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                         <Button
                             variant="ghost"
                             size="icon-xs"
                             title={expanded ? "收起分录" : "展开分录"}
                             aria-expanded={expanded}
                             onClick={() => ops.onToggle(id)}
+                            className={ICON_BTN}
                         >
                             {expanded ? <ChevronDown /> : <ChevronRight />}
                         </Button>
-                        <span className="font-medium">{r.voucherNo}</span>
-                        <Badge variant={statusBadgeVariant(r)}>{r.statusText}</Badge>
+                        <span className="font-medium text-slate-700">{r.voucherNo}</span>
+                        <StatusPill record={r} />
                     </div>
                 )
             },
@@ -188,7 +205,7 @@ function getVoucherColumns(ops: {
         voucherColumn.display({
             id: "date",
             header: "日期",
-            cell: ({ row }) => <span>{formatDate(row.original.date)}</span>,
+            cell: ({ row }) => <span className="text-slate-500">{formatDate(row.original.date)}</span>,
         }),
         voucherColumn.display({
             id: "totalDebit",
@@ -204,7 +221,7 @@ function getVoucherColumns(ops: {
             id: "preparer",
             header: "制单人",
             cell: ({ row }) => (
-                <span className="text-muted-foreground">{row.original.preparer ?? "—"}</span>
+                <span className="text-slate-500">{row.original.preparer ?? "—"}</span>
             ),
         }),
         voucherColumn.display({
@@ -213,7 +230,7 @@ function getVoucherColumns(ops: {
             cell: ({ row }) => {
                 const r = row.original
                 return (
-                    <div className="flex items-center justify-end gap-0">
+                    <div className="flex items-center justify-end gap-0.5">
                         {r.status === 1 && (
                             <Button
                                 variant="ghost"
@@ -221,6 +238,7 @@ function getVoucherColumns(ops: {
                                 disabled={ops.openingId === r.id}
                                 onClick={() => ops.onEdit(r)}
                                 title="编辑凭证"
+                                className={ICON_BTN}
                             >
                                 {ops.openingId === r.id ? <Spinner /> : <Pencil />}
                             </Button>
@@ -232,6 +250,7 @@ function getVoucherColumns(ops: {
                                 disabled={ops.workflowId === r.id}
                                 onClick={() => ops.onReview(r)}
                                 title="审核凭证"
+                                className={ICON_BTN_SUCCESS}
                             >
                                 {ops.workflowId === r.id ? <Spinner /> : <CheckCircle2 />}
                             </Button>
@@ -243,6 +262,7 @@ function getVoucherColumns(ops: {
                                 disabled={ops.workflowId === r.id}
                                 onClick={() => ops.onUnreview(r)}
                                 title="反审核（退回草稿）"
+                                className={ICON_BTN}
                             >
                                 {ops.workflowId === r.id ? <Spinner /> : <Undo2 />}
                             </Button>
@@ -254,17 +274,19 @@ function getVoucherColumns(ops: {
                                 disabled={ops.workflowId === r.id}
                                 onClick={() => ops.onPost(r)}
                                 title="过账（登记入账锁定）"
+                                className={ICON_BTN_SUCCESS}
                             >
                                 {ops.workflowId === r.id ? <Spinner /> : <ClipboardCheck />}
                             </Button>
                         )}
                         {r.status !== 3 && (
                             <Button
-                                variant="destructive"
+                                variant="ghost"
                                 size="icon-xs"
                                 disabled={ops.deletingId === r.id}
                                 onClick={() => ops.onDelete(r)}
                                 title="删除凭证"
+                                className={ICON_BTN_DANGER}
                             >
                                 {ops.deletingId === r.id ? <Spinner /> : <Trash2 />}
                             </Button>
@@ -287,6 +309,57 @@ function pageItems(current: number, total: number): (number | "gap")[] {
     if (end < total - 1) items.push("gap")
     items.push(total)
     return items
+}
+
+/** 凭证状态瓦片的取数口径。 */
+function buildTiles(vouchers: VoucherListItemDto[]) {
+    const total = vouchers.length
+    const draft = vouchers.filter((v) => v.status === 1).length
+    const reviewed = vouchers.filter((v) => v.status === 2).length
+    const posted = vouchers.filter((v) => v.status === 3).length
+    const debitSum = vouchers.reduce((sum, v) => sum + (v.totalDebit ?? 0), 0)
+    const pct = (n: number) => (total === 0 ? 0 : n / total)
+    const tiles: {
+        label: string
+        value: number
+        tone: TileTone
+        icon: React.ComponentType<{ className?: string }>
+        hint: string
+        ratio?: number
+    }[] = [
+        {
+            label: "凭证总数",
+            value: total,
+            tone: "blue",
+            icon: FileText,
+            hint: `借方合计 ¥ ${formatAmount(debitSum)}`,
+        },
+        {
+            label: "草稿待审",
+            value: draft,
+            tone: "amber",
+            icon: Pencil,
+            hint: `${Math.round(pct(draft) * 100)}%`,
+            ratio: pct(draft),
+        },
+        {
+            label: "已审核待过账",
+            value: reviewed,
+            tone: "purple",
+            icon: CheckCircle2,
+            hint: `${Math.round(pct(reviewed) * 100)}%`,
+            ratio: pct(reviewed),
+        },
+        {
+            label: "已过账入册",
+            value: posted,
+            tone: "green",
+            icon: ClipboardCheck,
+            hint: `${Math.round(pct(posted) * 100)}%`,
+            ratio: pct(posted),
+        },
+    ]
+    return tiles
 }
 
 export default function VoucherManagePage() {
@@ -511,129 +584,153 @@ export default function VoucherManagePage() {
     const leafCount = table.getLeafHeaders().length
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex flex-col gap-1 min-w-0">
-                    <h1 className="text-lg font-semibold">凭证管理</h1>
-                    <span className="text-muted-foreground">
+        <div className="flex flex-col gap-5">
+            <PageHeader
+                icon={FileText}
+                title="凭证管理"
+                subtitle={
+                    <>
                         账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                        {currentSet?.isCurrent ? "（当前）" : ""}
-                        ，共 {vouchers.length} 张凭证。
-                    </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="outline" onClick={() => void load()} disabled={!accountSetId || loading}>
-                        {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
-                        刷新
-                    </Button>
-                    <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!accountSetId}>
-                        <Upload data-icon="inline-start" />
-                        导入凭证
-                    </Button>
-                    <Button onClick={handleCreate} disabled={!accountSetId}>
-                        <Plus data-icon="inline-start" />
-                        新增凭证
-                    </Button>
-                </div>
-            </div>
+                        {currentSet?.isCurrent ? "（当前）" : ""} · 共 {vouchers.length} 张凭证
+                    </>
+                }
+                actions={
+                    <>
+                        <Button variant="outline" onClick={() => void load()} disabled={!accountSetId || loading} className={PAGE_BTN_GHOST}>
+                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                            刷新
+                        </Button>
+                        <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!accountSetId} className={PAGE_BTN_GHOST}>
+                            <Upload data-icon="inline-start" />
+                            导入凭证
+                        </Button>
+                        <Button onClick={handleCreate} disabled={!accountSetId} className={PAGE_BTN_PRIMARY}>
+                            <Plus data-icon="inline-start" />
+                            新增凭证
+                        </Button>
+                    </>
+                }
+            />
 
-            <div className="flex flex-wrap items-center gap-2">
-                <span>日期范围：</span>
-                <DateRangeField
-                    value={
-                        dateRange
-                            ? {
-                                  from: parseDate(dateRange.startDate),
-                                  to: parseDate(dateRange.endDate),
-                              }
-                            : undefined
-                    }
-                    onChange={(range) => {
-                        if (range?.from && range.to) {
-                            setDateRange({
-                                startDate: dayjs(range.from).format("YYYY-MM-DD"),
-                                endDate: dayjs(range.to).format("YYYY-MM-DD"),
-                            })
-                        } else if (!range?.from) {
-                            setDateRange(null)
-                        }
-                    }}
-                    disabled={!accountSetId}
-                    allowClear
-                />
-            </div>
+            {/* 状态瓦片 */}
+            <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                {buildTiles(vouchers).map((t) => (
+                    <Tile key={t.label} {...t} />
+                ))}
+            </section>
 
             {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
                     <CircleAlert />
                     <AlertTitle>{error}</AlertTitle>
                 </Alert>
             )}
 
             {/* 凭证列表 */}
-            <div className="flex flex-col gap-2">
-                <Table>
-                    <TableHeader>
-                        {headerGroups.map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id} className={COLUMN_CLASS[header.column.id]?.head}>
-                                        <table.FlexRender header={header} />
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {loading && rows.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={leafCount} className="py-8 text-center">
-                                    <Spinner />
-                                </TableCell>
-                            </TableRow>
-                        ) : rows.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={leafCount} className="py-8 text-center text-muted-foreground">
-                                    暂无凭证，点击右上角「新增凭证」开始记账。
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            rows.map((row) => {
-                                const record = row.original
-                                const id = record.id ?? ""
-                                const expanded = expandedIds.has(id)
-                                return (
-                                    <Fragment key={row.id}>
-                                        <TableRow>
-                                            {row.getAllCells().map((cell) => (
-                                                <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
-                                                    <table.FlexRender cell={cell} />
-                                                </TableCell>
-                                            ))}
-                                        </TableRow>
-                                        {/* 展开行：分录明细 + 合计条，等价原 expandedRowRender */}
-                                        {expanded && (
+            <SectionCard
+                title={
+                    <>
+                        <h3 className="text-[14px] font-semibold text-slate-800">凭证列表</h3>
+                        {loading && <Spinner className="size-3.5 text-slate-300" />}
+                    </>
+                }
+                bodyClassName="p-0"
+                action={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[12px] text-slate-400">日期范围</span>
+                        <DateRangeField
+                            value={
+                                dateRange
+                                    ? {
+                                          from: parseDate(dateRange.startDate),
+                                          to: parseDate(dateRange.endDate),
+                                      }
+                                    : undefined
+                            }
+                            onChange={(range) => {
+                                if (range?.from && range.to) {
+                                    setDateRange({
+                                        startDate: dayjs(range.from).format("YYYY-MM-DD"),
+                                        endDate: dayjs(range.to).format("YYYY-MM-DD"),
+                                    })
+                                } else if (!range?.from) {
+                                    setDateRange(null)
+                                }
+                            }}
+                            disabled={!accountSetId}
+                            allowClear
+                            className={DATE_FIELD}
+                        />
+                    </div>
+                }
+            >
+                <div className="px-2">
+                    <Table>
+                        <TableHeader>
+                            {headerGroups.map((headerGroup) => (
+                                <TableRow key={headerGroup.id} className="border-slate-100 hover:bg-transparent">
+                                    {headerGroup.headers.map((header) => (
+                                        <TableHead
+                                            key={header.id}
+                                            className={COLUMN_CLASS[header.column.id]?.head}
+                                        >
+                                            <table.FlexRender header={header} />
+                                        </TableHead>
+                                    ))}
+                                </TableRow>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {loading && rows.length === 0 ? (
+                                <TableRow className="hover:bg-transparent">
+                                    <TableCell colSpan={leafCount} className="py-10 text-center">
+                                        <Spinner className="mx-auto size-5 text-slate-300" />
+                                    </TableCell>
+                                </TableRow>
+                            ) : rows.length === 0 ? (
+                                <TableRow className="hover:bg-transparent">
+                                    <TableCell colSpan={leafCount} className="py-10 text-center text-[13px] text-slate-400">
+                                        暂无凭证，点击右上角「新增凭证」开始记账。
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                rows.map((row) => {
+                                    const record = row.original
+                                    const id = record.id ?? ""
+                                    const expanded = expandedIds.has(id)
+                                    return (
+                                        <Fragment key={row.id}>
                                             <TableRow>
-                                                <TableCell colSpan={leafCount} className="p-0">
-                                                    <div className="flex flex-col pb-2">
-                                                        {(record.entries?.length ?? 0) > 0 && (
-                                                            <EntryTable entries={record.entries ?? []} />
-                                                        )}
-                                                        <EntryTotals record={record} />
-                                                    </div>
-                                                </TableCell>
+                                                {row.getAllCells().map((cell) => (
+                                                    <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
+                                                        <table.FlexRender cell={cell} />
+                                                    </TableCell>
+                                                ))}
                                             </TableRow>
-                                        )}
-                                    </Fragment>
-                                )
-                            })
-                        )}
-                    </TableBody>
-                </Table>
+                                            {/* 展开行：分录明细 + 合计条，等价原 expandedRowRender */}
+                                            {expanded && (
+                                                <TableRow className="border-0 hover:bg-transparent">
+                                                    <TableCell colSpan={leafCount} className="p-0">
+                                                        <div className={cn(SOFT_PANEL, "mx-3 mb-3 overflow-hidden")}>
+                                                            {(record.entries?.length ?? 0) > 0 && (
+                                                                <EntryTable entries={record.entries ?? []} />
+                                                            )}
+                                                            <EntryTotals record={record} />
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </Fragment>
+                                    )
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
 
                 {/* 客户端分页 */}
-                <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-muted-foreground whitespace-nowrap">共 {vouchers.length} 张凭证</span>
+                <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 px-5 py-3">
+                    <span className="whitespace-nowrap text-[12.5px] text-slate-400">共 {vouchers.length} 张凭证</span>
                     <Select
                         value={String(pageSize)}
                         onValueChange={(v) => {
@@ -641,7 +738,10 @@ export default function VoucherManagePage() {
                             setPageIndex(0)
                         }}
                     >
-                        <SelectTrigger size="sm" className="w-auto">
+                        <SelectTrigger
+                            size="sm"
+                            className="w-auto border-slate-200 text-[12px] text-slate-500 shadow-none [&>svg]:text-slate-400"
+                        >
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -655,18 +755,24 @@ export default function VoucherManagePage() {
                             <PaginationItem>
                                 <PaginationPrevious
                                     text="上一页"
+                                    className="text-[12.5px] text-slate-500 hover:bg-slate-100"
                                     onClick={() => setPageIndex(Math.max(0, currentPage - 1))}
                                 />
                             </PaginationItem>
                             {pageItems(currentPage + 1, pageCount).map((item, i) =>
                                 item === "gap" ? (
                                     <PaginationItem key={`gap-${i}`}>
-                                        <PaginationEllipsis />
+                                        <PaginationEllipsis className="text-slate-300" />
                                     </PaginationItem>
                                 ) : (
                                     <PaginationItem key={item}>
                                         <PaginationLink
                                             isActive={item === currentPage + 1}
+                                            className={
+                                                item === currentPage + 1
+                                                    ? "bg-[#2f6bff] text-white shadow-[0_1px_2px_rgba(47,107,255,0.25)] hover:bg-[#255ce0]"
+                                                    : "text-[12.5px] text-slate-500 hover:bg-slate-100"
+                                            }
                                             onClick={() => setPageIndex(item - 1)}
                                         >
                                             {item}
@@ -677,13 +783,14 @@ export default function VoucherManagePage() {
                             <PaginationItem>
                                 <PaginationNext
                                     text="下一页"
+                                    className="text-[12.5px] text-slate-500 hover:bg-slate-100"
                                     onClick={() => setPageIndex(Math.min(pageCount - 1, currentPage + 1))}
                                 />
                             </PaginationItem>
                         </PaginationContent>
                     </Pagination>
                 </div>
-            </div>
+            </SectionCard>
 
             {/* 新增 / 编辑凭证抽屉 */}
             <Sheet
@@ -696,9 +803,11 @@ export default function VoucherManagePage() {
             >
                 <SheetContent className="sm:max-w-6xl" aria-describedby={undefined}>
                     <SheetHeader>
-                        <SheetTitle>{editing ? `编辑凭证 ${editing.voucherNo}` : "新增凭证"}</SheetTitle>
+                        <SheetTitle className="text-[16px] font-bold text-slate-800">
+                            {editing ? `编辑凭证 ${editing.voucherNo}` : "新增凭证"}
+                        </SheetTitle>
                     </SheetHeader>
-                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 pb-4">
+                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-5 pb-5">
                         {open && (
                             <VoucherForm
                                 key={editing?.id ?? "new"}
@@ -729,16 +838,16 @@ export default function VoucherManagePage() {
             >
                 <SheetContent className="sm:max-w-2xl">
                     <SheetHeader>
-                        <SheetTitle>导入凭证</SheetTitle>
-                        <SheetDescription>
+                        <SheetTitle className="text-[16px] font-bold text-slate-800">导入凭证</SheetTitle>
+                        <SheetDescription className="text-[12.5px] text-slate-500">
                             支持导入其他平台导出的记账凭证文件（.xls / .xlsx）。系统按凭证号聚合分录、自动补建缺失科目，
                             借贷金额原样保留。
                         </SheetDescription>
                     </SheetHeader>
-                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 pb-4">
+                    <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto px-5 pb-5">
                         <div className="flex flex-col gap-1">
-                            <span className="font-medium">导入到账套</span>
-                            <span className="text-muted-foreground">
+                            <span className="text-[13px] font-semibold text-slate-700">导入到账套</span>
+                            <span className="text-[12.5px] text-slate-500">
                                 {currentSet?.name ?? accountSetId}
                                 {currentSet?.isCurrent ? "（当前）" : ""}
                             </span>
@@ -746,7 +855,7 @@ export default function VoucherManagePage() {
 
                         {/* 冲突策略 */}
                         <div className="flex flex-col gap-2">
-                            <span className="font-medium">重复凭证处理</span>
+                            <span className="text-[13px] font-semibold text-slate-700">重复凭证处理</span>
                             <ToggleGroup
                                 type="single"
                                 variant="outline"
@@ -778,22 +887,24 @@ export default function VoucherManagePage() {
                             onDragLeave={() => setImportDragging(false)}
                             onDrop={onImportDrop}
                             className={cn(
-                                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
-                                importDragging ? "border-primary bg-muted" : "border-border",
+                                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors",
+                                importDragging ? "border-[#2f6bff] bg-[#dbeafe]" : "border-slate-200 bg-muted",
                             )}
                         >
-                            <FileSpreadsheet className="size-10 text-muted-foreground" />
+                            <span className="flex size-12 items-center justify-center rounded-2xl bg-[#e8f1ff] text-[#2f6bff]">
+                                <FileSpreadsheet className="size-6" />
+                            </span>
                             {importFile ? (
                                 <div className="flex flex-col gap-1">
-                                    <span className="font-medium truncate">{importFile.name}</span>
-                                    <span className="text-muted-foreground">
+                                    <span className="truncate text-[13px] font-medium text-slate-700">{importFile.name}</span>
+                                    <span className="text-[12px] text-slate-400">
                                         {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
                                     </span>
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-1">
-                                    <span className="font-medium">点击选择，或拖拽文件到此处</span>
-                                    <span className="text-muted-foreground">支持 .xls / .xlsx，最大 10MB</span>
+                                    <span className="text-[13px] font-medium text-slate-700">点击选择，或拖拽文件到此处</span>
+                                    <span className="text-[12px] text-slate-400">支持 .xls / .xlsx，最大 10MB</span>
                                 </div>
                             )}
                             <input
@@ -806,17 +917,19 @@ export default function VoucherManagePage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <Button onClick={() => void handleImport()} disabled={!importFile || !accountSetId || importing}>
+                            <Button onClick={() => void handleImport()} disabled={!importFile || !accountSetId || importing} className={PAGE_BTN_PRIMARY}>
                                 {importing ? <Spinner data-icon="inline-start" /> : <Upload data-icon="inline-start" />}
                                 {importing ? "导入中…" : "开始导入"}
                             </Button>
                             {importFile && !importing && (
-                                <Button variant="outline" onClick={() => pickImportFile(null)}>清除</Button>
+                                <Button variant="outline" onClick={() => pickImportFile(null)} className={PAGE_BTN_GHOST}>
+                                    清除
+                                </Button>
                             )}
                         </div>
 
                         {importError && (
-                            <Alert variant="destructive">
+                            <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
                                 <CircleAlert />
                                 <AlertTitle>{importError}</AlertTitle>
                             </Alert>
@@ -824,38 +937,34 @@ export default function VoucherManagePage() {
 
                         {/* 导入结果 */}
                         {importResult && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>导入结果</CardTitle>
-                                </CardHeader>
-                                <CardContent className="flex flex-col gap-4">
-                                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                                        <Stat label="解析行数" value={importResult.totalRows ?? 0} />
-                                        <Stat label="导入凭证" value={importResult.importedVouchers ?? 0} />
-                                        <Stat label="导入分录" value={importResult.importedEntries ?? 0} />
-                                        <Stat label="新建科目" value={importResult.createdAccounts ?? 0} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-1">
-                                        <Stat label="覆盖凭证" value={importResult.overwrittenVouchers ?? 0} muted />
-                                        <Stat label="跳过凭证" value={importResult.skippedVouchers ?? 0} muted />
-                                    </div>
+                            <div className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                                <h3 className="text-[14px] font-semibold text-slate-800">导入结果</h3>
+                                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                                    <Tile label="解析行数" value={importResult.totalRows ?? 0} tone="blue" icon={FileSpreadsheet} />
+                                    <Tile label="导入凭证" value={importResult.importedVouchers ?? 0} tone="green" icon={CheckCircle2} />
+                                    <Tile label="导入分录" value={importResult.importedEntries ?? 0} tone="purple" icon={FileText} />
+                                    <Tile label="新建科目" value={importResult.createdAccounts ?? 0} tone="amber" icon={Plus} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Tile label="覆盖凭证" value={importResult.overwrittenVouchers ?? 0} tone="gray" icon={Undo2} />
+                                    <Tile label="跳过凭证" value={importResult.skippedVouchers ?? 0} tone="gray" icon={ChevronRight} />
+                                </div>
 
-                                    {importResult.warnings && importResult.warnings.length > 0 && (
-                                        <div className="flex flex-col gap-2">
-                                            <span className="text-muted-foreground">
-                                                告警（{importResult.warnings.length}）
-                                            </span>
-                                            <ul className="max-h-64 overflow-auto rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
-                                                {importResult.warnings.map((w, i) => (
-                                                    <li key={i} className="py-0.5">
-                                                        · {w}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
+                                {importResult.warnings && importResult.warnings.length > 0 && (
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-[12.5px] text-slate-400">
+                                            告警（{importResult.warnings.length}）
+                                        </span>
+                                        <ul className={cn(SOFT_PANEL, "max-h-64 overflow-auto p-3 text-[12.5px] text-slate-500")}>
+                                            {importResult.warnings.map((w, i) => (
+                                                <li key={i} className="py-0.5">
+                                                    · {w}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </SheetContent>
