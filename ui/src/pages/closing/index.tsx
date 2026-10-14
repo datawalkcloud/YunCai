@@ -26,6 +26,7 @@ import {
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { CARD_BTN_PRIMARY, PAGE_BTN_GHOST } from "@/components/page/styles"
 import { Alert, AlertTitle } from "@/components/ui/alert"
@@ -79,6 +80,7 @@ function periodKey(text?: string | null): number {
 export default function ClosingPage() {
     const { token } = useAuth()
     const accountSetId = useCurrentAccountSetId() ?? ""
+    const { confirm, confirmDialog } = useConfirm()
 
     const [status, setStatus] = useState<ClosingStatusDto | null>(null)
     const [checks, setChecks] = useState<ClosingCheckResultDto | null>(null)
@@ -222,7 +224,7 @@ export default function ClosingPage() {
     /** 结账：锁定期间内凭证。 */
     async function doClose() {
         if (!selected || busy) return
-        if (!window.confirm(`确定对 ${selected.year} 年 ${selected.month} 月执行结账吗？结账后该期间凭证将不可增删改。`)) {
+        if (!(await confirm(`确定对 ${selected.year} 年 ${selected.month} 月执行结账吗？结账后该期间凭证将不可增删改。`))) {
             return
         }
         setBusy("close")
@@ -251,9 +253,9 @@ export default function ClosingPage() {
         const carried = status?.carriedPeriod ?? "—"
         const closed = status?.closedPeriod ?? "未结账"
         if (
-            !window.confirm(
+            !(await confirm(
                 `确定批量结账吗？将从下一个待结期间连续结账至最新已结转期间（已结转至 ${carried}，当前已结账至 ${closed}）。`,
-            )
+            ))
         ) {
             return
         }
@@ -279,7 +281,7 @@ export default function ClosingPage() {
     /** 反结账：退回最近一个已结期间。 */
     async function doReopen() {
         if (busy || !status?.canReopen) return
-        if (!window.confirm(`确定反结账吗？将退回最近一个已结期间（${status?.closedPeriod ?? ""}），该期间凭证恢复可修改。`)) {
+        if (!(await confirm(`确定反结账吗？将退回最近一个已结期间（${status?.closedPeriod ?? ""}），该期间凭证恢复可修改。`))) {
             return
         }
         setBusy("reopen")
@@ -302,7 +304,7 @@ export default function ClosingPage() {
     async function doCancelCarry() {
         if (busy || !status?.canCancelCarry || !status.carriedPeriod) return
         const [year, month] = status.carriedPeriod.split("-").map(Number)
-        if (!window.confirm(`确定撤销 ${status.carriedPeriod} 的结转损益吗？系统生成的结转凭证将被删除，结转进度退回。`)) {
+        if (!(await confirm(`确定撤销 ${status.carriedPeriod} 的结转损益吗？系统生成的结转凭证将被删除，结转进度退回。`))) {
             return
         }
         setBusy("cancel")
@@ -733,6 +735,8 @@ export default function ClosingPage() {
                     if (!o) setPrintVoucherId(null)
                 }}
             />
+
+            {confirmDialog}
         </div>
     )
 }

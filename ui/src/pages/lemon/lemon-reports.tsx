@@ -3,26 +3,49 @@
  * 利润表季报、现金流量表（月/季/标准）、部门/项目利润表、
  * 数据透视表（自定义报表）、费用明细表、所有者权益变动表、纳税统计表、财务概要信息。
  * 资产负债表与利润表（月报）与既有实页重叠，复刻版已下线（见 router）。
+ *
+ * 期间口径：各页期间初始跟随账套当前工作期间（useDefaultAccountingPeriod），
+ * 步进器为真实控件——onPrev/onNext 切换期间并携带 year/month（季报为 year/quarter、
+ * 权益变动表为 year）重新请求后端；表头显示的期间恒等于实际请求的期间。
+ * 报表与账簿只统计已过账凭证。
  */
-import { Fragment, useCallback, useEffect, useState } from "react";
-import { CalendarDays, CircleCheck, Info } from "lucide-react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+    BarChart3,
+    Briefcase,
+    CircleCheck,
+    Info,
+    Landmark,
+    LayoutGrid,
+    LineChart,
+    PieChart,
+    Scale,
+    TrendingUp,
+    Users,
+} from "lucide-react";
 
 import {
     Btn,
     CheckBox,
+    Dialog,
     EmptyTip,
     FakeSelect,
     Page,
     Pager,
     PeriodStepper,
     RefreshIcon,
+    Select,
     Table,
+    TextInput,
     Toast,
     ToolRow,
+    WipBtn,
 } from "./components/ui";
 import type { Col, Row } from "./components/ui";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
+import { shiftPeriod, useDefaultAccountingPeriod } from "@/accountSets/useCurrentAccountSet";
+import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import { downloadReportExport } from "@/lib/report-download";
 import {
@@ -32,22 +55,105 @@ import {
     type CashFlowQuarterDto,
     type CustomReportDto,
     type CustomReportRenderDto,
-    type DepartmentIncomeDto,
-    type EquityChangeDto,
     type EquityChangeRowDto,
-    type ExpenseDetailDto,
-    type FinancialSummaryDto,
     type FinancialSummaryRowDto,
-    type IncomeStatementQuarterDto,
-    type ProjectIncomeDto,
-    type TaxStatisticsDto,
 } from "@/apis-gen";
 
 /* ---------- 共用 ---------- */
 
-/** 报表工具行：左期间步进器、右按钮组。 */
-function ReportTool({ text, right }: { text: string; right: React.ReactNode }) {
-    return <ToolRow left={<PeriodStepper text={text} />} right={right} />;
+/** 报表页期间状态：初始跟随账套当前期间，步进后覆盖；stepMonths 为步进月数（月报 1 / 季报 3 / 年度 12）。 */
+function useReportPeriod(stepMonths: number) {
+    const base = useDefaultAccountingPeriod();
+    const [override, setOverride] = useState<AccountingPeriod | null>(null);
+    const period = override ?? base;
+    const shift = useCallback(
+        (dir: number) => setOverride(shiftPeriod(period, dir * stepMonths)),
+        [period, stepMonths],
+    );
+    return { period, onPrev: () => shift(-1), onNext: () => shift(1) };
+}
+
+/** 月度展示文案，如「2026年10月」。 */
+const monthText = (p: AccountingPeriod) => `${p.year}年${p.month}月`;
+
+/** 期间所属季度（1-4）。 */
+const quarterOf = (p: AccountingPeriod) => Math.ceil(p.month / 3);
+
+/** 季度展示文案，如「2026年第4季度」。 */
+const quarterText = (p: AccountingPeriod) => `${p.year}年第${quarterOf(p)}季度`;
+
+/** 报表取数：随期间 / 账套 / 手动刷新重新请求，暴露 data、loading、error、reload。 */
+function useReportData<T>(
+    period: AccountingPeriod,
+    errorText: string,
+    load: (api: ReportsApi, accountSetId: string) => Promise<T>,
+) {
+    const { token } = useAuth();
+    const accountSetId = useCurrentAccountSetId() ?? "";
+    const [data, setData] = useState<T | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [tick, setTick] = useState(0);
+    // 取数闭包每渲染都新建，用最新引用读取，避免把 load 放进依赖数组造成反复请求。
+    const loadRef = useRef<{ run: typeof load; errorText: string }>({ run: load, errorText });
+    useEffect(() => {
+        loadRef.current = { run: load, errorText };
+    });
+
+    const reload = useCallback(() => setTick((t) => t + 1), []);
+    useEffect(() => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        let alive = true;
+        setLoading(true);
+        setError(null);
+        loadRef.current.run(new ReportsApi(apiConfig(token)), accountSetId)
+            .then((d) => {
+                if (alive) {
+                    setData(d);
+                }
+            })
+            .catch(async (e) => {
+                if (alive) {
+                    setError(await apiErrorMessage(e, loadRef.current.errorText));
+                }
+            })
+            .finally(() => {
+                if (alive) {
+                    setLoading(false);
+                }
+            });
+        return () => {
+            alive = false;
+        };
+    }, [token, accountSetId, period.period, tick]);
+    return { data, loading, error, reload };
+}
+
+/** 报表工具行：左期间步进器（真实可切换）、右按钮组。 */
+function ReportTool({
+    text,
+    onPrev,
+    onNext,
+    right,
+}: {
+    text: string;
+    onPrev: () => void;
+    onNext: () => void;
+    right: React.ReactNode;
+}) {
+    return <ToolRow left={<PeriodStepper text={text} onPrev={onPrev} onNext={onNext} />} right={right} />;
+}
+
+/** 顶部加载中文案。 */
+function LoadTip({ text = "加载中…" }: { text?: string }) {
+    return <div className="px-4 pb-2 text-[13px] text-slate-400">{text}</div>;
+}
+
+/** 错误提示行（加载中与失败均可见，不再吞错）。 */
+function ErrorTip({ text }: { text: string }) {
+    return <div className="px-4 pb-2 text-[13px] text-[#ef4444]">{text}</div>;
 }
 
 /** 金额格式化：千分位 + 两位小数；空值返回空串。 */
@@ -70,7 +176,7 @@ function ratioPct(a: number | null | undefined, b: number | null | undefined): s
     return `${((a / b) * 100).toFixed(2)}%`;
 }
 
-/** 行项目构造器：indent 缩进、check 绿勾、neg 红字由列渲染处理。 */
+/** 行项目构造器：indent 缩进、check 成功绿勾（#10b981）、neg 负数红字由列渲染处理。 */
 type StmtRow = {
     item: React.ReactNode;
     seq: string;
@@ -85,7 +191,7 @@ function item(label: string, seq: string, ytd = "", cur = "", opts: { check?: bo
     return {
         item: (
             <span className={opts.indent ? "pl-6" : ""}>
-                {opts.check && <CircleCheck className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-[#44b449]" />}
+                {opts.check && <CircleCheck className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-[#10b981]" />}
                 {label}
             </span>
         ),
@@ -95,9 +201,17 @@ function item(label: string, seq: string, ytd = "", cur = "", opts: { check?: bo
     };
 }
 
+/** 行次列：浅灰弱化数字，避免与金额抢视线。 */
+const SEQ_COL: Col = {
+    key: "seq",
+    title: "行次",
+    width: "70px",
+    render: (row) => <span className="text-slate-400">{String(row.seq ?? "")}</span>,
+};
+
 const INCOME_COLS = (curTitle: string, withMark = true): Col[] => [
     { key: "item", title: "项目" },
-    { key: "seq", title: "行次", width: "70px" },
+    SEQ_COL,
     ...(withMark ? [{ key: "mark", title: "≈", width: "65px" } as Col] : []),
     { key: "ytd", title: "本年累计金额", align: "right", width: "160px", neg: true },
     { key: "cur", title: curTitle, align: "right", width: "140px", neg: true },
@@ -179,46 +293,38 @@ function buildIncomeRows(lines?: Array<{ line?: number; current?: number; yearTo
 }
 
 export function LemonIncomeQuarter() {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const [data, setData] = useState<IncomeStatementQuarterDto | null>(null);
+    const { period, onPrev, onNext } = useReportPeriod(3);
     const exp = useReportExport();
-    const [error, setError] = useState<string | null>(null);
-    const [tick, setTick] = useState(0);
-
-    const reload = useCallback(() => setTick((t) => t + 1), []);
-    useEffect(() => {
-        if (!token || !accountSetId) {
-            return;
-        }
-        let alive = true;
-        setError(null);
-        new ReportsApi(apiConfig(token))
-            .accountsetsAccountSetIdReportsIncomeQuarterGet({ accountSetId })
-            .then((d) => alive && setData(d))
-            .catch(async (e) => alive && setError(await apiErrorMessage(e, "利润表季报加载失败")))
-            .finally(() => alive && undefined);
-        return () => {
-            alive = false;
-        };
-    }, [token, accountSetId, tick]);
+    const { data, loading, error, reload } = useReportData(
+        period,
+        "利润表季报加载失败",
+        (api, accountSetId) =>
+            api.accountsetsAccountSetIdReportsIncomeQuarterGet({
+                accountSetId,
+                year: period.year,
+                quarter: quarterOf(period),
+            }),
+    );
 
     return (
-        <Page>
+        <Page title="利润表季报" subtitle="按季度汇总收入、费用与利润，仅统计已过账凭证。" icon={BarChart3}>
             <ReportTool
-                text={data?.periodText ?? "加载中…"}
+                text={quarterText(period)}
+                onPrev={onPrev}
+                onNext={onNext}
                 right={
                     <>
                         <CheckBox label="显示本年所有季度" />
                         <CheckBox label="显示上年累计金额" />
                         <Btn dropdown onClick={() => window.print()}>打印</Btn>
-                        <Btn dropdown onClick={() => void exp.run("income-quarter", { year: data?.year, quarter: data?.quarter })}>导出</Btn>
-                        <Btn>微信分享</Btn>
+                        <Btn dropdown onClick={() => void exp.run("income-quarter", { year: period.year, quarter: quarterOf(period) })}>导出</Btn>
+                        <WipBtn>微信分享</WipBtn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
             />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#f5222d]">{error}</div>}
+            {loading && <LoadTip />}
+            {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
                 <Table cols={INCOME_COLS("本季金额", false)} rows={buildIncomeRows(data?.lines)} zebra={false} />
             </div>
@@ -241,33 +347,28 @@ function CashFlowPage({
 }: {
     variant: "month" | "quarter" | "standard";
 }) {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const [monthData, setMonthData] = useState<CashFlowDto | null>(null);
+    const { period, onPrev, onNext } = useReportPeriod(variant === "quarter" ? 3 : 1);
     const exp = useReportExport();
-    const [quarterData, setQuarterData] = useState<CashFlowQuarterDto | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [tick, setTick] = useState(0);
+    // 月报与标准表请求同一端点 /reports/cash-flow（后端未提供独立标准口径），季报走 /reports/cash-flow-quarter。
+    const { data, loading, error, reload } = useReportData<CashFlowDto | CashFlowQuarterDto>(
+        period,
+        "现金流量表加载失败",
+        variant === "quarter"
+            ? (api, accountSetId) =>
+                  api.accountsetsAccountSetIdReportsCashFlowQuarterGet({
+                      accountSetId,
+                      year: period.year,
+                      quarter: quarterOf(period),
+                  })
+            : (api, accountSetId) =>
+                  api.accountsetsAccountSetIdReportsCashFlowGet({
+                      accountSetId,
+                      year: period.year,
+                      month: period.month,
+                  }),
+    );
 
-    const reload = useCallback(() => setTick((t) => t + 1), []);
-    useEffect(() => {
-        if (!token || !accountSetId) {
-            return;
-        }
-        let alive = true;
-        setError(null);
-        const api = new ReportsApi(apiConfig(token));
-        const load = variant === "quarter"
-            ? api.accountsetsAccountSetIdReportsCashFlowQuarterGet({ accountSetId }).then((d) => alive && setQuarterData(d))
-            : api.accountsetsAccountSetIdReportsCashFlowGet({ accountSetId }).then((d) => alive && setMonthData(d));
-        load.catch(async (e) => alive && setError(await apiErrorMessage(e, "现金流量表加载失败")));
-        return () => {
-            alive = false;
-        };
-    }, [token, accountSetId, tick, variant]);
-
-    const periodText = variant === "quarter" ? quarterData?.periodText : monthData?.periodText;
-    const lines = (variant === "quarter" ? quarterData?.lines : monthData?.lines) ?? [];
+    const lines = data?.lines ?? [];
     const byLine = new Map<number, { current: number; yearToDate: number }>();
     for (const l of lines) {
         if (l?.line != null) {
@@ -308,25 +409,29 @@ function CashFlowPage({
 
     const cols: Col[] = [
         { key: "item", title: "项目" },
-        { key: "seq", title: "行次", width: "70px" },
+        SEQ_COL,
         { key: "ytd", title: "本年累计金额", align: "right", width: "160px", neg: true },
         { key: "cur", title: variant === "quarter" ? "本季金额" : "本期金额", align: "right", width: "140px", neg: true },
     ];
     return (
-        <Page>
+        <Page
+            title={variant === "standard" ? "标准现金流量表" : variant === "quarter" ? "现金流量表季报" : "现金流量表"}
+            subtitle="按直接法简化工作底稿归集现金收付，仅统计已过账凭证。"
+            icon={LineChart}
+        >
             <ToolRow
                 left={
                     <>
                         {variant === "standard" && <FakeSelect text="月报" className="w-[90px]" />}
-                        <PeriodStepper text={periodText ?? "加载中…"} />
+                        <PeriodStepper text={variant === "quarter" ? quarterText(period) : monthText(period)} onPrev={onPrev} onNext={onNext} />
                         {variant === "month" && <FakeSelect text="公式法" className="w-[100px]" />}
                         {variant === "month" && (
-                            <span className="flex items-center gap-1 text-[13px] text-[#3385ff]">
+                            <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
                                 <Info className="h-3.5 w-3.5" /> 帮助
                             </span>
                         )}
                         {variant === "standard" && (
-                            <span className="flex items-center gap-1 text-[13px] text-[#3385ff]">
+                            <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
                                 <Info className="h-3.5 w-3.5" /> 报表说明
                             </span>
                         )}
@@ -335,27 +440,48 @@ function CashFlowPage({
                 right={
                     <>
                         <CheckBox label="显示上年累计金额" />
-                        {variant !== "quarter" && <Btn>期初</Btn>}
-                        {variant === "month" && <Btn>报表底稿</Btn>}
-                        {variant === "standard" && <Btn>现金流量调整</Btn>}
+                        {variant !== "quarter" && <WipBtn>期初</WipBtn>}
+                        {variant === "month" && <WipBtn>报表底稿</WipBtn>}
+                        {variant === "standard" && <WipBtn>现金流量调整</WipBtn>}
                         {variant === "standard" ? (
                             <>
-                                <Btn dropdown onClick={() => void exp.run("cash-flow", { year: monthData?.year, month: monthData?.month })}>导出</Btn>
+                                <Btn dropdown onClick={() => void exp.run("cash-flow", { year: period.year, month: period.month })}>导出</Btn>
                                 <Btn dropdown onClick={() => window.print()}>打印</Btn>
-                                <Btn>分享</Btn>
+                                <WipBtn>分享</WipBtn>
                             </>
                         ) : (
                             <>
                                 <Btn dropdown onClick={() => window.print()}>打印</Btn>
-                                <Btn dropdown onClick={() => void exp.run(variant === "quarter" ? "cash-flow-quarter" : "cash-flow", variant === "quarter" ? {} : { year: monthData?.year, month: monthData?.month })}>导出</Btn>
-                                <Btn>微信分享</Btn>
+                                <Btn
+                                    dropdown
+                                    onClick={() =>
+                                        void exp.run(
+                                            variant === "quarter" ? "cash-flow-quarter" : "cash-flow",
+                                            variant === "quarter"
+                                                ? { year: period.year, quarter: quarterOf(period) }
+                                                : { year: period.year, month: period.month },
+                                        )
+                                    }
+                                >
+                                    导出
+                                </Btn>
+                                <WipBtn>微信分享</WipBtn>
                             </>
                         )}
                         <ReloadButton onClick={reload} />
                     </>
                 }
             />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#f5222d]">{error}</div>}
+            {/* 口径说明：月报与标准表同源，差异仅在展示行次，如实标注来源 */}
+            {variant !== "quarter" && (
+                <div className="px-4 pb-2 text-[12px] leading-5 text-slate-400">
+                    {variant === "standard"
+                        ? "口径说明：本表与「现金流量表」读取同一后端接口 /reports/cash-flow（直接法简化工作底稿，仅统计已过账凭证），差异仅在展示行次——标准表按企业会计准则主表排列，另列「偿还借款利息」「分配利润」两行明细；后端暂未提供独立的标准口径底稿。"
+                        : "口径说明：本表取后端 /reports/cash-flow 直接法简化工作底稿数据（仅统计已过账凭证），按小企业报表行次展示；「公式法」「报表底稿」为界面复刻，建设中。"}
+                </div>
+            )}
+            {loading && <LoadTip />}
+            {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
                 <Table cols={cols} rows={rows} zebra={false} />
             </div>
@@ -377,54 +503,43 @@ export function LemonStandardCashFlow() {
 /* ---------- 部门利润表 ---------- */
 
 export function LemonDepartmentIncome() {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const [data, setData] = useState<DepartmentIncomeDto | null>(null);
+    const { period, onPrev, onNext } = useReportPeriod(1);
     const exp = useReportExport();
-    const [error, setError] = useState<string | null>(null);
-    const [tick, setTick] = useState(0);
+    const { data, loading, error, reload } = useReportData(
+        period,
+        "部门利润表加载失败",
+        (api, accountSetId) =>
+            api.accountsetsAccountSetIdReportsDepartmentIncomeGet({
+                accountSetId,
+                year: period.year,
+                month: period.month,
+            }),
+    );
 
-    const reload = useCallback(() => setTick((t) => t + 1), []);
-    useEffect(() => {
-        if (!token || !accountSetId) {
-            return;
-        }
-        let alive = true;
-        setError(null);
-        new ReportsApi(apiConfig(token))
-            .accountsetsAccountSetIdReportsDepartmentIncomeGet({ accountSetId })
-            .then((d) => alive && setData(d))
-            .catch(async (e) => alive && setError(await apiErrorMessage(e, "部门利润表加载失败")));
-        return () => {
-            alive = false;
-        };
-    }, [token, accountSetId, tick]);
-
-    const th = "border-b border-[#e8e8e8] bg-[#f0f7f0] px-3 py-2 text-[13px] font-normal text-[#333]";
-    const td = "border-b border-[#f0f0f0] px-3 py-2.5 text-[13px] text-[#333]";
+    const th = "border-b border-slate-200 bg-muted px-3 py-2 text-[13px] font-medium text-slate-500";
+    const td = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-700";
     const departments = data?.departments ?? [];
     const rows = data?.rows ?? [];
     return (
-        <Page>
+        <Page title="部门利润表" subtitle="按部门辅助核算归集收入与费用，仅统计已过账凭证。" icon={Users}>
             <ToolRow
                 left={
                     <>
-                        <span className="inline-flex h-8 items-center gap-1.5 rounded-[2px] bg-[#44b449] px-2.5 text-sm text-white">
-                            {data?.periodText ?? "加载中…"} <CalendarDays className="h-3.5 w-3.5" />
-                        </span>
-                        <span className="flex items-center gap-1 text-[13px] text-[#3385ff]">
+                        <PeriodStepper text={monthText(period)} onPrev={onPrev} onNext={onNext} />
+                        <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
                             <Info className="h-3.5 w-3.5" /> 帮助
                         </span>
                     </>
                 }
                 right={
                     <>
-                        <Btn dropdown onClick={() => void exp.run("department-income", { year: data?.year, month: data?.month })}>导出</Btn>
+                        <Btn dropdown onClick={() => void exp.run("department-income", { year: period.year, month: period.month })}>导出</Btn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
             />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#f5222d]">{error}</div>}
+            {loading && <LoadTip />}
+            {error && <ErrorTip text={error} />}
             <div className="flex-1 overflow-x-auto px-4">
                 <table className="border-collapse text-sm whitespace-nowrap">
                     <thead>
@@ -432,7 +547,7 @@ export function LemonDepartmentIncome() {
                             <th rowSpan={2} className={`${th} text-left`}>
                                 项目
                             </th>
-                            <th rowSpan={2} className={`${th} w-[60px]`}>
+                            <th rowSpan={2} className={`${th} w-[60px] text-center`}>
                                 行次
                             </th>
                             {departments.map((d) => (
@@ -451,9 +566,9 @@ export function LemonDepartmentIncome() {
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.length === 0 && !error && (
+                        {rows.length === 0 && !loading && !error && (
                             <tr>
-                                <td colSpan={2 + departments.length * 2} className="py-10 text-center text-[13px] text-[#999]">
+                                <td colSpan={2 + departments.length * 2} className="py-10 text-center text-[13px] text-slate-400">
                                     暂无数据
                                 </td>
                             </tr>
@@ -461,11 +576,11 @@ export function LemonDepartmentIncome() {
                         {rows.map((r) => (
                             <tr key={r.line}>
                                 <td className={td}>{r.item}</td>
-                                <td className={td}>{r.line}</td>
+                                <td className={`${td} text-center text-slate-400`}>{r.line}</td>
                                 {departments.map((d, i) => (
                                     <Fragment key={d.id}>
-                                        <td className={`${td} text-right`}>{nf(r.amounts?.[i]?.current)}</td>
-                                        <td className={`${td} text-right`}>{nf(r.amounts?.[i]?.yearToDate)}</td>
+                                        <td className={`${td} text-right tabular-nums`}>{nf(r.amounts?.[i]?.current)}</td>
+                                        <td className={`${td} text-right tabular-nums`}>{nf(r.amounts?.[i]?.yearToDate)}</td>
                                     </Fragment>
                                 ))}
                             </tr>
@@ -482,29 +597,19 @@ export function LemonDepartmentIncome() {
 /* ---------- 项目利润表 ---------- */
 
 export function LemonProjectIncome() {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const [data, setData] = useState<ProjectIncomeDto | null>(null);
+    const { period, onPrev, onNext } = useReportPeriod(1);
     const exp = useReportExport();
-    const [error, setError] = useState<string | null>(null);
-    const [tick, setTick] = useState(0);
+    const { data, loading, error, reload } = useReportData(
+        period,
+        "项目利润表加载失败",
+        (api, accountSetId) =>
+            api.accountsetsAccountSetIdReportsProjectIncomeGet({
+                accountSetId,
+                year: period.year,
+                month: period.month,
+            }),
+    );
     const [tipClosed, setTipClosed] = useState(false);
-
-    const reload = useCallback(() => setTick((t) => t + 1), []);
-    useEffect(() => {
-        if (!token || !accountSetId) {
-            return;
-        }
-        let alive = true;
-        setError(null);
-        new ReportsApi(apiConfig(token))
-            .accountsetsAccountSetIdReportsProjectIncomeGet({ accountSetId })
-            .then((d) => alive && setData(d))
-            .catch(async (e) => alive && setError(await apiErrorMessage(e, "项目利润表加载失败")));
-        return () => {
-            alive = false;
-        };
-    }, [token, accountSetId, tick]);
 
     const rows = (data?.rows ?? []).map((r) => ({
         item: r.name ?? "",
@@ -514,23 +619,26 @@ export function LemonProjectIncome() {
     }));
     const cols: Col[] = [
         { key: "item", title: "项目" },
-        { key: "seq", title: "行次", width: "70px" },
+        SEQ_COL,
         { key: "cur", title: "本期金额", align: "right", width: "160px", neg: true },
         { key: "ytd", title: "本年累计金额", align: "right", width: "160px", neg: true },
     ];
-    const showTip = rows.length === 0 && !error && !tipClosed;
+    const showTip = rows.length === 0 && !loading && !error && !tipClosed;
     return (
-        <Page>
+        <Page title="项目利润表" subtitle="按项目辅助核算归集收入与费用，仅统计已过账凭证。" icon={Briefcase}>
             <ReportTool
-                text={data?.periodText ?? "加载中…"}
+                text={monthText(period)}
+                onPrev={onPrev}
+                onNext={onNext}
                 right={
                     <>
-                        <Btn dropdown onClick={() => void exp.run("project-income", { year: data?.year, month: data?.month })}>导出</Btn>
+                        <Btn dropdown onClick={() => void exp.run("project-income", { year: period.year, month: period.month })}>导出</Btn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
             />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#f5222d]">{error}</div>}
+            {loading && <LoadTip />}
+            {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
                 <Table cols={cols} rows={rows} zebra={false} empty={<EmptyTip />} />
             </div>
@@ -538,24 +646,17 @@ export function LemonProjectIncome() {
             {exp.toast && <Toast text={exp.toast} onClose={exp.clearToast} />}
             {/* 提示弹窗：无项目档案时提示 */}
             {showTip && (
-                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45">
-                    <div className="w-[420px] rounded-md bg-white shadow-xl">
-                        <div className="flex items-center justify-between px-5 pt-4 text-[15px] font-bold text-[#333]">
-                            提示
-                            <span className="cursor-pointer text-[#999]" onClick={() => setTipClosed(true)}>
-                                ×
-                            </span>
-                        </div>
-                        <div className="px-5 py-8 text-center text-sm text-[#333]">
-                            暂无项目信息，请先设置项目！
-                        </div>
-                        <div className="flex justify-center pb-5">
-                            <Btn variant="primary" className="w-[96px]" onClick={() => setTipClosed(true)}>
-                                确定
-                            </Btn>
-                        </div>
-                    </div>
-                </div>
+                <Dialog
+                    title="提示"
+                    onClose={() => setTipClosed(true)}
+                    footer={
+                        <Btn variant="primary" className="w-[96px]" onClick={() => setTipClosed(true)}>
+                            确定
+                        </Btn>
+                    }
+                >
+                    <div className="py-6 text-center">暂无项目信息，请先设置项目！</div>
+                </Dialog>
             )}
         </Page>
     );
@@ -563,11 +664,10 @@ export function LemonProjectIncome() {
 
 /* ---------- 数据透视表（自定义报表） ---------- */
 
-const inputCls = "h-8 w-[220px] rounded-[2px] border border-[#d9d9d9] px-2.5 text-sm text-[#333] outline-none focus:border-[#44b449]";
-
 export function LemonPivot() {
     const { token } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
+    const defaultPeriod = useDefaultAccountingPeriod();
     const [reports, setReports] = useState<CustomReportDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -575,7 +675,11 @@ export function LemonPivot() {
     const [guideOpen, setGuideOpen] = useState(true);
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState({ code: "", name: "", valueType: 1 });
+    // 渲染目标（报表 id + 年度）与渲染结果；年度步进会重新请求 /render（后端支持 year 参数）。
+    const [renderTarget, setRenderTarget] = useState<{ id: string; year: number } | null>(null);
     const [rendered, setRendered] = useState<CustomReportRenderDto | null>(null);
+    const [renderLoading, setRenderLoading] = useState(false);
+    const [renderError, setRenderError] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
 
     const reload = useCallback(async () => {
@@ -596,11 +700,48 @@ export function LemonPivot() {
         void reload();
     }, [reload]);
 
+    useEffect(() => {
+        if (!renderTarget || !token || !accountSetId) {
+            return;
+        }
+        let alive = true;
+        setRenderLoading(true);
+        setRenderError(null);
+        new CustomReportsApi(apiConfig(token))
+            .accountsetsAccountSetIdCustomReportsIdRenderGet({ accountSetId, id: renderTarget.id, year: renderTarget.year })
+            .then((d) => {
+                if (alive) {
+                    setRendered(d);
+                }
+            })
+            .catch(async (e) => {
+                if (alive) {
+                    setRenderError(await apiErrorMessage(e, "渲染失败"));
+                }
+            })
+            .finally(() => {
+                if (alive) {
+                    setRenderLoading(false);
+                }
+            });
+        return () => {
+            alive = false;
+        };
+    }, [renderTarget, token, accountSetId]);
+
+    if (!token || !accountSetId) {
+        return (
+            <Page title="数据透视表" subtitle="自定义报表：按年度查看科目发生额或余额。" icon={LayoutGrid}>
+                <ErrorTip text="缺少登录态或账套上下文，无法加载数据透视表。" />
+            </Page>
+        );
+    }
+
     const create = async () => {
         try {
-            await new CustomReportsApi(apiConfig(token!)).accountsetsAccountSetIdCustomReportsPost({
+            await new CustomReportsApi(apiConfig(token)).accountsetsAccountSetIdCustomReportsPost({
                 accountSetId,
-                saveCustomReportRequest: { code:form.code, name: form.name, valueType: form.valueType },
+                saveCustomReportRequest: { code: form.code, name: form.name, valueType: form.valueType },
             });
             setCreating(false);
             setForm({ code: "", name: "", valueType: 1 });
@@ -612,7 +753,7 @@ export function LemonPivot() {
     };
 
     const del = async (ids: string[]) => {
-        const api = new CustomReportsApi(apiConfig(token!));
+        const api = new CustomReportsApi(apiConfig(token));
         const results = await Promise.allSettled(ids.map((id) => api.accountsetsAccountSetIdCustomReportsIdDelete({ accountSetId, id })));
         const failed = results.filter((r) => r.status === "rejected").length;
         setChecked(new Set());
@@ -622,9 +763,13 @@ export function LemonPivot() {
 
     const copy = async (r: CustomReportDto) => {
         try {
-            await new CustomReportsApi(apiConfig(token!)).accountsetsAccountSetIdCustomReportsPost({
+            await new CustomReportsApi(apiConfig(token)).accountsetsAccountSetIdCustomReportsPost({
                 accountSetId,
-                saveCustomReportRequest: { code:`${r.code ?? "REPORT"}-C${reports.length + 1}`.slice(0, 50), name: `${r.name ?? "报表"}（副本）`, valueType: r.valueType ?? 1 },
+                saveCustomReportRequest: {
+                    code: `${r.code ?? "REPORT"}-C${reports.length + 1}`.slice(0, 50),
+                    name: `${r.name ?? "报表"}（副本）`,
+                    valueType: r.valueType ?? 1,
+                },
             });
             setToast("复制成功");
             await reload();
@@ -633,12 +778,9 @@ export function LemonPivot() {
         }
     };
 
-    const view = async (r: CustomReportDto) => {
-        try {
-            setRendered(await new CustomReportsApi(apiConfig(token!)).accountsetsAccountSetIdCustomReportsIdRenderGet({ accountSetId, id: r.id ?? "" }));
-        } catch (e) {
-            setToast(await apiErrorMessage(e, "渲染失败"));
-        }
+    const view = (r: CustomReportDto) => {
+        setRendered(null);
+        setRenderTarget({ id: r.id ?? "", year: defaultPeriod.year });
     };
 
     const fmtTime = (v: Date | string | null | undefined): string => (v ? new Date(v).toLocaleString("zh-CN", { hour12: false }) : "");
@@ -677,8 +819,16 @@ export function LemonPivot() {
             title: "操作",
             width: "100px",
             render: (row: Row) => (
-                <span className="flex gap-2 text-[13px] text-[#3385ff]">
-                    <span className="cursor-pointer hover:underline" onClick={() => void view(reports.find((r) => r.id === row.id)!)}>
+                <span className="flex gap-2 text-[13px] text-[#2f6bff]">
+                    <span
+                        className="cursor-pointer hover:underline"
+                        onClick={() => {
+                            const r = reports.find((x) => x.id === row.id);
+                            if (r) {
+                                view(r);
+                            }
+                        }}
+                    >
                         查看
                     </span>
                     <span className="cursor-pointer hover:underline" onClick={() => void del([String(row.id)])}>
@@ -688,21 +838,36 @@ export function LemonPivot() {
             ),
         },
     ];
+    const renderName = reports.find((r) => r.id === renderTarget?.id)?.name ?? rendered?.name ?? "";
     return (
-        <Page>
+        <Page title="数据透视表" subtitle="自定义报表：将科目、辅助核算等字段按取值口径逐月透视，年度步进实时取数。" icon={LayoutGrid}>
             <ToolRow
                 left={
                     <>
                         <Btn variant="primary" onClick={() => setCreating(true)}>
                             新增
                         </Btn>
-                        <Btn onClick={() => checked.size === 1 && void copy(reports.find((r) => checked.has(r.id ?? ""))!)}>复制</Btn>
+                        <Btn
+                            onClick={() => {
+                                if (checked.size !== 1) {
+                                    setToast("请先勾选恰好一个报表再复制");
+                                    return;
+                                }
+                                const r = reports.find((x) => x.id === [...checked][0]);
+                                if (r) {
+                                    void copy(r);
+                                }
+                            }}
+                        >
+                            复制
+                        </Btn>
                         <Btn onClick={() => checked.size > 0 && void del([...checked])}>批量删除</Btn>
                     </>
                 }
                 right={<ReloadButton onClick={() => void reload()} />}
             />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#f5222d]">{error}</div>}
+            {loading && <LoadTip />}
+            {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
                 <Table
                     cols={cols}
@@ -716,127 +881,142 @@ export function LemonPivot() {
                         modifyTime: fmtTime(r.modifiedAt),
                     }))}
                     zebra={false}
-                    empty={loading ? <EmptyTip /> : <EmptyTip />}
+                    empty={<EmptyTip text={loading ? "加载中…" : "暂无数据"} />}
                 />
             </div>
             <Pager total={reports.length} count={reports.length} />
             {toast && <ToastBar text={toast} onClose={() => setToast(null)} />}
             {/* 引导弹窗：无报表时展示 */}
-            {reports.length === 0 && guideOpen && !error && (
-                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45">
-                    <div className="w-[640px] rounded-md bg-white p-6 shadow-xl">
-                        <div className="flex items-center justify-between text-[15px] font-bold text-[#333]">
-                            数据透视表
-                            <span className="cursor-pointer text-[#999]" onClick={() => setGuideOpen(false)}>
-                                ×
+            {reports.length === 0 && guideOpen && !loading && !error && (
+                <Dialog
+                    title="数据透视表"
+                    width={640}
+                    onClose={() => setGuideOpen(false)}
+                    footer={
+                        <Btn variant="primary" className="w-[110px]" onClick={() => setGuideOpen(false)}>
+                            去看看
+                        </Btn>
+                    }
+                >
+                    <div className="flex items-center gap-8">
+                        <div className="flex h-[160px] w-[240px] shrink-0 items-center justify-center rounded-lg bg-[#fafbfd] text-[13px] text-slate-400">
+                            插画
+                        </div>
+                        <div className="flex flex-col gap-3 leading-6 text-slate-500">
+                            <span>
+                                您可以通过数据透视表将会计科目、辅助核算类别、取值金额等字段通过拖拽方式，自定义会计区间来查看不同级别的明细数据；
+                            </span>
+                            <span>
+                                根据你自己的需求对报表数据进行自定义排列组合布局，生成属于您的专属数据报表
                             </span>
                         </div>
-                        <div className="mt-4 flex items-center gap-8">
-                            <div className="flex h-[160px] w-[240px] shrink-0 items-center justify-center rounded bg-[#fafafa] text-[13px] text-[#bbb]">
-                                插画
-                            </div>
-                            <div className="flex flex-col gap-3 text-[13px] leading-6 text-[#666]">
-                                <span>
-                                    您可以通过数据透视表将会计科目、辅助核算类别、取值金额等字段通过拖拽方式，自定义会计区间来查看不同级别的明细数据；
-                                </span>
-                                <span>
-                                    根据你自己的需求对报表数据进行自定义排列组合布局，生成属于您的专属数据报表
-                                </span>
-                            </div>
-                        </div>
-                        <div className="mt-6 flex justify-center gap-3">
-                            <Btn variant="primary" className="w-[110px]" onClick={() => setGuideOpen(false)}>
-                                去看看
-                            </Btn>
-                        </div>
                     </div>
-                </div>
+                </Dialog>
             )}
             {/* 新增弹窗 */}
             {creating && (
-                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45">
-                    <div className="w-[420px] rounded-md bg-white shadow-xl">
-                        <div className="flex items-center justify-between px-5 pt-4 text-[15px] font-bold text-[#333]">
-                            新增数据透视表
-                            <span className="cursor-pointer text-[#999]" onClick={() => setCreating(false)}>
-                                ×
-                            </span>
-                        </div>
-                        <div className="flex flex-col gap-4 px-5 py-6 text-[13px] text-[#333]">
-                            <label className="flex items-center gap-3">
-                                <span className="w-[70px] text-right">报表编码</span>
-                                <input className={inputCls} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="如 ZCZK2026" />
-                            </label>
-                            <label className="flex items-center gap-3">
-                                <span className="w-[70px] text-right">报表名称</span>
-                                <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="如 资产负债透视" />
-                            </label>
-                            <label className="flex items-center gap-3">
-                                <span className="w-[70px] text-right">取值口径</span>
-                                <select
-                                    className={inputCls}
-                                    value={form.valueType}
-                                    onChange={(e) => setForm({ ...form, valueType: Number(e.target.value) })}
-                                >
-                                    <option value={1}>期末余额</option>
-                                    <option value={2}>期间发生额</option>
-                                </select>
-                            </label>
-                        </div>
-                        <div className="flex justify-center gap-3 pb-5">
+                <Dialog
+                    title="新增数据透视表"
+                    onClose={() => setCreating(false)}
+                    footer={
+                        <>
                             <Btn variant="primary" className="w-[96px]" onClick={() => void create()}>
                                 保存
                             </Btn>
                             <Btn className="w-[96px]" onClick={() => setCreating(false)}>
                                 取消
                             </Btn>
-                        </div>
+                        </>
+                    }
+                >
+                    <div className="flex flex-col gap-4">
+                        <label className="flex items-center gap-3">
+                            <span className="w-[70px] text-right">报表编码</span>
+                            <TextInput
+                                className="w-[220px]"
+                                value={form.code}
+                                onChange={(v) => setForm({ ...form, code: v })}
+                                placeholder="如 ZCZK2026"
+                            />
+                        </label>
+                        <label className="flex items-center gap-3">
+                            <span className="w-[70px] text-right">报表名称</span>
+                            <TextInput
+                                className="w-[220px]"
+                                value={form.name}
+                                onChange={(v) => setForm({ ...form, name: v })}
+                                placeholder="如 资产负债透视"
+                            />
+                        </label>
+                        <label className="flex items-center gap-3">
+                            <span className="w-[70px] text-right">取值口径</span>
+                            <Select
+                                className="w-[220px]"
+                                value={String(form.valueType)}
+                                onChange={(v) => setForm({ ...form, valueType: Number(v) })}
+                                options={[
+                                    { value: "1", label: "期末余额" },
+                                    { value: "2", label: "期间发生额" },
+                                ]}
+                            />
+                        </label>
                     </div>
-                </div>
+                </Dialog>
             )}
-            {/* 渲染结果弹窗：科目 × 12 个月 */}
-            {rendered && (
-                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 p-6">
-                    <div className="max-h-[80vh] w-[980px] max-w-full overflow-auto rounded-md bg-white shadow-xl">
-                        <div className="sticky top-0 flex items-center justify-between border-b border-[#eee] bg-white px-5 py-3 text-[15px] font-bold text-[#333]">
-                            {`${rendered.name ?? ""}（${rendered.year ?? ""} 年 · ${rendered.valueType === 2 ? "期间发生额" : "期末余额"}）`}
-                            <span className="cursor-pointer text-[#999]" onClick={() => setRendered(null)}>
-                                ×
+            {/* 渲染结果弹窗：科目 × 12 个月，年度步进真实传给 /render */}
+            {renderTarget && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/30 p-6">
+                    <div className="max-h-[80vh] w-[980px] max-w-full overflow-auto rounded-2xl bg-white shadow-[0_16px_48px_rgba(16,24,40,0.2)]">
+                        <div className="sticky top-0 flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-5 py-3 text-[15px] font-semibold text-slate-800">
+                            <span className="truncate">
+                                {`${renderName}（${renderTarget.year} 年 · ${rendered?.valueType === 2 ? "期间发生额" : "期末余额"}）`}
+                            </span>
+                            <span className="flex shrink-0 items-center gap-3">
+                                <PeriodStepper
+                                    text={`${renderTarget.year}年`}
+                                    onPrev={() => setRenderTarget({ ...renderTarget, year: renderTarget.year - 1 })}
+                                    onNext={() => setRenderTarget({ ...renderTarget, year: renderTarget.year + 1 })}
+                                />
+                                <span className="cursor-pointer text-slate-400 hover:text-slate-600" onClick={() => setRenderTarget(null)}>
+                                    ×
+                                </span>
                             </span>
                         </div>
+                        {renderLoading && <LoadTip />}
+                        {renderError && <ErrorTip text={renderError} />}
                         <div className="p-4">
                             <table className="w-full border-collapse text-sm whitespace-nowrap">
                                 <thead>
                                     <tr>
-                                        <th className="border border-[#e8e8e8] bg-[#f0f7f0] px-2 py-1.5 text-[12px] font-normal">科目编码</th>
-                                        <th className="border border-[#e8e8e8] bg-[#f0f7f0] px-2 py-1.5 text-[12px] font-normal">科目名称</th>
+                                        <th className="border border-slate-200 bg-muted px-2 py-1.5 text-[12px] font-medium text-slate-500">科目编码</th>
+                                        <th className="border border-slate-200 bg-muted px-2 py-1.5 text-[12px] font-medium text-slate-500">科目名称</th>
                                         {Array.from({ length: 12 }, (_, m) => (
-                                            <th key={m} className="border border-[#e8e8e8] bg-[#f0f7f0] px-2 py-1.5 text-right text-[12px] font-normal">
+                                            <th key={m} className="border border-slate-200 bg-muted px-2 py-1.5 text-right text-[12px] font-medium text-slate-500">
                                                 {m + 1}月
                                             </th>
                                         ))}
-                                        <th className="border border-[#e8e8e8] bg-[#f0f7f0] px-2 py-1.5 text-right text-[12px] font-normal">合计</th>
+                                        <th className="border border-slate-200 bg-muted px-2 py-1.5 text-right text-[12px] font-medium text-slate-500">合计</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(rendered.rows ?? []).map((r) => (
+                                    {(rendered?.rows ?? []).map((r) => (
                                         <tr key={r.code}>
-                                            <td className="border border-[#f0f0f0] px-2 py-1.5 text-[12px] text-[#333]">{r.code}</td>
-                                            <td className="border border-[#f0f0f0] px-2 py-1.5 text-[12px] text-[#333]">{r.name}</td>
+                                            <td className="border border-slate-100 px-2 py-1.5 text-[12px] text-slate-700">{r.code}</td>
+                                            <td className="border border-slate-100 px-2 py-1.5 text-[12px] text-slate-700">{r.name}</td>
                                             {(r.months ?? []).map((v, m) => (
-                                                <td key={m} className={`border border-[#f0f0f0] px-2 py-1.5 text-right text-[12px] ${v < 0 ? "text-[#f5222d]" : "text-[#333]"}`}>
+                                                <td key={m} className={`border border-slate-100 px-2 py-1.5 text-right text-[12px] tabular-nums ${v < 0 ? "text-[#ef4444]" : "text-slate-700"}`}>
                                                     {nf(v)}
                                                 </td>
                                             ))}
-                                            <td className={`border border-[#f0f0f0] px-2 py-1.5 text-right text-[12px] font-medium ${(r.total ?? 0) < 0 ? "text-[#f5222d]" : "text-[#333]"}`}>
+                                            <td className={`border border-slate-100 px-2 py-1.5 text-right text-[12px] font-medium tabular-nums ${(r.total ?? 0) < 0 ? "text-[#ef4444]" : "text-slate-800"}`}>
                                                 {nf(r.total)}
                                             </td>
                                         </tr>
                                     ))}
-                                    {(rendered.rows ?? []).length === 0 && (
+                                    {rendered != null && (rendered.rows ?? []).length === 0 && (
                                         <tr>
-                                            <td colSpan={14} className="py-8 text-center text-[13px] text-[#999]">
-                                                本年度无数据
+                                            <td colSpan={14} className="py-8 text-center text-[13px] text-slate-400">
+                                                {`${renderTarget.year} 年无数据`}
                                             </td>
                                         </tr>
                                     )}
@@ -857,36 +1037,26 @@ function ToastBar({ text, onClose }: { text: string; onClose: () => void }) {
         return () => clearTimeout(timer);
     }, [onClose, text]);
     return (
-        <div className="fixed bottom-8 right-8 z-50 rounded bg-[#333]/90 px-4 py-2 text-[13px] text-white shadow-lg">{text}</div>
+        <div className="fixed bottom-8 right-8 z-50 rounded-lg bg-slate-800/90 px-4 py-2 text-[13px] text-white shadow-lg">{text}</div>
     );
 }
 
 /* ---------- 费用明细表 ---------- */
 
 export function LemonExpenseDetail() {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const [data, setData] = useState<ExpenseDetailDto | null>(null);
+    const { period, onPrev, onNext } = useReportPeriod(1);
     const exp = useReportExport();
-    const [error, setError] = useState<string | null>(null);
+    const { data, loading, error, reload } = useReportData(
+        period,
+        "费用明细表加载失败",
+        (api, accountSetId) =>
+            api.accountsetsAccountSetIdReportsExpenseDetailGet({
+                accountSetId,
+                year: period.year,
+                month: period.month,
+            }),
+    );
     const [expandAll, setExpandAll] = useState(true);
-    const [tick, setTick] = useState(0);
-
-    const reload = useCallback(() => setTick((t) => t + 1), []);
-    useEffect(() => {
-        if (!token || !accountSetId) {
-            return;
-        }
-        let alive = true;
-        setError(null);
-        new ReportsApi(apiConfig(token))
-            .accountsetsAccountSetIdReportsExpenseDetailGet({ accountSetId })
-            .then((d) => alive && setData(d))
-            .catch(async (e) => alive && setError(await apiErrorMessage(e, "费用明细表加载失败")));
-        return () => {
-            alive = false;
-        };
-    }, [token, accountSetId, tick]);
 
     const all = data?.rows ?? [];
     const visible = expandAll ? all : all.filter((r) => (r.level ?? 1) === 1);
@@ -909,31 +1079,30 @@ export function LemonExpenseDetail() {
     const cols: Col[] = [
         { key: "code", title: "科目编码", width: "140px" },
         { key: "name", title: "科目名称" },
-        { key: "cur", title: data?.periodText ?? "本期", align: "right", width: "160px", neg: true },
+        { key: "cur", title: `${monthText(period)}金额`, align: "right", width: "160px", neg: true },
         { key: "total", title: "合计", align: "right", width: "160px", neg: true },
     ];
     return (
-        <Page>
+        <Page title="费用明细表" subtitle="按科目层级归集本期费用明细，仅统计已过账凭证。" icon={PieChart}>
             <ToolRow
                 left={
                     <>
-                        <span className="inline-flex h-8 items-center gap-1.5 rounded-[2px] bg-[#44b449] px-2.5 text-sm text-white">
-                            {data?.periodText ?? "加载中…"} <CalendarDays className="h-3.5 w-3.5" />
+                        <PeriodStepper text={monthText(period)} onPrev={onPrev} onNext={onNext} />
+                        <span className="cursor-pointer" onClick={() => setExpandAll((v) => !v)}>
+                            <CheckBox label="展开所有级次" checked={expandAll} />
                         </span>
-                <span className="cursor-pointer" onClick={() => setExpandAll((v) => !v)}>
-                    <CheckBox label="展开所有级次" checked={expandAll} />
-                </span>
                     </>
                 }
                 right={
                     <>
                         <Btn dropdown onClick={() => window.print()}>打印</Btn>
-                        <Btn onClick={() => void exp.run("expense-detail", { year: data?.year, month: data?.month })}>导出</Btn>
+                        <Btn onClick={() => void exp.run("expense-detail", { year: period.year, month: period.month })}>导出</Btn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
             />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#f5222d]">{error}</div>}
+            {loading && <LoadTip />}
+            {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
                 <Table cols={cols} rows={rows} zebra={false} />
             </div>
@@ -951,28 +1120,14 @@ const EQ_BUCKET_BY_COL: Record<number, number> = { 0: 0, 4: 1, 8: 2, 9: 3, 10: 4
 const EQ_ITEMS = ["实收资本（或股本）", "资本公积", "盈余公积", "未分配利润", "所有者权益合计"];
 
 export function LemonEquityChange() {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const [data, setData] = useState<EquityChangeDto | null>(null);
+    // 后端端点仅按年度取数（equity-change?year=），步进器按年切换。
+    const { period, onPrev, onNext } = useReportPeriod(12);
     const exp = useReportExport();
-    const [error, setError] = useState<string | null>(null);
-    const [tick, setTick] = useState(0);
-
-    const reload = useCallback(() => setTick((t) => t + 1), []);
-    useEffect(() => {
-        if (!token || !accountSetId) {
-            return;
-        }
-        let alive = true;
-        setError(null);
-        new ReportsApi(apiConfig(token))
-            .accountsetsAccountSetIdReportsEquityChangeGet({ accountSetId })
-            .then((d) => alive && setData(d))
-            .catch(async (e) => alive && setError(await apiErrorMessage(e, "所有者权益变动表加载失败")));
-        return () => {
-            alive = false;
-        };
-    }, [token, accountSetId, tick]);
+    const { data, loading, error, reload } = useReportData(
+        period,
+        "所有者权益变动表加载失败",
+        (api, accountSetId) => api.accountsetsAccountSetIdReportsEquityChangeGet({ accountSetId, year: period.year }),
+    );
 
     const byName = new Map<string, EquityChangeRowDto>();
     for (const r of data?.rows ?? []) {
@@ -1014,20 +1169,20 @@ export function LemonEquityChange() {
     const balanced =
         total != null && Math.abs((total.currentBegin ?? 0) + ((total.currentEnd ?? 0) - (total.currentBegin ?? 0)) - (total.currentEnd ?? 0)) < 0.01;
 
-    const th = "border-b border-[#e8e8e8] bg-[#f0f7f0] px-3 py-2 text-[13px] font-normal text-[#333]";
-    const td = "border-b border-[#f0f0f0] px-3 py-2.5 text-[13px] text-[#333]";
+    const th = "border-b border-slate-200 bg-muted px-3 py-2 text-[13px] font-medium text-slate-500";
+    const td = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-700";
     return (
-        <Page>
+        <Page title="所有者权益变动表" subtitle="按年度列示实收资本、资本公积、盈余公积与未分配利润的期初期末及变动。" icon={Scale}>
             <ToolRow
                 left={
                     <>
-                        <span className="text-[13px] text-[#666]">会计年度：</span>
-                        <FakeSelect text={data ? `${data.year}年` : "加载中…"} className="w-[110px]" />
-                        <span className="flex items-center gap-1 text-[13px] text-[#3385ff]">
+                        <span className="text-[13px] text-slate-500">会计年度：</span>
+                        <PeriodStepper text={`${period.year}年`} onPrev={onPrev} onNext={onNext} />
+                        <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
                             <Info className="h-3.5 w-3.5" /> 报表说明
                         </span>
-                        {!balanced && (
-                            <span className="text-[13px] text-[#f5222d]">
+                        {!balanced && !loading && !error && (
+                            <span className="text-[13px] text-[#ef4444]">
                                 报表不平，（未分配利润）本年年初余额+本年增加变动金额不等于本年年末...
                             </span>
                         )}
@@ -1035,14 +1190,15 @@ export function LemonEquityChange() {
                 }
                 right={
                     <>
-                        <Btn>编辑公式</Btn>
-                        <Btn onClick={() => void exp.run("equity-change", { year: data?.year })}>导出</Btn>
+                        <WipBtn title="报表公式编辑尚未接入后端，建设中">编辑公式</WipBtn>
+                        <Btn onClick={() => void exp.run("equity-change", { year: period.year })}>导出</Btn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
             />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#f5222d]">{error}</div>}
-            <div className="relative flex-1 overflow-x-auto px-4">
+            {loading && <LoadTip />}
+            {error && <ErrorTip text={error} />}
+            <div className="flex-1 overflow-x-auto px-4">
                 <table className="border-collapse text-sm whitespace-nowrap">
                     <thead>
                         <tr>
@@ -1098,12 +1254,12 @@ export function LemonEquityChange() {
                             <tr key={i}>
                                 <td className={td}>{r.label}</td>
                                 {EQ_COLS.map((_, j) => (
-                                    <td key={j} className={`${td} text-right`}>
+                                    <td key={j} className={`${td} text-right tabular-nums`}>
                                         {r.v(j)}
                                     </td>
                                 ))}
                                 {EQ_COLS.map((_, j) => (
-                                    <td key={`o${j}`} className={`${td} text-right`}>
+                                    <td key={`o${j}`} className={`${td} text-right tabular-nums`}>
                                         {r.pv(j)}
                                     </td>
                                 ))}
@@ -1111,14 +1267,6 @@ export function LemonEquityChange() {
                         ))}
                     </tbody>
                 </table>
-                {/* 专业版到期浮层 */}
-                <div className="absolute bottom-8 left-1/2 z-10 w-[360px] -translate-x-1/2 rounded-lg bg-[#fdf6e3] p-4 text-center shadow-lg">
-                    <div className="text-sm font-bold text-[#333]">您的专业版试用已到期</div>
-                    <div className="mt-1 text-[13px] text-[#666]">升级专业版方可使用完整功能哦</div>
-                    <button className="mt-3 h-8 cursor-pointer rounded-[2px] bg-gradient-to-r from-[#f7c948] to-[#f5a623] px-5 text-sm font-bold text-white">
-                        升级专业版
-                    </button>
-                </div>
             </div>
             {exp.toast && <Toast text={exp.toast} onClose={exp.clearToast} />}
         </Page>
@@ -1128,28 +1276,13 @@ export function LemonEquityChange() {
 /* ---------- 纳税统计表 ---------- */
 
 export function LemonTaxReport() {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const [data, setData] = useState<TaxStatisticsDto | null>(null);
+    const { period, onPrev, onNext } = useReportPeriod(1);
     const exp = useReportExport();
-    const [error, setError] = useState<string | null>(null);
-    const [tick, setTick] = useState(0);
-
-    const reload = useCallback(() => setTick((t) => t + 1), []);
-    useEffect(() => {
-        if (!token || !accountSetId) {
-            return;
-        }
-        let alive = true;
-        setError(null);
-        new ReportsApi(apiConfig(token))
-            .accountsetsAccountSetIdReportsTaxGet({ accountSetId })
-            .then((d) => alive && setData(d))
-            .catch(async (e) => alive && setError(await apiErrorMessage(e, "纳税统计表加载失败")));
-        return () => {
-            alive = false;
-        };
-    }, [token, accountSetId, tick]);
+    const { data, loading, error, reload } = useReportData(
+        period,
+        "纳税统计表加载失败",
+        (api, accountSetId) => api.accountsetsAccountSetIdReportsTaxGet({ accountSetId, year: period.year, month: period.month }),
+    );
 
     const accounts = data?.rows ?? [];
     const groups: Array<[string, (name: string) => boolean]> = [
@@ -1222,25 +1355,28 @@ export function LemonTaxReport() {
 
     const cols: Col[] = [
         { key: "item", title: "项目" },
-        { key: "seq", title: "行次", width: "70px" },
+        SEQ_COL,
         { key: "ytd", title: "金额", group: "本年累计金额", align: "right", neg: true },
         { key: "ytdYoy", title: "同比变化", group: "本年累计金额", align: "right" },
         { key: "cur", title: "金额", group: "本期金额", align: "right", neg: true },
         { key: "curYoy", title: "同比变化", group: "本期金额", align: "right" },
     ];
     return (
-        <Page>
+        <Page title="纳税统计表" subtitle="统计各税种应交与已交金额及同比变化，仅统计已过账凭证。" icon={Landmark}>
             <ReportTool
-                text={data?.periodText ?? "加载中…"}
+                text={monthText(period)}
+                onPrev={onPrev}
+                onNext={onNext}
                 right={
                     <>
-                        <Btn onClick={() => void exp.run("tax", { year: data?.year, month: data?.month })}>导出</Btn>
+                        <Btn onClick={() => void exp.run("tax", { year: period.year, month: period.month })}>导出</Btn>
                         <Btn onClick={() => window.print()}>打印</Btn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
             />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#f5222d]">{error}</div>}
+            {loading && <LoadTip />}
+            {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
                 <Table cols={cols} rows={rows} zebra={false} />
             </div>
@@ -1252,28 +1388,14 @@ export function LemonTaxReport() {
 /* ---------- 财务概要信息 ---------- */
 
 export function LemonFinancialSummary() {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const [data, setData] = useState<FinancialSummaryDto | null>(null);
+    const { period, onPrev, onNext } = useReportPeriod(1);
     const exp = useReportExport();
-    const [error, setError] = useState<string | null>(null);
-    const [tick, setTick] = useState(0);
-
-    const reload = useCallback(() => setTick((t) => t + 1), []);
-    useEffect(() => {
-        if (!token || !accountSetId) {
-            return;
-        }
-        let alive = true;
-        setError(null);
-        new ReportsApi(apiConfig(token))
-            .accountsetsAccountSetIdReportsFinancialSummaryGet({ accountSetId })
-            .then((d) => alive && setData(d))
-            .catch(async (e) => alive && setError(await apiErrorMessage(e, "财务概要加载失败")));
-        return () => {
-            alive = false;
-        };
-    }, [token, accountSetId, tick]);
+    const { data, loading, error, reload } = useReportData(
+        period,
+        "财务概要加载失败",
+        (api, accountSetId) =>
+            api.accountsetsAccountSetIdReportsFinancialSummaryGet({ accountSetId, year: period.year, month: period.month }),
+    );
 
     const m = new Map<string, FinancialSummaryRowDto>();
     for (const r of data?.rows ?? []) {
@@ -1325,7 +1447,7 @@ export function LemonFinancialSummary() {
 
     const cols: Col[] = [
         { key: "item", title: "项目" },
-        { key: "seq", title: "行次", width: "70px" },
+        SEQ_COL,
         { key: "ytd", title: "金额", group: "本年累计金额", align: "right", neg: true },
         { key: "ytdYoy", title: "同比变化", group: "本年累计金额", align: "right" },
         { key: "cur", title: "金额", group: "本期金额", align: "right", neg: true },
@@ -1333,18 +1455,21 @@ export function LemonFinancialSummary() {
         { key: "curMom", title: "环比变化", group: "本期金额", align: "right" },
     ];
     return (
-        <Page>
+        <Page title="财务概要信息" subtitle="盈利、三项费用、应收应付、资金与税金的关键指标一览。" icon={TrendingUp}>
             <ReportTool
-                text={data?.periodText ?? "加载中…"}
+                text={monthText(period)}
+                onPrev={onPrev}
+                onNext={onNext}
                 right={
                     <>
                         <Btn dropdown onClick={() => window.print()}>打印</Btn>
-                        <Btn onClick={() => void exp.run("financial-summary", { year: data?.year, month: data?.month })}>导出</Btn>
+                        <Btn onClick={() => void exp.run("financial-summary", { year: period.year, month: period.month })}>导出</Btn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
             />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#f5222d]">{error}</div>}
+            {loading && <LoadTip />}
+            {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
                 <Table cols={cols} rows={rows} zebra={false} />
             </div>

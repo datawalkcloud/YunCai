@@ -10,6 +10,7 @@ import {
     type SaveClosingTemplateRequest,
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { useConfirm } from "@/hooks/useConfirm"
 import { Alert, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -68,6 +69,7 @@ export function ClosingTemplatesSheet({
 }) {
     const api = useMemo(() => new ClosingApi(apiConfig(token)), [token])
     const accountsApi = useMemo(() => new AccountsApi(apiConfig(token)), [token])
+    const { confirm, confirmDialog } = useConfirm()
 
     const [templates, setTemplates] = useState<ClosingTemplateDto[]>([])
     const [accounts, setAccounts] = useState<AccountDto[]>([])
@@ -209,7 +211,7 @@ export function ClosingTemplatesSheet({
 
     async function remove(template: ClosingTemplateDto) {
         if (!template.id || busyId) return
-        if (!window.confirm(`确定删除结转模板「${template.name}」吗？`)) return
+        if (!(await confirm(`确定删除结转模板「${template.name}」吗？`))) return
         setBusyId(template.id)
         setError(null)
         try {
@@ -486,6 +488,8 @@ export function ClosingTemplatesSheet({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {confirmDialog}
         </>
     )
 }

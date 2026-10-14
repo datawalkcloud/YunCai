@@ -1,18 +1,21 @@
 /**
  * 复刻区升级专业版页（对应柠檬云 /Pro/PayDialog，整页非弹窗）：
- * 到期提示 + 免费版/专业版功能对比表 + 立即购买按钮。
+ * 纯静态营销页——本项目暂无付费/版本体系，后端未提供升级、购买、到期状态接口，
+ * 页面对比表仅为柠檬云界面复刻展示，不代表当前账套的真实版本状态。
+ * 视觉遵循全站统一风格（云财蓝）：白卡 + slate 灰阶文字，✓ 用成功色 #10b981、✕ 用 #ef4444；
+ * 专业版皇冠为品牌装饰，保留金色体系（#fffbeb / #fde68a / #92640b）。
  */
-import { Crown, X } from "lucide-react";
+import { Crown } from "lucide-react";
 
-import { Page } from "./components/ui";
+import { Page, WipBtn, WipNotice } from "./components/ui";
 
 /** 行状态：✓绿勾 / ✗红叉 / 文字。 */
 function CellMark({ ok, text }: { ok?: boolean; text?: string }) {
-    if (text) return <span className="text-[13px] text-[#333]">{text}</span>;
+    if (text) return <span className="text-[13px] text-slate-700">{text}</span>;
     return ok ? (
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#44b449] text-[11px] text-white">✓</span>
+        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#10b981] text-[11px] text-white">✓</span>
     ) : (
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#f5222d] text-[11px] text-white">✕</span>
+        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#ef4444] text-[11px] text-white">✕</span>
     );
 }
 
@@ -66,35 +69,19 @@ const PRO_ROWS: ProRow[] = [
 ];
 
 export default function LemonPro() {
-    const td = "border-b border-[#f0f0f0] px-4 py-3 align-middle text-[13px] text-[#333]";
+    const td = "border-b border-slate-100 px-4 py-3 align-middle text-[13px] text-slate-700";
     return (
-        <Page>
-            <div className="mx-auto w-[1200px] pb-10">
-                {/* 头部米黄横幅 */}
-                <div className="relative mt-5 flex items-center justify-center rounded-md bg-[#fbeed3] py-4">
-                    <span className="flex items-center gap-2 text-[18px] font-bold text-[#8a5a00]">
-                        <Crown className="h-5 w-5 text-[#f5a623]" /> 升级专业版
-                    </span>
-                    <X className="absolute right-4 cursor-pointer text-[#c9a86a]" />
-                </div>
-                {/* 到期文案 */}
-                <div className="mt-6 text-center">
-                    <div className="text-[16px] text-[#333]">
-                        专业版体验期 <span className="text-[22px] text-[#ff9f2e]">已到期</span> ！
-                        <span className="text-[18px] font-bold text-[#ff9f2e]">建议立即升级！</span>
-                    </div>
-                    <div className="mt-3 text-sm text-[#333]">
-                        该账套已自动转为免费版，之前录入专业版专属模块中的数据仅供查询和导出。
-                    </div>
-                </div>
-                {/* 对比表 */}
-                <table className="mt-6 w-full border-collapse">
+        <Page title="升级专业版" subtitle="免费版与专业版功能对比（静态展示）" icon={Crown}>
+            <WipNotice text="本页为柠檬云「升级专业版」界面复刻：项目当前没有付费版本体系，升级/购买流程尚未接入后端，以下内容为静态展示，不代表账套真实状态。" />
+            <div className="mx-auto w-full max-w-[1200px] pb-10">
+                {/* 免费版/专业版功能对比（静态营销文案，非账套真实数据） */}
+                <table className="mt-4 w-full border-collapse">
                     <thead>
-                        <tr className="bg-[#f5f5f5] text-[14px] text-[#333]">
-                            <th className="border border-[#e8e8e8] px-4 py-3 text-left font-bold">功能模块</th>
-                            <th className="w-[220px] border border-[#e8e8e8] px-4 py-3 text-center font-bold">免费版</th>
-                            <th className="w-[640px] border border-[#e8e8e8] px-4 py-3 text-center font-bold">
-                                <span className="mr-1 inline-flex h-5 w-5 items-center justify-center rounded-[3px] bg-gradient-to-r from-[#f7c948] to-[#f5a623] align-[-3px] text-[11px] text-white">
+                        <tr className="bg-muted text-[14px] text-slate-800">
+                            <th className="border border-slate-200 px-4 py-3 text-left font-bold">功能模块</th>
+                            <th className="w-[220px] border border-slate-200 px-4 py-3 text-center font-bold">免费版</th>
+                            <th className="w-[640px] border border-slate-200 px-4 py-3 text-center font-bold">
+                                <span className="mr-1 inline-flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-r from-[#fde68a] to-[#f5a623] align-[-3px] text-[11px] text-[#92640b]">
                                     👑
                                 </span>
                                 专业版
@@ -103,7 +90,7 @@ export default function LemonPro() {
                     </thead>
                     <tbody>
                         {PRO_ROWS.map((r) => (
-                            <tr key={r.module}>
+                            <tr key={r.module} className="transition-colors hover:bg-[#f6f9ff]">
                                 <td className={td}>
                                     {r.paid && <Crown className="mr-1.5 inline h-3.5 w-3.5 align-[-2px] text-[#f5a623]" />}
                                     {r.module}
@@ -118,11 +105,9 @@ export default function LemonPro() {
                         ))}
                     </tbody>
                 </table>
-                {/* 立即购买 */}
+                {/* 立即购买（尚未接入后端，建设中） */}
                 <div className="mt-10 flex justify-center">
-                    <span className="inline-flex h-[55px] w-[250px] cursor-pointer items-center justify-center rounded-[6px] bg-gradient-to-r from-[#f7d794] to-[#e8b04a] text-[20px] font-bold text-[#6b4a00] shadow-[0_2px_10px_rgba(232,176,74,0.4)]">
-                        立即购买
-                    </span>
+                    <WipBtn title="购买/升级流程尚未接入后端，建设中">立即购买</WipBtn>
                 </div>
             </div>
         </Page>

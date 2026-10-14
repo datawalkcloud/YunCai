@@ -4,6 +4,7 @@ import { CircleAlert, Printer } from "lucide-react"
 
 import { VouchersApi, type VoucherDetailDto, type VoucherEntryDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { fmtAmount } from "@/lib/format"
 import { amountToChineseUppercase } from "@/lib/amount-uppercase"
 import { Alert, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -57,9 +58,6 @@ function esc(value: string): string {
         .replace(/"/g, "&quot;")
 }
 
-const money = (v?: number) => (v ? v.toFixed(2) : "")
-const plainMoney = (v?: number) => (v ?? 0).toFixed(2)
-
 /** 生成打印窗口 HTML（自带样式与自动打印脚本）。 */
 function buildPrintHtml(voucher: VoucherDetailDto, settings: PrintSettings): string {
     const isA4 = settings.paper === "A4"
@@ -73,8 +71,8 @@ function buildPrintHtml(voucher: VoucherDetailDto, settings: PrintSettings): str
             "<tr>" +
                 "<td class='c'>" + esc(e?.summary ?? "") + "</td>" +
                 "<td class='c'>" + (e ? esc((e.accountCode ?? "") + " " + (e.accountName ?? "")) : "") + "</td>" +
-                "<td class='n'>" + money(e?.debit) + "</td>" +
-                "<td class='n'>" + money(e?.credit) + "</td>" +
+                "<td class='n'>" + fmtAmount(e?.debit) + "</td>" +
+                "<td class='n'>" + fmtAmount(e?.credit) + "</td>" +
                 "</tr>",
         )
     }
@@ -110,8 +108,8 @@ function buildPrintHtml(voucher: VoucherDetailDto, settings: PrintSettings): str
         "<tr><th>摘要</th><th>会计科目</th><th>借方金额</th><th>贷方金额</th></tr>" +
         rows.join("") +
         "<tr class='total'><td colspan='2'>合计：人民币（大写）" + esc(amountToChineseUppercase(voucher.totalDebit ?? 0)) + "</td>" +
-        "<td class='n'>" + plainMoney(voucher.totalDebit) + "</td>" +
-        "<td class='n'>" + plainMoney(voucher.totalCredit) + "</td></tr>" +
+        "<td class='n'>" + fmtAmount(voucher.totalDebit, true) + "</td>" +
+        "<td class='n'>" + fmtAmount(voucher.totalCredit, true) + "</td></tr>" +
         "</table>" +
         "<div class='footer'><span>制单人：" + esc(voucher.preparer ?? "") + "</span><span>审核人：" + esc(voucher.reviewer ?? "") + "</span><span>状态：" + esc(voucher.statusText ?? "") + "</span></div>" +
         "</div>" +
@@ -289,10 +287,10 @@ export function PrintVoucherSheet({
                                                         {e ? `${e.accountCode ?? ""} ${e.accountName ?? ""}` : ""}
                                                     </td>
                                                     <td className="border border-black px-2 text-right tabular-nums">
-                                                        {e?.debit ? e.debit.toFixed(2) : ""}
+                                                        {fmtAmount(e?.debit)}
                                                     </td>
                                                     <td className="border border-black px-2 text-right tabular-nums">
-                                                        {e?.credit ? e.credit.toFixed(2) : ""}
+                                                        {fmtAmount(e?.credit)}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -301,10 +299,10 @@ export function PrintVoucherSheet({
                                                     合计：人民币（大写）{amountToChineseUppercase(voucher.totalDebit ?? 0)}
                                                 </td>
                                                 <td className="border border-black px-2 text-right tabular-nums">
-                                                    {plainMoney(voucher.totalDebit)}
+                                                    {fmtAmount(voucher.totalDebit, true)}
                                                 </td>
                                                 <td className="border border-black px-2 text-right tabular-nums">
-                                                    {plainMoney(voucher.totalCredit)}
+                                                    {fmtAmount(voucher.totalCredit, true)}
                                                 </td>
                                             </tr>
                                         </tbody>

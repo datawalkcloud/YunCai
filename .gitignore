@@ -1,5 +1,34 @@
+# 构建产物
 bin
 obj
-/src/.vs
+dist
+*.user
+
+# 编辑器 / IDE
+.vs/
 /.vs
-/src/KuaiJi/Logs
+.idea/
+*.suo
+
+# 日志与临时产物
+logs
+Logs
+*.log
+*.bak
+*.tmp
+oapi-tmp.json
+_openapi.json
+.scratch/
+.scratch-*/
+.tmp-preview/
+.backup-pre-ddd/
+.backend-gen/
+
+# 本地凭据与部署环境变量（切勿提交）
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+
+# 前端依赖
+node_modules/

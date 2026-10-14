@@ -20,6 +20,8 @@ import { useAuth } from "@/auth/AuthContext"
 import { AccountsApi, AccountSetsApi, type AccountAssistTypeDto, type AccountDto, type AccountImportResult } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { useLocalForm } from "@/hooks/useLocalForm"
+import { useConfirm } from "@/hooks/useConfirm"
 import { ASSIST_TYPES, assistLabel } from "@/components/assist/constants"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile } from "@/components/page/tile"
@@ -172,40 +174,6 @@ const emptyCreateForm: CreateForm = {
 
 const emptyEditForm: EditForm = { name: "", direction: 1, mnemonic: "", isEnabled: true }
 
-/**
- * 极简受控表单，替代原 antd Form 实例：值 + 错误 + 提交前校验。
- * 校验只在提交时执行；一旦出现错误，后续改动即重算，等价于原联动校验。
- */
-function useLocalForm<T extends object>(
-    initial: T,
-    validate: (values: T) => Partial<Record<keyof T, string>>,
-) {
-    const [values, setValues] = useState<T>(initial)
-    const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({})
-
-    /** 打开抽屉时整体预填，对应原 setFieldsValue。 */
-    function fill(next: T) {
-        setValues(next)
-        setErrors({})
-    }
-
-    /** 改一个或几个字段，对应原控件的 onChange（含切换类别清空上级这类联动）。 */
-    function patch(next: Partial<T>) {
-        const merged: T = { ...values, ...next }
-        setValues(merged)
-        if (Object.keys(errors).length > 0) setErrors(validate(merged))
-    }
-
-    /** 提交前校验，返回是否通过，对应原 validateFields。 */
-    function check() {
-        const next = validate(values)
-        setErrors(next)
-        return Object.keys(next).length === 0
-    }
-
-    return { values, errors, fill, patch, check }
-}
-
 /** 按上级科目推导级次、期望编码长度与本级位数（原 Form.useWatch 联动改为直接读受控 state）。 */
 function resolveLevel(accounts: AccountDto[], schemeSegments: number[], parentId: string | null) {
     const parent = parentId == null ? null : accounts.find((a) => a.id === parentId) ?? null
@@ -228,6 +196,7 @@ export default function AccountsPage() {
     const { accountSets, refresh: refreshAccountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
+    const { confirm, confirmDialog } = useConfirm()
 
     const [accounts, setAccounts] = useState<AccountDto[]>([])
     const [loading, setLoading] = useState(false)
@@ -507,7 +476,7 @@ export default function AccountsPage() {
 
     async function removeAccount(account: AccountDto) {
         if (deletingId || !account.id) return
-        if (!window.confirm(`确定删除科目「${account.code} ${account.name}」吗？此操作不可撤销。`)) return
+        if (!(await confirm(`确定删除科目「${account.code} ${account.name}」吗？此操作不可撤销。`))) return
         setDeletingId(account.id)
         setLoadError(null)
         try {
@@ -1503,6 +1472,8 @@ export default function AccountsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {confirmDialog}
         </div>
     )
 }

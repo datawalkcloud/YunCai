@@ -10,6 +10,16 @@ export interface AccountSetDto {
   accountCodingScheme?: string
   /** 凭证字列表（逗号分隔，如 "记,收,付,转"），制单时只能从中选择。 */
   voucherWords?: string
+  /** 启用期间（记账日期不得早于该月）。 */
+  startYear?: number
+  startMonth?: number
+  /** 已结账至期间（"2026-06"），尚未结账为 null。 */
+  closedPeriod?: string | null
+  /** 已结转损益至期间（"2026-06"），尚未结转为 null。 */
+  carriedPeriod?: string | null
+  /** 下一个待结账期间。 */
+  nextCloseYear?: number
+  nextCloseMonth?: number
 }
 
 const API_BASE = '/api'

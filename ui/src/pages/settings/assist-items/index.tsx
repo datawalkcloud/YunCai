@@ -5,6 +5,7 @@ import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSet
 import { useAuth } from "@/auth/AuthContext"
 import { AccountSetsApi, AssistItemsApi, type AssistCategoryStatDto, type AssistItemDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { useConfirm } from "@/hooks/useConfirm"
 import { cn } from "@/lib/utils"
 import { ASSIST_CODE_MAX_LENGTH, assistExpectedCodeLength, assistSupportsHierarchy } from "@/components/assist/constants"
 import { invalidateAssistItems } from "@/components/assist/assist-store"
@@ -219,6 +220,7 @@ function AssistItemListPanel({
     onChanged: () => void
 }) {
     const hierarchical = assistSupportsHierarchy(type)
+    const { confirm, confirmDialog } = useConfirm()
     const [items, setItems] = useState<AssistItemDto[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -406,7 +408,7 @@ function AssistItemListPanel({
 
     async function removeItem(item: AssistItemDto) {
         if (busyId || !item.id) return
-        if (!window.confirm(`确定删除档案「${item.code} ${item.name}」吗？此操作不可撤销。`)) return
+        if (!(await confirm(`确定删除档案「${item.code} ${item.name}」吗？此操作不可撤销。`))) return
         setBusyId(item.id)
         setError(null)
         try {
@@ -662,6 +664,8 @@ function AssistItemListPanel({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {confirmDialog}
         </>
     )
 }

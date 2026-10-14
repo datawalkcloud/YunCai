@@ -1,15 +1,17 @@
 /**
  * 柠檬云凭证模块（已接真实后端 VouchersApi）：
  * - VoucherNew  新增凭证（表格化借贷金额栏 + 凭证头 + 制单人，可保存落库）
+ *   凭证字取自账套 voucherWords；下一凭证号按当期已有最大号 +1（后端无 next-number 端点）。
  * 查看凭证与既有实页重叠，复刻版已下线（见 router）。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { CalendarDays, Keyboard, Maximize2, Plus, Search, X } from "lucide-react";
+import { CalendarDays, FileText, Keyboard, Maximize2, Plus, Search, X } from "lucide-react";
 
-import { Btn, CheckBox, FakeSelect, Page, RefreshIcon, Toast } from "./components/ui";
+import { Btn, CheckBox, Page, RefreshIcon, Select, Toast, WipBtn } from "./components/ui";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
+import { useCurrentAccountSet, useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import { AccountsApi, VouchersApi, type AccountDto } from "@/apis-gen";
 
@@ -18,7 +20,7 @@ import { AccountsApi, VouchersApi, type AccountDto } from "@/apis-gen";
 /** 金额栏位数（亿千百十万千百十元角分）。 */
 const DIGITS = ["亿", "千", "百", "十", "万", "千", "百", "十", "元", "角", "分"];
 
-const EDIT_CLS = "h-[44px] w-full bg-transparent px-2 text-[13px] text-[#333] outline-none placeholder:text-[#bbb]";
+const EDIT_CLS = "h-[44px] w-full bg-transparent px-2 text-[13px] text-slate-700 outline-none placeholder:text-slate-400";
 
 /** 凭证分录行。 */
 type EntryRow = {
@@ -90,30 +92,70 @@ function todayText(): string {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** 凭证默认记账日期：今天，若不在当前会计期间内则归到期间边界（不再硬编码日期）。 */
+function defaultVoucherDate(period: AccountingPeriod): string {
+    const today = todayText();
+    if (today < period.startDate) return period.startDate;
+    if (today > period.endDate) return period.endDate;
+    return today;
+}
+
+/** 账套 voucherWords（逗号分隔字符串）→ 去空去重后的凭证字列表。 */
+function parseVoucherWords(raw?: string): string[] {
+    const list = (raw ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    return list.length > 0 ? [...new Set(list)] : ["记"];
+}
+
 export function VoucherNew() {
     const { token, user } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
 
+    const accountSet = useCurrentAccountSet();
+    const period = useDefaultAccountingPeriod();
+    const words = useMemo(() => parseVoucherWords(accountSet?.voucherWords), [accountSet]);
+
     const [accounts, setAccounts] = useState<AccountDto[]>([]);
     const [nextNumber, setNextNumber] = useState<number | null>(null);
-    const [word] = useState("记");
-    const [date, setDate] = useState(todayText());
+    const [word, setWord] = useState("");
+    const [date, setDate] = useState("");
     const [attachmentCount, setAttachmentCount] = useState("");
     const [rows, setRows] = useState<EntryRow[]>(emptyRows);
+    const [loading, setLoading] = useState(false);
+    const [metaError, setMetaError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
 
+    // 凭证字：账套列表加载后默认取第一个（或保持当前仍有效的选择）。
+    useEffect(() => {
+        setWord((prev) => (prev && words.includes(prev) ? prev : words[0]));
+    }, [words]);
+
+    // 记账日期：期间确定后归入当期（用户仍可手动改）。
+    useEffect(() => {
+        setDate(defaultVoucherDate(period));
+    }, [period]);
+
     // 加载明细科目与下一个凭证号。
     const reloadMeta = useCallback(async () => {
-        if (!token || !accountSetId) {
+        if (!token || !accountSetId || !word) {
             return;
         }
+        setLoading(true);
+        setMetaError(null);
         try {
             const api = new VouchersApi(apiConfig(token));
             const [leafAccounts, vouchers] = await Promise.all([
                 new AccountsApi(apiConfig(token)).accountsetsAccountSetIdAccountsGet({ accountSetId, leafOnly: true }),
-                api.accountsetsAccountSetIdVouchersGet({ accountSetId }),
+                // 后端无「下一个凭证号」端点：把取数限定到当前会计期间，按当期同凭证字已有最大号 +1 推算。
+                api.accountsetsAccountSetIdVouchersGet({
+                    accountSetId,
+                    startDate: new Date(period.startDate),
+                    endDate: new Date(period.endDate),
+                }),
             ]);
             setAccounts(leafAccounts ?? []);
             const maxNo = (vouchers ?? [])
@@ -121,9 +163,13 @@ export function VoucherNew() {
                 .reduce((m, v) => Math.max(m, v.number ?? 0), 0);
             setNextNumber(maxNo + 1);
         } catch (e) {
-            setToast(await apiErrorMessage(e, "加载科目失败"));
+            const msg = await apiErrorMessage(e, "加载科目或凭证失败");
+            setMetaError(msg);
+            setToast(msg);
+        } finally {
+            setLoading(false);
         }
-    }, [token, accountSetId, word]);
+    }, [token, accountSetId, word, period]);
     useEffect(() => {
         void reloadMeta();
     }, [reloadMeta]);
@@ -139,6 +185,10 @@ export function VoucherNew() {
 
     const save = async (keepEditing: boolean) => {
         if (!token || !accountSetId) {
+            return;
+        }
+        if (!word || !date) {
+            setToast("凭证字或记账日期尚未就绪，请稍候再试");
             return;
         }
         const entries = rows
@@ -182,64 +232,69 @@ export function VoucherNew() {
         }
     };
 
-    const canSave = !saving && totals.balanced;
+    const canSave = !saving && !loading && !!word && !!date && totals.balanced;
     return (
-        <Page>
-            <div className="relative flex min-h-[56px] items-center px-4 py-2">
+        <Page title="新增凭证" subtitle="录入借贷分录并保存过账" icon={FileText}>
+            <div className="relative flex min-h-[56px] items-center border-b border-slate-100 px-4 py-2">
                 <div className="flex flex-1 items-center justify-center gap-3">
-                    <Btn variant={canSave ? "primary" : "disabled"} onClick={() => void save(true)}>
+                    <Btn variant={canSave ? "primary" : "disabled"} disabled={!canSave} onClick={() => void save(true)}>
                         保存并新增
                     </Btn>
-                    <Btn variant={canSave ? "primary" : "disabled"} onClick={() => void save(false)}>
+                    <Btn variant={canSave ? "primary" : "disabled"} disabled={!canSave} onClick={() => void save(false)}>
                         保存
                     </Btn>
-                    <Btn dropdown onClick={() => window.print()}>
+                    <WipBtn dropdown title="凭证打印尚未接入，建设中">
                         打印
-                    </Btn>
-                    <Btn dropdown>更多</Btn>
+                    </WipBtn>
+                    <WipBtn dropdown title="更多操作尚未接入，建设中">
+                        更多
+                    </WipBtn>
                 </div>
-                <div className="absolute right-4 flex items-center gap-4 text-sm text-[#333]">
+                <div className="absolute right-4 flex items-center gap-4 text-sm text-slate-700">
                     <span className="flex items-center gap-1">
-                        <Keyboard className="h-4 w-4 text-[#666]" /> 快捷键
+                        <Keyboard className="h-4 w-4 text-slate-500" /> 快捷键
                     </span>
-                    <span className="flex items-center gap-1 text-[#999]">
+                    <span className="flex items-center gap-1 text-slate-400">
                         上一页 <X className="h-3 w-3" /> <Plus className="h-3 w-3" /> 下一页
                     </span>
                 </div>
             </div>
+            {/* 加载 / 错误提示（拉科目与凭证字时可见） */}
+            {loading && <div className="mx-auto w-[1080px] py-1 text-[13px] text-slate-400">正在加载科目与凭证字…</div>}
+            {metaError && <div className="mx-auto w-[1080px] py-1 text-[13px] text-[#ef4444]">{metaError}</div>}
             {/* 凭证头 */}
             <div className="mx-auto flex w-[1080px] flex-wrap items-center gap-2 py-3">
-                <FakeSelect text={word} className="w-[88px]" />
-                <span className="inline-flex h-8 w-[64px] items-center justify-center rounded-[2px] border border-[#d9d9d9] text-sm">
-                    {nextNumber ?? "-"}
+                <Select value={word} onChange={setWord} options={words} className="w-[88px]" />
+                <span className="inline-flex h-8 w-[64px] items-center justify-center rounded-lg border border-slate-200 text-sm">
+                    {loading ? "…" : (nextNumber ?? "-")}
                 </span>
-                <span className="text-sm text-[#333]">号</span>
-                <span className="text-sm text-[#333]">日期：</span>
-                <span className="inline-flex h-8 items-center gap-2 rounded-[2px] border border-[#d9d9d9] px-2.5 text-sm">
+                <span className="text-sm text-slate-700">号</span>
+                <span className="text-sm text-slate-700">日期：</span>
+                <span className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 px-2.5 text-sm">
                     <input
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="w-[120px] bg-transparent text-sm text-[#333] outline-none"
+                        className="w-[120px] bg-transparent text-sm text-slate-700 outline-none"
                     />
-                    <CalendarDays className="h-3.5 w-3.5 text-[#999]" />
+                    <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
                 </span>
-                <span className="ml-3 text-[13px] text-[#ff9f2e]">亲，按回车键，能快速选择单元格哟！</span>
-                <span className="ml-auto flex items-center gap-2 text-sm text-[#333]">
+                <span className="ml-3 text-[13px] text-[#92640b]">亲，按回车键，能快速选择单元格哟！</span>
+                <span className="ml-auto flex items-center gap-2 text-sm text-slate-700">
                     附单据
                     <input
-                        className="inline-flex h-8 w-[64px] items-center rounded-[2px] border border-[#d9d9d9] px-2.5 text-sm outline-none"
+                        className="inline-flex h-8 w-[64px] items-center rounded-lg border border-slate-200 px-2.5 text-sm outline-none"
                         value={attachmentCount}
                         onChange={(e) => setAttachmentCount(e.target.value.replace(/\D/g, ""))}
                     />
                     张
-                    <span className="cursor-pointer text-[#3385ff]">附件</span>
-                    <span className="cursor-pointer text-[#3385ff]">备注 ⓘ</span>
+                    <span className="cursor-pointer text-[#2f6bff]">附件</span>
+                    <span className="cursor-pointer text-[#2f6bff]">备注 ⓘ</span>
                     <span className="flex items-center gap-1">
-                        <Search className="h-4 w-4 text-[#666]" /> 放大
+                        <Search className="h-4 w-4 text-slate-500" /> 放大
                     </span>
                     <span className="flex items-center gap-1">
-                        <Maximize2 className="h-4 w-4 text-[#666]" /> 全屏
+                        <Maximize2 className="h-4 w-4 text-slate-500" /> 全屏
                     </span>
                 </span>
             </div>
@@ -247,29 +302,29 @@ export function VoucherNew() {
             <div className="mx-auto w-[1080px]">
                 <table className="w-full border-collapse">
                     <thead>
-                        <tr className="bg-white text-[13px] text-[#333]">
-                            <th rowSpan={2} className="w-[46px] border border-[#8c8c8c] px-1 py-1.5 font-normal">
+                        <tr className="bg-muted text-[13px] text-slate-500">
+                            <th rowSpan={2} className="w-[46px] border border-slate-200 px-1 py-1.5 font-normal">
                                 序号
                             </th>
-                            <th rowSpan={2} className="w-[240px] border border-[#8c8c8c] px-2 py-1.5 font-normal">
+                            <th rowSpan={2} className="w-[240px] border border-slate-200 px-2 py-1.5 font-normal">
                                 摘要
                             </th>
-                            <th rowSpan={2} className="border border-[#8c8c8c] px-2 py-1.5 font-normal">
+                            <th rowSpan={2} className="border border-slate-200 px-2 py-1.5 font-normal">
                                 会计科目
                             </th>
-                            <th colSpan={11} className="border border-[#8c8c8c] px-2 py-1 font-normal">
+                            <th colSpan={11} className="border border-slate-200 px-2 py-1 font-normal">
                                 借方金额
                             </th>
-                            <th colSpan={11} className="border border-[#8c8c8c] px-2 py-1 font-normal">
+                            <th colSpan={11} className="border border-slate-200 px-2 py-1 font-normal">
                                 贷方金额
                             </th>
                         </tr>
-                        <tr className="bg-white text-[10px] text-[#666]">
+                        <tr className="bg-muted text-[10px] text-slate-500">
                             {DIGITS.map((d, i) => (
                                 <th
                                     key={`j${i}`}
-                                    className="w-[20px] border border-[#8c8c8c] py-0.5 font-normal"
-                                    style={{ borderLeftColor: i === 8 ? "#f0b8b8" : undefined }}
+                                    className="w-[20px] border border-slate-200 py-0.5 font-normal"
+                                    style={{ borderLeftColor: i === 8 ? "#fecaca" : undefined }}
                                 >
                                     {d}
                                 </th>
@@ -277,8 +332,8 @@ export function VoucherNew() {
                             {DIGITS.map((d, i) => (
                                 <th
                                     key={`d${i}`}
-                                    className="w-[20px] border border-[#8c8c8c] py-0.5 font-normal"
-                                    style={{ borderLeftColor: i === 8 ? "#f0b8b8" : undefined }}
+                                    className="w-[20px] border border-slate-200 py-0.5 font-normal"
+                                    style={{ borderLeftColor: i === 8 ? "#fecaca" : undefined }}
                                 >
                                     {d}
                                 </th>
@@ -287,9 +342,9 @@ export function VoucherNew() {
                     </thead>
                     <tbody>
                         {rows.map((r, idx) => (
-                            <tr key={idx} className="h-[52px]">
-                                <td className="border border-[#8c8c8c] text-center text-[13px] text-[#333]">{idx + 1}</td>
-                                <td className="border border-[#8c8c8c] p-0">
+                            <tr key={idx} className="h-[52px] transition-colors hover:bg-[#f6f9ff]">
+                                <td className="border border-slate-200 text-center text-[13px] text-slate-600 tabular-nums">{idx + 1}</td>
+                                <td className="border border-slate-200 p-0">
                                     <input
                                         className={EDIT_CLS}
                                         value={r.summary}
@@ -297,7 +352,7 @@ export function VoucherNew() {
                                         placeholder="摘要"
                                     />
                                 </td>
-                                <td className={`border border-[#8c8c8c] p-0 ${idx === 0 ? "bg-[#e8f7e8]" : ""}`}>
+                                <td className={`border border-slate-200 p-0 ${idx === 0 ? "bg-[#eef4ff]" : ""}`}>
                                     <select className={EDIT_CLS} value={r.accountId} onChange={(e) => patchRow(idx, { accountId: e.target.value })}>
                                         <option value="">选择科目</option>
                                         {(accounts ?? []).map((a) => (
@@ -307,17 +362,17 @@ export function VoucherNew() {
                                         ))}
                                     </select>
                                 </td>
-                                <td colSpan={11} className="border border-[#8c8c8c] p-0">
+                                <td colSpan={11} className="border border-slate-200 p-0">
                                     <input
-                                        className={`${EDIT_CLS} text-right`}
+                                        className={`${EDIT_CLS} text-right tabular-nums`}
                                         value={r.debit}
                                         onChange={(e) => patchRow(idx, { debit: e.target.value.replace(/[^\d.]/g, ""), credit: "" })}
                                         placeholder="0.00"
                                     />
                                 </td>
-                                <td colSpan={11} className="border border-[#8c8c8c] p-0">
+                                <td colSpan={11} className="border border-slate-200 p-0">
                                     <input
-                                        className={`${EDIT_CLS} text-right`}
+                                        className={`${EDIT_CLS} text-right tabular-nums`}
                                         value={r.credit}
                                         onChange={(e) => patchRow(idx, { credit: e.target.value.replace(/[^\d.]/g, ""), debit: "" })}
                                         placeholder="0.00"
@@ -327,22 +382,22 @@ export function VoucherNew() {
                         ))}
                         {/* 合计行 */}
                         <tr className="h-[44px]">
-                            <td colSpan={3} className="border border-[#8c8c8c] px-3 text-sm text-[#333]">
+                            <td colSpan={3} className="border border-slate-200 px-3 text-sm text-slate-700">
                                 合计：{toChineseAmount(totals.debit)}
                             </td>
-                            <td colSpan={11} className="border border-[#8c8c8c] bg-[#fdfdec] px-2 text-right text-sm text-[#333]">
+                            <td colSpan={11} className="border border-slate-200 bg-[#fffbeb] px-2 text-right text-sm text-slate-700 tabular-nums">
                                 {totals.debit > 0 ? totals.debit.toFixed(2) : ""}
                             </td>
-                            <td colSpan={11} className="border border-[#8c8c8c] bg-[#fdfdec] px-2 text-right text-sm text-[#333]">
+                            <td colSpan={11} className="border border-slate-200 bg-[#fffbeb] px-2 text-right text-sm text-slate-700 tabular-nums">
                                 {totals.credit > 0 ? totals.credit.toFixed(2) : ""}
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <div className="mx-auto flex w-[1080px] items-center justify-between py-4 text-sm text-[#333]">
+            <div className="mx-auto flex w-[1080px] items-center justify-between border-t border-slate-100 py-4 text-sm text-slate-700">
                 <CheckBox label={`制单人：${user?.displayName || user?.username || "-"}`} checked />
-                <span className="flex items-center gap-1 text-[#999]">
+                <span className="flex items-center gap-1 text-slate-400">
                     <RefreshIcon />
                 </span>
             </div>

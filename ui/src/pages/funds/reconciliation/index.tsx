@@ -6,6 +6,7 @@ import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSet
 import { useAuth } from "@/auth/AuthContext"
 import { FundReportsApi, type FundReconciliationDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { fmtMoney } from "@/lib/format"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile, type TileTone } from "@/components/page/tile"
 import { StatusPill } from "@/components/page/status-pill"
@@ -15,10 +16,6 @@ import { Button } from "@/components/ui/button"
 import { DateField } from "@/components/fields/date-fields"
 import { Spinner } from "@/components/ui/spinner"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-
-function formatMoney(value: number): string {
-    return value.toLocaleString("zh-CN", { style: "currency", currency: "CNY", minimumFractionDigits: 2 })
-}
 
 export default function ReconciliationPage() {
     const { token } = useAuth()
@@ -69,7 +66,7 @@ export default function ReconciliationPage() {
         { label: "资金账户", value: `${rows.length}`, tone: "gray", icon: Wallet },
         { label: "已核平", value: `${rows.length - diffCount}`, tone: "green", icon: CircleCheck },
         { label: "有差异", value: `${diffCount}`, tone: diffCount > 0 ? "red" : "gray", icon: TriangleAlert },
-        { label: "差异金额合计", value: formatMoney(absDiff), tone: "blue", icon: Scale, hint: "各账户差异绝对值之和" },
+        { label: "差异金额合计", value: fmtMoney(absDiff), tone: "blue", icon: Scale, hint: "各账户差异绝对值之和" },
     ]
 
     return (
@@ -177,12 +174,12 @@ export default function ReconciliationPage() {
                                     <TableCell className="whitespace-nowrap text-slate-500">
                                         {r.accountCode ? `${r.accountCode} ${r.accountName}` : ""}
                                     </TableCell>
-                                    <TableCell className="text-right tabular-nums">{formatMoney(r.journalBalance ?? 0)}</TableCell>
-                                    <TableCell className="text-right tabular-nums">{formatMoney(r.ledgerBalance ?? 0)}</TableCell>
+                                    <TableCell className="text-right tabular-nums">{fmtMoney(r.journalBalance ?? 0)}</TableCell>
+                                    <TableCell className="text-right tabular-nums">{fmtMoney(r.ledgerBalance ?? 0)}</TableCell>
                                     <TableCell className="text-right tabular-nums">
                                         {r.balanced
                                             ? <span className="text-slate-300">0.00</span>
-                                            : <span className="font-medium text-[#ef4444]">{formatMoney(r.difference ?? 0)}</span>}
+                                            : <span className="font-medium text-[#ef4444]">{fmtMoney(r.difference ?? 0)}</span>}
                                     </TableCell>
                                     <TableCell className="text-center">
                                         {r.balanced

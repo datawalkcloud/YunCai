@@ -6,6 +6,7 @@ import { useAuth } from "@/auth/AuthContext"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { AccountsApi, type OpeningBalanceRowDto, type OpeningBalancesDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { fmtAmount } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { StatusPill } from "@/components/page/status-pill"
@@ -15,12 +16,6 @@ import { Button } from "@/components/ui/button"
 import { NumberField } from "@/components/fields/number-field"
 import { Spinner } from "@/components/ui/spinner"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-
-/** 金额展示：0 显示为空，避免表格满屏 0.00。 */
-function fmt(value?: number): string {
-    if (!value) return ""
-    return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
 
 /** 科目层级缩进：每级 1rem，等价原来的 paddingLeft: (level - 1) * 16。 */
 const LEVEL_INDENT = ["", "pl-4", "pl-8", "pl-12", "pl-16", "pl-20", "pl-24", "pl-28", "pl-32", "pl-36"]
@@ -143,7 +138,7 @@ export default function OpeningBalancesPage() {
             cell: ({ row }) => {
                 const item = row.original
                 if (!item.isLeaf || !item.accountId) {
-                    return <span className="text-slate-400">{fmt(item.openingBalance)}</span>
+                    return <span className="text-slate-400">{fmtAmount(item.openingBalance)}</span>
                 }
                 const id = item.accountId
                 return (
@@ -162,12 +157,12 @@ export default function OpeningBalancesPage() {
         column.display({
             id: "debit",
             header: "借方",
-            cell: ({ row }) => fmt(row.original.debit),
+            cell: ({ row }) => fmtAmount(row.original.debit),
         }),
         column.display({
             id: "credit",
             header: "贷方",
-            cell: ({ row }) => fmt(row.original.credit),
+            cell: ({ row }) => fmtAmount(row.original.credit),
         }),
     ]
 
@@ -231,8 +226,8 @@ export default function OpeningBalancesPage() {
                     {totals.balanced ? <CircleCheck className="size-4" /> : <TriangleAlert className="size-4" />}
                     <span>
                         {totals.balanced
-                            ? `试算平衡：借方合计 ${fmt(totals.debit) || "0.00"}，贷方合计 ${fmt(totals.credit) || "0.00"}。`
-                            : `试算不平衡：借方合计 ${fmt(totals.debit) || "0.00"}，贷方合计 ${fmt(totals.credit) || "0.00"}，差额 ${fmt(Math.abs(totals.debit - totals.credit))}。`}
+                            ? `试算平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}。`
+                            : `试算不平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}，差额 ${fmtAmount(Math.abs(totals.debit - totals.credit))}。`}
                     </span>
                 </div>
 

@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  backend:
+    name: 后端构建
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: 还原并构建
+        run: dotnet build src/KuaiJi/KuaiJi.csproj -c Release --nologo
+
+  frontend:
+    name: 前端构建与检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: 安装依赖
+        run: npm ci
+        working-directory: ui
+      - name: Lint
+        run: npm run lint
+        working-directory: ui
+      - name: 构建
+        run: npm run build
+        working-directory: ui
+
+  # 迁移必须能在干净库上跑通，否则发布时才发现建不出表。
+  migrations:
+    name: 迁移脚本可执行性
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: kuaiji_ci
+          POSTGRES_USER: kuaiji
+          POSTGRES_PASSWORD: kuaiji
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kuaiji"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: 安装 dotnet-ef
+        run: dotnet tool install --global dotnet-ef
+      - name: 应用全部迁移
+        run: dotnet ef database update --project src/KuaiJi/KuaiJi.csproj
+        env:
+          # 应用启动前会校验配置完整性，这里给 CI 专用的一次性值。
+          Jwt__Key: ci-only-signing-key-please-never-use-in-production
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=kuaiji_ci;Username=kuaiji;Password=kuaiji"

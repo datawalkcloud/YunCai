@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from "react"
 
 import { type VoucherListItemDto, VouchersApi } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
+import { toISODate } from "@/lib/format"
 
 /** 把后端返回的日期归一为 yyyy-MM-dd，与账页行上的日期串一致。 */
 export function dayKey(value?: Date | string | null): string {
-    if (!value) return ""
-    return new Date(value).toISOString().slice(0, 10)
+    return toISODate(value)
 }
 
 /**

@@ -1,8 +1,7 @@
 /**
- * 柠檬云 J6 复刻区共享 UI 基元。
- * 视觉规格取自在线系统截图取证（见 docs/柠檬云J6功能调研.md）：
- * 主绿 #44b449、侧栏激活绿 #32d373、链接蓝 #3385ff、
- * 表头浅绿 #f0f7f0、斑马行 #fafafa、负数底 #ffeeef、边框 #e8e8e8。
+ * 柠檬云菜单区页面的共享 UI 基元。
+ * 视觉遵循全站统一风格（云财蓝）：主色 #2f6bff、圆角 rounded-lg/2xl、
+ * 白卡 + slate 灰阶文字，与 @/components/page 的既有实页同一套色板。
  */
 import type { ReactNode } from "react";
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, RotateCw, Search } from "lucide-react";
@@ -11,42 +10,51 @@ import { Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, RotateCw, 
 
 type BtnVariant = "primary" | "plain" | "link" | "disabled";
 
-/** 柠檬云按钮：绿实心 / 白底描边 / 蓝字链接 / 置灰。可选右侧 ▾ 分隔。 */
+/** 页面按钮：主色实底 / 白底描边 / 链接 / 置灰。可选右侧 ▾ 分隔。 */
 export function Btn({
     variant = "plain",
     children,
     dropdown,
     className = "",
+    disabled,
+    title,
     onClick,
 }: {
     variant?: BtnVariant;
     children: ReactNode;
     dropdown?: boolean;
     className?: string;
+    disabled?: boolean;
+    title?: string;
     onClick?: () => void;
 }) {
     const base =
-        "inline-flex h-8 items-center justify-center gap-1 rounded-[2px] px-3 text-sm whitespace-nowrap select-none";
+        "inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-medium whitespace-nowrap transition-colors select-none";
     const styles: Record<BtnVariant, string> = {
-        primary: "bg-[#44b449] text-white hover:bg-[#3ca341]",
-        plain: "border border-[#d9d9d9] bg-white text-[#333] hover:border-[#44b449] hover:text-[#44b449]",
-        link: "text-[#3385ff] hover:underline",
-        disabled: "bg-[#f5f5f5] text-[#bbb] cursor-not-allowed",
+        primary: "bg-[#2f6bff] text-white shadow-[0_1px_2px_rgba(47,107,255,0.22)] hover:bg-[#255ce0]",
+        plain: "border border-slate-200 bg-white text-slate-600 hover:bg-[#f6f8fb] hover:text-slate-800",
+        link: "text-[#2f6bff] hover:bg-[#eef4ff]",
+        disabled: "cursor-not-allowed bg-slate-100 text-slate-400",
     };
+    const v: BtnVariant = disabled ? "disabled" : variant;
     return (
-        <span className={`${base} ${styles[variant]} ${className}`} onClick={onClick}>
+        <span
+            className={`${base} ${styles[v]} ${className}`}
+            title={title}
+            onClick={disabled ? undefined : onClick}
+        >
             {children}
             {dropdown && <ChevronDown className="h-3.5 w-3.5 opacity-70" />}
         </span>
     );
 }
 
-/** 主色下拉分裂按钮（如「生成凭证 ▾」）。 */
+/** 主色分裂按钮（如「生成凭证 ▾」）。 */
 export function SplitBtn({ children }: { children: ReactNode }) {
     return (
-        <span className="inline-flex h-8 select-none text-white">
-            <span className="flex items-center rounded-l-[2px] bg-[#44b449] px-3 text-sm">{children}</span>
-            <span className="flex items-center rounded-r-[2px] border-l border-white/40 bg-[#44b449] px-1.5">
+        <span className="inline-flex h-8 cursor-pointer select-none rounded-lg bg-[#2f6bff] text-[13px] font-medium text-white shadow-[0_1px_2px_rgba(47,107,255,0.22)] transition-colors hover:bg-[#255ce0]">
+            <span className="flex items-center px-3">{children}</span>
+            <span className="flex items-center border-l border-white/30 px-1.5">
                 <ChevronDown className="h-3.5 w-3.5" />
             </span>
         </span>
@@ -55,14 +63,25 @@ export function SplitBtn({ children }: { children: ReactNode }) {
 
 /* ---------------- 期间选择 ---------------- */
 
-/** 绿色期间块（月：「2026年9月」/ 区间：「2026-07-01 至 2026-07-31」）。 */
-export function PeriodBlock({ text, range }: { text?: string; range?: [string, string] }) {
+/** 期间胶囊（日历图标）。传 onClick 后可点开选择器。 */
+export function PeriodBlock({
+    text,
+    range,
+    onClick,
+}: {
+    text?: string;
+    range?: [string, string];
+    onClick?: () => void;
+}) {
     return (
-        <span className="inline-flex h-8 select-none items-center gap-1.5 rounded-[2px] bg-[#44b449] px-2.5 text-sm text-white">
+        <span
+            className={`inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#2f6bff] px-2.5 text-[13px] text-white shadow-[0_1px_2px_rgba(47,107,255,0.22)] ${onClick ? "cursor-pointer hover:bg-[#255ce0]" : "select-none"}`}
+            onClick={onClick}
+        >
             {range ? (
                 <>
                     <span>{range[0]}</span>
-                    <span className="opacity-80">至</span>
+                    <span className="opacity-70">至</span>
                     <span>{range[1]}</span>
                 </>
             ) : (
@@ -73,40 +92,111 @@ export function PeriodBlock({ text, range }: { text?: string; range?: [string, s
     );
 }
 
-/** 期间步进器（◀ 2026年9月 ▶，报表页用）。 */
-export function PeriodStepper({ text }: { text: string }) {
+/** 期间步进器（◀ 2026年9月 ▶）。传 onPrev/onNext 即为可切换的真实控件。 */
+export function PeriodStepper({
+    text,
+    onPrev,
+    onNext,
+}: {
+    text: string;
+    onPrev?: () => void;
+    onNext?: () => void;
+}) {
+    const cell = (handler?: () => void) =>
+        `flex h-full items-center px-1.5 ${handler ? "cursor-pointer opacity-90 hover:opacity-100" : "opacity-90"}`;
     return (
-        <span className="inline-flex h-8 select-none items-center rounded-[2px] bg-[#44b449] text-sm text-white">
-            <span className="flex h-full items-center px-1.5 opacity-90">
+        <span className="inline-flex h-8 items-center rounded-lg bg-[#2f6bff] text-[13px] text-white shadow-[0_1px_2px_rgba(47,107,255,0.22)]">
+            <span className={cell(onPrev)} onClick={onPrev}>
                 <ChevronLeft className="h-4 w-4" />
             </span>
-            <span className="px-1">{text}</span>
-            <span className="flex h-full items-center px-1.5 opacity-90">
+            <span className="px-1 font-medium">{text}</span>
+            <span className={cell(onNext)} onClick={onNext}>
                 <ChevronRight className="h-4 w-4" />
             </span>
         </span>
     );
 }
 
-/* ---------------- 表单控件（静态展示） ---------------- */
+/* ---------------- 表单控件 ---------------- */
+
+/**
+ * 真输入框（受控）。外观与 FakeInput 一致，凡是需要用户填写的对话框都用它，
+ * FakeInput 只保留给纯装饰的静态展示位。
+ */
+export function TextInput({
+    value,
+    onChange,
+    placeholder,
+    type = "text",
+    disabled,
+    className = "",
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    type?: "text" | "number" | "date";
+    disabled?: boolean;
+    className?: string;
+}) {
+    return (
+        <input
+            type={type}
+            value={value}
+            disabled={disabled}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            className={`h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-[13px] text-slate-700 shadow-none outline-none placeholder:text-slate-400 focus:border-[#2f6bff] focus:ring-2 focus:ring-[#2f6bff]/15 disabled:bg-slate-100 disabled:text-slate-400 ${className}`}
+        />
+    );
+}
+
+/** 真下拉框（受控），选项可以是字符串或 { value, label }。 */
+export function Select({
+    value,
+    onChange,
+    options,
+    className = "",
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    options: Array<string | { value: string; label: string }>;
+    className?: string;
+}) {
+    return (
+        <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={`h-8 rounded-lg border border-slate-200 bg-white px-2 text-[13px] text-slate-700 shadow-none outline-none focus:border-[#2f6bff] focus:ring-2 focus:ring-[#2f6bff]/15 ${className}`}
+        >
+            {options.map((o) => {
+                const v = typeof o === "string" ? o : o.value;
+                return (
+                    <option key={v} value={v}>
+                        {typeof o === "string" ? o : o.label}
+                    </option>
+                );
+            })}
+        </select>
+    );
+}
 
 /** 静态下拉框外观。 */
 export function FakeSelect({ text, className = "" }: { text: string; className?: string }) {
     return (
         <span
-            className={`inline-flex h-8 select-none items-center justify-between gap-2 rounded-[2px] border border-[#d9d9d9] bg-white px-2.5 text-sm text-[#333] ${className}`}
+            className={`inline-flex h-8 select-none items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-[13px] text-slate-700 ${className}`}
         >
             <span className="truncate">{text}</span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#999]" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
         </span>
     );
 }
 
-/** 静态输入框外观。 */
+/** 静态输入框外观（仅用于无交互的展示位，需要输入请改用 TextInput）。 */
 export function FakeInput({ text = "", className = "" }: { text?: string; className?: string }) {
     return (
         <span
-            className={`inline-flex h-8 select-none items-center rounded-[2px] border border-[#d9d9d9] bg-white px-2.5 text-sm text-[#333] ${className}`}
+            className={`inline-flex h-8 select-none items-center rounded-lg border border-slate-200 bg-white px-2.5 text-[13px] text-slate-700 ${className}`}
         >
             {text || <span className="w-0">&nbsp;</span>}
         </span>
@@ -116,19 +206,30 @@ export function FakeInput({ text = "", className = "" }: { text?: string; classN
 /** 搜索框（设置页用）。 */
 export function SearchBox({ placeholder }: { placeholder: string }) {
     return (
-        <span className="inline-flex h-8 w-[260px] items-center rounded-[2px] border border-[#d9d9d9] bg-white px-2.5 text-sm text-[#999]">
+        <span className="inline-flex h-8 w-[260px] items-center rounded-lg border border-slate-200 bg-white px-2.5 text-[13px] text-slate-400">
             <span className="flex-1 truncate">{placeholder}</span>
-            <Search className="h-3.5 w-3.5 text-[#999]" />
+            <Search className="h-3.5 w-3.5 text-slate-400" />
         </span>
     );
 }
 
-/** 复选框（静态）。label 支持传入节点（如带链接的协议文案）。 */
-export function CheckBox({ label, checked }: { label: React.ReactNode; checked?: boolean }) {
+/** 复选框。传 onChange 即为可交互的受控复选框，不传则退化为纯展示。 */
+export function CheckBox({
+    label,
+    checked,
+    onChange,
+}: {
+    label: React.ReactNode;
+    checked?: boolean;
+    onChange?: (checked: boolean) => void;
+}) {
     return (
-        <span className="inline-flex select-none items-center gap-1.5 text-sm text-[#333]">
+        <span
+            className={`inline-flex items-center gap-1.5 text-[13px] text-slate-600 ${onChange ? "cursor-pointer" : "select-none"}`}
+            onClick={onChange ? () => onChange(!checked) : undefined}
+        >
             <span
-                className={`flex h-3.5 w-3.5 items-center justify-center rounded-[2px] border ${checked ? "border-[#44b449] bg-[#44b449]" : "border-[#d9d9d9] bg-white"}`}
+                className={`flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border ${checked ? "border-[#2f6bff] bg-[#2f6bff]" : "border-slate-300 bg-white"}`}
             >
                 {checked && (
                     <svg viewBox="0 0 10 8" className="h-2 w-2.5 fill-none stroke-white stroke-[2]">
@@ -173,7 +274,7 @@ export function Table({
     cols,
     rows,
     zebra = true,
-    headerCls = "bg-[#f0f7f0]",
+    headerCls = "bg-muted",
     empty,
 }: {
     cols: Col[];
@@ -183,10 +284,11 @@ export function Table({
     empty?: ReactNode;
 }) {
     const hasGroup = cols.some((c) => c.group);
-    const th = "border-b border-[#e8e8e8] px-3 py-2 text-[13px] font-normal text-[#333]";
+    const th = "border-b border-slate-200 px-3 py-2.5 text-[12.5px] font-medium text-slate-500";
     const alignCls = (a?: string) => (a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left");
     return (
-        <table className="w-full border-collapse text-sm">
+        <div className="w-full overflow-x-auto">
+            <table className="w-full border-collapse text-[13px]">
             <thead>
                 {hasGroup ? (
                     <>
@@ -234,7 +336,7 @@ export function Table({
             <tbody>
                 {rows.length === 0 && empty ? (
                     <tr>
-                        <td colSpan={cols.length} className="px-3 py-10 text-center text-[#999]">
+                        <td colSpan={cols.length} className="px-3 py-10 text-center text-slate-400">
                             {empty}
                         </td>
                     </tr>
@@ -242,7 +344,7 @@ export function Table({
                     rows.map((r, i) => (
                         <tr
                             key={i}
-                            className={`border-b border-[#f0f0f0] ${r.__cls ?? ""} ${zebra && i % 2 === 1 ? "bg-[#fafafa]" : "bg-white"}`}
+                            className={`border-b border-slate-100 transition-colors hover:bg-[#f6f9ff] ${r.__cls ?? ""} ${zebra && i % 2 === 1 ? "bg-[#fafbfd]" : "bg-white"}`}
                         >
                             {cols.map((c) => {
                                 const v = r[c.key];
@@ -250,7 +352,7 @@ export function Table({
                                 return (
                                     <td
                                         key={c.key}
-                                        className={`px-3 py-2.5 text-[13px] text-[#333] ${alignCls(c.align)} ${neg ? "bg-[#ffeeef] text-[#e0454f]" : ""}`}
+                                        className={`px-3 py-2.5 text-[13px] text-slate-600 tabular-nums ${alignCls(c.align)} ${neg ? "bg-[#fef2f2] text-[#ef4444]" : ""}`}
                                         style={{ width: c.width }}
                                     >
                                         {c.render ? c.render(r, i) : (v as ReactNode) ?? ""}
@@ -261,7 +363,8 @@ export function Table({
                     ))
                 )}
             </tbody>
-        </table>
+            </table>
+        </div>
     );
 }
 
@@ -270,22 +373,22 @@ export function Table({
 /** 页脚：左「显示 N 到 M，共 X 条记录」，右页码组。 */
 export function Pager({ total = 1, count = 1 }: { total?: number; count?: number }) {
     return (
-        <div className="flex items-center justify-between px-4 py-3 text-[13px] text-[#666]">
+        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-[12.5px] text-slate-500">
             <span>
                 显示 1 到 {total}，共 {count} 条记录
             </span>
             <span className="flex items-center gap-2">
-                <span className="inline-flex h-7 items-center rounded-[2px] border border-[#d9d9d9] px-2">
-                    20 <ChevronDown className="ml-1 h-3 w-3 text-[#999]" />
+                <span className="inline-flex h-7 items-center rounded-lg border border-slate-200 px-2">
+                    20 <ChevronDown className="ml-1 h-3 w-3 text-slate-400" />
                 </span>
-                <ChevronLeft className="h-4 w-4 text-[#999]" />
-                <span className="text-[#666]">第</span>
-                <span className="inline-flex h-7 w-10 items-center justify-center rounded-[2px] border border-[#d9d9d9]">
+                <ChevronLeft className="h-4 w-4 text-slate-300" />
+                <span>第</span>
+                <span className="inline-flex h-7 w-10 items-center justify-center rounded-lg border border-slate-200 font-medium text-[#2f6bff]">
                     1
                 </span>
                 <span>共{count}页</span>
-                <ChevronRight className="h-4 w-4 text-[#999]" />
-                <RotateCw className="h-3.5 w-3.5 text-[#999]" />
+                <ChevronRight className="h-4 w-4 text-slate-500" />
+                <RotateCw className="h-3.5 w-3.5 text-slate-400" />
             </span>
         </div>
     );
@@ -296,24 +399,90 @@ export function Pager({ total = 1, count = 1 }: { total?: number; count?: number
 /** 内容页工具行：左筛选、右按钮组。 */
 export function ToolRow({ left, right }: { left?: ReactNode; right?: ReactNode }) {
     return (
-        <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 px-4 py-2">
+        <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
             <div className="flex flex-wrap items-center gap-3">{left}</div>
-            <div className="flex flex-wrap items-center gap-2.5">{right}</div>
+            <div className="flex flex-wrap items-center gap-2">{right}</div>
         </div>
     );
 }
 
-/** 页面容器（白底 + 可选内边距）。 */
-export function Page({ children, className = "" }: { children: ReactNode; className?: string }) {
-    return <div className={`flex min-h-full flex-col bg-white ${className}`}>{children}</div>;
+/**
+ * 页面容器：白色圆角卡片（工具行 + 表格 + 页脚同属一张卡）。
+ * 传 title / icon 时额外渲染与既有实页一致的页头横幅。
+ */
+export function Page({
+    children,
+    className = "",
+    title,
+    subtitle,
+    icon: Icon,
+    actions,
+}: {
+    children: ReactNode;
+    className?: string;
+    title?: ReactNode;
+    subtitle?: ReactNode;
+    icon?: React.ComponentType<{ className?: string }>;
+    actions?: ReactNode;
+}) {
+    return (
+        <div className="flex min-h-full flex-col gap-4">
+            {title != null &&
+                (Icon ? (
+                    <PageHeaderBanner icon={Icon} title={title} subtitle={subtitle} actions={actions} />
+                ) : (
+                    <div className="rounded-2xl bg-gradient-to-r from-[#e7f0ff] via-[#eef4ff] to-[#f6f9ff] px-6 py-5">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="min-w-0">
+                                <h1 className="text-[20px] font-bold text-slate-800">{title}</h1>
+                                {subtitle && <p className="mt-0.5 text-[12.5px] text-slate-500">{subtitle}</p>}
+                            </div>
+                            {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
+                        </div>
+                    </div>
+                ))}
+            <div
+                className={`overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${className}`}
+            >
+                {children}
+            </div>
+        </div>
+    );
+}
+
+function PageHeaderBanner({
+    icon: Icon,
+    title,
+    subtitle,
+    actions,
+}: {
+    icon: React.ComponentType<{ className?: string }>;
+    title: ReactNode;
+    subtitle?: ReactNode;
+    actions?: ReactNode;
+}) {
+    return (
+        <section className="rounded-2xl bg-gradient-to-r from-[#e7f0ff] via-[#eef4ff] to-[#f6f9ff] px-6 py-5">
+            <div className="flex flex-wrap items-center gap-4">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#5b9bff] to-[#2f6bff] text-white shadow-[0_6px_16px_rgba(47,107,255,0.28)]">
+                    <Icon className="size-5" />
+                </span>
+                <div className="min-w-0">
+                    <h1 className="text-[20px] font-bold text-slate-800">{title}</h1>
+                    {subtitle && <p className="mt-0.5 text-[12.5px] text-slate-500">{subtitle}</p>}
+                </div>
+                {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
+            </div>
+        </section>
+    );
 }
 
 /** 刷新图标按钮。 */
 export function RefreshIcon() {
-    return <RefreshCw className="h-4 w-4 text-[#999]" />;
+    return <RefreshCw className="h-4 w-4 text-slate-400" />;
 }
 
-/** 页内子页签（绿字+绿下划线激活态）。传 active/on.onChange 即为受控模式。 */
+/** 页内子页签（主色字 + 主色下划线激活态）。传 active/on.onChange 即为受控模式。 */
 export function SubTabs({
     tabs,
     active,
@@ -324,14 +493,14 @@ export function SubTabs({
     onChange?: (i: number) => void;
 }) {
     return (
-        <div className="flex items-center gap-8 border-b border-[#e8e8e8] px-4">
+        <div className="flex items-center gap-8 border-b border-slate-100 px-4">
             {tabs.map((t, i) => {
                 const on = active !== undefined ? active === i : i === 0;
                 return (
                     <span
                         key={t}
                         onClick={() => onChange?.(i)}
-                        className={`-mb-px cursor-pointer py-3 text-sm select-none ${on ? "border-b-2 border-[#44b449] text-[#44b449]" : "border-b-2 border-transparent text-[#333]"}`}
+                        className={`-mb-px cursor-pointer py-3 text-[13px] font-medium select-none ${on ? "border-b-2 border-[#2f6bff] text-[#2f6bff]" : "border-b-2 border-transparent text-slate-500 hover:text-slate-700"}`}
                     >
                         {t}
                     </span>
@@ -344,22 +513,22 @@ export function SubTabs({
 /** 右下角提示 toast（橙色 ! 圆标 + 标题「提示」+ 文案）。 */
 export function Toast({ text, onClose }: { text: string; onClose?: () => void }) {
     return (
-        <div className="fixed right-4 bottom-5 z-50 flex w-[330px] items-start gap-3 rounded-md bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.18)]">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#ff9f2e] text-[15px] font-bold text-white">
+        <div className="fixed right-4 bottom-5 z-50 flex w-[330px] items-start gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_rgba(16,24,40,0.14)]">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f59e0b] text-[15px] font-bold text-white">
                 !
             </span>
             <div className="min-w-0 flex-1">
-                <div className="text-[15px] font-bold text-[#333]">提示</div>
-                <div className="mt-1 text-sm text-[#555]">{text}</div>
+                <div className="text-[15px] font-bold text-slate-800">提示</div>
+                <div className="mt-1 text-[13px] text-slate-500">{text}</div>
             </div>
-            <span className="cursor-pointer text-[#999]" onClick={onClose}>
+            <span className="cursor-pointer text-slate-400 hover:text-slate-600" onClick={onClose}>
                 ×
             </span>
         </div>
     );
 }
 
-/** 通用居中对话框骨架（白底直角细边框 + 标题 + × + 底部按钮）。 */
+/** 通用居中对话框（白底圆角卡片 + 标题 + × + 底部按钮）。 */
 export function Dialog({
     title,
     width = 440,
@@ -374,26 +543,34 @@ export function Dialog({
     onClose?: () => void;
 }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="w-full bg-white shadow-[0_6px_24px_rgba(0,0,0,0.2)]" style={{ maxWidth: width }}>
-                <div className="relative border-b border-[#e8e8e8] py-3 text-center text-[15px] font-bold text-[#333]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+            <div className="w-full overflow-hidden rounded-2xl bg-white shadow-[0_16px_48px_rgba(16,24,40,0.2)]" style={{ maxWidth: width }}>
+                <div className="relative px-6 py-4 text-[15px] font-semibold text-slate-800">
                     {title}
-                    <span className="absolute top-2.5 right-4 cursor-pointer text-[16px] text-[#999]" onClick={onClose}>
+                    <span
+                        className="absolute top-3.5 right-4 cursor-pointer text-[16px] text-slate-400 hover:text-slate-600"
+                        onClick={onClose}
+                    >
                         ×
                     </span>
                 </div>
-                <div className="px-6 py-6">{children}</div>
-                {footer && <div className="flex justify-center gap-3 border-t border-[#e8e8e8] px-6 py-4">{footer}</div>}
+                <div className="border-t border-slate-100 px-6 py-6 text-[13px] text-slate-600">{children}</div>
+                {footer && (
+                    <div className="flex justify-end gap-2.5 border-t border-slate-100 bg-[#fafbfd] px-6 py-4">
+                        {footer}
+                    </div>
+                )}
             </div>
         </div>
     );
 }
 
-/** 启用状态绿色开关（开态）。 */
-export function Toggle({ on = true }: { on?: boolean }) {
+/** 启用状态开关：开启用主色。传 onClick 即为可切换开关。 */
+export function Toggle({ on = true, onClick }: { on?: boolean; onClick?: () => void }) {
     return (
         <span
-            className={`relative inline-block h-5 w-9 rounded-full align-middle ${on ? "bg-[#44b449]" : "bg-[#d9d9d9]"}`}
+            className={`relative inline-block h-5 w-9 rounded-full align-middle transition-colors ${on ? "bg-[#2f6bff]" : "bg-slate-300"} ${onClick ? "cursor-pointer" : ""}`}
+            onClick={onClick}
         >
             <span
                 className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow ${on ? "right-0.5" : "left-0.5"}`}
@@ -404,5 +581,37 @@ export function Toggle({ on = true }: { on?: boolean }) {
 
 /** 空表提示。 */
 export function EmptyTip({ text = "暂无数据" }: { text?: string }) {
-    return <span className="block py-14 text-center text-[13px] text-[#999]">{text}</span>;
+    return <span className="block py-14 text-center text-[13px] text-slate-400">{text}</span>;
+}
+
+/* ---------------- 建设中（界面已复刻、后端未接入） ---------------- */
+
+/** 行内「建设中」小标：挂在尚未接后端的按钮/字段旁，避免用户误认为可用。 */
+export function WipTag({ text = "建设中", className = "" }: { text?: string; className?: string }) {
+    return (
+        <span className={`rounded-full bg-[#fef3c7] px-2 text-[11px] font-medium leading-5 text-[#b45309] ${className}`}>
+            {text}
+        </span>
+    );
+}
+
+/** 页面/区块级建设中提示条，用在不接后端就整块无意义的区域。 */
+export function WipNotice({ text = "以下为界面复刻的展示占位，尚未接入后端数据。" }: { text?: string }) {
+    return (
+        <div className="mx-4 my-3 flex items-center gap-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[12.5px] text-[#92640b]">
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#f59e0b] text-[11px] font-bold text-white">
+                !
+            </span>
+            {text}
+        </div>
+    );
+}
+
+/** 建设中按钮：外观保留、不可点击，悬停给出说明。 */
+export function WipBtn({ children, dropdown, title = "该操作尚未接入后端，建设中" }: { children: ReactNode; dropdown?: boolean; title?: string }) {
+    return (
+        <Btn variant="disabled" dropdown={dropdown} title={title}>
+            {children}
+        </Btn>
+    );
 }

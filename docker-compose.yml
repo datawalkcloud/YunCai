@@ -1,0 +1,76 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${KUAIJI_DB_NAME:-kuaiji}
+      POSTGRES_USER: ${KUAIJI_DB_USER:-kuaiji}
+      POSTGRES_PASSWORD: ${KUAIJI_DB_PASSWORD:?缺少数据库口令，请在 .env 中设置 KUAIJI_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KUAIJI_DB_USER:-kuaiji} -d ${KUAIJI_DB_NAME:-kuaiji}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 一次性结构迁移任务：每次发布先跑它，避免多实例并发迁移。
+  migrate:
+    build:
+      context: .
+      target: api
+    image: kuaiji-api:${KUAIJI_IMAGE_TAG:-latest}
+    command: ["--migrate-only"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${KUAIJI_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${KUAIJI_DB_NAME:-kuaiji};Username=${KUAIJI_DB_USER:-kuaiji};Password=${KUAIJI_DB_PASSWORD}"
+      # 迁移容器同样会执行配置校验，密钥必须可见但不会用于签发令牌。
+      Jwt__Key: ${KUAIJI_JWT_KEY:?缺少 JWT 签名密钥，请在 .env 中设置 KUAIJI_JWT_KEY（至少 32 位随机串）}
+      KuaiJi__Database__AutoMigrate: "false"
+      KuaiJi__Seed__Enabled: ${KUAIJI_SEED_ENABLED:-false}
+      KuaiJi__Seed__AdminUsername: ${KUAIJI_ADMIN_USERNAME:-admin}
+      KuaiJi__Seed__AdminPassword: ${KUAIJI_ADMIN_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: kuaiji-api:${KUAIJI_IMAGE_TAG:-latest}
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${KUAIJI_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${KUAIJI_DB_NAME:-kuaiji};Username=${KUAIJI_DB_USER:-kuaiji};Password=${KUAIJI_DB_PASSWORD}"
+      Jwt__Key: ${KUAIJI_JWT_KEY:?缺少 JWT 签名密钥，请在 .env 中设置 KUAIJI_JWT_KEY（至少 32 位随机串）}
+      Cors__AllowedOrigins__0: ${KUAIJI_PUBLIC_ORIGIN:-http://localhost}
+      KuaiJi__Database__AutoMigrate: "false"
+      KuaiJi__Seed__Enabled: ${KUAIJI_SEED_ENABLED:-false}
+      KuaiJi__Seed__AdminUsername: ${KUAIJI_ADMIN_USERNAME:-admin}
+      KuaiJi__Seed__AdminPassword: ${KUAIJI_ADMIN_PASSWORD:-}
+      KuaiJi__Networking__TrustForwardedHeaders: "true"
+      KuaiJi__Networking__HttpsRedirection: ${KUAIJI_HTTPS_REDIRECT:-false}
+      KuaiJi__Networking__UseHsts: ${KUAIJI_USE_HSTS:-false}
+    # 故意不映射到宿主机端口：只有 nginx 能直连后端，
+    # 否则客户端可绕过代理伪造 X-Forwarded-For，登录限流形同虚设。
+    expose:
+      - "8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    image: kuaiji-web:${KUAIJI_IMAGE_TAG:-latest}
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    ports:
+      - "${KUAIJI_HTTP_PORT:-80}:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

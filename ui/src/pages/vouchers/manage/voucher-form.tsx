@@ -5,6 +5,7 @@ import { useAccountSets } from "@/accountSets/AccountSetsContext"
 import { VouchersApi, type AccountDto, type CreateVoucherRequest, type UpdateVoucherRequest, type VoucherDetailDto, type VoucherEntryDto } from "@/apis-gen"
 import { amountToChineseUppercase } from "@/lib/amount-uppercase"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { fmtMoney, toISODate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { AssistItemSelect } from "@/components/assist/assist-item-select"
 import { assistLabel } from "@/components/assist/constants"
@@ -31,8 +32,9 @@ interface EntryRow {
 /** 金额分位列，从高位到低位（最高支持到亿位，角、分为小数位）。 */
 const AMOUNT_COLUMNS = ["亿", "千万", "百万", "十万", "万", "千", "百", "十", "元", "角", "分"]
 
+/** 制单默认日期：本地今天的 yyyy-MM-dd（不能用 UTC 口径，否则凌晨会落到昨天）。 */
 function today(): string {
-    return new Date().toISOString().slice(0, 10)
+    return toISODate(new Date())
 }
 
 /** 分录已挂的辅助核算（类别 → 档案 id）。录入界面每个类别只选一个档案，同类型多档案时取首个。 */
@@ -235,7 +237,7 @@ export default function VoucherForm({
     }, [accountSets, accountSetId])
     const [voucherWord, setVoucherWord] = useState(initial?.word ?? "记")
     const [voucherNo, setVoucherNo] = useState(initial?.number ? String(initial.number) : "")
-    const [date, setDate] = useState(() => (initial?.date ? initial.date.toISOString().slice(0, 10) : today()))
+    const [date, setDate] = useState(() => (initial?.date ? toISODate(initial.date) : today()))
     const [attachments, setAttachments] = useState(initial?.attachmentCount != null ? String(initial.attachmentCount) : "0")
     const [entries, setEntries] = useState<EntryRow[]>(() => toEntryRows(initial))
     const [saving, setSaving] = useState(false)
@@ -622,7 +624,7 @@ export default function VoucherForm({
                         ? "借贷平衡"
                         : totalDebit === 0 && totalCredit === 0
                             ? "请输入借贷金额"
-                            : `借贷不平衡，差额 ¥${Math.abs(totalDebit - totalCredit).toFixed(2)}`}
+                            : `借贷不平衡，差额 ${fmtMoney(Math.abs(totalDebit - totalCredit))}`}
                 </span>
                 <div className="flex-1" />
                 <Button variant="outline" onClick={onCancel} disabled={saving}>

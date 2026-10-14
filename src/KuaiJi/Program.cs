@@ -1,20 +1,45 @@
 using System.Text;
+using System.Threading.RateLimiting;
+using KuaiJi.SharedKernel.Infrastructure.Api;
 using KuaiJi.SharedKernel.Infrastructure.Binding;
 using KuaiJi.SharedKernel.Infrastructure.Data;
+using KuaiJi.SharedKernel.Infrastructure.Runtime;
 using Microsoft.OpenApi;
 using KuaiJi.Modules.Identity.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 本机凭据（数据库连接串、JWT 签名密钥）放在不入库的 appsettings.Local.json。
+// 追加在默认源之后会盖过环境变量，所以补加一次环境变量源，保证优先级：
+// appsettings.json < appsettings.{环境}.json < appsettings.Local.json < 环境变量 < 命令行参数。
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddEnvironmentVariables();
+
+var runtime = builder.Configuration.GetSection(RuntimeOptions.SectionName).Get<RuntimeOptions>() ?? new RuntimeOptions();
+
 // Add services to the container.
-Log.Logger = new LoggerConfiguration()
+var loggerConfiguration = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .CreateLogger();
+    .Enrich.FromLogContext();
+
+// 容器与系统服务里工作目录不可靠，默认只输出到控制台；需要落盘时配置 KuaiJi:Logging:File 为绝对路径。
+if (!string.IsNullOrWhiteSpace(runtime.Logging.File))
+{
+    loggerConfiguration.WriteTo.File(
+        runtime.Logging.File,
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}");
+}
+
+Log.Logger = loggerConfiguration.CreateLogger();
 
 builder.Services.AddSerilog(Log.Logger);
 
@@ -51,8 +76,15 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "缺少数据库连接串。请复制 src/KuaiJi/appsettings.Local.example.json 为 appsettings.Local.json 并填写，或设置环境变量 ConnectionStrings__DefaultConnection。");
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
@@ -131,6 +163,12 @@ builder.Services.AddSingleton<ITokenService, JwtTokenService>();
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
           ?? throw new InvalidOperationException("缺少 Jwt 配置节");
 
+if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
+{
+    throw new InvalidOperationException(
+        "Jwt:Key 未配置或长度不足 32 位。请在 appsettings.Local.json 的 Jwt:Key 填入随机串（生产环境用环境变量 Jwt__Key），否则令牌可被伪造。");
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -150,6 +188,39 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// 未被控制器捕获的异常统一走 Problem Details（见 GlobalExceptionHandler）。
+builder.Services.AddProblemDetails();
+builder.Services.AddHsts(options => options.MaxAge = TimeSpan.FromDays(180));
+
+// 登录接口按来源 IP 限流，防止口令枚举。反向代理后要生效需开启 KuaiJi:Networking:TrustForwardedHeaders。
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
+});
+
+builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
+
+if (runtime.Networking.TrustForwardedHeaders)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        // 信任所有来源的 X-Forwarded-*：仅在后端端口不对外暴露、只有反向代理能直连时使用，
+        // 否则客户端可自带头伪造来源 IP 绕过限流。
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownProxies.Clear();
+        options.KnownIPNetworks.Clear();
+    });
+}
+
 // 允许前端开发服务器跨域访问
 const string CorsPolicy = "SpaCors";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -164,80 +235,86 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// 应用启动时自动执行 EF Core 数据库迁移
-using (var scope = app.Services.CreateScope())
+var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+
+try
 {
-    var services = scope.ServiceProvider;
-    try
+    // 数据库结构迁移与初始数据。失败直接抛出让进程退出，避免「库结构没跟上却照常对外服务」。
+    // 生产环境由一次性任务执行：dotnet KuaiJi.dll --migrate-only
+    using (var scope = app.Services.CreateScope())
     {
-        var context = services.GetRequiredService<AppDbContext>();
-        if (context.Database.IsRelational())
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var isDevelopment = app.Environment.IsDevelopment();
+
+        if (runtime.Database.AutoMigrate || DatabaseBootstrap.IsMigrateOnly(args))
         {
-            context.Database.Migrate();
+            await DatabaseBootstrap.MigrateAsync(db, startupLogger);
         }
 
-        // 创建默认用户
-        if (!context.Users.Any())
-        {
-            context.Users.AddRange(
-                new KuaiJi.Modules.Identity.Domain.User
-                {
-                    Id = "1",
-                    Username = "admin",
-                    DisplayName = "管理员",
-                    PasswordHash = KuaiJi.Modules.Identity.Infrastructure.PasswordHasher.Hash("admin123")
-                },
-                new KuaiJi.Modules.Identity.Domain.User
-                {
-                    Id = "2",
-                    Username = "user",
-                    DisplayName = "普通用户",
-                    PasswordHash = KuaiJi.Modules.Identity.Infrastructure.PasswordHasher.Hash("user123")
-                }
-            );
-            context.SaveChanges();
-        }
+        await DatabaseBootstrap.SeedAsync(db, runtime, isDevelopment, startupLogger);
 
-        // 创建默认账套（科目/日记账/凭证均需归属于某一账套），并置为当前账套。
-        if (!context.AccountSets.Any())
+        if (DatabaseBootstrap.IsMigrateOnly(args))
         {
-            var defaultSet = KuaiJi.Modules.AccountSets.Domain.AccountSet.Create(
-                "默认账套",
-                "默认单位",
-                KuaiJi.Modules.AccountSets.Domain.AccountingStandard.Enterprise,
-                KuaiJi.Modules.AccountSets.Domain.TaxpayerType.General,
-                "人民币",
-                DateTime.UtcNow.Year,
-                1);
-            defaultSet.MarkAsCurrent();
-            context.AccountSets.Add(defaultSet);
-            context.SaveChanges();
+            startupLogger.LogInformation("数据库迁移与初始化完成，进程退出。");
+            return;
         }
-    }                           
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "数据库自动迁移或初始化数据过程中发生了错误。");
     }
-}
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+    }
+    else
+    {
+        // 未捕获异常 → Problem Details；HSTS 与 HTTPS 跳转按配置开启。
+        app.UseExceptionHandler();
+        if (runtime.Networking.UseHsts)
+        {
+            app.UseHsts();
+        }
+    }
+
+    if (runtime.Networking.TrustForwardedHeaders)
+    {
+        app.UseForwardedHeaders();
+    }
+
+    if (runtime.Networking.HttpsRedirection && !app.Environment.IsDevelopment())
+    {
+        // 开发环境保持 HTTP 直连，方便 openapi-generator 等工具读取 http 上的 OpenAPI 文档。
+        app.UseHttpsRedirection();
+    }
+
+    app.UseSerilogRequestLogging();
+
+    // 基础安全响应头。前端与接口同源部署时这些头才有意义，但加上无害。
+    app.Use(async (context, next) =>
+    {
+        var headers = context.Response.Headers;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["X-Frame-Options"] = "DENY";
+        headers["Referrer-Policy"] = "same-origin";
+        await next();
+    });
+
+    app.UseCors(CorsPolicy);
+    app.UseRateLimiter();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapControllers();
+    app.MapHealthChecks("/health");
+
+    await app.RunAsync();
+}
+catch (Exception ex)
 {
-    app.MapOpenApi();
+    startupLogger.LogCritical(ex, "KuaiJi 启动失败。");
+    throw;
 }
-else
+finally
 {
-    // 生产环境才强制 HTTPS 跳转；开发环境保持 HTTP 直连，
-    // 以便 openapi-generator 等工具能直接读取 http 上的 OpenAPI 文档。
-    app.UseHttpsRedirection();
+    await Log.CloseAndFlushAsync();
 }
-
-app.UseCors(CorsPolicy);
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();

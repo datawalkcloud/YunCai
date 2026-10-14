@@ -1,14 +1,7 @@
-/** 账页金额显示口径，与科目余额表保持一致。 */
+/** 账页专有的显示口径；金额格式化统一走 @/lib/format，此处不另设实现。 */
 import { ROW_KIND } from "./types"
 
-/** 金额格式化：0 显示为空，其余按千分位保留两位小数。 */
-export function fmtAmount(value: number | null | undefined, force = false): string {
-    if ((value ?? 0) === 0 && !force) return ""
-    return (value ?? 0).toLocaleString("zh-CN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    })
-}
+export { fmtAmount } from "@/lib/format"
 
 /** 金额列统一右对齐并使用等宽数字。 */
 export const amountCls = "text-right tabular-nums"

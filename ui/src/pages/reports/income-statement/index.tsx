@@ -8,9 +8,8 @@ import { ReportsApi, type IncomeStatementLineDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 import { PeriodField } from "@/components/fields/date-fields"
-import { PageHeader, SectionCard } from "@/components/page/section"
-import { PAGE_BTN_GHOST, PERIOD_FIELD, SOFT_PANEL } from "@/components/page/styles"
-import { Alert, AlertTitle } from "@/components/ui/alert"
+import { ReportPageShell } from "@/components/report/ReportPageShell"
+import { PAGE_BTN_GHOST, PERIOD_FIELD } from "@/components/page/styles"
 import { Button } from "@/components/ui/button"
 import {
     Table,
@@ -151,7 +150,7 @@ function indentCls(indent: number): string | undefined {
 }
 
 export default function IncomeStatementPage() {
-    const { user, token } = useAuth()
+    const { token } = useAuth()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
@@ -204,108 +203,92 @@ export default function IncomeStatementPage() {
     }, [lines])
 
     return (
-        <div className="flex flex-col gap-4">
-            <PageHeader
-                icon={TrendingUp}
-                title="利润表"
-                subtitle={
-                    <>
-                        账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                        。按《企业会计准则》会企02表格式编制，金额由凭证实时汇总。
-                    </>
-                }
-            />
-
-            <SectionCard bodyClassName="flex flex-col gap-4">
-                <div className="relative text-center">
-                    <div className="text-[17px] font-bold text-slate-800">利润表</div>
-                    <div className="absolute right-0 top-0 text-[12.5px] text-slate-400">会企02表</div>
-                </div>
-
-                <div className={cn(SOFT_PANEL, "flex flex-wrap items-center justify-between gap-2 px-4 py-3")}>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[12.5px] text-slate-500">会计期间：</span>
-                        <PeriodField
-                            className={PERIOD_FIELD}
-                            value={toPeriodDate(period)}
-                            onChange={(d) => d && setPeriod({ year: dayjs(d).year(), month: dayjs(d).month() + 1 })}
-                            disabled={!accountSetId}
-                            allowClear={false}
-                        />
-                        <Button
-                            variant="outline"
-                            onClick={() => void load()}
-                            disabled={loading || !accountSetId}
-                            className={cn(PAGE_BTN_GHOST, "bg-white")}
-                        >
-                            {loading ? (
-                                <Spinner data-icon="inline-start" />
-                            ) : (
-                                <RefreshCw data-icon="inline-start" />
-                            )}
-                            刷新
-                        </Button>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-slate-400">
-                        <span>编制单位：{user?.displayName ?? "——"}</span>
-                        <span>{periodText}</span>
-                        <span>单位：元</span>
-                    </div>
-                </div>
-
-                {error && (
-                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                        <AlertTitle>{error}</AlertTitle>
-                    </Alert>
-                )}
-
-                {loading && !loaded ? (
-                    <div className="flex items-center justify-center py-16">
-                        <Spinner className="size-5 text-slate-300" />
-                    </div>
-                ) : !accountSetId ? (
-                    <div className="py-16 text-center text-[13px] text-slate-400">请先选择账套。</div>
-                ) : (
-                    <Table className="min-w-[560px] border-collapse">
-                        <colgroup>
-                            <col />
-                            <col className="w-16" />
-                            <col className="w-40" />
-                            <col className="w-40" />
-                        </colgroup>
-                        <TableHeader>
-                            <TableRow className="bg-muted hover:bg-muted">
-                                <TableHead className={cn(cellCls, "text-left font-medium text-slate-500")}>项目</TableHead>
-                                <TableHead className={cn(cellCls, "text-center font-medium text-slate-500")}>行次</TableHead>
-                                <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>本期金额</TableHead>
-                                <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>本年累计金额</TableHead>
+        <ReportPageShell
+            icon={TrendingUp}
+            title="利润表"
+            subtitle={
+                <>
+                    账套：{currentSet?.name ?? (accountSetId || "未指定")}
+                    。按《企业会计准则》会企02表格式编制，金额由凭证实时汇总。
+                </>
+            }
+            template="会企02表"
+            period={
+                <>
+                    <span className="text-[12.5px] text-slate-500">会计期间：</span>
+                    <PeriodField
+                        className={PERIOD_FIELD}
+                        value={toPeriodDate(period)}
+                        onChange={(d) => d && setPeriod({ year: dayjs(d).year(), month: dayjs(d).month() + 1 })}
+                        disabled={!accountSetId}
+                        allowClear={false}
+                    />
+                </>
+            }
+            actions={
+                <Button
+                    variant="outline"
+                    onClick={() => void load()}
+                    disabled={loading || !accountSetId}
+                    className={cn(PAGE_BTN_GHOST, "bg-white")}
+                >
+                    {loading ? (
+                        <Spinner data-icon="inline-start" />
+                    ) : (
+                        <RefreshCw data-icon="inline-start" />
+                    )}
+                    刷新
+                </Button>
+            }
+            meta={
+                <>
+                    <span>编制单位：{currentSet?.companyName ?? "——"}</span>
+                    <span>{periodText}</span>
+                    <span>单位：元</span>
+                </>
+            }
+            loading={loading && !loaded}
+            error={error}
+            placeholder={!accountSetId ? "请先选择账套。" : undefined}
+        >
+            <Table className="min-w-[560px] border-collapse">
+                <colgroup>
+                    <col />
+                    <col className="w-16" />
+                    <col className="w-40" />
+                    <col className="w-40" />
+                </colgroup>
+                <TableHeader>
+                    <TableRow className="bg-muted hover:bg-muted">
+                        <TableHead className={cn(cellCls, "text-left font-medium text-slate-500")}>项目</TableHead>
+                        <TableHead className={cn(cellCls, "text-center font-medium text-slate-500")}>行次</TableHead>
+                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>本期金额</TableHead>
+                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>本年累计金额</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {rows.map((row, i) => {
+                        const isTotal = row.kind === "total"
+                        const indent = (row as StatementLine & { indent?: number }).indent ?? 0
+                        return (
+                            <TableRow key={i} className="hover:bg-transparent">
+                                <TableCell className={cn(cellCls, "whitespace-normal", indentCls(indent), isTotal && "font-medium")}>
+                                    {row.label}
+                                </TableCell>
+                                <TableCell className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>
+                                    {row.line}
+                                </TableCell>
+                                <TableCell className={cn(amountCls, isTotal && "font-medium")}>
+                                    {fmt(row.current, isTotal)}
+                                </TableCell>
+                                <TableCell className={cn(amountCls, isTotal && "font-medium")}>
+                                    {fmt(row.yearToDate, isTotal)}
+                                </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rows.map((row, i) => {
-                                const isTotal = row.kind === "total"
-                                const indent = (row as StatementLine & { indent?: number }).indent ?? 0
-                                return (
-                                    <TableRow key={i} className="hover:bg-transparent">
-                                        <TableCell className={cn(cellCls, "whitespace-normal", indentCls(indent), isTotal && "font-medium")}>
-                                            {row.label}
-                                        </TableCell>
-                                        <TableCell className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>
-                                            {row.line}
-                                        </TableCell>
-                                        <TableCell className={cn(amountCls, isTotal && "font-medium")}>
-                                            {fmt(row.current, isTotal)}
-                                        </TableCell>
-                                        <TableCell className={cn(amountCls, isTotal && "font-medium")}>
-                                            {fmt(row.yearToDate, isTotal)}
-                                        </TableCell>
-                                    </TableRow>
-                                )
-                            })}
-                        </TableBody>
-                    </Table>
-                )}
-            </SectionCard>
-        </div>
+                        )
+                    })}
+                </TableBody>
+            </Table>
+        </ReportPageShell>
     )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 
 import { type VoucherDetailDto, VouchersApi } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { fmtAmount } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Alert, AlertTitle } from "@/components/ui/alert"
 import { Chip } from "@/components/page/chip"
@@ -18,7 +19,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { amountCls, fmtAmount } from "./format"
+import { amountCls } from "./format"
 import { dayKey } from "./useVoucherLookup"
 
 export interface VoucherDetailSheetProps {

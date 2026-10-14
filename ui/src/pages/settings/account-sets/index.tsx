@@ -18,6 +18,7 @@ import { useAuth } from "@/auth/AuthContext"
 import { useAccountSets } from "@/accountSets/AccountSetsContext"
 import { AccountSetsApi, type AccountSetDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { useConfirm } from "@/hooks/useConfirm"
 import { cn } from "@/lib/utils"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { StatusPill } from "@/components/page/status-pill"
@@ -111,6 +112,7 @@ function KeyValue({ label, children }: { label: string, children: ReactNode }) {
 export default function AccountSetsPage() {
     const { token } = useAuth()
     const { refresh: refreshAccountSets } = useAccountSets()
+    const { confirm, confirmDialog } = useConfirm()
 
     const [sets, setSets] = useState<AccountSetDto[]>([])
     const [loading, setLoading] = useState(false)
@@ -184,7 +186,7 @@ export default function AccountSetsPage() {
 
     async function removeSet(set: AccountSetDto) {
         if (!set.id || busyId) return
-        if (!window.confirm(`确定删除账套「${set.name}」吗？此操作不可撤销。`)) return
+        if (!(await confirm(`确定删除账套「${set.name}」吗？此操作不可撤销。`))) return
         setBusyId(set.id)
         setListError(null)
         try {
@@ -200,7 +202,7 @@ export default function AccountSetsPage() {
     /** 月结账：按后端给出的下一待结期间顺序推进，结账前需期间内凭证全部已过账。 */
     async function closePeriod(set: AccountSetDto) {
         if (!set.id || busyId || !set.nextCloseYear || !set.nextCloseMonth) return
-        if (!window.confirm(`确定对账套「${set.name}」执行 ${set.nextCloseYear} 年 ${set.nextCloseMonth} 月的结账吗？结账后该期间凭证将不可增删改。`)) return
+        if (!(await confirm(`确定对账套「${set.name}」执行 ${set.nextCloseYear} 年 ${set.nextCloseMonth} 月的结账吗？结账后该期间凭证将不可增删改。`))) return
         setBusyId(set.id)
         setListError(null)
         try {
@@ -219,7 +221,7 @@ export default function AccountSetsPage() {
     /** 反结账：退回最近一个已结期间。 */
     async function reopenPeriod(set: AccountSetDto) {
         if (!set.id || busyId || !set.closedPeriod) return
-        if (!window.confirm(`确定对账套「${set.name}」反结账吗？将退回最近一个已结期间（${set.closedPeriod}）。`)) return
+        if (!(await confirm(`确定对账套「${set.name}」反结账吗？将退回最近一个已结期间（${set.closedPeriod}）。`))) return
         setBusyId(set.id)
         setListError(null)
         try {
@@ -646,6 +648,8 @@ export default function AccountSetsPage() {
                     </SheetFooter>
                 </SheetContent>
             </Sheet>
+
+            {confirmDialog}
         </div>
     )
 }

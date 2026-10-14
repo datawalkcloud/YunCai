@@ -47,16 +47,22 @@ ui/                              前端
 ```powershell
 # 后端（工作目录 src/KuaiJi）
 dotnet build
-dotnet run                    # 监听 http://localhost:5271（launchSettings http profile）
-dotnet ef migrations add <名称>   # 修改实体后新增迁移；启动时自动应用，无需手动 database update
+dotnet run                    # 监听 http://localhost:5271（launchSettings http profile，开发环境自动迁移 + 播种）
+dotnet ef migrations add <名称>   # 修改实体后新增迁移
+dotnet ef database update     # 手动应用迁移（生产环境的做法）；或 dotnet run -- --migrate-only
 
 # 前端（工作目录 ui）
 npm run dev                   # Vite 开发服务器 http://localhost:5173，/api 代理到 5271 并去掉 /api 前缀
 npm run build                 # tsc -b && vite build
 npm run lint                  # oxlint
 npm run gen                   # 重新生成 apis-gen（要求后端已在 5271 运行，读取 /openapi/v1.json）
+
+# 生产部署（仓库根目录，详见 docs/部署上线说明.md）
+cp .env.example .env          # 必填 KUAIJI_DB_PASSWORD / KUAIJI_JWT_KEY / KUAIJI_ADMIN_PASSWORD
+docker compose up -d --build  # web(nginx 托管 SPA 并反代 /api) + api + db；migrate 容器先跑 --migrate-only
 ```
 
+- **本机机密**放 `src/KuaiJi/appsettings.Local.json`（从 `appsettings.Local.example.json` 复制，已被 .gitignore 排除）；`appsettings.json` 里不得出现真实连接串或签名密钥。配置优先级：appsettings.json < appsettings.{环境}.json < Local < 环境变量。
 - shell 是 Windows PowerShell，**不支持 `&&`**，用 `;` 分隔命令。
 - `dotnet build` 报 MSB3021/MSB3027（KuaiJi.exe 被占用）时，先执行
   `Stop-Process -Name "KuaiJi" -Force -ErrorAction SilentlyContinue` 再构建。
@@ -65,8 +71,9 @@ npm run gen                   # 重新生成 apis-gen（要求后端已在 5271 
 
 1. 后端改动 API（Controller / DTO）后：`dotnet run` 启动后端 → 在 `ui/` 下执行 `npm run gen` 重新生成前端客户端 → 前端使用 `apis-gen` 中的强类型 API。
 2. OpenAPI 仅在 Development 环境暴露（`/openapi/v1.json`）；开发环境不做 HTTPS 跳转，方便生成器直连 http。
-3. 数据库连接串在 `appsettings.json` 的 `ConnectionStrings:DefaultConnection`（PostgreSQL）。应用启动时自动迁移，并初始化默认用户（admin/user）与默认账套。
+3. 数据库连接串走 `ConnectionStrings:DefaultConnection`（PostgreSQL），**真实值不入库**：本机放 `appsettings.Local.json`，容器放环境变量（见 `docs/部署上线说明.md`）。迁移与播种由配置开关控制：开发环境 `KuaiJi:Database:AutoMigrate=true` + `KuaiJi:Seed:Enabled=true`（admin/admin123、user/user123、默认账套）；生产保持关闭，发布时跑一次性任务 `dotnet KuaiJi.dll --migrate-only`。连接串或 `Jwt:Key` 缺失/过短会直接让进程启动失败。
 4. 科目、日记账、凭证均归属于某一账套（AccountSet），接口普遍需要 accountSetId 上下文。
+5. 运行时基线（`Program.cs` 组合根）：未捕获异常 → Problem Details（`Shared/Infrastructure/Api/GlobalExceptionHandler`，业务校验类 400 透出中文文案，500 不外泄堆栈）；`/health` 探活含数据库连通；`Auth/login` 按来源 IP 限流 10 次/5 分钟；反向代理后必须开 `KuaiJi:Networking:TrustForwardedHeaders`，否则限流按代理 IP 计数。
 
 ## 编码约定
 
@@ -100,3 +107,5 @@ npm run gen                   # 重新生成 apis-gen（要求后端已在 5271 
 - **apis-gen 日期运行时是 Date 对象**：生成客户端的 `FromJSON` 会把日期字段 `new Date(...)` 解析成真正的 Date（类型与运行时一致），前端展示用 `new Date(x).toISOString().substring(0,10)` 得 yyyy-MM-dd，不要直接 `String(x).slice(0,10)`（会渲染出英文星期）。
 - **改实体命名空间必须同步迁移快照**：`Migrations/AppDbContextModelSnapshot.cs` 以**实体全名字符串**（如 `"KuaiJi.Modules.Vouchers.Domain.Voucher"`）登记实体；改实体命名空间而不同步该文件，下次 `dotnet ef migrations add` 会生成全量删建。验证方法：加一个临时迁移看 Up/Down 是否为空，空则 `dotnet ef migrations remove` 撤掉。
 - **oxlint 存量警告**：根目录 `npx oxlint` 有 ~15 条既有 `react(only-export-components)` fast-refresh 提示（shadcn 组件与 router 辅助组件），不属于本次改动；lemon 页面文件保持 0 警告。
+- **启动即失败是设计**：`ConnectionStrings:DefaultConnection` 为空、或 `Jwt:Key` 缺失/短于 32 位时进程直接抛异常退出，不再「吞掉迁移错误照常服务」。CI 里跑 `dotnet ef` 需同时给这两个环境变量（见 `.github/workflows/ci.yml`）。
+- **前端页面两套并存**：`ui/src/pages/lemon/*` 是复刻柠檬云的正式 UI，`ui/src/pages/{vouchers,ledger,funds,reports,settings,closing}` 是既有实页，功能重叠但**数据来源接法不同**——改数据链路时先确认改的是哪套，`pages/home`、`pages/vouchers/import`、`lemon/menu.ts` 属不可达孤儿代码。

@@ -6,6 +6,7 @@ import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSet
 import { useAuth } from "@/auth/AuthContext"
 import { AccountsApi, EntryCategoriesApi, type AccountDto, type EntryCategoryDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { StatusPill } from "@/components/page/status-pill"
 import { ICON_BTN, ICON_BTN_DANGER, PAGE_BTN_GHOST, PAGE_BTN_PRIMARY } from "@/components/page/styles"
@@ -64,6 +65,7 @@ export default function EntryCategoriesPage() {
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
+    const { confirm, confirmDialog } = useConfirm()
 
     const [categories, setCategories] = useState<EntryCategoryDto[]>([])
     const [loading, setLoading] = useState(false)
@@ -189,7 +191,7 @@ export default function EntryCategoriesPage() {
 
     async function handleDelete(c: EntryCategoryDto) {
         if (!c.id) return
-        if (!window.confirm(`确定删除${c.typeText}类别「${c.name}」吗？既有流水中已登记的类别不受影响。`)) return
+        if (!(await confirm(`确定删除${c.typeText}类别「${c.name}」吗？既有流水中已登记的类别不受影响。`))) return
         setError(null)
         try {
             await new EntryCategoriesApi(apiConfig(token)).accountsetsAccountSetIdEntrycategoriesIdDelete({ accountSetId, id: c.id })
@@ -469,6 +471,8 @@ export default function EntryCategoriesPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {confirmDialog}
         </div>
     )
 }

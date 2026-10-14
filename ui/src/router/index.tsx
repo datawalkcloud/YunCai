@@ -1,92 +1,17 @@
 import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router";
-import type { ReactNode } from "react";
+import { createElement, lazy, Suspense } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import Login from "@/pages/login/Login";
 import Landing from "@/pages/landing";
-import DashboardHome from "@/pages/dashboard";
-import CashJournal from "@/pages/funds/cash-journal";
-import EntryCategories from "@/pages/funds/entry-categories";
-import Transfer from "@/pages/funds/transfer";
-import FundReport from "@/pages/funds/report";
-import FundReconciliation from "@/pages/funds/reconciliation";
-import TrialBalance from "@/pages/ledger/trial-balance";
-import SubsidiaryLedger from "@/pages/ledger/subsidiary";
-import GeneralLedger from "@/pages/ledger/general";
-import VoucherJournal from "@/pages/ledger/journal";
-import VoucherSummary from "@/pages/ledger/voucher-summary";
-import MultiColumnLedger from "@/pages/ledger/multi-column";
-import AssistBalance from "@/pages/ledger/assist-balance";
-import AssistSubsidiary from "@/pages/ledger/assist-subsidiary";
-import AssistCombine from "@/pages/ledger/assist-combine";
-import AgeingAnalysis from "@/pages/ledger/ageing";
-import VoucherManage from "@/pages/vouchers/manage";
-import BalanceSheet from "@/pages/reports/balance-sheet";
-import IncomeStatement from "@/pages/reports/income-statement";
-import Accounts from "@/pages/settings/accounts";
-import AccountSets from "@/pages/settings/account-sets";
-import OpeningBalances from "@/pages/settings/opening-balances";
-import AssistItems from "@/pages/settings/assist-items";
-import Closing from "@/pages/closing";
-import ComingSoon from "@/pages/dev/ComingSoon";
 import DashboardLayout from "@/components/layout/dashboard/DashboardLayout";
+import { ErrorBoundary, RouteErrorElement } from "@/components/error/ErrorBoundary";
 import { useAuth } from "@/auth/AuthContext";
 import { AccountSetsProvider, useAccountSets } from "@/accountSets/AccountSetsContext";
 
-// 柠檬云风格页面：已接入真实后端，挂载在账套路由下（与既有实页互补）。
-import LemonERecord from "@/pages/lemon/lemon-erecord";
-import { VoucherNew } from "@/pages/lemon/lemon-vouchers";
-import { LemonDepositJournal, LemonDraft, LemonAccountSettings } from "@/pages/lemon/lemon-funds";
-import {
-    LemonInvoiceFetch,
-    LemonSalesInvoice,
-    LemonPurchaseInvoice,
-    LemonExpenseBill,
-    LemonInvoiceSummary,
-    LemonInvoiceRisk,
-    LemonSpb,
-    LemonTaxLogin,
-    LemonBankLink,
-} from "@/pages/lemon/lemon-invoice";
-import LemonPro from "@/pages/lemon/lemon-pro";
-import {
-    LemonSalaryEmployee,
-    LemonSalaryInsurance,
-    LemonSalaryManage,
-    LemonSalarySummary,
-} from "@/pages/lemon/lemon-salary";
-import {
-    LemonAssetCategory,
-    LemonAssetCheck,
-    LemonAssetDepreciation,
-    LemonAssetManage,
-    LemonAssetSummary,
-} from "@/pages/lemon/lemon-assets";
-import {
-    LemonIncomeQuarter,
-    LemonCashFlow,
-    LemonCashFlowQuarter,
-    LemonStandardCashFlow,
-    LemonDepartmentIncome,
-    LemonProjectIncome,
-    LemonPivot,
-    LemonExpenseDetail,
-    LemonEquityChange,
-    LemonTaxReport,
-    LemonFinancialSummary,
-} from "@/pages/lemon/lemon-reports";
-import {
-    LemonCurrency,
-    LemonVoucherWord,
-    LemonVoucherTemplate,
-    LemonPermission,
-    LemonBoss,
-    LemonBackup,
-    LemonLog,
-    LemonEisRelation,
-    LemonScmRelation,
-    LemonImportOld,
-    LemonReinit,
-} from "@/pages/lemon/lemon-settings";
+// 首屏关键路径保持静态引入：官网首页、登录页、账套外壳布局。
+// 账套下的业务页面按功能域拆成动态 chunk（见 ./groups/*），同域页面落进同一个 chunk，
+// 避免 70 多个路由各生成一个碎片文件。
 
 /** 校验令牌期间的占位界面，避免闪烁跳转。 */
 function AuthLoading() {
@@ -144,6 +69,23 @@ function DefaultAccountSetRedirect() {
     return <Navigate to={`/${defaultId}`} replace />;
 }
 
+/**
+ * 懒加载叶子路由：element 为「功能域 chunk + Suspense 占位」（占位沿用 AuthLoading 观感，
+ * 侧边栏不跟着闪烁），errorElement 兜住该页的渲染异常与 chunk 拉取失败，
+ * 出错时只替换内容区、绝不白屏。
+ */
+function lazyRoute<M extends { [K in keyof M]: ComponentType }, K extends keyof M>(
+    loader: () => Promise<M>,
+    key: K,
+): { element: ReactNode; errorElement: ReactNode } {
+    // 变量名保持小写并配 createElement：写成 PascalCase 组件形式会多出一条 fast-refresh 警告。
+    const view = lazy<ComponentType>(() => loader().then((m) => ({ default: m[key] })));
+    return {
+        element: <Suspense fallback={<AuthLoading />}>{createElement(view)}</Suspense>,
+        errorElement: <RouteErrorElement />,
+    };
+}
+
 const router = createBrowserRouter([
     // 公开官网首页，右上角提供登录入口，无需登录即可访问。
     {
@@ -151,94 +93,99 @@ const router = createBrowserRouter([
         element: <Landing />,
     },
     // 受保护的应用区：登录后可访问，统一挂载账套上下文。
+    // 外层 ErrorBoundary 是这一块的最后一道防线（路由级兜底之上的渲染异常）。
     {
         element: (
-            <RequireAuth>
-                <AccountSetsProvider>
-                    <Outlet />
-                </AccountSetsProvider>
-            </RequireAuth>
+            <ErrorBoundary>
+                <RequireAuth>
+                    <AccountSetsProvider>
+                        <Outlet />
+                    </AccountSetsProvider>
+                </RequireAuth>
+            </ErrorBoundary>
         ),
+        errorElement: <RouteErrorElement />,
         children: [
             // 登录后的默认落地：解析默认账套并跳转到 /{accountSetId}。
-            { path: "app", element: <DefaultAccountSetRedirect /> },
+            { path: "app", element: <DefaultAccountSetRedirect />, errorElement: <RouteErrorElement /> },
             {
                 // 账套 id 作为路由第一段，其下所有页面均归属该账套。
                 path: ":accountSetId",
                 element: <DashboardLayout />,
+                errorElement: <RouteErrorElement />,
                 children: [
-                    { index: true, element: <DashboardHome /> },
-                    { path: "dev", element: <ComingSoon /> },
-                    { path: "funds/cash-journal", element: <CashJournal /> },
-                    { path: "funds/entry-categories", element: <EntryCategories /> },
-                    { path: "funds/transfer", element: <Transfer /> },
-                    { path: "funds/report", element: <FundReport /> },
-                    { path: "funds/reconciliation", element: <FundReconciliation /> },
-                    { path: "ledger/trial-balance", element: <TrialBalance /> },
-                    { path: "ledger/subsidiary", element: <SubsidiaryLedger /> },
-                    { path: "ledger/general", element: <GeneralLedger /> },
-                    { path: "ledger/journal", element: <VoucherJournal /> },
-                    { path: "ledger/voucher-summary", element: <VoucherSummary /> },
-                    { path: "ledger/multi-column", element: <MultiColumnLedger /> },
-                    { path: "ledger/assist-balance", element: <AssistBalance /> },
-                    { path: "ledger/assist-subsidiary", element: <AssistSubsidiary /> },
-                    { path: "ledger/assist-combine", element: <AssistCombine /> },
-                    { path: "ledger/ageing", element: <AgeingAnalysis /> },
-                    { path: "vouchers/manage", element: <VoucherManage /> },
-                    { path: "reports/balance-sheet", element: <BalanceSheet /> },
-                    { path: "reports/income-statement", element: <IncomeStatement /> },
-                    { path: "settings/accounts", element: <Accounts /> },
-                    { path: "settings/account-sets", element: <AccountSets /> },
-                    { path: "settings/opening-balances", element: <OpeningBalances /> },
-                    { path: "settings/assist-items", element: <AssistItems /> },
-                    { path: "closing", element: <Closing /> },
+                    { index: true, ...lazyRoute(() => import("./groups/dashboard"), "DashboardHome") },
+                    { path: "dev", ...lazyRoute(() => import("./groups/dashboard"), "ComingSoon") },
+                    { path: "funds/cash-journal", ...lazyRoute(() => import("./groups/funds"), "CashJournal") },
+                    { path: "funds/entry-categories", ...lazyRoute(() => import("./groups/funds"), "EntryCategories") },
+                    { path: "funds/transfer", ...lazyRoute(() => import("./groups/funds"), "Transfer") },
+                    { path: "funds/report", ...lazyRoute(() => import("./groups/funds"), "FundReport") },
+                    { path: "funds/reconciliation", ...lazyRoute(() => import("./groups/funds"), "FundReconciliation") },
+                    { path: "ledger/trial-balance", ...lazyRoute(() => import("./groups/ledger"), "TrialBalance") },
+                    { path: "ledger/subsidiary", ...lazyRoute(() => import("./groups/ledger"), "SubsidiaryLedger") },
+                    { path: "ledger/general", ...lazyRoute(() => import("./groups/ledger"), "GeneralLedger") },
+                    { path: "ledger/journal", ...lazyRoute(() => import("./groups/ledger"), "VoucherJournal") },
+                    { path: "ledger/voucher-summary", ...lazyRoute(() => import("./groups/ledger"), "VoucherSummary") },
+                    { path: "ledger/multi-column", ...lazyRoute(() => import("./groups/ledger"), "MultiColumnLedger") },
+                    { path: "ledger/assist-balance", ...lazyRoute(() => import("./groups/ledger"), "AssistBalance") },
+                    { path: "ledger/assist-subsidiary", ...lazyRoute(() => import("./groups/ledger"), "AssistSubsidiary") },
+                    { path: "ledger/assist-combine", ...lazyRoute(() => import("./groups/ledger"), "AssistCombine") },
+                    { path: "ledger/ageing", ...lazyRoute(() => import("./groups/ledger"), "AgeingAnalysis") },
+                    { path: "vouchers/manage", ...lazyRoute(() => import("./groups/vouchers"), "VoucherManage") },
+                    { path: "reports/balance-sheet", ...lazyRoute(() => import("./groups/reports"), "BalanceSheet") },
+                    { path: "reports/income-statement", ...lazyRoute(() => import("./groups/reports"), "IncomeStatement") },
+                    { path: "settings/accounts", ...lazyRoute(() => import("./groups/settings"), "Accounts") },
+                    { path: "settings/account-sets", ...lazyRoute(() => import("./groups/settings"), "AccountSets") },
+                    { path: "settings/opening-balances", ...lazyRoute(() => import("./groups/settings"), "OpeningBalances") },
+                    { path: "settings/assist-items", ...lazyRoute(() => import("./groups/settings"), "AssistItems") },
+                    { path: "closing", ...lazyRoute(() => import("./groups/closing"), "Closing") },
                     // —— 按柠檬云菜单层级补齐的页面（复刻实现，mock 数据） ——
-                    { path: "vouchers/new", element: <VoucherNew /> },
-                    { path: "vouchers/erecord", element: <LemonERecord /> },
-                    { path: "vouchers/spb", element: <LemonSpb /> },
-                    { path: "funds/deposit-journal", element: <LemonDepositJournal /> },
-                    { path: "funds/draft", element: <LemonDraft /> },
-                    { path: "funds/bank-link", element: <LemonBankLink /> },
-                    { path: "funds/account", element: <LemonAccountSettings /> },
-                    { path: "invoices/fetch", element: <LemonInvoiceFetch /> },
-                    { path: "invoices/sales", element: <LemonSalesInvoice /> },
-                    { path: "invoices/purchase", element: <LemonPurchaseInvoice /> },
-                    { path: "invoices/expense", element: <LemonExpenseBill /> },
-                    { path: "invoices/summary", element: <LemonInvoiceSummary /> },
-                    { path: "invoices/risk", element: <LemonInvoiceRisk /> },
-                    { path: "salary/manage", element: <LemonSalaryManage /> },
-                    { path: "salary/employee", element: <LemonSalaryEmployee /> },
-                    { path: "salary/summary", element: <LemonSalarySummary /> },
-                    { path: "salary/insurance", element: <LemonSalaryInsurance /> },
-                    { path: "assets/manage", element: <LemonAssetManage /> },
-                    { path: "assets/depreciation", element: <LemonAssetDepreciation /> },
-                    { path: "assets/summary", element: <LemonAssetSummary /> },
-                    { path: "assets/category", element: <LemonAssetCategory /> },
-                    { path: "assets/check", element: <LemonAssetCheck /> },
-                    { path: "reports/income-quarter", element: <LemonIncomeQuarter /> },
-                    { path: "reports/cash-flow", element: <LemonCashFlow /> },
-                    { path: "reports/cash-flow-quarter", element: <LemonCashFlowQuarter /> },
-                    { path: "reports/standard-cash-flow", element: <LemonStandardCashFlow /> },
-                    { path: "reports/department-income", element: <LemonDepartmentIncome /> },
-                    { path: "reports/project-income", element: <LemonProjectIncome /> },
-                    { path: "reports/pivot", element: <LemonPivot /> },
-                    { path: "reports/expense", element: <LemonExpenseDetail /> },
-                    { path: "reports/equity-change", element: <LemonEquityChange /> },
-                    { path: "reports/tax", element: <LemonTaxReport /> },
-                    { path: "reports/financial-summary", element: <LemonFinancialSummary /> },
-                    { path: "tax/login", element: <LemonTaxLogin /> },
-                    { path: "settings/currency", element: <LemonCurrency /> },
-                    { path: "settings/voucher-word", element: <LemonVoucherWord /> },
-                    { path: "settings/voucher-template", element: <LemonVoucherTemplate /> },
-                    { path: "settings/permission", element: <LemonPermission /> },
-                    { path: "settings/boss", element: <LemonBoss /> },
-                    { path: "settings/backup", element: <LemonBackup /> },
-                    { path: "settings/log", element: <LemonLog /> },
-                    { path: "settings/eis-relation", element: <LemonEisRelation /> },
-                    { path: "settings/scm-relation", element: <LemonScmRelation /> },
-                    { path: "settings/import-old", element: <LemonImportOld /> },
-                    { path: "settings/reinit", element: <LemonReinit /> },
-                    { path: "pro", element: <LemonPro /> },
+                    { path: "vouchers/new", ...lazyRoute(() => import("./groups/vouchers"), "VoucherNew") },
+                    { path: "vouchers/erecord", ...lazyRoute(() => import("./groups/archives"), "LemonERecord") },
+                    { path: "vouchers/spb", ...lazyRoute(() => import("./groups/invoice"), "LemonSpb") },
+                    { path: "funds/deposit-journal", ...lazyRoute(() => import("./groups/funds"), "LemonDepositJournal") },
+                    { path: "funds/draft", ...lazyRoute(() => import("./groups/funds"), "LemonDraft") },
+                    { path: "funds/bank-link", ...lazyRoute(() => import("./groups/invoice"), "LemonBankLink") },
+                    { path: "funds/account", ...lazyRoute(() => import("./groups/funds"), "LemonAccountSettings") },
+                    { path: "invoices/fetch", ...lazyRoute(() => import("./groups/invoice"), "LemonInvoiceFetch") },
+                    { path: "invoices/sales", ...lazyRoute(() => import("./groups/invoice"), "LemonSalesInvoice") },
+                    { path: "invoices/purchase", ...lazyRoute(() => import("./groups/invoice"), "LemonPurchaseInvoice") },
+                    { path: "invoices/expense", ...lazyRoute(() => import("./groups/invoice"), "LemonExpenseBill") },
+                    { path: "invoices/summary", ...lazyRoute(() => import("./groups/invoice"), "LemonInvoiceSummary") },
+                    { path: "invoices/risk", ...lazyRoute(() => import("./groups/invoice"), "LemonInvoiceRisk") },
+                    { path: "salary/manage", ...lazyRoute(() => import("./groups/salary"), "LemonSalaryManage") },
+                    { path: "salary/employee", ...lazyRoute(() => import("./groups/salary"), "LemonSalaryEmployee") },
+                    { path: "salary/summary", ...lazyRoute(() => import("./groups/salary"), "LemonSalarySummary") },
+                    { path: "salary/insurance", ...lazyRoute(() => import("./groups/salary"), "LemonSalaryInsurance") },
+                    { path: "assets/manage", ...lazyRoute(() => import("./groups/assets"), "LemonAssetManage") },
+                    { path: "assets/depreciation", ...lazyRoute(() => import("./groups/assets"), "LemonAssetDepreciation") },
+                    { path: "assets/summary", ...lazyRoute(() => import("./groups/assets"), "LemonAssetSummary") },
+                    { path: "assets/category", ...lazyRoute(() => import("./groups/assets"), "LemonAssetCategory") },
+                    { path: "assets/check", ...lazyRoute(() => import("./groups/assets"), "LemonAssetCheck") },
+                    { path: "reports/income-quarter", ...lazyRoute(() => import("./groups/reports"), "LemonIncomeQuarter") },
+                    { path: "reports/cash-flow", ...lazyRoute(() => import("./groups/reports"), "LemonCashFlow") },
+                    { path: "reports/cash-flow-quarter", ...lazyRoute(() => import("./groups/reports"), "LemonCashFlowQuarter") },
+                    { path: "reports/standard-cash-flow", ...lazyRoute(() => import("./groups/reports"), "LemonStandardCashFlow") },
+                    { path: "reports/department-income", ...lazyRoute(() => import("./groups/reports"), "LemonDepartmentIncome") },
+                    { path: "reports/project-income", ...lazyRoute(() => import("./groups/reports"), "LemonProjectIncome") },
+                    { path: "reports/pivot", ...lazyRoute(() => import("./groups/reports"), "LemonPivot") },
+                    { path: "reports/expense", ...lazyRoute(() => import("./groups/reports"), "LemonExpenseDetail") },
+                    { path: "reports/equity-change", ...lazyRoute(() => import("./groups/reports"), "LemonEquityChange") },
+                    { path: "reports/tax", ...lazyRoute(() => import("./groups/reports"), "LemonTaxReport") },
+                    { path: "reports/financial-summary", ...lazyRoute(() => import("./groups/reports"), "LemonFinancialSummary") },
+                    { path: "tax/login", ...lazyRoute(() => import("./groups/invoice"), "LemonTaxLogin") },
+                    { path: "settings/currency", ...lazyRoute(() => import("./groups/settings"), "LemonCurrency") },
+                    { path: "settings/voucher-word", ...lazyRoute(() => import("./groups/settings"), "LemonVoucherWord") },
+                    { path: "settings/voucher-template", ...lazyRoute(() => import("./groups/settings"), "LemonVoucherTemplate") },
+                    { path: "settings/permission", ...lazyRoute(() => import("./groups/settings"), "LemonPermission") },
+                    { path: "settings/boss", ...lazyRoute(() => import("./groups/settings"), "LemonBoss") },
+                    { path: "settings/backup", ...lazyRoute(() => import("./groups/settings"), "LemonBackup") },
+                    { path: "settings/log", ...lazyRoute(() => import("./groups/settings"), "LemonLog") },
+                    { path: "settings/eis-relation", ...lazyRoute(() => import("./groups/settings"), "LemonEisRelation") },
+                    { path: "settings/scm-relation", ...lazyRoute(() => import("./groups/settings"), "LemonScmRelation") },
+                    { path: "settings/import-old", ...lazyRoute(() => import("./groups/settings"), "LemonImportOld") },
+                    { path: "settings/reinit", ...lazyRoute(() => import("./groups/settings"), "LemonReinit") },
+                    { path: "pro", ...lazyRoute(() => import("./groups/dashboard"), "LemonPro") },
                 ],
             },
         ],

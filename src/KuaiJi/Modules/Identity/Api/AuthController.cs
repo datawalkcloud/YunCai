@@ -5,6 +5,7 @@ using KuaiJi.Modules.Identity.Application;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace KuaiJi.Modules.Identity.Api
 {
@@ -24,6 +25,7 @@ namespace KuaiJi.Modules.Identity.Api
         /// </summary>
         [HttpPost("login")]
         [AllowAnonymous]
+        [EnableRateLimiting("login")]
         public async Task<ActionResult<LoginResult>> Login([FromBody] LoginCommand request)
         {
             var result = await _mediator.Send(request);

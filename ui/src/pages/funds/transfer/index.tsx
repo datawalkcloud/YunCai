@@ -13,6 +13,8 @@ import {
     type TransferDto,
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { fmtMoney, toISODate } from "@/lib/format"
+import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { StatusPill } from "@/components/page/status-pill"
 import { ICON_BTN, ICON_BTN_DANGER, PAGE_BTN_GHOST, PAGE_BTN_PRIMARY } from "@/components/page/styles"
@@ -60,14 +62,6 @@ function validate(values: TransferFormValues): Partial<Record<keyof TransferForm
     return errors
 }
 
-function formatMoney(value: number): string {
-    return value.toLocaleString("zh-CN", { style: "currency", currency: "CNY", minimumFractionDigits: 2 })
-}
-
-function formatDate(d?: Date | string): string {
-    return d ? dayjs(d).format("YYYY-MM-DD") : ""
-}
-
 /** 各列对齐方式按列 id 取用。 */
 const COLUMN_CLASS: Record<string, { head: string, cell: string }> = {
     date: { head: "text-left", cell: "whitespace-nowrap" },
@@ -88,6 +82,7 @@ export default function TransferPage() {
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
+    const { confirm, confirmDialog } = useConfirm()
 
     const [transfers, setTransfers] = useState<TransferDto[]>([])
     const [journals, setJournals] = useState<JournalListItemDto[]>([])
@@ -205,7 +200,7 @@ export default function TransferPage() {
 
     async function handleDelete(t: TransferDto) {
         if (!t.id) return
-        if (!window.confirm(`确定删除转账「${t.summary}」吗？两端账户中对应的转出 / 转入流水将一并删除。`)) return
+        if (!(await confirm(`确定删除转账「${t.summary}」吗？两端账户中对应的转出 / 转入流水将一并删除。`))) return
         setError(null)
         try {
             await new TransfersApi(apiConfig(token)).accountsetsAccountSetIdTransfersIdDelete({ accountSetId, id: t.id })
@@ -219,7 +214,7 @@ export default function TransferPage() {
         column.display({
             id: "date",
             header: "日期",
-            cell: ({ row }) => <span>{formatDate(row.original.date)}</span>,
+            cell: ({ row }) => <span>{toISODate(row.original.date)}</span>,
         }),
         column.display({
             id: "summary",
@@ -239,7 +234,7 @@ export default function TransferPage() {
         column.display({
             id: "amount",
             header: "金额",
-            cell: ({ row }) => <span className="font-medium text-slate-700">{formatMoney(row.original.amount ?? 0)}</span>,
+            cell: ({ row }) => <span className="font-medium text-slate-700">{fmtMoney(row.original.amount ?? 0)}</span>,
         }),
         column.display({
             id: "remark",
@@ -490,6 +485,8 @@ export default function TransferPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {confirmDialog}
         </div>
     )
 }

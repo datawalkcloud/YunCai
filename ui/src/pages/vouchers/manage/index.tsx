@@ -29,7 +29,9 @@ import {
     type VoucherListItemDto,
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { fmtAmount, fmtMoney, toISODate } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile, type TileTone } from "@/components/page/tile"
 import { StatusPill as StatusPillBase } from "@/components/page/status-pill"
@@ -66,17 +68,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 /** 原 antd 分页默认每页 20 条。 */
 const DEFAULT_PAGE_SIZE = 20
 
-function formatAmount(n: number): string {
-    return Math.abs(n).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-/** 将后端返回的日期（解析为 UTC 零点的 Date）格式化为 yyyy-MM-dd。 */
-function formatDate(d?: Date): string {
-    return d ? d.toISOString().slice(0, 10) : ""
-}
-
 const ACCEPT = ".xls,.xlsx"
-
 const features = tableFeatures({})
 const voucherColumn = createColumnHelper<typeof features, VoucherListItemDto>()
 
@@ -96,7 +88,7 @@ const COLUMN_CLASS: Record<string, { head: string, cell: string }> = {
 /** 借贷金额文本：负数用红色标注，正值回归常规前景色。 */
 function AmountText({ value }: { value: number | undefined }) {
     const v = value ?? 0
-    return <span className={cn("font-medium", v < 0 ? "text-[#ef4444]" : "text-slate-700")}>{formatAmount(v)}</span>
+    return <span className={cn("font-medium", v < 0 ? "text-[#ef4444]" : "text-slate-700")}>{fmtAmount(v)}</span>
 }
 
 /** 状态胶囊：配色口径见共享的 voucherStatusTone。 */
@@ -128,7 +120,7 @@ function EntryTable({ entries }: { entries: VoucherEntryDto[] }) {
                                 <td key={key} className="w-[130px] py-2 pr-4 text-right tabular-nums">
                                     {v != null && v !== 0 ? (
                                         <span className={cn(v < 0 ? "text-[#ef4444]" : "text-slate-700")}>
-                                            {formatAmount(v)}
+                                            {fmtAmount(v)}
                                         </span>
                                     ) : null}
                                 </td>
@@ -205,7 +197,7 @@ function getVoucherColumns(ops: {
         voucherColumn.display({
             id: "date",
             header: "日期",
-            cell: ({ row }) => <span className="text-slate-500">{formatDate(row.original.date)}</span>,
+            cell: ({ row }) => <span className="text-slate-500">{toISODate(row.original.date)}</span>,
         }),
         voucherColumn.display({
             id: "totalDebit",
@@ -332,7 +324,7 @@ function buildTiles(vouchers: VoucherListItemDto[]) {
             value: total,
             tone: "blue",
             icon: FileText,
-            hint: `借方合计 ¥ ${formatAmount(debitSum)}`,
+            hint: `借方合计 ${fmtMoney(debitSum)}`,
         },
         {
             label: "草稿待审",
@@ -367,6 +359,7 @@ export default function VoucherManagePage() {
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
+    const { confirm, confirmDialog } = useConfirm()
 
     const [vouchers, setVouchers] = useState<VoucherListItemDto[]>([])
     const [accounts, setAccounts] = useState<AccountDto[]>([])
@@ -446,7 +439,7 @@ export default function VoucherManagePage() {
 
     async function handleDelete(v: VoucherListItemDto) {
         if (deletingId || !v.id) return
-        if (!window.confirm(`确定删除凭证「${v.voucherNo}」（${formatDate(v.date)}）吗？此操作不可撤销。`)) return
+        if (!(await confirm(`确定删除凭证「${v.voucherNo}」（${toISODate(v.date)}）吗？此操作不可撤销。`))) return
         setDeletingId(v.id)
         setError(null)
         try {
@@ -488,7 +481,7 @@ export default function VoucherManagePage() {
     /** 凭证状态流转（审核/反审核/过账）：调用后刷新列表。 */
     async function handleWorkflow(v: VoucherListItemDto, action: "review" | "unreview" | "post") {
         if (workflowId || !v.id) return
-        if (action === "post" && !window.confirm(`确定过账凭证「${v.voucherNo}」吗？过账后凭证将登记入账并锁定，不可再修改或删除。`)) return
+        if (action === "post" && !(await confirm(`确定过账凭证「${v.voucherNo}」吗？过账后凭证将登记入账并锁定，不可再修改或删除。`))) return
         setWorkflowId(v.id)
         setError(null)
         try {
@@ -969,6 +962,8 @@ export default function VoucherManagePage() {
                     </div>
                 </SheetContent>
             </Sheet>
+
+            {confirmDialog}
         </div>
     )
 }

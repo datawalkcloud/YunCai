@@ -6,6 +6,7 @@ import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSet
 import { useAuth } from "@/auth/AuthContext"
 import { FundReportsApi, type FundReportDto, type FundReportRowDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { fmtAmount, fmtMoney } from "@/lib/format"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile, type TileTone } from "@/components/page/tile"
 import { DATE_FIELD, PAGE_BTN_GHOST } from "@/components/page/styles"
@@ -23,16 +24,6 @@ type Dimension = "account" | "category" | "counterparty"
 interface Range {
     start: string
     end: string
-}
-
-function formatMoney(value: number): string {
-    return value.toLocaleString("zh-CN", { style: "currency", currency: "CNY", minimumFractionDigits: 2 })
-}
-
-/** 金额为 0 时留空，避免表格被 0.00 填满（总计行除外）。 */
-function fmt(value?: number | null): string {
-    if (!value) return ""
-    return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 const DIMENSION_LABEL: Record<Dimension, string> = {
@@ -93,15 +84,15 @@ export default function FundReportPage() {
         hint?: string
     }[] = isAccount
         ? [
-            { label: "期初合计", value: formatMoney(total?.openingBalance ?? 0), tone: "gray", icon: Wallet },
-            { label: "区间收入", value: formatMoney(total?.totalIncome ?? 0), tone: "green", icon: ArrowDownLeft },
-            { label: "区间支出", value: formatMoney(total?.totalExpense ?? 0), tone: "red", icon: ArrowUpRight },
-            { label: "期末合计", value: formatMoney(total?.balance ?? 0), tone: "blue", icon: PiggyBank },
+            { label: "期初合计", value: fmtMoney(total?.openingBalance ?? 0), tone: "gray", icon: Wallet },
+            { label: "区间收入", value: fmtMoney(total?.totalIncome ?? 0), tone: "green", icon: ArrowDownLeft },
+            { label: "区间支出", value: fmtMoney(total?.totalExpense ?? 0), tone: "red", icon: ArrowUpRight },
+            { label: "期末合计", value: fmtMoney(total?.balance ?? 0), tone: "blue", icon: PiggyBank },
         ]
         : [
-            { label: "区间收入", value: formatMoney(total?.totalIncome ?? 0), tone: "green", icon: ArrowDownLeft },
-            { label: "区间支出", value: formatMoney(total?.totalExpense ?? 0), tone: "red", icon: ArrowUpRight },
-            { label: "收支净额", value: formatMoney(total?.balance ?? 0), tone: "blue", icon: Scale },
+            { label: "区间收入", value: fmtMoney(total?.totalIncome ?? 0), tone: "green", icon: ArrowDownLeft },
+            { label: "区间支出", value: fmtMoney(total?.totalExpense ?? 0), tone: "red", icon: ArrowUpRight },
+            { label: "收支净额", value: fmtMoney(total?.balance ?? 0), tone: "blue", icon: Scale },
             {
                 label: "变动笔数",
                 value: `${(total?.incomeCount ?? 0) + (total?.expenseCount ?? 0)}`,
@@ -208,13 +199,13 @@ export default function FundReportPage() {
                                 )}
                                 {isAccount && (
                                     <TableCell className={cellAlign.opening}>
-                                        <span className="text-slate-500">{formatMoney(r.openingBalance ?? 0)}</span>
+                                        <span className="text-slate-500">{fmtMoney(r.openingBalance ?? 0)}</span>
                                     </TableCell>
                                 )}
-                                <TableCell className={cellAlign.income}>{fmt(r.totalIncome)}</TableCell>
-                                <TableCell className={cellAlign.expense}>{fmt(r.totalExpense)}</TableCell>
+                                <TableCell className={cellAlign.income}>{fmtAmount(r.totalIncome)}</TableCell>
+                                <TableCell className={cellAlign.expense}>{fmtAmount(r.totalExpense)}</TableCell>
                                 <TableCell className={cellAlign.balance}>
-                                    <span className="font-medium text-slate-700">{formatMoney(r.balance ?? 0)}</span>
+                                    <span className="font-medium text-slate-700">{fmtMoney(r.balance ?? 0)}</span>
                                 </TableCell>
                                 <TableCell className="text-right text-slate-500 tabular-nums">
                                     {`${r.incomeCount ?? 0} / ${r.expenseCount ?? 0}`}
@@ -236,12 +227,12 @@ export default function FundReportPage() {
                                 {isAccount && <TableCell />}
                                 {isAccount && (
                                     <TableCell className="text-right tabular-nums">
-                                        {formatMoney(total.openingBalance ?? 0)}
+                                        {fmtMoney(total.openingBalance ?? 0)}
                                     </TableCell>
                                 )}
-                                <TableCell className="text-right tabular-nums">{formatMoney(total.totalIncome ?? 0)}</TableCell>
-                                <TableCell className="text-right tabular-nums">{formatMoney(total.totalExpense ?? 0)}</TableCell>
-                                <TableCell className="text-right tabular-nums">{formatMoney(total.balance ?? 0)}</TableCell>
+                                <TableCell className="text-right tabular-nums">{fmtMoney(total.totalIncome ?? 0)}</TableCell>
+                                <TableCell className="text-right tabular-nums">{fmtMoney(total.totalExpense ?? 0)}</TableCell>
+                                <TableCell className="text-right tabular-nums">{fmtMoney(total.balance ?? 0)}</TableCell>
                                 <TableCell className="text-right tabular-nums text-slate-500">
                                     {`${total.incomeCount ?? 0} / ${total.expenseCount ?? 0}`}
                                 </TableCell>

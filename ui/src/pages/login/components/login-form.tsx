@@ -74,7 +74,7 @@ export function LoginForm() {
         <Input
           id="username"
           autoComplete="username"
-          placeholder="admin"
+          placeholder="请输入用户名"
           value={values.username}
           disabled={submitting}
           aria-invalid={Boolean(errors.username)}
@@ -109,10 +109,6 @@ export function LoginForm() {
         {submitting && <Spinner data-icon="inline-start" />}
         {submitting ? "登录中…" : "登录"}
       </Button>
-
-      <span className="text-muted-foreground text-center">
-        演示账号：admin / admin123，user / user123
-      </span>
     </form>
   )
 }

@@ -2,11 +2,11 @@ import { useState } from "react"
 import { Download } from "lucide-react"
 
 import { apiErrorMessage } from "@/lib/api-client"
+import { toISODate } from "@/lib/format"
 import { Button } from "@/components/ui/button"
 import { PAGE_BTN_GHOST } from "@/components/page/styles"
 import { Spinner } from "@/components/ui/spinner"
 import type { LedgerConditions } from "./types"
-import { asDate } from "./types"
 
 /** 导出接口认识的账页标识，与后端 LedgerExportKindText 的解析结果一一对应。 */
 export type LedgerExportKind =
@@ -30,13 +30,13 @@ export interface LedgerExportButtonProps {
     conditions: LedgerConditions
 }
 
-/** 把条件拼成导出接口的 query；日期要还原成后端可解析的 yyyy-MM-dd。 */
+/** 把条件拼成导出接口的 query；日期已是 yyyy-MM-dd，直接透传。 */
 function buildQuery(conditions: LedgerConditions): string {
     const params = new URLSearchParams()
-    const start = asDate(conditions.startDate)
-    const end = asDate(conditions.endDate)
-    if (start) params.set("startDate", start.toISOString().slice(0, 10))
-    if (end) params.set("endDate", end.toISOString().slice(0, 10))
+    const start = toISODate(conditions.startDate)
+    const end = toISODate(conditions.endDate)
+    if (start) params.set("startDate", start)
+    if (end) params.set("endDate", end)
     const text = (value?: string) => (value && value.trim() ? value.trim() : undefined)
     for (const [key, value] of Object.entries({
         accountFrom: text(conditions.accountFrom),

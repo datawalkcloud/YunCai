@@ -8,9 +8,8 @@ import { ReportsApi, type BalanceSheetLineDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 import { PeriodField } from "@/components/fields/date-fields"
-import { PageHeader, SectionCard } from "@/components/page/section"
-import { PAGE_BTN_GHOST, PERIOD_FIELD, SOFT_PANEL } from "@/components/page/styles"
-import { Alert, AlertTitle } from "@/components/ui/alert"
+import { ReportPageShell } from "@/components/report/ReportPageShell"
+import { PAGE_BTN_GHOST, PERIOD_FIELD } from "@/components/page/styles"
 import { Button } from "@/components/ui/button"
 import {
     Table,
@@ -215,7 +214,7 @@ function HalfRow({ row }: { row?: SheetLine }) {
 }
 
 export default function BalanceSheetPage() {
-    const { user, token } = useAuth()
+    const { token } = useAuth()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
@@ -280,110 +279,95 @@ export default function BalanceSheetPage() {
     const rowCount = Math.max(assetRows.length, liabilityRows.length)
 
     return (
-        <div className="flex flex-col gap-4">
-            <PageHeader
-                icon={FileSpreadsheet}
-                title="资产负债表"
-                subtitle={
-                    <>
-                        账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                        。按《企业会计准则》会企01表格式编制，金额由凭证实时汇总。
-                    </>
-                }
-            />
-
-            <SectionCard bodyClassName="flex flex-col gap-4">
-                <div className="relative text-center">
-                    <div className="text-[17px] font-bold text-slate-800">资产负债表</div>
-                    <div className="absolute right-0 top-0 text-[12.5px] text-slate-400">会企01表</div>
-                </div>
-
-                <div className={cn(SOFT_PANEL, "flex flex-wrap items-center justify-between gap-2 px-4 py-3")}>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[12.5px] text-slate-500">会计期间：</span>
-                        <PeriodField
-                            className={PERIOD_FIELD}
-                            value={toPeriodDate(period)}
-                            onChange={(d) => d && setPeriod({ year: dayjs(d).year(), month: dayjs(d).month() + 1 })}
-                            disabled={!accountSetId}
-                            allowClear={false}
-                        />
-                        <Button
-                            variant="outline"
-                            onClick={() => void load()}
-                            disabled={loading || !accountSetId}
-                            className={cn(PAGE_BTN_GHOST, "bg-white")}
-                        >
-                            {loading ? (
-                                <Spinner data-icon="inline-start" />
-                            ) : (
-                                <RefreshCw data-icon="inline-start" />
-                            )}
-                            刷新
-                        </Button>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-slate-400">
-                        <span>编制单位：{user?.displayName ?? "——"}</span>
-                        <span>{endingDate}</span>
-                        <span>单位：元</span>
-                    </div>
-                </div>
-
-                {error && (
-                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                        <AlertTitle>{error}</AlertTitle>
-                    </Alert>
-                )}
-
-                {loading && !loaded ? (
-                    <div className="flex items-center justify-center py-16">
-                        <Spinner className="size-5 text-slate-300" />
-                    </div>
-                ) : !accountSetId ? (
-                    <div className="py-16 text-center text-[13px] text-slate-400">请先选择账套。</div>
-                ) : (
-                    <Table className="min-w-[900px] border-collapse">
-                        <colgroup>
-                            <col />
-                            <col className="w-12" />
-                            <col className="w-[130px]" />
-                            <col className="w-[130px]" />
-                            <col />
-                            <col className="w-12" />
-                            <col className="w-[130px]" />
-                            <col className="w-[130px]" />
-                        </colgroup>
-                        <TableHeader>
-                            <TableRow className="bg-muted hover:bg-muted">
-                                <TableHead className={cn(cellCls, "whitespace-normal text-left font-medium text-slate-500")}>资产</TableHead>
-                                <TableHead className={cn(cellCls, "text-center font-medium text-slate-500")}>行次</TableHead>
-                                <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>期末余额</TableHead>
-                                <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>年初余额</TableHead>
-                                <TableHead className={cn(cellCls, "whitespace-normal text-left font-medium text-slate-500")}>
-                                    负债和所有者权益（或股东权益）
-                                </TableHead>
-                                <TableHead className={cn(cellCls, "text-center font-medium text-slate-500")}>行次</TableHead>
-                                <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>期末余额</TableHead>
-                                <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>年初余额</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {Array.from({ length: rowCount }).map((_, i) => (
-                                <TableRow key={i} className="hover:bg-transparent">
-                                    <HalfRow row={assetRows[i]} />
-                                    <HalfRow row={liabilityRows[i]} />
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                )}
-
-                {loaded && !loading && (
+        <ReportPageShell
+            icon={FileSpreadsheet}
+            title="资产负债表"
+            subtitle={
+                <>
+                    账套：{currentSet?.name ?? (accountSetId || "未指定")}
+                    。按《企业会计准则》会企01表格式编制，金额由凭证实时汇总。
+                </>
+            }
+            template="会企01表"
+            period={
+                <>
+                    <span className="text-[12.5px] text-slate-500">会计期间：</span>
+                    <PeriodField
+                        className={PERIOD_FIELD}
+                        value={toPeriodDate(period)}
+                        onChange={(d) => d && setPeriod({ year: dayjs(d).year(), month: dayjs(d).month() + 1 })}
+                        disabled={!accountSetId}
+                        allowClear={false}
+                    />
+                </>
+            }
+            actions={
+                <Button
+                    variant="outline"
+                    onClick={() => void load()}
+                    disabled={loading || !accountSetId}
+                    className={cn(PAGE_BTN_GHOST, "bg-white")}
+                >
+                    {loading ? (
+                        <Spinner data-icon="inline-start" />
+                    ) : (
+                        <RefreshCw data-icon="inline-start" />
+                    )}
+                    刷新
+                </Button>
+            }
+            meta={
+                <>
+                    <span>编制单位：{currentSet?.companyName ?? "——"}</span>
+                    <span>{endingDate}</span>
+                    <span>单位：元</span>
+                </>
+            }
+            loading={loading && !loaded}
+            error={error}
+            placeholder={!accountSetId ? "请先选择账套。" : undefined}
+            footer={
+                loaded && !loading ? (
                     <span className={cn("text-[12.5px]", balanced ? "text-slate-400" : "text-[#ef4444]")}>
                         {balanced ? "资产总计 = 负债和所有者权益总计" : "试算不平衡，请核对数据"}
                     </span>
-                )}
-            </SectionCard>
-        </div>
+                ) : undefined
+            }
+        >
+            <Table className="min-w-[900px] border-collapse">
+                <colgroup>
+                    <col />
+                    <col className="w-12" />
+                    <col className="w-[130px]" />
+                    <col className="w-[130px]" />
+                    <col />
+                    <col className="w-12" />
+                    <col className="w-[130px]" />
+                    <col className="w-[130px]" />
+                </colgroup>
+                <TableHeader>
+                    <TableRow className="bg-muted hover:bg-muted">
+                        <TableHead className={cn(cellCls, "whitespace-normal text-left font-medium text-slate-500")}>资产</TableHead>
+                        <TableHead className={cn(cellCls, "text-center font-medium text-slate-500")}>行次</TableHead>
+                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>期末余额</TableHead>
+                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>年初余额</TableHead>
+                        <TableHead className={cn(cellCls, "whitespace-normal text-left font-medium text-slate-500")}>
+                            负债和所有者权益（或股东权益）
+                        </TableHead>
+                        <TableHead className={cn(cellCls, "text-center font-medium text-slate-500")}>行次</TableHead>
+                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>期末余额</TableHead>
+                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>年初余额</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {Array.from({ length: rowCount }).map((_, i) => (
+                        <TableRow key={i} className="hover:bg-transparent">
+                            <HalfRow row={assetRows[i]} />
+                            <HalfRow row={liabilityRows[i]} />
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </ReportPageShell>
     )
 }

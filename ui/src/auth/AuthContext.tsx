@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { fetchMe, login as loginApi, type UserInfo } from '../api/auth'
+import { setUnauthorizedHandler } from '../lib/api-client'
 
 /** loading：正在校验本地令牌；authenticated：已登录；unauthenticated：未登录。 */
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
@@ -77,6 +78,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [])
+
+  // 401 的统一出口：apiErrorMessage 识别到令牌失效会调用这里注册的回调。
+  // logout() 清掉本地登录态并把状态置为未登录，保护区的 RequireAuth 随即带来源路径跳 /login，
+  // 各页面照常显示文案、不必自己处理跳转。
+  // 本项目 JWT 不签发刷新令牌（后端只有 Auth/login，响应里也没有 refreshToken），
+  // 过期只能重新登录，所以这里刻意不做任何「静默续期」逻辑。
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    setUnauthorizedHandler(() => logout())
+    return () => setUnauthorizedHandler(null)
+  }, [status, logout])
 
   const login = useCallback(async (username: string, password: string) => {
     const res = await loginApi(username, password)

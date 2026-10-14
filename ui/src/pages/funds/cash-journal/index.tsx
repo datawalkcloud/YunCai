@@ -37,7 +37,10 @@ import {
     type JournalListItemDto,
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { fmtAmount, fmtMoney, toISODate } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { useLocalForm } from "@/hooks/useLocalForm"
+import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile, type TileTone } from "@/components/page/tile"
 import { StatusPill } from "@/components/page/status-pill"
@@ -68,25 +71,6 @@ const ACCEPT = ".xls,.xlsx"
 
 /** Radix Select 不允许空串作为选项值，用这个哨兵表示「不选收支类别」。 */
 const NO_CATEGORY = "__none__"
-
-function formatMoney(value: number): string {
-    return value.toLocaleString("zh-CN", {
-        style: "currency",
-        currency: "CNY",
-        minimumFractionDigits: 2,
-    })
-}
-
-/** 金额为 0 时留空，避免表格被 0.00 填满。 */
-function fmt(value: number): string {
-    if (!value) return ""
-    return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-/** 将后端返回的日期（解析为 UTC 零点的 Date）格式化为 yyyy-MM-dd。 */
-function formatDate(d?: Date): string {
-    return d ? d.toISOString().slice(0, 10) : ""
-}
 
 /** 新建/编辑账户表单值。 */
 interface AccountFormValues {
@@ -153,47 +137,6 @@ function validateVoucher(values: VoucherFormValues): Partial<Record<keyof Vouche
     return errors
 }
 
-/**
- * 极简受控表单，替代原 antd Form 实例：值 + 错误 + 提交前校验。
- * 校验只在提交时执行；一旦出现错误，后续改动即重算，等价于原 dependencies 联动。
- */
-function useLocalForm<T extends object>(
-    initial: T,
-    validate: (values: T) => Partial<Record<keyof T, string>>,
-) {
-    const [values, setValues] = useState<T>(initial)
-    const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({})
-
-    /** 打开弹窗时整体预填，对应原 setFieldsValue。 */
-    function fill(next: T) {
-        setValues(next)
-        setErrors({})
-    }
-
-    /** 改单个字段，对应原控件的 onChange。 */
-    function set<K extends keyof T>(key: K, value: T[K]) {
-        const next: T = { ...values, [key]: value }
-        setValues(next)
-        if (Object.keys(errors).length > 0) setErrors(validate(next))
-    }
-
-    /** 一次改多个字段（如切换账户类型时同时清空开户行信息）。 */
-    function patch(partial: Partial<T>) {
-        const next: T = { ...values, ...partial }
-        setValues(next)
-        if (Object.keys(errors).length > 0) setErrors(validate(next))
-    }
-
-    /** 提交前校验，返回是否通过，对应原 validateFields。 */
-    function check() {
-        const next = validate(values)
-        setErrors(next)
-        return Object.keys(next).length === 0
-    }
-
-    return { values, errors, fill, set, patch, check }
-}
-
 const features = tableFeatures({})
 const entryColumn = createColumnHelper<typeof features, JournalEntryDto>()
 
@@ -214,6 +157,7 @@ export default function CashJournalPage() {
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
+    const { confirm, confirmDialog } = useConfirm()
 
     const [journals, setJournals] = useState<JournalListItemDto[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -422,7 +366,7 @@ export default function CashJournalPage() {
 
     async function handleDeleteAccount(j: JournalListItemDto) {
         if (!j.id) return
-        if (!window.confirm(`确定删除账户「${j.name}」吗？其全部流水将一并删除，此操作不可撤销。`)) return
+        if (!(await confirm(`确定删除账户「${j.name}」吗？其全部流水将一并删除，此操作不可撤销。`))) return
         setError(null)
         try {
             await new JournalsApi(apiConfig(token)).accountsetsAccountSetIdJournalsIdDelete({ accountSetId, id: j.id })
@@ -450,7 +394,7 @@ export default function CashJournalPage() {
     function openEditEntry(e: JournalEntryDto) {
         setEditingEntry(e)
         entryForm.fill({
-            date: parseDate(formatDate(e.date)),
+            date: parseDate(toISODate(e.date)),
             summary: e.summary ?? "",
             category: e.category ?? undefined,
             counterparty: e.counterparty ?? undefined,
@@ -500,7 +444,7 @@ export default function CashJournalPage() {
 
     async function handleDeleteEntry(e: JournalEntryDto) {
         if (!selectedId || !e.id) return
-        if (!window.confirm(`确定删除第 ${e.sequence} 笔流水「${e.summary}」吗？`)) return
+        if (!(await confirm(`确定删除第 ${e.sequence} 笔流水「${e.summary}」吗？`))) return
         setError(null)
         try {
             const updated = await new JournalsApi(apiConfig(token)).accountsetsAccountSetIdJournalsIdEntriesEntryIdDelete({
@@ -691,10 +635,10 @@ export default function CashJournalPage() {
         icon: React.ComponentType<{ className?: string }>
         hint?: string
     }[] = [
-        { label: "期初余额", value: formatMoney(detail?.openingBalance ?? 0), tone: "gray", icon: Wallet },
-        { label: "本期收入", value: formatMoney(detail?.totalIncome ?? 0), tone: "green", icon: ArrowDownLeft },
-        { label: "本期支出", value: formatMoney(detail?.totalExpense ?? 0), tone: "red", icon: ArrowUpRight },
-        { label: "期末余额", value: formatMoney(detail?.closingBalance ?? 0), tone: "blue", icon: PiggyBank, hint: "期初 + 收入 − 支出" },
+        { label: "期初余额", value: fmtMoney(detail?.openingBalance ?? 0), tone: "gray", icon: Wallet },
+        { label: "本期收入", value: fmtMoney(detail?.totalIncome ?? 0), tone: "green", icon: ArrowDownLeft },
+        { label: "本期支出", value: fmtMoney(detail?.totalExpense ?? 0), tone: "red", icon: ArrowUpRight },
+        { label: "期末余额", value: fmtMoney(detail?.closingBalance ?? 0), tone: "blue", icon: PiggyBank, hint: "期初 + 收入 − 支出" },
     ]
 
     const columns = [
@@ -729,7 +673,7 @@ export default function CashJournalPage() {
         entryColumn.display({
             id: "date",
             header: "日期",
-            cell: ({ row }) => <span>{formatDate(row.original.date)}</span>,
+            cell: ({ row }) => <span>{toISODate(row.original.date)}</span>,
         }),
         entryColumn.display({
             id: "summary",
@@ -749,17 +693,17 @@ export default function CashJournalPage() {
         entryColumn.display({
             id: "income",
             header: "收入",
-            cell: ({ row }) => <span>{fmt(row.original.income ?? 0)}</span>,
+            cell: ({ row }) => <span>{fmtAmount(row.original.income ?? 0)}</span>,
         }),
         entryColumn.display({
             id: "expense",
             header: "支出",
-            cell: ({ row }) => <span>{fmt(row.original.expense ?? 0)}</span>,
+            cell: ({ row }) => <span>{fmtAmount(row.original.expense ?? 0)}</span>,
         }),
         entryColumn.display({
             id: "balance",
             header: "余额",
-            cell: ({ row }) => <span className="font-medium text-slate-700">{formatMoney(row.original.balance ?? 0)}</span>,
+            cell: ({ row }) => <span className="font-medium text-slate-700">{fmtMoney(row.original.balance ?? 0)}</span>,
         }),
         entryColumn.display({
             id: "voucherNo",
@@ -1012,9 +956,9 @@ export default function CashJournalPage() {
                                 <TableFooter>
                                     <TableRow>
                                         <TableCell colSpan={6}>本期合计</TableCell>
-                                        <TableCell className="text-right tabular-nums">{formatMoney(detail?.totalIncome ?? 0)}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{formatMoney(detail?.totalExpense ?? 0)}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{formatMoney(detail?.closingBalance ?? 0)}</TableCell>
+                                        <TableCell className="text-right tabular-nums">{fmtMoney(detail?.totalIncome ?? 0)}</TableCell>
+                                        <TableCell className="text-right tabular-nums">{fmtMoney(detail?.totalExpense ?? 0)}</TableCell>
+                                        <TableCell className="text-right tabular-nums">{fmtMoney(detail?.closingBalance ?? 0)}</TableCell>
                                         <TableCell colSpan={2} />
                                     </TableRow>
                                 </TableFooter>
@@ -1253,11 +1197,11 @@ export default function CashJournalPage() {
                                 <Info />
                                 <AlertTitle>
                                     {voucherEntry.income
-                                        ? `收入 ${formatMoney(voucherEntry.income)}：借 ${selected?.accountName ?? "货币资金"} / 贷 对方科目`
-                                        : `支出 ${formatMoney(voucherEntry.expense ?? 0)}：借 对方科目 / 贷 ${selected?.accountName ?? "货币资金"}`}
+                                        ? `收入 ${fmtMoney(voucherEntry.income)}：借 ${selected?.accountName ?? "货币资金"} / 贷 对方科目`
+                                        : `支出 ${fmtMoney(voucherEntry.expense ?? 0)}：借 对方科目 / 贷 ${selected?.accountName ?? "货币资金"}`}
                                 </AlertTitle>
                                 <AlertDescription>
-                                    {`${formatDate(voucherEntry.date)} ${voucherEntry.summary}`}
+                                    {`${toISODate(voucherEntry.date)} ${voucherEntry.summary}`}
                                 </AlertDescription>
                             </Alert>
                             <Field data-invalid={Boolean(voucherForm.errors.counterAccountId)}>
@@ -1444,6 +1388,8 @@ export default function CashJournalPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {confirmDialog}
         </div>
     )
 }

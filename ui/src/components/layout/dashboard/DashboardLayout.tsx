@@ -1,21 +1,18 @@
 import { useEffect, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import {
     BookOpen,
-    Bell,
     Building2,
     CalendarDays,
     Check,
     ChevronDown,
     ChevronRight,
     ChevronsUpDown,
-    Crown,
-    FileCheck,
+    Construction,
     FileText,
-    HelpCircle,
     Home,
+    LogOut,
     Receipt,
-    Search,
     Settings,
     TrendingUp,
     Users,
@@ -26,6 +23,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useAccountSets } from "@/accountSets/AccountSetsContext";
 import { AccountSetsApi } from "@/apis-gen";
 import { apiConfig } from "@/lib/api-client";
+import { WipTag } from "@/pages/lemon/components/ui";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -35,12 +33,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /* ------------------------------------------------------------------ */
-/*  菜单模型：to 为账套下的相对子路径；缺省表示功能未实现，指向「开发中」  */
-/*  分组带 to 表示直接跳转项（无子菜单）；否则为手风琴分组。              */
+/*  菜单模型：to 为账套下的相对子路径（每项都有真实链接）。                */
+/*  分组带 to 表示直接跳转项（无子菜单）；否则为手风琴分组；              */
+/*  wip 子项属「建设中 · 未接入」分组（界面复刻、后端未接）。             */
 /* ------------------------------------------------------------------ */
 
 type MenuIconType = React.ComponentType<{ className?: string; strokeWidth?: number }>;
-type MenuLeaf = { label: string; icon?: MenuIconType; expand?: boolean; to?: string };
+type MenuLeaf = { label: string; icon?: MenuIconType; expand?: boolean; wip?: boolean; to: string };
 type MenuGroup = { label: string; icon: MenuIconType; to?: string; children?: MenuLeaf[] };
 
 /*
@@ -113,7 +112,7 @@ type MenuGroup = { label: string; icon: MenuIconType; to?: string; children?: Me
  * ];
  */
 
-/** 菜单层级：与柠檬云 J6 一致（首页 + 凭证/资金/发票/工资/资产/期末结转/账簿/报表/一键报税/设置/升级专业版）。 */
+/** 菜单层级：与柠檬云 J6 一致（首页 + 凭证/资金/发票/工资/资产/期末结转/账簿/报表/设置），末尾为「建设中 · 未接入」折叠分组。 */
 const menuGroups: MenuGroup[] = [
     {
         label: "凭证",
@@ -122,7 +121,6 @@ const menuGroups: MenuGroup[] = [
             { label: "新增凭证", to: "vouchers/new" },
             { label: "查看凭证", to: "vouchers/manage" },
             { label: "会计电子档案", to: "vouchers/erecord" },
-            { label: "收票宝", to: "vouchers/spb" },
         ],
     },
     {
@@ -136,7 +134,6 @@ const menuGroups: MenuGroup[] = [
             { label: "资金报表", to: "funds/report" },
             { label: "核对总账", to: "funds/reconciliation" },
             { label: "收支类别", to: "funds/entry-categories" },
-            { label: "银企互联", to: "funds/bank-link" },
             { label: "账户设置", to: "funds/account" },
         ],
     },
@@ -144,12 +141,9 @@ const menuGroups: MenuGroup[] = [
         label: "发票",
         icon: Receipt,
         children: [
-            { label: "一键取票", to: "invoices/fetch" },
             { label: "销项发票", to: "invoices/sales" },
             { label: "进项发票", to: "invoices/purchase" },
-            { label: "费用单据", to: "invoices/expense" },
             { label: "发票资金一览表", to: "invoices/summary" },
-            { label: "发票风险分析", to: "invoices/risk" },
         ],
     },
     {
@@ -210,11 +204,6 @@ const menuGroups: MenuGroup[] = [
         ],
     },
     {
-        label: "一键报税",
-        icon: FileCheck,
-        children: [{ label: "一键登录税局", to: "tax/login" }],
-    },
-    {
         label: "设置",
         icon: Settings,
         children: [
@@ -225,17 +214,29 @@ const menuGroups: MenuGroup[] = [
             { label: "凭证字", to: "settings/voucher-word" },
             { label: "辅助核算", to: "settings/assist-items" },
             { label: "凭证模板", to: "settings/voucher-template" },
-            { label: "权限设置", to: "settings/permission" },
-            { label: "老板看账", to: "settings/boss" },
-            { label: "备份恢复", to: "settings/backup" },
             { label: "操作日志", to: "settings/log" },
-            { label: "关联云发票", to: "settings/eis-relation" },
-            { label: "关联进销存", to: "settings/scm-relation" },
-            { label: "旧账导入", to: "settings/import-old" },
             { label: "重新初始化", to: "settings/reinit" },
         ],
     },
-    { label: "升级专业版", icon: Crown, to: "pro" },
+    {
+        label: "建设中 · 未接入",
+        icon: Construction,
+        children: [
+            { label: "收票宝", to: "vouchers/spb", wip: true },
+            { label: "银企互联", to: "funds/bank-link", wip: true },
+            { label: "一键取票", to: "invoices/fetch", wip: true },
+            { label: "费用单据", to: "invoices/expense", wip: true },
+            { label: "发票风险分析", to: "invoices/risk", wip: true },
+            { label: "一键登录税局", to: "tax/login", wip: true },
+            { label: "权限设置", to: "settings/permission", wip: true },
+            { label: "老板看账", to: "settings/boss", wip: true },
+            { label: "备份恢复", to: "settings/backup", wip: true },
+            { label: "关联云发票", to: "settings/eis-relation", wip: true },
+            { label: "关联进销存", to: "settings/scm-relation", wip: true },
+            { label: "旧账导入", to: "settings/import-old", wip: true },
+            { label: "升级专业版", to: "pro", wip: true },
+        ],
+    },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -267,7 +268,7 @@ function Sidebar() {
 
     // 当前路由所在分组：手风琴默认展开它
     const activeGroupLabel = menuGroups.find((g) =>
-        g.children?.some((c) => c.to && location.pathname === `${base}/${c.to}`),
+        g.children?.some((c) => location.pathname === `${base}/${c.to}`),
     )?.label;
     const [expanded, setExpanded] = useState<string | undefined>(activeGroupLabel);
     useEffect(() => {
@@ -288,7 +289,12 @@ function Sidebar() {
                 <HomeRow />
                 {menuGroups.map((group) =>
                     group.to ? (
-                        <DirectRow key={group.label} group={group} />
+                        <DirectRow
+                            key={group.label}
+                            label={group.label}
+                            icon={group.icon}
+                            to={group.to}
+                        />
                     ) : (
                         <div key={group.label} className="mt-0.5">
                             <GroupRow
@@ -314,16 +320,17 @@ function Sidebar() {
 }
 
 /**
- * 账套切换器：把选中的账套设为后端「当前账套」，并跳到该账套下的同一子页面。
- * 页面取数以路由第一段为准，因此即使设置当前失败也照常跳转。
+ * 账套切换器：把选中的账套设为后端「当前账套」，刷新账套上下文（保证各页面「（当前）」标记不失真），
+ * 并跳到该账套下的同一子页面。页面取数以路由第一段为准，因此即使设置当前失败也照常跳转，但要内联提示错误。
  */
 function AccountSetSwitcher() {
     const { accountSetId = "" } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
     const { token } = useAuth();
-    const { accountSets } = useAccountSets();
+    const { accountSets, refresh } = useAccountSets();
     const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     if (accountSets.length === 0) return null;
     const current = accountSets.find((s) => s.id === accountSetId);
@@ -331,10 +338,13 @@ function AccountSetSwitcher() {
     async function choose(id: string) {
         if (!id || id === accountSetId || busy) return;
         setBusy(true);
+        setError(null);
         try {
             await new AccountSetsApi(apiConfig(token)).accountSetsIdCurrentPost({ id });
-        } catch {
-            // 忽略：仅影响下次登录的默认账套。
+            // 切换成功后刷新上下文，各页面「（当前）」标记随之更新。
+            refresh();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "设为当前账套失败。");
         } finally {
             setBusy(false);
         }
@@ -389,6 +399,9 @@ function AccountSetSwitcher() {
                     ))}
                 </DropdownMenuContent>
             </DropdownMenu>
+            {error && (
+                <p className="mt-1 px-1 text-[11px] leading-4 text-red-500">{error}</p>
+            )}
         </div>
     );
 }
@@ -397,16 +410,8 @@ function AccountSetSwitcher() {
 function useNavTarget(item: MenuLeaf) {
     const { accountSetId = "" } = useParams();
     const location = useLocation();
-    const [searchParams] = useSearchParams();
-    const base = `/${accountSetId}`;
-
-    if (item.to) {
-        const href = `${base}/${item.to}`;
-        return { href, active: location.pathname === href };
-    }
-    const href = `${base}/dev?menu=${encodeURIComponent(item.label)}`;
-    const active = location.pathname === `${base}/dev` && searchParams.get("menu") === item.label;
-    return { href, active };
+    const href = `/${accountSetId}/${item.to}`;
+    return { href, active: location.pathname === href };
 }
 
 /** 首页：浅蓝胶囊 + 实心蓝色房子图标，右侧贴边蓝色高亮条。 */
@@ -450,7 +455,7 @@ function GroupRow({
     const location = useLocation();
     const base = `/${accountSetId}`;
     const active = (group.children ?? []).some(
-        (c) => c.to && location.pathname === `${base}/${c.to}`,
+        (c) => location.pathname === `${base}/${c.to}`,
     );
     return (
         <button
@@ -475,9 +480,17 @@ function GroupRow({
     );
 }
 
-/** 直达项（无子菜单，如期末结转/升级专业版）：样式同分组标题但可跳转。 */
-function DirectRow({ group }: { group: MenuGroup }) {
-    const { href, active } = useNavTarget({ label: group.label, to: group.to });
+/** 直达项（无子菜单，如期末结转）：样式同分组标题但可跳转。 */
+function DirectRow({
+    label,
+    icon,
+    to,
+}: {
+    label: string;
+    icon: MenuIconType;
+    to: string;
+}) {
+    const { href, active } = useNavTarget({ label, to });
     return (
         <Link
             to={href}
@@ -488,13 +501,13 @@ function DirectRow({ group }: { group: MenuGroup }) {
                     : "text-slate-700 hover:bg-slate-50")
             }
         >
-            <MenuGlyph icon={group.icon} active={active} />
-            <span className="flex-1 truncate">{group.label}</span>
+            <MenuGlyph icon={icon} active={active} />
+            <span className="flex-1 truncate">{label}</span>
         </Link>
     );
 }
 
-/** 子项：可跳转；未实现项指向「开发中」。子项不带图标时以小圆点占位。 */
+/** 子项：可跳转；「建设中」项挂小标。子项不带图标时以小圆点占位。 */
 function ChildRow({ item }: { item: MenuLeaf }) {
     const { href, active } = useNavTarget(item);
     return (
@@ -515,6 +528,7 @@ function ChildRow({ item }: { item: MenuLeaf }) {
                 </span>
             )}
             <span className="flex-1 truncate">{item.label}</span>
+            {item.wip && <WipTag className="shrink-0" />}
             {item.expand && <ChevronRight className="size-3.5 shrink-0 text-slate-300" />}
         </Link>
     );
@@ -556,39 +570,38 @@ function Logo() {
 /* ------------------------------------------------------------------ */
 
 function TopBar() {
-    const { user } = useAuth();
-    const name = user?.displayName || user?.username || "张三";
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+    const name = user?.displayName || user?.username || "";
     const initial = name.slice(0, 1);
+
+    function handleLogout() {
+        logout();
+        navigate("/login", { replace: true });
+    }
+
     return (
-        <header className="flex h-16 shrink-0 items-center gap-4 border-b border-slate-100 bg-white px-6">
-            <div className="flex h-9 w-[360px] max-w-full items-center gap-2 rounded-full bg-slate-100 px-4 text-slate-400">
-                <Search className="size-4" />
-                <input
-                    className="w-full bg-transparent text-[13px] text-slate-600 outline-none placeholder:text-slate-400"
-                    placeholder="搜索客户、单据、报表等 (Ctrl + K)"
-                />
-            </div>
-            <div className="ml-auto flex items-center gap-4">
-                <button className="relative text-slate-400 transition-colors hover:text-slate-600">
-                    <Bell className="size-5" />
-                    <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-[#ef4444] text-[10px] font-medium text-white">
-                        3
-                    </span>
-                </button>
-                <button className="text-slate-400 transition-colors hover:text-slate-600">
-                    <HelpCircle className="size-5" />
-                </button>
-                <div className="flex items-center gap-2 pl-1">
-                    <span className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-[#5b9bff] to-[#2f6bff] text-[13px] font-medium text-white">
-                        {initial}
-                    </span>
-                    <div className="leading-tight">
-                        <div className="text-[13px] font-medium text-slate-700">{name}</div>
-                        <div className="text-[11px] text-slate-400">系统管理员</div>
-                    </div>
-                    <ChevronDown className="size-4 text-slate-400" />
-                </div>
-            </div>
+        <header className="flex h-16 shrink-0 items-center justify-end border-b border-slate-100 bg-white px-6">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <button
+                        type="button"
+                        className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-slate-50"
+                    >
+                        <span className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-[#5b9bff] to-[#2f6bff] text-[13px] font-medium text-white">
+                            {initial}
+                        </span>
+                        <span className="text-[13px] font-medium text-slate-700">{name}</span>
+                        <ChevronDown className="size-4 text-slate-400" />
+                    </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-40">
+                    <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="size-4" />
+                        退出登录
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </header>
     );
 }

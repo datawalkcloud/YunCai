@@ -5,32 +5,63 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronDown, Crown, FileText, Folder, FolderOpen, Image } from "lucide-react";
+import { Archive, ChevronDown, Crown, FileText, Folder, FolderOpen, Image } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
+import { StatusPill } from "@/components/page/status-pill";
+import type { PillTone } from "@/components/page/styles";
 
 
 import {
     Btn,
     CheckBox,
     Page,
-    Pager,
     PeriodBlock,
     RefreshIcon,
     SubTabs,
+    TextInput,
     Toast,
     ToolRow,
+    WipBtn,
 } from "./components/ui";
 import { ArchivesApi, type ArchiveItemDto } from "@/apis-gen";
 
-function th2() {
-    return "border-b border-[#e8e8e8] bg-[#f0f7f0] px-3 py-2.5 text-left text-[13px] font-normal text-[#333]";
+/** 前端上传大小上限（8 MB）：整文件 Base64 会再膨胀约 1/3，后端单文件/额度均为 10 MB，留出余量。 */
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+/** 字节数格式化。 */
+function fmtBytes(n: number): string {
+    if (n < 1024) {
+        return `${n} B`;
+    }
+    if (n < 1024 * 1024) {
+        return `${(n / 1024).toFixed(0)} KB`;
+    }
+    return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
-const td2 = "border-b border-[#f0f0f0] px-3 py-2.5 text-[13px] text-[#333]";
+function th2() {
+    return "border-b border-slate-200 bg-muted px-3 py-2.5 text-left text-[13px] font-normal text-slate-500";
+}
+
+const td2 = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-600 tabular-nums";
 
 const FOLDERS = ["凭证附件", "回单", "发票", "现金流水", "票据", "工资", "资产"];
+
+/** 档案状态文案 → 胶囊色调：完成语义绿、异常红、待处理琥珀，其余浅灰。 */
+function statusTone(text?: string | null): PillTone {
+    const s = text ?? "";
+    if (/已归档|已审核|通过|已校验|正常/.test(s)) return "green";
+    if (/驳回|失败|异常|缺失/.test(s)) return "red";
+    if (/待|未|审核中/.test(s)) return "amber";
+    return "gray";
+}
+
+/** 状态列胶囊：无内容时保持空白（与原纯文本渲染一致）。 */
+function StatusCell({ text }: { text?: string | null }) {
+    return text ? <StatusPill tone={statusTone(text)}>{text}</StatusPill> : <>{text}</>;
+}
 
 export default function LemonERecord() {
     const navigate = useNavigate();
@@ -39,7 +70,7 @@ export default function LemonERecord() {
     const [tab, setTab] = useState(0);
     const [items, setItems] = useState<ArchiveItemDto[]>([]);
     const [archived, setArchived] = useState<ArchiveItemDto[]>([]);
-    const [usage, setUsage] = useState("0 KB / 10.00 MB");
+    const [usage, setUsage] = useState<{ used: number; total: number } | null>(null);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [keyword, setKeyword] = useState("");
     const [folder, setFolder] = useState<string | null>(null);
@@ -61,8 +92,7 @@ export default function LemonERecord() {
             setItems(list ?? []);
             setArchived(archivedList ?? []);
             setSelected(new Set());
-            const fmt = (n: number) => (n / 1024 / 1024).toFixed(2) + " MB";
-            setUsage(`${fmt(u.usedBytes ?? 0)} / ${fmt(u.totalBytes ?? 0)}`);
+            setUsage({ used: u.usedBytes ?? 0, total: u.totalBytes ?? 0 });
         } catch (e) {
             setToast(await apiErrorMessage(e, "加载电子档案失败"));
         }
@@ -84,6 +114,16 @@ export default function LemonERecord() {
     /** 上传：本地文件转 base64 交给后端存档。 */
     const upload = async (file: File) => {
         if (!token || !accountSetId || !file) {
+            return;
+        }
+        if (busy) {
+            return;
+        }
+        if (file.size > MAX_UPLOAD_BYTES) {
+            setToast(`「${file.name}」超过 8 MB，无法上传，请压缩后重试。`);
+            if (fileRef.current) {
+                fileRef.current.value = "";
+            }
             return;
         }
         setBusy(true);
@@ -200,35 +240,30 @@ export default function LemonERecord() {
                     <Btn variant="primary" onClick={() => navigate(`/${accountSetId}/vouchers/spb`)}>
                         收票宝上传
                     </Btn>
-                    <input
-                        ref={fileRef}
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => void upload(e.target.files?.[0] as File)}
-                    />
-                    <Btn dropdown onClick={() => fileRef.current?.click()}>
+                    <Btn variant="primary" disabled={busy} onClick={() => fileRef.current?.click()}>
                         电脑上传
                     </Btn>
-                    <Btn dropdown onClick={() => void bulk("audit")}>
+                    <input ref={fileRef} type="file" className="hidden" onChange={(e) => void upload(e.target.files?.[0] as File)} />
+                    <Btn dropdown disabled={busy} onClick={() => void bulk("audit")}>
                         审核
                     </Btn>
-                    <Btn dropdown onClick={() => void bulk("archive")}>
+                    <Btn dropdown disabled={busy} onClick={() => void bulk("archive")}>
                         归档
                     </Btn>
-                    <Btn dropdown>关联凭证</Btn>
-                    <Btn dropdown>生成凭证</Btn>
-                    <Btn dropdown>标记为纸质档案</Btn>
-                    <Btn dropdown>更多</Btn>
+                    <WipBtn dropdown title="关联凭证尚未接入后端">关联凭证</WipBtn>
+                    <WipBtn dropdown title="由档案生成凭证尚未接入后端">生成凭证</WipBtn>
+                    <WipBtn dropdown title="标记为纸质档案尚未接入后端">标记为纸质档案</WipBtn>
+                    <WipBtn dropdown title="更多操作尚未接入后端">更多</WipBtn>
                     <CheckBox label="文件名增加凭证号" />
                 </>
             }
             right={
                 <>
-                    <input
-                        className="h-8 w-[220px] rounded-[2px] border border-[#d9d9d9] px-2.5 text-[13px] text-[#333] outline-none focus:border-[#44b449]"
+                    <TextInput
+                        className="w-[220px]"
                         placeholder="搜索文件名"
                         value={keyword}
-                        onChange={(e) => setKeyword(e.target.value)}
+                        onChange={setKeyword}
                     />
                     <span className="cursor-pointer" onClick={() => void load()} title="刷新">
                         <RefreshIcon />
@@ -257,7 +292,7 @@ export default function LemonERecord() {
     );
 
     return (
-        <Page>
+        <Page title="会计电子档案" subtitle="凭证附件、回单、发票等资料的电子化归档管理" icon={Archive}>
             <SubTabs tabs={["电子档案列表", "电子档案归档"]} active={tab} onChange={setTab} />
             {tool}
             {toolArchived}
@@ -266,7 +301,7 @@ export default function LemonERecord() {
                     {tab === 1 ? (
                         <table className="w-full border-collapse text-sm">
                             <thead>
-                                <tr className="bg-[#f0f7f0] text-[13px] text-[#333]">
+                                <tr className="bg-muted text-[13px] text-slate-500">
                                     <th className={`${th2()} w-[36px]`}> </th>
                                     {["档案名称", "文件类别", "上传人", "上传日期", "操作"].map((t) => (
                                         <th key={t} className={th2()}>
@@ -277,7 +312,7 @@ export default function LemonERecord() {
                             </thead>
                             <tbody>
                                 {filtered.map((it, i) => (
-                                    <tr key={it.id} className={i % 2 === 1 ? "bg-[#fafafa]" : ""}>
+                                    <tr key={it.id} className={`transition-colors hover:bg-[#f6f9ff] ${i % 2 === 1 ? "bg-[#fafbfd]" : "bg-white"}`}>
                                         <td className={td2}>
                                             <span className="inline-flex cursor-pointer" onClick={() => toggle(it.id ?? "")}>
                                                 <CheckBox label="" checked={selected.has(it.id ?? "")} />
@@ -288,7 +323,7 @@ export default function LemonERecord() {
                                         <td className={td2}>{it.uploader}</td>
                                         <td className={td2}>{it.uploadedAt ? new Date(it.uploadedAt).toISOString().substring(0, 10) : ""}</td>
                                         <td className={td2}>
-                                            <span className="flex gap-2 text-[#3385ff]">
+                                            <span className="flex gap-2 text-[#2f6bff]">
                                                 <span className="cursor-pointer hover:underline" onClick={() => void download(it)}>
                                                     下载
                                                 </span>
@@ -331,7 +366,7 @@ export default function LemonERecord() {
                             </thead>
                             <tbody>
                                 {filtered.map((it, i) => (
-                                    <tr key={it.id} className={i % 2 === 1 ? "bg-[#fafafa]" : ""}>
+                                    <tr key={it.id} className={`transition-colors hover:bg-[#f6f9ff] ${i % 2 === 1 ? "bg-[#fafbfd]" : "bg-white"}`}>
                                         <td className={td2}>
                                             <span className="inline-flex cursor-pointer" onClick={() => toggle(it.id ?? "")}>
                                                 <CheckBox label="" checked={selected.has(it.id ?? "")} />
@@ -340,22 +375,26 @@ export default function LemonERecord() {
                                         <td className={td2}>
                                             <span className="inline-flex cursor-pointer items-center gap-1.5" onClick={() => void download(it)} title="点击下载">
                                                 {(it.fileName ?? "").endsWith(".pdf") ? (
-                                                    <FileText className="h-3.5 w-3.5 text-[#f5222d]" />
+                                                    <FileText className="h-3.5 w-3.5 text-[#ef4444]" />
                                                 ) : (
-                                                    <Image className="h-3.5 w-3.5 text-[#2fbf6c]" />
+                                                    <Image className="h-3.5 w-3.5 text-[#10b981]" />
                                                 )}
-                                                <span className="text-[#3385ff] hover:underline">{it.fileName}</span>
+                                                <span className="text-[#2f6bff] hover:underline">{it.fileName}</span>
                                             </span>
                                         </td>
                                         <td className={td2}>{it.category}</td>
                                         <td className={td2}>{it.docType}</td>
                                         <td className={td2}>{it.uploadedAt ? new Date(it.uploadedAt).toISOString().substring(0, 10) : ""}</td>
                                         <td className={td2}>{it.relatedDoc}</td>
-                                        <td className={`${td2} text-[#3385ff]`}>{it.relatedNo}</td>
-                                        <td className={`${td2} text-[#3385ff]`}>{it.voucherText}</td>
+                                        <td className={`${td2} text-[#2f6bff]`}>{it.relatedNo}</td>
+                                        <td className={`${td2} text-[#2f6bff]`}>{it.voucherText}</td>
                                         <td className={td2}>{it.matter}</td>
-                                        <td className={td2}>{it.checkStatus}</td>
-                                        <td className={td2}>{it.statusText}</td>
+                                        <td className={td2}>
+                                            <StatusCell text={it.checkStatus} />
+                                        </td>
+                                        <td className={td2}>
+                                            <StatusCell text={it.statusText} />
+                                        </td>
                                         <td className={td2}>{it.uploader}</td>
                                         <td className={td2}>{it.source}</td>
                                     </tr>
@@ -364,48 +403,51 @@ export default function LemonERecord() {
                         </table>
                     )}
                     {filtered.length === 0 && (
-                        <div className="py-14 text-center text-[13px] text-[#999]">
+                        <div className="py-14 text-center text-[13px] text-slate-400">
                             {tab === 1
                                 ? "还没有归档数据，在列表页勾选档案后点「归档」即可移入此处哦~"
                                 : "暂无档案，点击「电脑上传」把凭证附件、回单、发票等文件存入电子档案。"}
                         </div>
                     )}
-                    <Pager total={filtered.length} count={filtered.length} />
+                    {filtered.length === 0 ? null : (
+                        <div className="flex items-center px-1 py-3 text-[13px] text-slate-500">共 {filtered.length} 条记录</div>
+                    )}
                 </div>
                 {/* 右侧文件目录面板 */}
-                <div className="w-[270px] shrink-0 border-l border-[#e8e8e8] px-3 py-3">
-                    <div className="text-[13px] text-[#333]">
-                        已用空间( <span className="text-[#44b449]">{usage.split(" / ")[0]}</span> / {usage.split(" / ")[1] ?? "10.00 MB"} )
+                <div className="w-[270px] shrink-0 border-l border-slate-200 px-3 py-3">
+                    <div className="text-[13px] text-slate-700">
+                        已用空间( <span className="text-[#2f6bff]">{usage ? fmtBytes(usage.used) : "…"}</span> /{" "}
+                        {usage ? fmtBytes(usage.total) : "10.00 MB"} )
                     </div>
-                    <div className="mt-2 inline-flex h-8 cursor-pointer items-center gap-1 rounded-[2px] border border-[#f5a623] px-3 text-[13px] text-[#e08a00]">
+                    <div className="mt-2 inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 text-[13px] text-[#92640b]">
                         <Crown className="h-3.5 w-3.5" /> 升级扩容
                     </div>
                     <div className="mt-4 flex flex-col text-[13px]">
                         <div
-                            className={`flex cursor-pointer items-center justify-between rounded-[2px] px-2 py-1.5 text-[#333] ${
-                                folder === null ? "bg-[#eaf7ea]" : "hover:bg-[#f5f5f5]"
+                            className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-slate-700 ${
+                                folder === null ? "bg-[#eef4ff]" : "hover:bg-slate-100"
                             }`}
                             onClick={() => setFolder(null)}
                         >
                             <span className="flex items-center gap-1.5">
-                                <ChevronDown className="h-3 w-3 text-[#44b449]" />
-                                <Folder className="h-3.5 w-3.5 text-[#c7d96b]" /> 所有文件
+                                <ChevronDown className="h-3 w-3 text-[#2f6bff]" />
+                                <Folder className="h-3.5 w-3.5 text-[#f59e0b]" /> 所有文件
                             </span>
-                            <span className="text-[#999]">⋮</span>
+                            <span className="text-slate-400">⋮</span>
                         </div>
                         {FOLDERS.map((f) => (
                             <div
                                 key={f}
-                                className={`flex cursor-pointer items-center gap-1.5 rounded-[2px] px-2 py-1.5 pl-7 text-[#333] ${
-                                    folder === f ? "bg-[#eaf7ea]" : "hover:bg-[#f5f5f5]"
+                                className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 pl-7 text-slate-700 ${
+                                    folder === f ? "bg-[#eef4ff]" : "hover:bg-slate-100"
                                 }`}
                                 onClick={() => setFolder(f)}
                             >
-                                <FolderOpen className="h-3.5 w-3.5 text-[#c7d96b]" /> {f}
+                                <FolderOpen className="h-3.5 w-3.5 text-[#f59e0b]" /> {f}
                             </div>
                         ))}
-                        <div className="mt-2 flex cursor-pointer items-center gap-1.5 rounded-[2px] px-2 py-1.5 text-[#333] hover:bg-[#f5f5f5]">
-                            <Folder className="h-3.5 w-3.5 text-[#c7d96b]" /> 数据备份
+                        <div className="mt-2 flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-slate-700 hover:bg-slate-100">
+                            <Folder className="h-3.5 w-3.5 text-[#f59e0b]" /> 数据备份
                         </div>
                     </div>
                 </div>

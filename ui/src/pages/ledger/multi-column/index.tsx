@@ -10,7 +10,8 @@ import {
     type MultiColumnHeaderDto,
 } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
-import { fmtAmount, kindRowClass } from "@/components/ledger/format"
+import { fmtAmount } from "@/lib/format"
+import { kindRowClass } from "@/components/ledger/format"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
