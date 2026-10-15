@@ -2,21 +2,21 @@
  * 柠檬云 J6 侧栏菜单树（与在线系统菜单结构 1:1）。
  * 路由均为 /lemon 下的相对路径。
  */
+import type { ComponentType } from "react";
 import {
-    BookOpen,
-    Building2,
-    CalendarDays,
-    Crown,
-    FileCheck,
-    FileText,
-    Home,
-    Receipt,
-    Settings,
-    TrendingUp,
-    Users,
-    Wallet,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+    BankOutlined,
+    BookOutlined,
+    CalendarOutlined,
+    CrownOutlined,
+    FileDoneOutlined,
+    FileTextOutlined,
+    FundOutlined,
+    HomeOutlined,
+    ProfileOutlined,
+    SettingOutlined,
+    TeamOutlined,
+    WalletOutlined,
+} from "@ant-design/icons";
 
 export interface LemonMenuChild {
     label: string;
@@ -25,16 +25,16 @@ export interface LemonMenuChild {
 
 export interface LemonMenuItem {
     label: string;
-    icon: LucideIcon;
+    icon: ComponentType<{ className?: string }>;
     path?: string;
     children?: LemonMenuChild[];
 }
 
 export const LEMON_MENU: LemonMenuItem[] = [
-    { label: "首页", icon: Home, path: "/lemon/home" },
+    { label: "首页", icon: HomeOutlined, path: "/lemon/home" },
     {
         label: "凭证",
-        icon: BookOpen,
+        icon: BookOutlined,
         children: [
             { label: "新增凭证", path: "/lemon/voucher/new" },
             { label: "查看凭证", path: "/lemon/voucher/list" },
@@ -44,7 +44,7 @@ export const LEMON_MENU: LemonMenuItem[] = [
     },
     {
         label: "资金",
-        icon: Wallet,
+        icon: WalletOutlined,
         children: [
             { label: "现金日记账", path: "/lemon/funds/cash-journal" },
             { label: "银行日记账", path: "/lemon/funds/deposit-journal" },
@@ -59,7 +59,7 @@ export const LEMON_MENU: LemonMenuItem[] = [
     },
     {
         label: "发票",
-        icon: Receipt,
+        icon: ProfileOutlined,
         children: [
             { label: "一键取票", path: "/lemon/invoice/fetch" },
             { label: "销项发票", path: "/lemon/invoice/sales" },
@@ -71,7 +71,7 @@ export const LEMON_MENU: LemonMenuItem[] = [
     },
     {
         label: "工资",
-        icon: Users,
+        icon: TeamOutlined,
         children: [
             { label: "工资管理", path: "/lemon/salary/manage" },
             { label: "员工信息", path: "/lemon/salary/employee" },
@@ -81,7 +81,7 @@ export const LEMON_MENU: LemonMenuItem[] = [
     },
     {
         label: "资产",
-        icon: Building2,
+        icon: BankOutlined,
         children: [
             { label: "资产管理", path: "/lemon/asset/manage" },
             { label: "折旧摊销明细表", path: "/lemon/asset/depreciation" },
@@ -90,10 +90,10 @@ export const LEMON_MENU: LemonMenuItem[] = [
             { label: "资产核对总账", path: "/lemon/asset/check" },
         ],
     },
-    { label: "期末结转", icon: CalendarDays, path: "/lemon/closing" },
+    { label: "期末结转", icon: CalendarOutlined, path: "/lemon/closing" },
     {
         label: "账簿",
-        icon: FileText,
+        icon: FileTextOutlined,
         children: [
             { label: "明细账", path: "/lemon/ledger/subsidiary" },
             { label: "总账", path: "/lemon/ledger/general" },
@@ -109,7 +109,7 @@ export const LEMON_MENU: LemonMenuItem[] = [
     },
     {
         label: "报表",
-        icon: TrendingUp,
+        icon: FundOutlined,
         children: [
             { label: "资产负债表", path: "/lemon/report/balance-sheet" },
             { label: "利润表", path: "/lemon/report/income" },
@@ -128,12 +128,12 @@ export const LEMON_MENU: LemonMenuItem[] = [
     },
     {
         label: "一键报税",
-        icon: FileCheck,
+        icon: FileDoneOutlined,
         children: [{ label: "一键登录税局", path: "/lemon/tax/login" }],
     },
     {
         label: "设置",
-        icon: Settings,
+        icon: SettingOutlined,
         children: [
             { label: "账套", path: "/lemon/settings/account-sets" },
             { label: "科目", path: "/lemon/settings/accounts" },
@@ -155,7 +155,7 @@ export const LEMON_MENU: LemonMenuItem[] = [
 ];
 
 /** 底部固定项（原版点击打开付费对比页）。 */
-export const LEMON_EXTRA = { label: "升级专业版", icon: Crown, path: "/lemon/pro" };
+export const LEMON_EXTRA = { label: "升级专业版", icon: CrownOutlined, path: "/lemon/pro" };
 
 /** 依据路径找到页名（页签条用）。 */
 export function menuTitleOf(pathname: string): string | undefined {

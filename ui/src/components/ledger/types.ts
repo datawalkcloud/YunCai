@@ -1,15 +1,5 @@
 /** 账簿页共用的条件模型、枚举文案与路由清单。 */
-import { type ColumnDef, type RowData, tableFeatures } from "@tanstack/react-table"
-
 import { ASSIST_TYPES as ASSIST_TYPE_META, assistLabel } from "@/components/assist/constants"
-
-/**
- * 账页统一使用同一套 table 特性：账页据此创建列助手，通用表格外壳据此渲染。
- */
-export const ledgerFeatures = tableFeatures({})
-
-/** 账页列定义数组：由 ledgerFeatures 的列助手产出。 */
-export type LedgerColumnDefs<D extends RowData> = ColumnDef<typeof ledgerFeatures, D, any>[]
 
 /**
  * 账簿查询条件，字段与后端 LedgerQueryOptions 一一对应。

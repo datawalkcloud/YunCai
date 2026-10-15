@@ -29,35 +29,15 @@ export const ICON_BTN_DANGER =
 
 export type PillTone = "blue" | "green" | "purple" | "amber" | "red" | "gray"
 
-/** 状态胶囊色调：浅底 + 同色系文字。 */
-export const PILL: Record<PillTone, string> = {
-    blue: "bg-[#dbeafe] text-[#3b82f6]",
-    green: "bg-[#d1fae5] text-[#10b981]",
-    purple: "bg-[#ede9fe] text-[#8b5cf6]",
-    amber: "bg-[#fef3c7] text-[#f59e0b]",
-    red: "bg-[#fee2e2] text-[#ef4444]",
-    gray: "bg-[#eef1f6] text-[#64748b]",
+/** 状态胶囊色调：浅底 + 同色系文字（antd Tag 用内联样式上色，故取色值而非 class）。 */
+export const PILL: Record<PillTone, { bg: string; fg: string }> = {
+    blue: { bg: "#dbeafe", fg: "#3b82f6" },
+    green: { bg: "#d1fae5", fg: "#10b981" },
+    purple: { bg: "#ede9fe", fg: "#8b5cf6" },
+    amber: { bg: "#fef3c7", fg: "#f59e0b" },
+    red: { bg: "#fee2e2", fg: "#ef4444" },
+    gray: { bg: "#eef1f6", fg: "#64748b" },
 }
-
-/** 表单控件（Input / SelectTrigger）在筛选区里的小号浅灰样式。 */
-export const CONTROL = "h-8 rounded-lg border-slate-200 bg-white text-[13px] shadow-none"
-
-/** 选择器触发按钮（PickerTrigger 的第一个按钮）的小号浅灰样式。 */
-const TRIGGER_BTN = [
-    "[&>button:first-of-type]:h-8 [&>button:first-of-type]:rounded-lg [&>button:first-of-type]:border-slate-200",
-    "[&>button:first-of-type]:bg-white [&>button:first-of-type]:px-2.5 [&>button:first-of-type]:text-[12px]",
-    "[&>button:first-of-type]:font-normal [&>button:first-of-type]:text-slate-500 [&>button:first-of-type]:shadow-none",
-    "[&>button:first-of-type:hover]:bg-slate-50",
-].join(" ")
-
-/** 单个日期 / 期间选择器在筛选区里的样式。 */
-export const PERIOD_FIELD = TRIGGER_BTN
-
-/** 日期区间选择器：主按钮 + 尾部清除按钮。 */
-export const DATE_FIELD = [
-    TRIGGER_BTN,
-    "[&>button:last-of-type]:text-slate-400 [&>button:last-of-type:hover]:bg-slate-100 [&>button:last-of-type:hover]:text-slate-600",
-].join(" ")
 
 /** 凭证状态 → 胶囊档位：已过账绿、已审核紫、草稿蓝；借贷不平衡一律红。 */
 export function voucherStatusTone(status?: number, isBalanced?: boolean): PillTone {
@@ -98,3 +78,23 @@ export const ACCENT_BG = {
 
 /** 白卡内部的浅灰区块（筛选条、汇总条、表头带）：底色 --muted，描边需深一档才看得见。 */
 export const SOFT_PANEL = "rounded-xl border border-slate-200 bg-muted"
+
+/**
+ * antd 图标着色：antd 注入的 `.anticon { color: inherit }` 是无层级声明，压过 Tailwind `@layer utilities`
+ * 里的颜色工具类，写在图标 className 上的 text-slate-400、text-[#ef4444] 之类全部失效；
+ * 颜色一律用这里的内联样式，字号与间距仍走类名。
+ */
+export const ICON_STYLE = {
+    brand: { color: "#2f6bff" },
+    ok: { color: "#22c55e" },
+    warn: { color: "#f59e0b" },
+    danger: { color: "#ef4444" },
+    muted: { color: "#94a3b8" },
+    placeholder: { color: "#cbd5e1" },
+} as const
+
+/**
+ * antd 表格金额列公共属性：align 让表头与单元格一起右对齐（rc-table 只把 className 发给单元格），
+ * 等宽数字靠 className。账簿、资金、报表各表共用，不再各自判定「哪些列是金额列」。
+ */
+export const AMOUNT_COL = { align: "right", className: "text-right tabular-nums" } as const

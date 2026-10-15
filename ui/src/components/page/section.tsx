@@ -1,5 +1,7 @@
 import type { ReactNode } from "react"
 
+import { Card } from "antd"
+
 import { cn } from "@/lib/utils"
 
 /** 页头横幅：渐变底 + 图标块 + 标题说明，右侧放本页主动作。 */
@@ -24,7 +26,7 @@ export function PageHeader({
             )}
         >
             <div className="flex flex-wrap items-center gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#5b9bff] to-[#2f6bff] text-white shadow-[0_6px_16px_rgba(47,107,255,0.28)]">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#5b9bff] to-[#2f6bff] text-white shadow-[0_6px_16px_rgba(47,107,255,0.28)] [&_.anticon]:text-[20px]">
                     <Icon className="size-5" />
                 </span>
                 <div className="min-w-0">
@@ -43,7 +45,7 @@ export interface SectionCardProps {
     action?: ReactNode
     children: ReactNode
     className?: string
-    /** 覆盖正文内边距，例如需要表格通栏时传 "px-2 pb-2"。 */
+    /** 覆盖正文内边距，例如需要表格通栏时传 "p-0"。 */
     bodyClassName?: string
 }
 
@@ -51,19 +53,31 @@ export interface SectionCardProps {
 export function SectionCard({ title, action, children, className, bodyClassName }: SectionCardProps) {
     const hasHeader = title != null || action != null
     return (
-        <section
-            className={cn(
-                "rounded-2xl border border-slate-100 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
-                className,
-            )}
+        <Card
+            className={className}
+            title={
+                hasHeader ? <span className="flex min-w-0 flex-wrap items-center gap-2">{title}</span> : undefined
+            }
+            extra={action}
+            styles={{
+                // antd 的 .ant-card .ant-card-* 是两级类名、压过 Tailwind，故描边/阴影/留白只能内联覆盖；正文 padding 归零后交给 bodyClassName。
+                root: {
+                    borderRadius: 16,
+                    border: "1px solid #f1f5f9",
+                    boxShadow: "0 1px 2px rgba(16,24,40,0.04)",
+                },
+                header: {
+                    padding: "20px 20px 0",
+                    borderBottom: "none",
+                    marginBottom: 0,
+                    minHeight: 0,
+                    background: "transparent",
+                },
+                title: { whiteSpace: "normal", overflow: "visible" },
+                body: { padding: 0 },
+            }}
         >
-            {hasHeader && (
-                <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-4">
-                    <div className="flex min-w-0 items-center gap-2">{title}</div>
-                    {action}
-                </div>
-            )}
-            <div className={cn(hasHeader ? "px-5 pb-5" : "p-5", bodyClassName)}>{children}</div>
-        </section>
+            <div className={cn(hasHeader ? "px-5 pb-5 pt-4" : "p-5", bodyClassName)}>{children}</div>
+        </Card>
     )
 }

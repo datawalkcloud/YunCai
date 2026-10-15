@@ -5,7 +5,7 @@
  * 视觉遵循全站统一风格（云财蓝）：白卡 + slate 灰阶文字，✓ 用成功色 #10b981、✕ 用 #ef4444；
  * 专业版皇冠为品牌装饰，保留金色体系（#fffbeb / #fde68a / #92640b）。
  */
-import { Crown } from "lucide-react";
+import { CrownOutlined } from "@ant-design/icons";
 
 import { Page, WipBtn, WipNotice } from "./components/ui";
 
@@ -71,7 +71,7 @@ const PRO_ROWS: ProRow[] = [
 export default function LemonPro() {
     const td = "border-b border-slate-100 px-4 py-3 align-middle text-[13px] text-slate-700";
     return (
-        <Page title="升级专业版" subtitle="免费版与专业版功能对比（静态展示）" icon={Crown}>
+        <Page title="升级专业版" subtitle="免费版与专业版功能对比（静态展示）" icon={CrownOutlined}>
             <WipNotice text="本页为柠檬云「升级专业版」界面复刻：项目当前没有付费版本体系，升级/购买流程尚未接入后端，以下内容为静态展示，不代表账套真实状态。" />
             <div className="mx-auto w-full max-w-[1200px] pb-10">
                 {/* 免费版/专业版功能对比（静态营销文案，非账套真实数据） */}
@@ -92,7 +92,7 @@ export default function LemonPro() {
                         {PRO_ROWS.map((r) => (
                             <tr key={r.module} className="transition-colors hover:bg-[#f6f9ff]">
                                 <td className={td}>
-                                    {r.paid && <Crown className="mr-1.5 inline h-3.5 w-3.5 align-[-2px] text-[#f5a623]" />}
+                                    {r.paid && <CrownOutlined className="mr-1.5 text-[14px]" style={{ color: "#f5a623" }} />}
                                     {r.module}
                                 </td>
                                 <td className={`${td} text-center`}>

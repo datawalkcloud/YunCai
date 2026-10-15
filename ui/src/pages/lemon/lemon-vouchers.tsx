@@ -6,9 +6,18 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { CalendarDays, FileText, Keyboard, Maximize2, Plus, Search, X } from "lucide-react";
+import {
+    CloseOutlined,
+    ControlOutlined,
+    FileTextOutlined,
+    FullscreenOutlined,
+    PlusOutlined,
+    SearchOutlined,
+} from "@ant-design/icons";
+import { Input, Select as GridSelect } from "antd";
 
-import { Btn, CheckBox, Page, RefreshIcon, Select, Toast, WipBtn } from "./components/ui";
+import { Btn, CheckBox, DateInput, Page, RefreshIcon, Select, TextInput, Toast, WipBtn } from "./components/ui";
+import { ICON_STYLE } from "@/components/page/styles";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { useCurrentAccountSet, useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
@@ -20,7 +29,9 @@ import { AccountsApi, VouchersApi, type AccountDto } from "@/apis-gen";
 /** 金额栏位数（亿千百十万千百十元角分）。 */
 const DIGITS = ["亿", "千", "百", "十", "万", "千", "百", "十", "元", "角", "分"];
 
-const EDIT_CLS = "h-[44px] w-full bg-transparent px-2 text-[13px] text-slate-700 outline-none placeholder:text-slate-400";
+const EDIT_CLS = "w-full";
+/** 单元格输入框尺寸：antd 的 .ant-input 是无层级声明，Tailwind 的 h-/text- 压不过，只能内联。 */
+const EDIT_STYLE = { height: 44, fontSize: 13 } as const;
 
 /** 凭证分录行。 */
 type EntryRow = {
@@ -174,6 +185,11 @@ export function VoucherNew() {
         void reloadMeta();
     }, [reloadMeta]);
 
+    const accountOptions = useMemo(
+        () => (accounts ?? []).map((a) => ({ value: a.id ?? "", label: `${a.code ?? ""} ${a.name ?? ""}` })),
+        [accounts],
+    );
+
     const totals = useMemo(() => {
         const debit = rows.reduce((s, r) => s + toAmount(r.debit), 0);
         const credit = rows.reduce((s, r) => s + toAmount(r.credit), 0);
@@ -234,7 +250,7 @@ export function VoucherNew() {
 
     const canSave = !saving && !loading && !!word && !!date && totals.balanced;
     return (
-        <Page title="新增凭证" subtitle="录入借贷分录并保存过账" icon={FileText}>
+        <Page title="新增凭证" subtitle="录入借贷分录并保存过账" icon={FileTextOutlined}>
             <div className="relative flex min-h-[56px] items-center border-b border-slate-100 px-4 py-2">
                 <div className="flex flex-1 items-center justify-center gap-3">
                     <Btn variant={canSave ? "primary" : "disabled"} disabled={!canSave} onClick={() => void save(true)}>
@@ -252,10 +268,10 @@ export function VoucherNew() {
                 </div>
                 <div className="absolute right-4 flex items-center gap-4 text-sm text-slate-700">
                     <span className="flex items-center gap-1">
-                        <Keyboard className="h-4 w-4 text-slate-500" /> 快捷键
+                        <ControlOutlined className="text-[16px]" style={ICON_STYLE.muted} /> 快捷键
                     </span>
                     <span className="flex items-center gap-1 text-slate-400">
-                        上一页 <X className="h-3 w-3" /> <Plus className="h-3 w-3" /> 下一页
+                        上一页 <CloseOutlined className="text-[12px]" /> <PlusOutlined className="text-[12px]" /> 下一页
                     </span>
                 </div>
             </div>
@@ -270,31 +286,23 @@ export function VoucherNew() {
                 </span>
                 <span className="text-sm text-slate-700">号</span>
                 <span className="text-sm text-slate-700">日期：</span>
-                <span className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 px-2.5 text-sm">
-                    <input
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="w-[120px] bg-transparent text-sm text-slate-700 outline-none"
-                    />
-                    <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
-                </span>
+                <DateInput value={date} onChange={setDate} className="w-[150px]" />
                 <span className="ml-3 text-[13px] text-[#92640b]">亲，按回车键，能快速选择单元格哟！</span>
                 <span className="ml-auto flex items-center gap-2 text-sm text-slate-700">
                     附单据
-                    <input
-                        className="inline-flex h-8 w-[64px] items-center rounded-lg border border-slate-200 px-2.5 text-sm outline-none"
+                    <TextInput
+                        className="w-[64px]"
                         value={attachmentCount}
-                        onChange={(e) => setAttachmentCount(e.target.value.replace(/\D/g, ""))}
+                        onChange={(v) => setAttachmentCount(v.replace(/\D/g, ""))}
                     />
                     张
                     <span className="cursor-pointer text-[#2f6bff]">附件</span>
                     <span className="cursor-pointer text-[#2f6bff]">备注 ⓘ</span>
                     <span className="flex items-center gap-1">
-                        <Search className="h-4 w-4 text-slate-500" /> 放大
+                        <SearchOutlined className="text-[16px]" style={ICON_STYLE.muted} /> 放大
                     </span>
                     <span className="flex items-center gap-1">
-                        <Maximize2 className="h-4 w-4 text-slate-500" /> 全屏
+                        <FullscreenOutlined className="text-[16px]" style={ICON_STYLE.muted} /> 全屏
                     </span>
                 </span>
             </div>
@@ -345,34 +353,41 @@ export function VoucherNew() {
                             <tr key={idx} className="h-[52px] transition-colors hover:bg-[#f6f9ff]">
                                 <td className="border border-slate-200 text-center text-[13px] text-slate-600 tabular-nums">{idx + 1}</td>
                                 <td className="border border-slate-200 p-0">
-                                    <input
+                                    <Input
+                                        variant="borderless"
                                         className={EDIT_CLS}
+                                        style={EDIT_STYLE}
                                         value={r.summary}
                                         onChange={(e) => patchRow(idx, { summary: e.target.value })}
                                         placeholder="摘要"
                                     />
                                 </td>
                                 <td className={`border border-slate-200 p-0 ${idx === 0 ? "bg-[#eef4ff]" : ""}`}>
-                                    <select className={EDIT_CLS} value={r.accountId} onChange={(e) => patchRow(idx, { accountId: e.target.value })}>
-                                        <option value="">选择科目</option>
-                                        {(accounts ?? []).map((a) => (
-                                            <option key={a.id} value={a.id}>
-                                                {`${a.code ?? ""} ${a.name ?? ""}`}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <GridSelect
+                                        variant="borderless"
+                                        className="w-full"
+                                        style={EDIT_STYLE}
+                                        placeholder="选择科目"
+                                        value={r.accountId || undefined}
+                                        options={accountOptions}
+                                        onChange={(v) => patchRow(idx, { accountId: v ?? "" })}
+                                    />
                                 </td>
                                 <td colSpan={11} className="border border-slate-200 p-0">
-                                    <input
-                                        className={`${EDIT_CLS} text-right tabular-nums`}
+                                    <Input
+                                        variant="borderless"
+                                        className={`${EDIT_CLS} tabular-nums`}
+                                        style={{ ...EDIT_STYLE, textAlign: "right" }}
                                         value={r.debit}
                                         onChange={(e) => patchRow(idx, { debit: e.target.value.replace(/[^\d.]/g, ""), credit: "" })}
                                         placeholder="0.00"
                                     />
                                 </td>
                                 <td colSpan={11} className="border border-slate-200 p-0">
-                                    <input
-                                        className={`${EDIT_CLS} text-right tabular-nums`}
+                                    <Input
+                                        variant="borderless"
+                                        className={`${EDIT_CLS} tabular-nums`}
+                                        style={{ ...EDIT_STYLE, textAlign: "right" }}
                                         value={r.credit}
                                         onChange={(e) => patchRow(idx, { credit: e.target.value.replace(/[^\d.]/g, ""), debit: "" })}
                                         placeholder="0.00"

@@ -1,8 +1,9 @@
-import { cn } from "@/lib/utils"
-import { Card, CardContent } from "@/components/ui/card"
+import { Statistic } from "antd"
+
+import { SectionCard } from "@/components/page/section"
 
 /**
- * 指标展示，替代 antd Statistic。多个页面共用，避免各写一份。
+ * 指标展示：antd Card + Statistic，多个页面共用，避免各写一份。
  * precision 只做小数位补齐，不额外加千分位以外的修饰。
  */
 export function Stat({
@@ -26,19 +27,22 @@ export function Stat({
       : String(value)
 
   return (
-    <Card className={className}>
-      <CardContent>
-        <div className="text-muted-foreground text-sm">{label}</div>
-        <div
-          className={cn(
-            "mt-1 text-2xl font-medium tabular-nums",
-            muted && "text-muted-foreground",
-          )}
-        >
-          {prefix}
-          {display}
-        </div>
-      </CardContent>
-    </Card>
+    <SectionCard className={className} bodyClassName="p-4">
+      <Statistic
+        title={label}
+        value={display}
+        prefix={prefix}
+        styles={{
+          title: { fontSize: 14 },
+          content: {
+            marginTop: 4,
+            fontSize: 24,
+            fontWeight: 500,
+            fontVariantNumeric: "tabular-nums",
+            color: muted ? "#94a3b8" : "#1e293b",
+          },
+        }}
+      />
+    </SectionCard>
   )
 }

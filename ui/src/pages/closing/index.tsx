@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { Alert, Button, Checkbox, Drawer } from "antd"
 import {
-    CalendarDays,
-    CheckCircle2,
-    CircleAlert,
-    Info,
-    ListChecks,
-    Printer,
-    RefreshCw,
-    RotateCcw,
-    Settings2,
-    Sparkles,
-    Undo2,
-} from "lucide-react"
+    CalendarOutlined,
+    CheckCircleOutlined,
+    CloseCircleOutlined,
+    InfoCircleOutlined,
+    PrinterOutlined,
+    ProfileOutlined,
+    ReloadOutlined,
+    RollbackOutlined,
+    SettingOutlined,
+    ThunderboltOutlined,
+    UndoOutlined,
+} from "@ant-design/icons"
 
 import { useAuth } from "@/auth/AuthContext"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -28,19 +29,7 @@ import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
-import { CARD_BTN_PRIMARY, PAGE_BTN_GHOST } from "@/components/page/styles"
-import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Spinner } from "@/components/ui/spinner"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
+import { ICON_STYLE } from "@/components/page/styles"
 import { ClosingTemplatesSheet } from "./templates-sheet"
 import { PrintVoucherSheet } from "./print-sheet"
 
@@ -343,68 +332,55 @@ export default function ClosingPage() {
     return (
         <div className="flex w-full flex-col gap-5">
             <PageHeader
-                icon={CalendarDays}
+                icon={CalendarOutlined}
                 title="期末结转"
                 subtitle="按「期末检查 → 结转损益 → 结账」顺序完成月末处理；结账后该期间凭证不可增删改。"
                 actions={
                     <>
-                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => setTemplatesOpen(true)}>
-                            <Settings2 data-icon="inline-start" />
+                        <Button icon={<SettingOutlined />} onClick={() => setTemplatesOpen(true)}>
                             结转模板
                         </Button>
                         <Button
-                            variant="outline"
-                            className={PAGE_BTN_GHOST}
+                            icon={busy === "batch" ? <ProfileOutlined spin /> : <ProfileOutlined />}
                             disabled={!status || periodKey(status.carriedPeriod) <= periodKey(status.closedPeriod) || !!busy}
                             title="从下一个待结期间连续结账至最新已结转期间"
                             onClick={() => void doCloseBatch()}
                         >
-                            {busy === "batch" ? <Spinner data-icon="inline-start" /> : <ListChecks data-icon="inline-start" />}
                             批量结账
                         </Button>
                         <Button
-                            variant="outline"
-                            className={PAGE_BTN_GHOST}
+                            icon={busy === "reopen" ? <UndoOutlined spin /> : <UndoOutlined />}
                             disabled={!status?.canReopen || !!busy}
                             onClick={() => void doReopen()}
                             title={status?.canReopen ? `反结账（退回 ${status?.closedPeriod}）` : "尚未结账"}
                         >
-                            {busy === "reopen" ? <Spinner data-icon="inline-start" /> : <RotateCcw data-icon="inline-start" />}
                             反结账
                         </Button>
                         <Button
-                            variant="outline"
-                            className={PAGE_BTN_GHOST}
+                            icon={busy === "cancel" ? <RollbackOutlined spin /> : <RollbackOutlined />}
                             disabled={!status?.canCancelCarry || !!busy}
                             onClick={() => void doCancelCarry()}
                             title={status?.canCancelCarry ? `撤销结转（${status?.carriedPeriod}）` : "最近一次结转已被结账覆盖"}
                         >
-                            {busy === "cancel" ? <Spinner data-icon="inline-start" /> : <Undo2 data-icon="inline-start" />}
                             撤销结转
                         </Button>
                         <Button
-                            variant="outline"
-                            className={PAGE_BTN_GHOST}
+                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
                             disabled={loading}
                             onClick={() => void loadStatus(true)}
                         >
-                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
                             刷新
                         </Button>
                     </>
                 }
             />
 
-            {error && (
-                <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                    <CircleAlert />
-                    <AlertTitle>{error}</AlertTitle>
-                </Alert>
-            )}
+            {error && <Alert type="error" showIcon title={error} />}
             {notice && (
-                <Alert className="rounded-xl border-[#bbf7d0] bg-[#f0fdf4] text-[#16a34a]">
-                    <CheckCircle2 />
-                    <AlertTitle>
+                <Alert
+                    type="success"
+                    showIcon
+                    title={
                         <div className="flex flex-wrap items-center gap-2">
                             <span>{notice}</span>
                             {lastVouchers.map((v) => (
@@ -415,14 +391,14 @@ export default function ClosingPage() {
                                     className="inline-flex items-center gap-1 rounded-full border border-[#86efac] bg-white px-2.5 py-0.5 text-[12px] text-[#15803d] transition-colors hover:bg-[#f0fdf4]"
                                     title="打印该凭证"
                                 >
-                                    <Printer className="size-3" />
+                                    <PrinterOutlined className="text-[12px]" />
                                     {v.label}
                                     {v.kind === "Template" ? "（模板）" : ""}
                                 </button>
                             ))}
                         </div>
-                    </AlertTitle>
-                </Alert>
+                    }
+                />
             )}
 
             <SectionCard title={<h3 className="text-[14px] font-semibold text-slate-800">结转进度</h3>}>
@@ -555,11 +531,11 @@ export default function ClosingPage() {
                         {(checks?.items ?? []).map((item) => (
                             <div key={item.key} className="flex items-start gap-2.5 px-4 py-2.5">
                                 {item.status === "ok" ? (
-                                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#22c55e]" />
+                                    <CheckCircleOutlined className="mt-0.5 shrink-0 text-[16px]" style={ICON_STYLE.ok} />
                                 ) : item.status === "warn" ? (
-                                    <Info className="mt-0.5 size-4 shrink-0 text-[#f59e0b]" />
+                                    <InfoCircleOutlined className="mt-0.5 shrink-0 text-[16px]" style={ICON_STYLE.warn} />
                                 ) : (
-                                    <CircleAlert className="mt-0.5 size-4 shrink-0 text-[#ef4444]" />
+                                    <CloseCircleOutlined className="mt-0.5 shrink-0 text-[16px]" style={ICON_STYLE.danger} />
                                 )}
                                 <div className="min-w-0">
                                     <div className="text-[13px] font-medium text-slate-700">{item.title}</div>
@@ -577,25 +553,24 @@ export default function ClosingPage() {
                     {/* 操作按钮 */}
                     <div className="flex flex-wrap items-center gap-2">
                         <Button
-                            variant="outline"
-                            className={PAGE_BTN_GHOST}
+                            icon={<ReloadOutlined />}
                             disabled={!selected}
                             onClick={() => selected && void loadChecks(selected.year, selected.month)}
                         >
-                            <RefreshCw data-icon="inline-start" />
                             重新检查
                         </Button>
                         <Button
-                            className={CARD_BTN_PRIMARY}
+                            type="primary"
+                            icon={<ThunderboltOutlined />}
                             disabled={!checks?.canCarry || !!busy}
                             title={checks?.canCarry ? "结转本期损益并自动生成、过账结转凭证" : "请先处理检查清单中的阻断项"}
                             onClick={() => setCarryOpen(true)}
                         >
-                            <Sparkles data-icon="inline-start" />
                             结转损益
                         </Button>
                         <Button
-                            className={CARD_BTN_PRIMARY}
+                            type="primary"
+                            icon={busy === "close" ? <CheckCircleOutlined spin /> : <CheckCircleOutlined />}
                             disabled={!checks?.canClose || !!busy}
                             title={
                                 checks?.canClose
@@ -604,7 +579,6 @@ export default function ClosingPage() {
                             }
                             onClick={() => void doClose()}
                         >
-                            {busy === "close" ? <Spinner data-icon="inline-start" /> : <CheckCircle2 data-icon="inline-start" />}
                             结账
                         </Button>
                     </div>
@@ -612,110 +586,111 @@ export default function ClosingPage() {
             </SectionCard>
 
             {/* 结转选项 */}
-            <Sheet open={carryOpen} onOpenChange={setCarryOpen}>
-                <SheetContent className="sm:max-w-md">
-                    <SheetHeader>
-                        <SheetTitle>
-                            结转损益{selected ? ` · ${selected.year} 年 ${selected.month} 月` : ""}
-                        </SheetTitle>
-                        <SheetDescription>
-                            将本期损益类科目余额结平并转入「本年利润」，生成的结转凭证自动过账并进入账簿与报表。
-                        </SheetDescription>
-                    </SheetHeader>
-
-                    <div className="flex flex-col gap-4 overflow-auto px-4">
-                        <label className="flex items-start gap-2.5 text-[13px]">
-                            <Checkbox
-                                className="mt-0.5"
-                                checked={splitIncomeCost}
-                                onCheckedChange={(v) => setSplitIncomeCost(v === true)}
-                            />
-                            <span>
-                                <span className="block font-medium text-slate-700">收入与成本分开结转</span>
-                                <span className="block text-[12px] text-slate-400">
-                                    分别生成「收入类」与「成本费用类」两张结转凭证（默认合并为一张）。
-                                </span>
-                            </span>
-                        </label>
-
-                        <label className="flex items-start gap-2.5 text-[13px]">
-                            <Checkbox
-                                className="mt-0.5"
-                                checked={transferToRetained}
-                                onCheckedChange={(v) => setTransferToRetained(v === true)}
-                            />
-                            <span>
-                                <span className="block font-medium text-slate-700">
-                                    同时结转「本年利润」至「未分配利润」
-                                </span>
-                                <span className="block text-[12px] text-slate-400">
-                                    将「本年利润」余额一次性转入「未分配利润」（通常用于年末）。
-                                </span>
-                            </span>
-                        </label>
-
-                        {templates.length > 0 ? (
-                            <div className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3">
-                                <div className="text-[12.5px] font-medium text-slate-600">结转模板（勾选后随本次结转一起生成凭证）</div>
-                                {templates.map((t) => {
-                                    const item = templatePreview?.templates?.find((x) => x.templateId === t.id)
-                                    const checked = !!t.id && selectedTemplateIds.includes(t.id)
-                                    return (
-                                        <label key={t.id} className="flex items-start gap-2.5 text-[13px]">
-                                            <Checkbox
-                                                className="mt-0.5"
-                                                checked={checked}
-                                                onCheckedChange={(v) =>
-                                                    setSelectedTemplateIds((ids) =>
-                                                        v === true ? [...ids, t.id as string] : ids.filter((x) => x !== t.id),
-                                                    )
-                                                }
-                                            />
-                                            <span className="flex min-w-0 flex-wrap items-center gap-2">
-                                                <span className="font-medium text-slate-700">{t.name}</span>
-                                                {t.isEnabled === false && (
-                                                    <span className="rounded-full bg-[#eef1f6] px-1.5 py-0.5 text-[10.5px] text-slate-400">
-                                                        已停用
-                                                    </span>
-                                                )}
-                                                {item &&
-                                                    (item.balanced ? (
-                                                        <span className="text-[11.5px] text-slate-400">
-                                                            借 {item.totalDebit ?? 0} / 贷 {item.totalCredit ?? 0}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[11.5px] text-[#ef4444]">
-                                                            {item.error ?? "借贷不平衡"}
-                                                        </span>
-                                                    ))}
-                                            </span>
-                                        </label>
-                                    )
-                                })}
-                                <p className="text-[11.5px] text-slate-400">金额按所选期间自动计算；不平衡的模板会在结转时被拒绝。</p>
-                            </div>
-                        ) : (
-                            <p className="rounded-lg bg-slate-50 px-3 py-2 text-[12px] text-slate-400">
-                                尚无结转模板（如计提工资、结转成本）；可先在「结转模板」中创建。
-                            </p>
-                        )}
-
-                        <p className="rounded-lg bg-slate-50 px-3 py-2 text-[12px] text-slate-500">
-                            结转凭证自动过账；如需重做，可先使用「撤销结转」删除本次生成的凭证。
-                        </p>
-                    </div>
-
-                    <SheetFooter className="sm:flex-row sm:justify-end">
-                        <Button variant="outline" onClick={() => setCarryOpen(false)}>
-                            取消
-                        </Button>
-                        <Button className={CARD_BTN_PRIMARY} disabled={busy === "carry"} onClick={() => void doCarryForward()}>
-                            {busy === "carry" ? <Spinner data-icon="inline-start" /> : <Sparkles data-icon="inline-start" />}
+            <Drawer
+                open={carryOpen}
+                size={512}
+                title={`结转损益${selected ? ` · ${selected.year} 年 ${selected.month} 月` : ""}`}
+                onClose={() => setCarryOpen(false)}
+                styles={{ body: { display: "flex", flexDirection: "column", gap: 16, overflow: "auto" } }}
+                footer={
+                    <div className="flex justify-end gap-2">
+                        <Button onClick={() => setCarryOpen(false)}>取消</Button>
+                        <Button
+                            type="primary"
+                            icon={<ThunderboltOutlined />}
+                            loading={busy === "carry"}
+                            disabled={busy === "carry"}
+                            onClick={() => void doCarryForward()}
+                        >
                             确认结转
                         </Button>
-                    </SheetFooter>
-                </SheetContent>
-            </Sheet>
+                    </div>
+                }
+            >
+                <p className="text-[12.5px] text-slate-400">
+                    将本期损益类科目余额结平并转入「本年利润」，生成的结转凭证自动过账并进入账簿与报表。
+                </p>
+
+                <label className="flex items-start gap-2.5 text-[13px]">
+                    <Checkbox
+                        className="mt-0.5"
+                        checked={splitIncomeCost}
+                        onChange={(e) => setSplitIncomeCost(e.target.checked)}
+                    />
+                    <span>
+                        <span className="block font-medium text-slate-700">收入与成本分开结转</span>
+                        <span className="block text-[12px] text-slate-400">
+                            分别生成「收入类」与「成本费用类」两张结转凭证（默认合并为一张）。
+                        </span>
+                    </span>
+                </label>
+
+                <label className="flex items-start gap-2.5 text-[13px]">
+                    <Checkbox
+                        className="mt-0.5"
+                        checked={transferToRetained}
+                        onChange={(e) => setTransferToRetained(e.target.checked)}
+                    />
+                    <span>
+                        <span className="block font-medium text-slate-700">
+                            同时结转「本年利润」至「未分配利润」
+                        </span>
+                        <span className="block text-[12px] text-slate-400">
+                            将「本年利润」余额一次性转入「未分配利润」（通常用于年末）。
+                        </span>
+                    </span>
+                </label>
+
+                {templates.length > 0 ? (
+                    <div className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3">
+                        <div className="text-[12.5px] font-medium text-slate-600">结转模板（勾选后随本次结转一起生成凭证）</div>
+                        {templates.map((t) => {
+                            const item = templatePreview?.templates?.find((x) => x.templateId === t.id)
+                            const checked = !!t.id && selectedTemplateIds.includes(t.id)
+                            return (
+                                <label key={t.id} className="flex items-start gap-2.5 text-[13px]">
+                                    <Checkbox
+                                        className="mt-0.5"
+                                        checked={checked}
+                                        onChange={(e) =>
+                                            setSelectedTemplateIds((ids) =>
+                                                e.target.checked ? [...ids, t.id as string] : ids.filter((x) => x !== t.id),
+                                            )
+                                        }
+                                    />
+                                    <span className="flex min-w-0 flex-wrap items-center gap-2">
+                                        <span className="font-medium text-slate-700">{t.name}</span>
+                                        {t.isEnabled === false && (
+                                            <span className="rounded-full bg-[#eef1f6] px-1.5 py-0.5 text-[10.5px] text-slate-400">
+                                                已停用
+                                            </span>
+                                        )}
+                                        {item &&
+                                            (item.balanced ? (
+                                                <span className="text-[11.5px] text-slate-400">
+                                                    借 {item.totalDebit ?? 0} / 贷 {item.totalCredit ?? 0}
+                                                </span>
+                                            ) : (
+                                                <span className="text-[11.5px] text-[#ef4444]">
+                                                    {item.error ?? "借贷不平衡"}
+                                                </span>
+                                            ))}
+                                    </span>
+                                </label>
+                            )
+                        })}
+                        <p className="text-[11.5px] text-slate-400">金额按所选期间自动计算；不平衡的模板会在结转时被拒绝。</p>
+                    </div>
+                ) : (
+                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-[12px] text-slate-400">
+                        尚无结转模板（如计提工资、结转成本）；可先在「结转模板」中创建。
+                    </p>
+                )}
+
+                <p className="rounded-lg bg-slate-50 px-3 py-2 text-[12px] text-slate-500">
+                    结转凭证自动过账；如需重做，可先使用「撤销结转」删除本次生成的凭证。
+                </p>
+            </Drawer>
 
             {/* 结转模板管理 */}
             <ClosingTemplatesSheet

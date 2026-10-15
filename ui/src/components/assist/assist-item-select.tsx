@@ -1,15 +1,13 @@
 import { useMemo } from "react"
 
+import { LoadingOutlined } from "@ant-design/icons"
+import { Select } from "antd"
+
 import type { AssistItemDto } from "@/apis-gen"
 import { cn } from "@/lib/utils"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Spinner } from "@/components/ui/spinner"
 
 import { assistSupportsHierarchy, assistItemSelectable } from "./constants"
 import { useAssistItems } from "./assist-store"
-
-/** Radix Select 不接受空串作为选项值，用哨兵表示「未选择」。 */
-const NONE = "__assist_none__"
 
 /** 层级型档案按级次缩进，下拉里也能一眼看出上下级关系（全角空格占位）。 */
 function optionLabel(item: AssistItemDto, hierarchical: boolean): string {
@@ -45,32 +43,33 @@ export function AssistItemSelect({
 
     const options = useMemo(() => {
         const selectable = items.filter((i) => assistItemSelectable(i, hierarchical))
-        // 编辑历史凭证时，已选档案可能已被停用或变成非末级，补一个不可选项保住回显。
-        if (value && !selectable.some((i) => i.id === value)) {
-            const stale = items.find((i) => i.id === value)
-            if (stale) return { selectable, stale: [stale] }
-        }
-        return { selectable, stale: [] as AssistItemDto[] }
+        // 编辑历史凭证时，已选档案可能已被停用或变成非末级，补一个禁用项保住回显。
+        const stale =
+            value && !selectable.some((i) => i.id === value) ? items.filter((i) => i.id === value) : []
+        return [
+            ...stale.map((i) => ({
+                value: i.id ?? "",
+                label: `${optionLabel(i, hierarchical)}（当前不可用）`,
+                disabled: true,
+            })),
+            ...selectable.map((i) => ({ value: i.id ?? "", label: optionLabel(i, hierarchical) })),
+        ]
     }, [items, hierarchical, value])
 
     return (
-        <Select value={value || NONE} onValueChange={(v) => onChange(v === NONE ? "" : v)} disabled={disabled}>
-            <SelectTrigger size="sm" className={cn("w-44", className)} aria-label="选择核算项目">
-                {loading ? <Spinner className="size-3" /> : <SelectValue placeholder="选择核算项目" />}
-            </SelectTrigger>
-            <SelectContent className="max-h-60">
-                <SelectItem value={NONE}>（未选择）</SelectItem>
-                {options.stale.map((item) => (
-                    <SelectItem key={`stale-${item.id}`} value={item.id ?? ""} disabled>
-                        {optionLabel(item, hierarchical)}（当前不可用）
-                    </SelectItem>
-                ))}
-                {options.selectable.map((item) => (
-                    <SelectItem key={item.id} value={item.id ?? ""}>
-                        {optionLabel(item, hierarchical)}
-                    </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
+        <Select
+            size="small"
+            className={cn("w-44", className)}
+            aria-label="选择核算项目"
+            placeholder="选择核算项目"
+            disabled={disabled}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            suffixIcon={loading ? <LoadingOutlined spin /> : undefined}
+            value={value || undefined}
+            onChange={(id) => onChange((id as string) ?? "")}
+            options={options}
+        />
     )
 }

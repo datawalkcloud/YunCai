@@ -11,18 +11,18 @@
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
-    BarChart3,
-    Briefcase,
-    CircleCheck,
-    Info,
-    Landmark,
-    LayoutGrid,
-    LineChart,
-    PieChart,
-    Scale,
-    TrendingUp,
-    Users,
-} from "lucide-react";
+    AppstoreOutlined,
+    BarChartOutlined,
+    BankOutlined,
+    CheckCircleOutlined,
+    InfoCircleOutlined,
+    LineChartOutlined,
+    PieChartOutlined,
+    ProjectOutlined,
+    ReconciliationOutlined,
+    RiseOutlined,
+    TeamOutlined,
+} from "@ant-design/icons";
 
 import {
     Btn,
@@ -191,7 +191,7 @@ function item(label: string, seq: string, ytd = "", cur = "", opts: { check?: bo
     return {
         item: (
             <span className={opts.indent ? "pl-6" : ""}>
-                {opts.check && <CircleCheck className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-[#10b981]" />}
+                {opts.check && <CheckCircleOutlined className="mr-1 text-[14px]" style={{ color: "#10b981" }} />}
                 {label}
             </span>
         ),
@@ -307,7 +307,7 @@ export function LemonIncomeQuarter() {
     );
 
     return (
-        <Page title="利润表季报" subtitle="按季度汇总收入、费用与利润，仅统计已过账凭证。" icon={BarChart3}>
+        <Page title="利润表季报" subtitle="按季度汇总收入、费用与利润，仅统计已过账凭证。" icon={BarChartOutlined}>
             <ReportTool
                 text={quarterText(period)}
                 onPrev={onPrev}
@@ -417,7 +417,7 @@ function CashFlowPage({
         <Page
             title={variant === "standard" ? "标准现金流量表" : variant === "quarter" ? "现金流量表季报" : "现金流量表"}
             subtitle="按直接法简化工作底稿归集现金收付，仅统计已过账凭证。"
-            icon={LineChart}
+            icon={LineChartOutlined}
         >
             <ToolRow
                 left={
@@ -427,12 +427,12 @@ function CashFlowPage({
                         {variant === "month" && <FakeSelect text="公式法" className="w-[100px]" />}
                         {variant === "month" && (
                             <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
-                                <Info className="h-3.5 w-3.5" /> 帮助
+                                <InfoCircleOutlined className="text-[14px]" /> 帮助
                             </span>
                         )}
                         {variant === "standard" && (
                             <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
-                                <Info className="h-3.5 w-3.5" /> 报表说明
+                                <InfoCircleOutlined className="text-[14px]" /> 报表说明
                             </span>
                         )}
                     </>
@@ -521,13 +521,13 @@ export function LemonDepartmentIncome() {
     const departments = data?.departments ?? [];
     const rows = data?.rows ?? [];
     return (
-        <Page title="部门利润表" subtitle="按部门辅助核算归集收入与费用，仅统计已过账凭证。" icon={Users}>
+        <Page title="部门利润表" subtitle="按部门辅助核算归集收入与费用，仅统计已过账凭证。" icon={TeamOutlined}>
             <ToolRow
                 left={
                     <>
                         <PeriodStepper text={monthText(period)} onPrev={onPrev} onNext={onNext} />
                         <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
-                            <Info className="h-3.5 w-3.5" /> 帮助
+                            <InfoCircleOutlined className="text-[14px]" /> 帮助
                         </span>
                     </>
                 }
@@ -625,7 +625,7 @@ export function LemonProjectIncome() {
     ];
     const showTip = rows.length === 0 && !loading && !error && !tipClosed;
     return (
-        <Page title="项目利润表" subtitle="按项目辅助核算归集收入与费用，仅统计已过账凭证。" icon={Briefcase}>
+        <Page title="项目利润表" subtitle="按项目辅助核算归集收入与费用，仅统计已过账凭证。" icon={ProjectOutlined}>
             <ReportTool
                 text={monthText(period)}
                 onPrev={onPrev}
@@ -731,7 +731,7 @@ export function LemonPivot() {
 
     if (!token || !accountSetId) {
         return (
-            <Page title="数据透视表" subtitle="自定义报表：按年度查看科目发生额或余额。" icon={LayoutGrid}>
+            <Page title="数据透视表" subtitle="自定义报表：按年度查看科目发生额或余额。" icon={AppstoreOutlined}>
                 <ErrorTip text="缺少登录态或账套上下文，无法加载数据透视表。" />
             </Page>
         );
@@ -840,7 +840,7 @@ export function LemonPivot() {
     ];
     const renderName = reports.find((r) => r.id === renderTarget?.id)?.name ?? rendered?.name ?? "";
     return (
-        <Page title="数据透视表" subtitle="自定义报表：将科目、辅助核算等字段按取值口径逐月透视，年度步进实时取数。" icon={LayoutGrid}>
+        <Page title="数据透视表" subtitle="自定义报表：将科目、辅助核算等字段按取值口径逐月透视，年度步进实时取数。" icon={AppstoreOutlined}>
             <ToolRow
                 left={
                     <>
@@ -1073,7 +1073,7 @@ export function LemonExpenseDetail() {
             name: "总计",
             cur: nf(topRows.reduce((s, r) => s + (r.current ?? 0), 0)),
             total: nf(topRows.reduce((s, r) => s + (r.total ?? 0), 0)),
-            __cls: "font-bold",
+            __style: { fontWeight: 700 },
         },
     ];
     const cols: Col[] = [
@@ -1083,7 +1083,7 @@ export function LemonExpenseDetail() {
         { key: "total", title: "合计", align: "right", width: "160px", neg: true },
     ];
     return (
-        <Page title="费用明细表" subtitle="按科目层级归集本期费用明细，仅统计已过账凭证。" icon={PieChart}>
+        <Page title="费用明细表" subtitle="按科目层级归集本期费用明细，仅统计已过账凭证。" icon={PieChartOutlined}>
             <ToolRow
                 left={
                     <>
@@ -1172,14 +1172,14 @@ export function LemonEquityChange() {
     const th = "border-b border-slate-200 bg-muted px-3 py-2 text-[13px] font-medium text-slate-500";
     const td = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-700";
     return (
-        <Page title="所有者权益变动表" subtitle="按年度列示实收资本、资本公积、盈余公积与未分配利润的期初期末及变动。" icon={Scale}>
+        <Page title="所有者权益变动表" subtitle="按年度列示实收资本、资本公积、盈余公积与未分配利润的期初期末及变动。" icon={ReconciliationOutlined}>
             <ToolRow
                 left={
                     <>
                         <span className="text-[13px] text-slate-500">会计年度：</span>
                         <PeriodStepper text={`${period.year}年`} onPrev={onPrev} onNext={onNext} />
                         <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
-                            <Info className="h-3.5 w-3.5" /> 报表说明
+                            <InfoCircleOutlined className="text-[14px]" /> 报表说明
                         </span>
                         {!balanced && !loading && !error && (
                             <span className="text-[13px] text-[#ef4444]">
@@ -1362,7 +1362,7 @@ export function LemonTaxReport() {
         { key: "curYoy", title: "同比变化", group: "本期金额", align: "right" },
     ];
     return (
-        <Page title="纳税统计表" subtitle="统计各税种应交与已交金额及同比变化，仅统计已过账凭证。" icon={Landmark}>
+        <Page title="纳税统计表" subtitle="统计各税种应交与已交金额及同比变化，仅统计已过账凭证。" icon={BankOutlined}>
             <ReportTool
                 text={monthText(period)}
                 onPrev={onPrev}
@@ -1455,7 +1455,7 @@ export function LemonFinancialSummary() {
         { key: "curMom", title: "环比变化", group: "本期金额", align: "right" },
     ];
     return (
-        <Page title="财务概要信息" subtitle="盈利、三项费用、应收应付、资金与税金的关键指标一览。" icon={TrendingUp}>
+        <Page title="财务概要信息" subtitle="盈利、三项费用、应收应付、资金与税金的关键指标一览。" icon={RiseOutlined}>
             <ReportTool
                 text={monthText(period)}
                 onPrev={onPrev}

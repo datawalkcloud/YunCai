@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef } from "react"
-import { createColumnHelper } from "@tanstack/react-table"
+import type { TableColumnsType, TableColumnType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { type AssistBalanceRowDto, LedgersApi } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
@@ -13,7 +14,6 @@ import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import {
     asDate,
     assistTypeLabel,
-    ledgerFeatures,
     type LedgerConditions,
 } from "@/components/ledger/types"
 import { useAssistCategories, useAssistItems } from "@/components/ledger/useLedgerOptions"
@@ -22,17 +22,13 @@ import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 /** 档案余额行加上稳定行键。 */
 type BalanceRow = AssistBalanceRowDto & { rowKey: string }
 
-const helper = createColumnHelper<typeof ledgerFeatures, BalanceRow>()
-
-const AMOUNT_IDS = [
-    "openingDebit",
-    "openingCredit",
-    "periodDebit",
-    "periodCredit",
-    "endingDebit",
-    "endingCredit",
-] as const
-const isAmount = (id: string) => (AMOUNT_IDS as readonly string[]).includes(id)
+type AmountKey =
+    | "openingDebit"
+    | "openingCredit"
+    | "periodDebit"
+    | "periodCredit"
+    | "endingDebit"
+    | "endingCredit"
 
 const FIELDS: readonly LedgerField[] = ["date", "accountRange", "assistType", "assistItem"]
 const SWITCHES = ["hideZeroBalance", "hideNoActivity", "includeIdleAccounts"] as const
@@ -41,31 +37,35 @@ const SWITCHES = ["hideZeroBalance", "hideNoActivity", "includeIdleAccounts"] as
 const canQuery = (conditions: LedgerConditions) => Boolean(conditions.assistType)
 
 /** 金额叶子列：0 显示为空，其余千分位保留两位。 */
-const amount = (accessor: (typeof AMOUNT_IDS)[number], title: string) =>
-    helper.accessor(accessor, { header: title, cell: (info) => fmtAmount(info.getValue()) })
+const amount = (dataIndex: AmountKey, title: string): TableColumnType<BalanceRow> => ({
+    title,
+    dataIndex,
+    render: (v) => fmtAmount(v),
+    ...AMOUNT_COL,
+})
 
 /** 档案两列的表头跟着类别中文名走，例如「客户编码」「客户名称」。 */
-function buildColumns(assistTypeText: string) {
-    return helper.columns([
-        helper.accessor("code", { header: `${assistTypeText}编码` }),
-        helper.accessor("name", { header: `${assistTypeText}名称` }),
-        helper.group({
-            id: "opening",
-            header: "期初余额",
-            columns: helper.columns([amount("openingDebit", "借方"), amount("openingCredit", "贷方")]),
-        }),
-        helper.group({
-            id: "period",
-            header: "本期发生额",
-            columns: helper.columns([amount("periodDebit", "借方"), amount("periodCredit", "贷方")]),
-        }),
-        helper.group({
-            id: "ending",
-            header: "期末余额",
-            columns: helper.columns([amount("endingDebit", "借方"), amount("endingCredit", "贷方")]),
-        }),
-        helper.accessor("direction", { header: "方向" }),
-    ])
+function buildColumns(assistTypeText: string): TableColumnsType<BalanceRow> {
+    return [
+        { title: `${assistTypeText}编码`, dataIndex: "code" },
+        { title: `${assistTypeText}名称`, dataIndex: "name" },
+        {
+            key: "opening",
+            title: "期初余额",
+            children: [amount("openingDebit", "借方"), amount("openingCredit", "贷方")],
+        },
+        {
+            key: "period",
+            title: "本期发生额",
+            children: [amount("periodDebit", "借方"), amount("periodCredit", "贷方")],
+        },
+        {
+            key: "ending",
+            title: "期末余额",
+            children: [amount("endingDebit", "借方"), amount("endingCredit", "贷方")],
+        },
+        { title: "方向", dataIndex: "direction" },
+    ]
 }
 
 export default function AssistBalancePage() {
@@ -174,8 +174,7 @@ export default function AssistBalancePage() {
                                 data={rows}
                                 loading={query.loading}
                                 emptyText="本科目该期间无辅助核算档案余额。"
-                                getRowId={(row) => row.rowKey}
-                                isAmountColumn={isAmount}
+                                rowKey={(row) => row.rowKey}
                             />
                         </LedgerSection>
                     )

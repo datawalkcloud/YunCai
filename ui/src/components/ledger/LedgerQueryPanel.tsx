@@ -1,23 +1,18 @@
 import type { ReactNode } from "react"
-import { RotateCcw, Search } from "lucide-react"
+import { ReloadOutlined, SearchOutlined } from "@ant-design/icons"
+import { Button, Checkbox, Input, Select, Spin } from "antd"
 import dayjs from "dayjs"
 
 import type { AccountDto, AssistItemDto } from "@/apis-gen"
 import { cn } from "@/lib/utils"
-import { CONTROL, DATE_FIELD, PAGE_BTN_GHOST, PAGE_BTN_PRIMARY, SOFT_PANEL } from "@/components/page/styles"
+import { SOFT_PANEL } from "@/components/page/styles"
 import { DateRangeField, parseDate } from "@/components/fields/date-fields"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Spinner } from "@/components/ui/spinner"
 import {
     ASSIST_TYPES,
-    type LedgerConditions,
-    type LedgerSwitch,
     SORT_BY_OPTIONS,
     SWITCH_LABELS,
+    type LedgerConditions,
+    type LedgerSwitch,
 } from "./types"
 
 /** 面板可显示的条件项，由各账页按需声明。 */
@@ -31,9 +26,6 @@ export type LedgerField =
     | "secondaryAssistType"
     | "assistItem"
     | "account"
-
-/** Radix Select 不接受空串值，用固定哨兵表示「不限」。 */
-const ALL = "__all__"
 
 export interface LedgerQueryPanelProps {
     value: LedgerConditions
@@ -66,6 +58,7 @@ const DEFAULT_FIELDS: readonly LedgerField[] = ["date"]
 /**
  * 账簿查询面板：一组受控条件 + 查询 / 重置。
  * 每个账页用 fields / switches 声明自己需要哪些条件，未声明的不渲染。
+ * 「不限」一律用 value=undefined 表示（配合 allowClear 回到未选）。
  */
 export function LedgerQueryPanel({
     value,
@@ -85,13 +78,10 @@ export function LedgerQueryPanel({
     const show = (field: LedgerField) => fields.includes(field)
     /** 这些条件缺失会让后端直接报错，选定后立即提交重查，不必再点查询。 */
     const apply = (patch: Partial<LedgerConditions>) => onChange(patch, true)
-    const assistOptions = (enabledAssistTypes
-        ? ASSIST_TYPES.filter((t) => enabledAssistTypes.includes(t.value))
-        : ASSIST_TYPES
-    ).map((t) => ({ ...t }))
-    const levelCount = accounts?.length
-        ? Math.max(...accounts.map((a) => a.level ?? 1), 1)
-        : 4
+    const assistOptions = (
+        enabledAssistTypes ? ASSIST_TYPES.filter((t) => enabledAssistTypes.includes(t.value)) : ASSIST_TYPES
+    ).map((t) => ({ value: t.value, label: t.label }))
+    const levelCount = accounts?.length ? Math.max(...accounts.map((a) => a.level ?? 1), 1) : 4
 
     const control = (label: string, node: ReactNode) => (
         <div key={label} className="flex items-center gap-1.5">
@@ -102,11 +92,7 @@ export function LedgerQueryPanel({
 
     return (
         <form
-            className={cn(
-                SOFT_PANEL,
-                "flex flex-wrap items-center gap-x-3 gap-y-2.5 px-4 py-3",
-                className,
-            )}
+            className={cn(SOFT_PANEL, "flex flex-wrap items-center gap-x-3 gap-y-2.5 px-4 py-3", className)}
             onSubmit={(e) => {
                 e.preventDefault()
                 onQuery()
@@ -116,13 +102,10 @@ export function LedgerQueryPanel({
                 control(
                     "日期范围",
                     <DateRangeField
-                        className={cn(DATE_FIELD, "w-56")}
+                        className="w-56"
                         value={
                             value.startDate
-                                ? {
-                                      from: parseDate(value.startDate),
-                                      to: parseDate(value.endDate),
-                                  }
+                                ? { from: parseDate(value.startDate), to: parseDate(value.endDate) }
                                 : undefined
                         }
                         onChange={(range) =>
@@ -130,9 +113,7 @@ export function LedgerQueryPanel({
                                 range?.from
                                     ? {
                                           startDate: dayjs(range.from).format("YYYY-MM-DD"),
-                                          endDate: range.to
-                                              ? dayjs(range.to).format("YYYY-MM-DD")
-                                              : undefined,
+                                          endDate: range.to ? dayjs(range.to).format("YYYY-MM-DD") : undefined,
                                       }
                                     : { startDate: undefined, endDate: undefined },
                             )
@@ -147,7 +128,7 @@ export function LedgerQueryPanel({
                     "科目区间",
                     <div className="flex items-center gap-1">
                         <Input
-                            className={cn(CONTROL, "w-28")}
+                            className="w-28"
                             placeholder="起始编码"
                             value={value.accountFrom ?? ""}
                             disabled={disabled}
@@ -155,7 +136,7 @@ export function LedgerQueryPanel({
                         />
                         <span className="text-slate-400">~</span>
                         <Input
-                            className={cn(CONTROL, "w-28")}
+                            className="w-28"
                             placeholder="终止编码"
                             value={value.accountTo ?? ""}
                             disabled={disabled}
@@ -168,31 +149,24 @@ export function LedgerQueryPanel({
                 control(
                     "级次",
                     <Select
-                        value={value.maxLevel == null ? ALL : String(value.maxLevel)}
+                        className="w-24"
+                        placeholder="全部"
+                        allowClear
                         disabled={disabled}
-                        onValueChange={(next) =>
-                            onChange({ maxLevel: next === ALL ? undefined : Number(next) })
-                        }
-                    >
-                        <SelectTrigger className={cn(CONTROL, "w-24")}>
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={ALL}>全部</SelectItem>
-                            {Array.from({ length: levelCount }, (_, i) => i + 1).map((level) => (
-                                <SelectItem key={level} value={String(level)}>
-                                    {level} 级以内
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>,
+                        value={value.maxLevel}
+                        onChange={(next) => onChange({ maxLevel: next })}
+                        options={Array.from({ length: levelCount }, (_, i) => ({
+                            value: i + 1,
+                            label: `${i + 1} 级以内`,
+                        }))}
+                    />,
                 )}
 
             {show("summary") &&
                 control(
                     "摘要关键字",
                     <Input
-                        className={cn(CONTROL, "w-40")}
+                        className="w-40"
                         placeholder="按摘要筛选"
                         value={value.summaryKeyword ?? ""}
                         disabled={disabled}
@@ -204,117 +178,75 @@ export function LedgerQueryPanel({
                 control(
                     "排序",
                     <Select
-                        value={String(value.sortBy ?? SORT_BY_OPTIONS[0].value)}
+                        className="w-32"
                         disabled={disabled}
-                        onValueChange={(next) => onChange({ sortBy: Number(next) })}
-                    >
-                        <SelectTrigger className={cn(CONTROL, "w-32")}>
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {SORT_BY_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={String(option.value)}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>,
+                        value={value.sortBy ?? SORT_BY_OPTIONS[0].value}
+                        onChange={(next) => onChange({ sortBy: next })}
+                        options={SORT_BY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                    />,
                 )}
 
             {show("assistType") &&
                 control(
                     "辅助核算类别",
                     <Select
-                        value={value.assistType == null ? ALL : String(value.assistType)}
+                        className="w-28"
+                        placeholder="请选择"
                         disabled={disabled}
-                        onValueChange={(next) =>
-                            apply({
-                                assistType: next === ALL ? undefined : Number(next),
-                                assistItemId: undefined,
-                            })
-                        }
-                    >
-                        <SelectTrigger className={cn(CONTROL, "w-28")}>
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {assistOptions.map((option) => (
-                                <SelectItem key={option.value} value={String(option.value)}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>,
+                        value={value.assistType}
+                        onChange={(next) => apply({ assistType: next, assistItemId: undefined })}
+                        options={assistOptions}
+                    />,
                 )}
 
             {show("secondaryAssistType") &&
                 control(
                     "交叉类别",
                     <Select
-                        value={value.secondaryAssistType == null ? ALL : String(value.secondaryAssistType)}
+                        className="w-28"
+                        placeholder="请选择"
                         disabled={disabled}
-                        onValueChange={(next) =>
-                            apply({ secondaryAssistType: next === ALL ? undefined : Number(next) })
-                        }
-                    >
-                        <SelectTrigger className={cn(CONTROL, "w-28")}>
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {assistOptions
-                                .filter((option) => option.value !== value.assistType)
-                                .map((option) => (
-                                    <SelectItem key={option.value} value={String(option.value)}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                        </SelectContent>
-                    </Select>,
+                        value={value.secondaryAssistType}
+                        onChange={(next) => apply({ secondaryAssistType: next })}
+                        options={assistOptions.filter((o) => o.value !== value.assistType)}
+                    />,
                 )}
 
             {show("assistItem") &&
                 control(
                     "核算项目",
                     <Select
-                        value={value.assistItemId ?? ALL}
+                        className="w-44"
+                        placeholder="全部档案"
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
                         disabled={disabled || !value.assistType}
-                        onValueChange={(next) =>
-                            onChange({ assistItemId: next === ALL ? undefined : next })
-                        }
-                    >
-                        <SelectTrigger className={cn(CONTROL, "w-44")}>
-                            <SelectValue placeholder="全部档案" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={ALL}>全部档案</SelectItem>
-                            {(assistItems ?? []).map((item) => (
-                                <SelectItem key={item.id} value={item.id ?? ""}>
-                                    {item.code} {item.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>,
+                        value={value.assistItemId}
+                        onChange={(next) => onChange({ assistItemId: next })}
+                        options={(assistItems ?? []).map((item) => ({
+                            value: item.id ?? "",
+                            label: `${item.code} ${item.name}`,
+                        }))}
+                    />,
                 )}
 
             {show("account") &&
                 control(
                     "科目",
                     <Select
-                        value={value.accountId ?? ALL}
+                        className="w-52"
+                        placeholder="请选择科目"
+                        showSearch
+                        optionFilterProp="label"
                         disabled={disabled}
-                        onValueChange={(next) => apply({ accountId: next === ALL ? undefined : next })}
-                    >
-                        <SelectTrigger className={cn(CONTROL, "w-52")}>
-                            <SelectValue placeholder="请选择科目" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {(accounts ?? []).map((account) => (
-                                <SelectItem key={account.id} value={account.id ?? ""}>
-                                    {account.code} {account.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>,
+                        value={value.accountId}
+                        onChange={(next) => apply({ accountId: next })}
+                        options={(accounts ?? []).map((account) => ({
+                            value: account.id ?? "",
+                            label: `${account.code} ${account.name}`,
+                        }))}
+                    />,
                 )}
 
             {switches?.length
@@ -322,19 +254,17 @@ export function LedgerQueryPanel({
                       "选项",
                       <div className="flex flex-wrap items-center gap-3">
                           {switches.map((key) => (
-                              <Label
+                              <Checkbox
                                   key={key}
-                                  className="flex items-center gap-1.5 font-normal text-slate-500"
+                                  className="text-slate-500"
+                                  checked={Boolean(value[key])}
+                                  disabled={disabled}
+                                  onChange={(e) =>
+                                      onChange({ [key]: e.target.checked } as Partial<LedgerConditions>)
+                                  }
                               >
-                                  <Checkbox
-                                      checked={Boolean(value[key])}
-                                      disabled={disabled}
-                                      onCheckedChange={(next) =>
-                                          onChange({ [key]: next === true } as Partial<LedgerConditions>)
-                                      }
-                                  />
                                   {SWITCH_LABELS[key]}
-                              </Label>
+                              </Checkbox>
                           ))}
                       </div>,
                   )
@@ -343,19 +273,11 @@ export function LedgerQueryPanel({
             {extra}
 
             <div className="ml-auto flex items-center gap-2">
-                {loading && <Spinner className="size-4 text-slate-300" />}
-                <Button type="submit" disabled={disabled} className={PAGE_BTN_PRIMARY}>
-                    <Search data-icon="inline-start" />
+                {loading && <Spin size="small" />}
+                <Button type="primary" htmlType="submit" disabled={disabled} icon={<SearchOutlined />}>
                     查询
                 </Button>
-                <Button
-                    type="button"
-                    variant="outline"
-                    disabled={disabled}
-                    onClick={onReset}
-                    className={PAGE_BTN_GHOST}
-                >
-                    <RotateCcw data-icon="inline-start" />
+                <Button type="default" disabled={disabled} onClick={onReset} icon={<ReloadOutlined />}>
                     重置
                 </Button>
             </div>

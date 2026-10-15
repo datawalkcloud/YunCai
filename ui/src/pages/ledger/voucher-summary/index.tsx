@@ -1,39 +1,32 @@
-import { createColumnHelper } from "@tanstack/react-table"
+import { Table } from "antd"
+import type { TableColumnsType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { LedgersApi, type VoucherSummaryRowDto } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
 import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
-import { asDate, ledgerFeatures } from "@/components/ledger/types"
+import { asDate } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
-import { TableCell, TableRow } from "@/components/ui/table"
 
 /** 汇总行以科目编码为键。 */
 type SummaryRow = VoucherSummaryRowDto & { rowKey: string }
 
-const helper = createColumnHelper<typeof ledgerFeatures, SummaryRow>()
-
-const AMOUNT_IDS = ["voucherCount", "debit", "credit"]
-const isAmount = (id: string) => AMOUNT_IDS.includes(id)
-
 const FIELDS: readonly LedgerField[] = ["date", "accountRange", "summary"]
 const SWITCHES = ["showOnlyLeaf"] as const
 
-const columns = helper.columns([
-    helper.accessor("code", { header: "科目编码" }),
-    helper.accessor("name", { header: "科目名称" }),
-    helper.accessor("voucherCount", {
-        header: "凭证张数",
-        cell: (info) => (info.getValue() ? String(info.getValue()) : ""),
-    }),
-    helper.accessor("debit", { header: "借方发生额", cell: (info) => fmtAmount(info.getValue()) }),
-    helper.accessor("credit", { header: "贷方发生额", cell: (info) => fmtAmount(info.getValue()) }),
-])
+const columns: TableColumnsType<SummaryRow> = [
+    { title: "科目编码", dataIndex: "code" },
+    { title: "科目名称", dataIndex: "name" },
+    { title: "凭证张数", dataIndex: "voucherCount", render: (v) => (v ? String(v) : ""), ...AMOUNT_COL },
+    { title: "借方发生额", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    { title: "贷方发生额", dataIndex: "credit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+]
 
 export default function VoucherSummaryPage() {
     const { token } = useAuth()
@@ -96,21 +89,20 @@ export default function VoucherSummaryPage() {
                 data={rows}
                 loading={query.loading}
                 emptyText={accountSetId ? "该期间暂无已过账凭证。" : "请先选择账套。"}
-                getRowId={(row) => row.rowKey ?? ""}
-                isAmountColumn={isAmount}
+                rowKey={(row) => row.rowKey ?? ""}
                 footer={
-                    <TableRow>
-                        <TableCell colSpan={2} className="font-medium">
+                    <Table.Summary.Row>
+                        <Table.Summary.Cell index={0} colSpan={2} className="font-medium">
                             合计
-                        </TableCell>
-                        <TableCell />
-                        <TableCell className="text-right tabular-nums font-medium">
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={2} />
+                        <Table.Summary.Cell index={3} align="right" className="tabular-nums font-medium">
                             {fmtAmount(query.data?.totalDebit, true)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums font-medium">
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={4} align="right" className="tabular-nums font-medium">
                             {fmtAmount(query.data?.totalCredit, true)}
-                        </TableCell>
-                    </TableRow>
+                        </Table.Summary.Cell>
+                    </Table.Summary.Row>
                 }
             />
         </LedgerPageShell>

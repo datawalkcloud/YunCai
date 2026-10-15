@@ -5,11 +5,23 @@
  * 视觉遵循全站云财蓝：主色 #2f6bff、圆角 rounded-lg/2xl、白卡 + slate 灰阶文字。
  */
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { Building, CalendarDays, ChevronDown, CircleHelp, ClipboardCheck, Layers, PieChart, TrendingDown } from "lucide-react";
+import {
+    ApartmentOutlined,
+    AuditOutlined,
+    BankOutlined,
+    CalendarOutlined,
+    DownOutlined,
+    FallOutlined,
+    PieChartOutlined,
+    QuestionCircleOutlined,
+} from "@ant-design/icons";
+
+import { ICON_STYLE } from "@/components/page/styles";
 
 import {
     Btn,
     CheckBox,
+    DateInput,
     Dialog,
     EmptyTip,
     Page,
@@ -319,7 +331,7 @@ export function LemonAssetManage() {
     /* tab === 0 资产初始化 */
     if (tab === 0)
         return (
-            <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={Building}>
+            <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
                 <SubTabs tabs={ASSET_TABS} active={0} onChange={setTab} />
                 <ToolRow
                     left={<span className="text-[13px] text-slate-400">资产启用期间：{periodLabel(period)}</span>}
@@ -385,7 +397,7 @@ export function LemonAssetManage() {
     /* tab === 2 变更记录及生成凭证 */
     if (tab === 2)
         return (
-            <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={Building}>
+            <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
                 <SubTabs tabs={ASSET_TABS} active={2} onChange={setTab} />
                 <ToolRow
                     left={<PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />}
@@ -420,7 +432,7 @@ export function LemonAssetManage() {
     /* tab === 3 计提折旧及生成凭证 */
     if (tab === 3)
         return (
-            <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={Building}>
+            <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
                 <SubTabs tabs={ASSET_TABS} active={3} onChange={setTab} />
                 <WipNotice text="计提折旧会按当前会计期间为在用资产登记折旧变更；折旧凭证生成功能尚未接入后端。" />
                 <div className="mx-4 mt-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-4 py-2.5 text-[13px] leading-5 text-[#92640b]">
@@ -456,7 +468,7 @@ export function LemonAssetManage() {
                                             计提折旧
                                         </Btn>
                                         <WipBtn title="折旧凭证生成尚未接入后端">
-                                            生成凭证 <CircleHelp className="h-3 w-3" />
+                                            生成凭证 <QuestionCircleOutlined className="text-[12px]" />
                                         </WipBtn>
                                     </span>
                                 ),
@@ -484,7 +496,7 @@ export function LemonAssetManage() {
         { key: "ops", title: "操作", width: "110px" },
     ];
     return (
-        <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={Building}>
+        <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
             <SubTabs tabs={ASSET_TABS} active={1} onChange={setTab} />
             <ToolRow
                 left={
@@ -605,8 +617,7 @@ export function LemonAssetManage() {
                         <label key={String(key)} className="flex items-center gap-3">
                             <span className="w-[110px] text-right">{label}</span>
                             {isDate ? (
-                                <TextInput
-                                    type="date"
+                                <DateInput
                                     className="w-[220px]"
                                     value={String(addForm[key as keyof typeof addForm] ?? "")}
                                     onChange={(v) => setAddForm({ ...addForm, [key as keyof typeof addForm]: v })}
@@ -708,7 +719,7 @@ export function LemonAssetDepreciation() {
     ];
     const label = periodLabel(period);
     return (
-        <Page title="折旧摊销明细表" subtitle={`${label} 各资产本期与累计折旧明细`} icon={TrendingDown}>
+        <Page title="折旧摊销明细表" subtitle={`${label} 各资产本期与累计折旧明细`} icon={FallOutlined}>
             <SubTabs tabs={["折旧摊销明细表"]} />
             <ToolRow
                 left={<PeriodStepper text={label} onPrev={() => step(-1)} onNext={() => step(1)} />}
@@ -815,18 +826,18 @@ export function LemonAssetSummary() {
     });
     const label = periodLabel(period);
     return (
-        <Page title="资产汇总表" subtitle="期初、本期增减与期末数按部门/类别归集" icon={PieChart}>
+        <Page title="资产汇总表" subtitle="期初、本期增减与期末数按部门/类别归集" icon={PieChartOutlined}>
             <SubTabs tabs={["按使用部门汇总", "按资产类别汇总"]} active={tab} onChange={setTab} />
             <ToolRow
                 left={
                     <>
                         <span className="text-[13px] text-slate-500">会计期间:</span>
                         <span className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700">
-                            {label} <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+                            {label} <CalendarOutlined className="text-[14px]" style={ICON_STYLE.muted} />
                         </span>
                         <span className="text-slate-400">至</span>
                         <span className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700">
-                            {label} <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+                            {label} <CalendarOutlined className="text-[14px]" style={ICON_STYLE.muted} />
                         </span>
                         <PeriodStepper text={label} onPrev={() => step(-1)} onNext={() => step(1)} />
                     </>
@@ -1049,7 +1060,7 @@ export function LemonAssetCategory() {
         (c) => !kw || (c.code ?? "").toLowerCase().includes(kw) || (c.name ?? "").toLowerCase().includes(kw),
     );
     return (
-        <Page title="资产类别设置" subtitle="类别编码、折旧方法与资产科目默认值" icon={Layers}>
+        <Page title="资产类别设置" subtitle="类别编码、折旧方法与资产科目默认值" icon={ApartmentOutlined}>
             <SubTabs tabs={["资产类别设置"]} />
             <ToolRow
                 left={<Btn onClick={() => setEditing("new")}>新增</Btn>}
@@ -1136,7 +1147,7 @@ export function LemonAssetCheck() {
     const th = "border-b border-slate-200 bg-muted px-3 py-2.5 text-[12.5px] font-medium text-slate-500";
     const td = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-600 tabular-nums";
     return (
-        <Page title="资产核对总账" subtitle="资产台账与总账科目余额逐行核对" icon={ClipboardCheck}>
+        <Page title="资产核对总账" subtitle="资产台账与总账科目余额逐行核对" icon={AuditOutlined}>
             <SubTabs tabs={["资产核对总账"]} />
             <ToolRow
                 left={<PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />}
@@ -1186,7 +1197,7 @@ export function LemonAssetCheck() {
                                     <tr>
                                         <td colSpan={6} className={`${td} font-bold`}>
                                             <span className="inline-flex items-center gap-1">
-                                                <ChevronDown className="h-3 w-3 text-slate-400" /> {g.name}
+                                                <DownOutlined className="text-[12px]" style={ICON_STYLE.muted} /> {g.name}
                                             </span>
                                         </td>
                                     </tr>

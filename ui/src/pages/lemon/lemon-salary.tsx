@@ -4,7 +4,17 @@
  * 视觉遵循全站云财蓝：主色 #2f6bff、圆角 rounded-lg/2xl、白卡 + slate 灰阶文字。
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { BarChart3, Banknote, CircleHelp, ShieldCheck, UserPlus, Users, Wallet } from "lucide-react";
+import {
+    BarChartOutlined,
+    PayCircleOutlined,
+    QuestionCircleOutlined,
+    SafetyCertificateOutlined,
+    TeamOutlined,
+    UserAddOutlined,
+    WalletOutlined,
+} from "@ant-design/icons";
+
+import { ICON_STYLE } from "@/components/page/styles";
 import { Tile } from "@/components/page/tile";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
@@ -19,6 +29,7 @@ import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import {
     Btn,
     CheckBox,
+    DateInput,
     Dialog,
     Page,
     Pager,
@@ -250,7 +261,7 @@ function EmployeeEditDialog({
                     <TextInput className="w-full" value={form.email} onChange={(v) => set({ email: v })} />
                 </Field>
                 <Field label="入职日期">
-                    <TextInput type="date" className="w-full" value={form.hireDate} onChange={(v) => set({ hireDate: v })} />
+                    <DateInput className="w-full" value={form.hireDate} onChange={(v) => set({ hireDate: v })} />
                 </Field>
                 <Field label="员工状态" required>
                     <Select
@@ -446,10 +457,10 @@ function SalaryAccrueView() {
         amount: string;
         kind: "accrue" | "pay";
         tone: "blue" | "green";
-        icon: typeof Wallet;
+        icon: typeof WalletOutlined;
     }> = [
-        { title: "计提工资", amount: nf(view?.payable), kind: "accrue", tone: "blue", icon: Wallet },
-        { title: "发放工资", amount: nf(view?.net), kind: "pay", tone: "green", icon: Banknote },
+        { title: "计提工资", amount: nf(view?.payable), kind: "accrue", tone: "blue", icon: WalletOutlined },
+        { title: "发放工资", amount: nf(view?.net), kind: "pay", tone: "green", icon: PayCircleOutlined },
     ];
     return (
         <>
@@ -589,7 +600,7 @@ function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => 
                     ]}
                 />,
             ],
-            ["*出生日期", <TextInput key="birth" type="date" className="w-[220px]" value={form.birthDate} onChange={(v) => set({ birthDate: v })} />],
+            ["*出生日期", <DateInput key="birth" className="w-[220px]" value={form.birthDate} onChange={(v) => set({ birthDate: v })} />],
         ],
         [
             ["手机", <TextInput key="phone" className="w-[220px]" value={form.phone} onChange={(v) => set({ phone: v })} />],
@@ -599,7 +610,7 @@ function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => 
         [
             ["银行名称", <TextInput key="bank" className="w-[220px]" value={form.bankName} onChange={(v) => set({ bankName: v })} />],
             ["银行账号", <TextInput key="acct" className="w-[220px]" value={form.bankAccountNo} onChange={(v) => set({ bankAccountNo: v })} />],
-            ["*入职日期", <TextInput key="hire" type="date" className="w-[220px]" value={form.hireDate} onChange={(v) => set({ hireDate: v })} />],
+            ["*入职日期", <DateInput key="hire" className="w-[220px]" value={form.hireDate} onChange={(v) => set({ hireDate: v })} />],
         ],
         [
             ["*部门", <TextInput key="dept" className="w-[220px]" value={form.dept} onChange={(v) => set({ dept: v })} />],
@@ -643,7 +654,7 @@ function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => 
     ];
 
     return (
-        <Page title="新增员工" subtitle="登记境内员工基本信息与扣除款项" icon={UserPlus}>
+        <Page title="新增员工" subtitle="登记境内员工基本信息与扣除款项" icon={UserAddOutlined}>
             <div className="mx-auto mt-3 w-[1000px]">
                 <div className="flex justify-end">
                     <span className="flex text-sm">
@@ -733,7 +744,7 @@ export function LemonSalaryManage() {
 
     if (tab === 1)
         return (
-            <Page title="工资管理" subtitle="计提工资与发放工资一键生成凭证" icon={Wallet}>
+            <Page title="工资管理" subtitle="计提工资与发放工资一键生成凭证" icon={WalletOutlined}>
                 <SubTabs tabs={["工资列表", "计提工资、发放工资"]} active={1} onChange={setTab} />
                 <SalaryAccrueView />
             </Page>
@@ -786,10 +797,10 @@ export function LemonSalaryManage() {
             cost: (b.cost ?? 0).toFixed(2),
             zebra: i % 2 === 1,
         })),
-        { dept: "合计", gross: totals.gross, deduct: totals.deductible, payable: totals.payable, personal: totals.personal, threshold: totals.threshold, tax: totals.tax, adjust: totals.adjust, net: totals.net, company: totals.company, cost: totals.cost, __cls: "bg-[#fafbfd] font-medium" },
+        { dept: "合计", gross: totals.gross, deduct: totals.deductible, payable: totals.payable, personal: totals.personal, threshold: totals.threshold, tax: totals.tax, adjust: totals.adjust, net: totals.net, company: totals.company, cost: totals.cost, __style: { background: "#fafbfd", fontWeight: 500 } },
     ];
     return (
-        <Page title="工资管理" subtitle="当期工资表与计提发放" icon={Wallet}>
+        <Page title="工资管理" subtitle="当期工资表与计提发放" icon={WalletOutlined}>
             <SubTabs tabs={["工资列表", "计提工资、发放工资"]} active={tab} onChange={setTab} />
             <ToolRow
                 left={
@@ -809,7 +820,7 @@ export function LemonSalaryManage() {
                         <WipBtn title="生成工资条尚未接入后端">生成工资条</WipBtn>
                         <span className="inline-flex items-center gap-1">
                             <WipBtn title="同步个税申报表尚未接入后端">同步个税申报表</WipBtn>
-                            <CircleHelp className="h-3.5 w-3.5 text-slate-400" />
+                            <QuestionCircleOutlined className="text-[14px]" style={ICON_STYLE.muted} />
                         </span>
                         <WipBtn dropdown title="导入工资条尚未接入后端">导入</WipBtn>
                         <WipBtn title="发送工资条尚未接入后端">发送工资条</WipBtn>
@@ -899,7 +910,7 @@ export function LemonSalaryEmployee() {
         ),
     }));
     return (
-        <Page title="员工信息" subtitle="在职与离职员工名册维护" icon={Users}>
+        <Page title="员工信息" subtitle="在职与离职员工名册维护" icon={TeamOutlined}>
             <SubTabs tabs={["员工信息"]} />
             <ToolRow
                 left={
@@ -1018,11 +1029,11 @@ export function LemonSalarySummary() {
             company: rows2.reduce((s2, r) => s2 + (r.companyPart ?? 0), 0).toFixed(2),
             net: rows2.reduce((s2, r) => s2 + (r.net ?? 0), 0).toFixed(2),
             cost: rows2.reduce((s2, r) => s2 + (r.cost ?? 0), 0).toFixed(2),
-            __cls: "bg-[#fafbfd] font-medium",
+            __style: { background: "#fafbfd", fontWeight: 500 },
         },
     ];
     return (
-        <Page title="工资统计表" subtitle={`按部门汇总 ${rangeText} 的工资数据`} icon={BarChart3}>
+        <Page title="工资统计表" subtitle={`按部门汇总 ${rangeText} 的工资数据`} icon={BarChartOutlined}>
             <SubTabs tabs={["工资统计表"]} />
             <ToolRow
                 left={
@@ -1186,7 +1197,7 @@ export function LemonSalaryInsurance() {
         },
     ];
     return (
-        <Page title="五险一金设置" subtitle="缴纳项目与公司/个人比例维护" icon={ShieldCheck}>
+        <Page title="五险一金设置" subtitle="缴纳项目与公司/个人比例维护" icon={SafetyCertificateOutlined}>
             <SubTabs tabs={["五险一金设置"]} />
             <div className="mx-auto w-[1090px]">
                 <ToolRow

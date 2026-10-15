@@ -2,28 +2,27 @@ import { useMemo } from "react"
 import { useNavigate } from "react-router"
 
 import {
-    AlertTriangle,
-    ArrowDownRight,
-    ArrowRight,
-    ArrowUpRight,
-    BarChart3,
-    BookOpen,
-    CalendarClock,
-    CheckCircle2,
-    Circle,
-    ClipboardList,
-    Coins,
-    FilePlus2,
-    FileText,
-    Landmark,
-    ListChecks,
-    RefreshCw,
-    Scale,
-    Wallet,
-} from "lucide-react"
+    AccountBookOutlined,
+    BarChartOutlined,
+    BankOutlined,
+    BookOutlined,
+    CalendarOutlined,
+    CheckCircleFilled,
+    CloseCircleOutlined,
+    DollarOutlined,
+    FileAddOutlined,
+    FileTextOutlined,
+    ProfileOutlined,
+    ReloadOutlined,
+    RightOutlined,
+    RiseOutlined,
+    FallOutlined,
+    UnorderedListOutlined,
+    WalletOutlined,
+    WarningFilled,
+} from "@ant-design/icons"
+import { Button, Skeleton } from "antd"
 
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
 import { fmtAmount } from "@/components/ledger/format"
 import { useCurrentAccountSet, useDefaultAccountingPeriod } from "@/accountSets/useCurrentAccountSet"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -54,7 +53,7 @@ function DeltaTag({ pct }: { pct?: number | null }) {
     const up = pct >= 0
     return (
         <span className={"flex items-center gap-0.5 text-[12px] font-medium " + (up ? "text-[#10b981]" : "text-[#ef4444]")}>
-            {up ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
+            {up ? <RiseOutlined className="text-[14px]" /> : <FallOutlined className="text-[14px]" />}
             {Math.abs(pct).toFixed(1)}%
             <span className="font-normal text-slate-400">环比</span>
         </span>
@@ -81,7 +80,7 @@ function AccountStatusBar({ data }: { data: DashboardData }) {
                         {accountSet?.companyName || accountSet?.name || "工作台"}
                     </h1>
                     <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-slate-500">
-                        <CalendarClock className="size-3.5 text-slate-400" />
+                        <CalendarOutlined className="text-[14px] text-slate-400" />
                         当前会计期间
                         <span className="font-medium text-slate-700">{periodText}</span>
                         <span className="text-slate-400">（{accountSet?.name ?? "—"} · {accountSet?.baseCurrency ?? "人民币"}）</span>
@@ -110,7 +109,7 @@ function StatusBadge({ done, label }: { done: boolean; label: string }) {
                 (done ? "bg-[#d1fae5] text-[#0f9d63]" : "bg-[#fef3c7] text-[#b45309]")
             }
         >
-            {done ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
+            {done ? <CheckCircleFilled className="text-[14px]" /> : <WarningFilled className="text-[14px]" />}
             {label}
         </span>
     )
@@ -129,15 +128,11 @@ type CardSpec = {
 }
 
 const CARDS: CardSpec[] = [
-    { item: "营业收入", label: "本月营业收入", icon: TrendingUpIcon, accent: "#2f6bff", cardBg: "#eef4ff" },
-    { item: "净利润", label: "本月净利润", icon: Coins, accent: "#8b5cf6", cardBg: "#f1eaff" },
-    { item: "资金收支", label: "本月资金净收付", icon: Wallet, accent: "#10b981", cardBg: "#e6f8f0" },
-    { item: "资产总额", label: "期末资产总额", icon: Landmark, accent: "#f59e0b", cardBg: "#fff4e0" },
+    { item: "营业收入", label: "本月营业收入", icon: BarChartOutlined, accent: "#2f6bff", cardBg: "#eef4ff" },
+    { item: "净利润", label: "本月净利润", icon: DollarOutlined, accent: "#8b5cf6", cardBg: "#f1eaff" },
+    { item: "资金收支", label: "本月资金净收付", icon: WalletOutlined, accent: "#10b981", cardBg: "#e6f8f0" },
+    { item: "资产总额", label: "期末资产总额", icon: BankOutlined, accent: "#f59e0b", cardBg: "#fff4e0" },
 ]
-
-function TrendingUpIcon({ className }: { className?: string }) {
-    return <BarChart3 className={className} />
-}
 
 function StatCards({ data }: { data: DashboardData }) {
     return (
@@ -152,7 +147,7 @@ function StatCards({ data }: { data: DashboardData }) {
                                 className="flex size-9 items-center justify-center rounded-xl text-white shadow-sm"
                                 style={{ background: c.accent }}
                             >
-                                <Icon className="size-5" />
+                                <Icon className="text-[20px]" />
                             </span>
                             <span className="text-[13px] font-medium" style={{ color: c.accent }}>
                                 {c.label}
@@ -256,7 +251,7 @@ function TodoCard({ data }: { data: DashboardData }) {
             done: counts.unposted === 0,
             danger: counts.unposted > 0,
             to: `/${accountSetId}/vouchers/manage`,
-            icon: FileText,
+            icon: FileTextOutlined,
         },
         {
             label: "待审核凭证（草稿）",
@@ -264,7 +259,7 @@ function TodoCard({ data }: { data: DashboardData }) {
             done: counts.draft === 0,
             danger: counts.draft > 0,
             to: `/${accountSetId}/vouchers/manage`,
-            icon: ClipboardList,
+            icon: ProfileOutlined,
         },
         {
             label: "期末结转损益",
@@ -272,7 +267,7 @@ function TodoCard({ data }: { data: DashboardData }) {
             done: !!carried,
             danger: !carried,
             to: `/${accountSetId}/closing`,
-            icon: Scale,
+            icon: AccountBookOutlined,
         },
         {
             label: "期末结账",
@@ -280,7 +275,7 @@ function TodoCard({ data }: { data: DashboardData }) {
             done: !!closed,
             danger: !closed,
             to: `/${accountSetId}/closing`,
-            icon: ListChecks,
+            icon: UnorderedListOutlined,
         },
     ]
 
@@ -303,7 +298,7 @@ function TodoCard({ data }: { data: DashboardData }) {
                                         (t.done ? "bg-[#e6f8f0] text-[#10b981]" : "bg-[#fef2f2] text-[#ef4444]")
                                     }
                                 >
-                                    {t.done ? <CheckCircle2 className="size-4" /> : <Icon className="size-4" />}
+                                    {t.done ? <CheckCircleFilled className="text-[16px]" /> : <Icon className="text-[16px]" />}
                                 </span>
                                 <span className="flex-1 truncate text-[13px] text-slate-600">{t.label}</span>
                                 <span
@@ -314,7 +309,7 @@ function TodoCard({ data }: { data: DashboardData }) {
                                 >
                                     {t.value}
                                 </span>
-                                <ArrowRight className="size-3.5 text-slate-300" />
+                                <RightOutlined className="text-[14px] text-slate-300" />
                             </button>
                         </li>
                     )
@@ -333,11 +328,11 @@ function QuickActions() {
     const accountSetId = useCurrentAccountSetId() ?? ""
 
     const actions = [
-        { label: "新增凭证", to: `/${accountSetId}/vouchers/new`, icon: FilePlus2 },
-        { label: "查看凭证", to: `/${accountSetId}/vouchers/manage`, icon: FileText },
-        { label: "科目余额表", to: `/${accountSetId}/ledger/trial-balance`, icon: BookOpen },
-        { label: "资产负债表", to: `/${accountSetId}/reports/balance-sheet`, icon: Scale },
-        { label: "利润表", to: `/${accountSetId}/reports/income-statement`, icon: BarChart3 },
+        { label: "新增凭证", to: `/${accountSetId}/vouchers/new`, icon: FileAddOutlined },
+        { label: "查看凭证", to: `/${accountSetId}/vouchers/manage`, icon: FileTextOutlined },
+        { label: "科目余额表", to: `/${accountSetId}/ledger/trial-balance`, icon: BookOutlined },
+        { label: "资产负债表", to: `/${accountSetId}/reports/balance-sheet`, icon: AccountBookOutlined },
+        { label: "利润表", to: `/${accountSetId}/reports/income-statement`, icon: BarChartOutlined },
     ]
 
     return (
@@ -354,7 +349,7 @@ function QuickActions() {
                             className="flex flex-col items-center gap-1.5"
                         >
                             <span className="flex size-[52px] items-center justify-center rounded-2xl bg-[#eef4ff] text-[#2f6bff] transition-colors hover:bg-[#dbe8ff]">
-                                <Icon className="size-6" />
+                                <Icon className="text-[24px]" />
                             </span>
                             <span className="text-[12px] text-slate-600">{a.label}</span>
                         </button>
@@ -375,15 +370,14 @@ function EmptyNotice() {
     return (
         <section className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
             <span className="flex size-12 items-center justify-center rounded-full bg-[#eef4ff] text-[#2f6bff]">
-                <BookOpen className="size-6" />
+                <BookOutlined className="text-[24px]" />
             </span>
             <h3 className="text-[15px] font-semibold text-slate-800">这个账套还没有数据</h3>
             <p className="max-w-md text-[13px] leading-relaxed text-slate-500">
                 报表与首页指标只统计<b className="text-slate-700">已过账</b>的凭证。请先录入凭证，再到凭证页<b className="text-slate-700">审核并过账</b>，
                 随后回到首页即可看到真实的财务数字。
             </p>
-            <Button className="mt-1" onClick={() => navigate(`/${accountSetId}/vouchers/new`)}>
-                <FilePlus2 className="size-4" />
+            <Button icon={<FileAddOutlined />} className="mt-1" onClick={() => navigate(`/${accountSetId}/vouchers/new`)}>
                 去新增凭证
             </Button>
         </section>
@@ -395,7 +389,7 @@ function PostHint({ unposted }: { unposted: number }) {
     if (unposted <= 0) return null
     return (
         <div className="flex items-center gap-2 rounded-xl bg-[#fef3c7] px-4 py-2.5 text-[12.5px] text-[#b45309]">
-            <AlertTriangle className="size-4 shrink-0" />
+            <WarningFilled className="shrink-0 text-[16px]" />
             账簿与报表仅统计已过账凭证；当前有 {unposted} 张凭证未过账，相关指标可能偏低，请先到凭证页审核并过账。
         </div>
     )
@@ -405,18 +399,23 @@ function PostHint({ unposted }: { unposted: number }) {
 /*  加载 / 失败状态                                                     */
 /* ------------------------------------------------------------------ */
 
+/** 加载占位块：antd 骨架屏闪烁 + 原有的圆角与高度节奏。 */
+function SkeletonBlock({ height }: { height: number }) {
+    return <Skeleton.Button active block style={{ height, borderRadius: 16 }} />
+}
+
 function LoadingView() {
     return (
         <div className="flex flex-col gap-5">
-            <Skeleton className="h-[72px] rounded-2xl" />
+            <SkeletonBlock height={72} />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {[0, 1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-[124px] rounded-2xl" />
+                    <SkeletonBlock key={i} height={124} />
                 ))}
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <Skeleton className="h-[200px] rounded-2xl" />
-                <Skeleton className="h-[200px] rounded-2xl" />
+                <SkeletonBlock height={200} />
+                <SkeletonBlock height={200} />
             </div>
         </div>
     )
@@ -426,12 +425,11 @@ function ErrorView({ message, onRetry }: { message: string; onRetry: () => void 
     return (
         <section className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-white p-10 text-center">
             <span className="flex size-12 items-center justify-center rounded-full bg-[#fef2f2] text-[#ef4444]">
-                <Circle className="size-6" />
+                <CloseCircleOutlined className="text-[24px]" />
             </span>
             <h3 className="text-[15px] font-semibold text-slate-800">首页数据加载失败</h3>
             <p className="max-w-md text-[13px] text-slate-500">{message}</p>
-            <Button variant="outline" className="mt-1" onClick={onRetry}>
-                <RefreshCw className="size-4" />
+            <Button icon={<ReloadOutlined />} className="mt-1" onClick={onRetry}>
                 重试
             </Button>
         </section>

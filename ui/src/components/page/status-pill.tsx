@@ -1,9 +1,13 @@
 import type { ReactNode } from "react"
 
-import { cn } from "@/lib/utils"
+import { Tag } from "antd"
+
 import { PILL, type PillTone } from "./styles"
 
-/** 状态胶囊：账页与凭证列表共用的小号圆角标签。 */
+/**
+ * 状态胶囊：账页与凭证列表共用的小号圆角标签。
+ * 色调走内联样式而非类名，避免与 antd Tag 自身注入的背景/描边规则争夺优先级。
+ */
 export function StatusPill({
     tone,
     children,
@@ -14,14 +18,24 @@ export function StatusPill({
     className?: string
 }) {
     return (
-        <span
-            className={cn(
-                "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                PILL[tone],
-                className,
-            )}
+        <Tag
+            className={className}
+            variant="filled"
+            styles={{
+                root: {
+                    marginInlineEnd: 0,
+                    border: "none",
+                    borderRadius: 999,
+                    padding: "1px 8px",
+                    fontSize: 11,
+                    lineHeight: "16px",
+                    fontWeight: 500,
+                    background: PILL[tone].bg,
+                    color: PILL[tone].fg,
+                },
+            }}
         >
             {children}
-        </span>
+        </Tag>
     )
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { createColumnHelper } from "@tanstack/react-table"
+import type { TableColumnsType } from "antd"
 import { useSearchParams } from "react-router"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -8,22 +8,18 @@ import { LedgersApi, type SubsidiaryLedgerRowDto } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
 import { kindRowClass } from "@/components/ledger/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
 import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
-import { ROW_KIND, SORT_BY, asDate, type LedgerConditions, ledgerFeatures } from "@/components/ledger/types"
+import { ROW_KIND, SORT_BY, asDate, type LedgerConditions } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 import { useVoucherLookup } from "@/components/ledger/useVoucherLookup"
 import { VoucherDetailSheet } from "@/components/ledger/VoucherDetailSheet"
 
 /** 明细账的一行了加上稳定行键。 */
 type SubRow = SubsidiaryLedgerRowDto & { rowKey: string }
-
-const helper = createColumnHelper<typeof ledgerFeatures, SubRow>()
-
-const AMOUNT_IDS = ["debit", "credit", "balance"]
-const isAmount = (id: string) => AMOUNT_IDS.includes(id)
 
 const FIELDS: readonly LedgerField[] = [
     "date",
@@ -41,19 +37,17 @@ const SWITCHES = [
     "includeIdleAccounts",
 ] as const
 
-function buildColumns(showCounterAccount: boolean) {
-    return helper.columns([
-        helper.accessor("date", { header: "日期" }),
-        helper.accessor("voucherNo", { header: "凭证字号" }),
-        helper.accessor("summary", { header: "摘要" }),
-        ...(showCounterAccount
-            ? [helper.accessor("counterAccount", { header: "对方科目" })]
-            : []),
-        helper.accessor("debit", { header: "借方", cell: (info) => fmtAmount(info.getValue()) }),
-        helper.accessor("credit", { header: "贷方", cell: (info) => fmtAmount(info.getValue()) }),
-        helper.accessor("direction", { header: "方向" }),
-        helper.accessor("balance", { header: "余额", cell: (info) => fmtAmount(info.getValue()) }),
-    ])
+function buildColumns(showCounterAccount: boolean): TableColumnsType<SubRow> {
+    return [
+        { title: "日期", dataIndex: "date" },
+        { title: "凭证字号", dataIndex: "voucherNo" },
+        { title: "摘要", dataIndex: "summary" },
+        ...(showCounterAccount ? [{ title: "对方科目", dataIndex: "counterAccount" }] : []),
+        { title: "借方", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+        { title: "贷方", dataIndex: "credit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+        { title: "方向", dataIndex: "direction" },
+        { title: "余额", dataIndex: "balance", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    ]
 }
 
 function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
@@ -144,8 +138,7 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
                                 data={rows}
                                 loading={query.loading}
                                 emptyText="本科目该期间无发生额。"
-                                getRowId={(row) => row.rowKey}
-                                isAmountColumn={isAmount}
+                                rowKey={(row) => row.rowKey}
                                 rowClassName={(row) => kindRowClass(row.kind)}
                                 onRowClick={(row) => {
                                     if (row.kind !== ROW_KIND.entry || !row.voucherNo) return

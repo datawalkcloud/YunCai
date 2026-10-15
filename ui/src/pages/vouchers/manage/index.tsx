@@ -1,20 +1,20 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Alert, Button, Drawer, Pagination, Segmented, Spin, Table } from "antd"
+import type { TableColumnsType } from "antd"
 import {
-    CheckCircle2,
-    ChevronDown,
-    ChevronRight,
-    CircleAlert,
-    ClipboardCheck,
-    FileSpreadsheet,
-    FileText,
-    Pencil,
-    Plus,
-    RefreshCw,
-    Trash2,
-    Undo2,
-    Upload,
-} from "lucide-react"
-import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
+    AccountBookOutlined,
+    CheckCircleOutlined,
+    DeleteOutlined,
+    DownOutlined,
+    EditOutlined,
+    FileExcelOutlined,
+    FileTextOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    RightOutlined,
+    RollbackOutlined,
+    UploadOutlined,
+} from "@ant-design/icons"
 import dayjs from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -35,25 +35,8 @@ import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile, type TileTone } from "@/components/page/tile"
 import { StatusPill as StatusPillBase } from "@/components/page/status-pill"
-import {
-    DATE_FIELD,
-    ICON_BTN,
-    ICON_BTN_DANGER,
-    ICON_BTN_SUCCESS,
-    PAGE_BTN_GHOST,
-    PAGE_BTN_PRIMARY,
-    SOFT_PANEL,
-    voucherStatusTone,
-} from "@/components/page/styles"
+import { ICON_STYLE, SOFT_PANEL, voucherStatusTone } from "@/components/page/styles"
 import { DateRangeField, parseDate } from "@/components/fields/date-fields"
-import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Spinner } from "@/components/ui/spinner"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import VoucherForm from "./voucher-form"
 
 /** 日期范围。 */
@@ -63,27 +46,12 @@ interface DateRange {
 }
 
 /** 每页条数候选，等价原 antd 分页的 showSizeChanger。 */
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+const PAGE_SIZE_OPTIONS = ["10", "20", "50", "100"]
 
 /** 原 antd 分页默认每页 20 条。 */
 const DEFAULT_PAGE_SIZE = 20
 
 const ACCEPT = ".xls,.xlsx"
-const features = tableFeatures({})
-const voucherColumn = createColumnHelper<typeof features, VoucherListItemDto>()
-
-/** 行以凭证 id 为键，等价原先的 rowKey="id"。 */
-const getRowId = (row: VoucherListItemDto) => row.id ?? ""
-
-/** 各列的对齐方式按列 id 取用，避免写行内样式。 */
-const COLUMN_CLASS: Record<string, { head: string, cell: string }> = {
-    voucherNo: { head: "text-left", cell: "text-left" },
-    date: { head: "text-left", cell: "text-left whitespace-nowrap" },
-    totalDebit: { head: "text-right", cell: "text-right tabular-nums" },
-    totalCredit: { head: "text-right", cell: "text-right tabular-nums" },
-    preparer: { head: "text-left", cell: "text-left" },
-    actions: { head: "text-right", cell: "text-right" },
-}
 
 /** 借贷金额文本：负数用红色标注，正值回归常规前景色。 */
 function AmountText({ value }: { value: number | undefined }) {
@@ -167,140 +135,102 @@ function getVoucherColumns(ops: {
     openingId: string | null
     deletingId: string | null
     workflowId: string | null
-}) {
+}): TableColumnsType<VoucherListItemDto> {
     return [
-        voucherColumn.display({
-            id: "voucherNo",
-            header: "凭证号",
-            cell: ({ row }) => {
-                const r = row.original
+        {
+            title: "凭证号",
+            render: (_, r) => {
                 const id = r.id ?? ""
                 const expanded = ops.expandedIds.has(id)
                 return (
                     <div className="flex items-center gap-1.5">
                         <Button
-                            variant="ghost"
-                            size="icon-xs"
+                            type="text"
+                            size="small"
                             title={expanded ? "收起分录" : "展开分录"}
                             aria-expanded={expanded}
+                            icon={expanded ? <DownOutlined /> : <RightOutlined />}
                             onClick={() => ops.onToggle(id)}
-                            className={ICON_BTN}
-                        >
-                            {expanded ? <ChevronDown /> : <ChevronRight />}
-                        </Button>
+                        />
                         <span className="font-medium text-slate-700">{r.voucherNo}</span>
                         <StatusPill record={r} />
                     </div>
                 )
             },
-        }),
-        voucherColumn.display({
-            id: "date",
-            header: "日期",
-            cell: ({ row }) => <span className="text-slate-500">{toISODate(row.original.date)}</span>,
-        }),
-        voucherColumn.display({
-            id: "totalDebit",
-            header: "借方合计",
-            cell: ({ row }) => <AmountText value={row.original.totalDebit} />,
-        }),
-        voucherColumn.display({
-            id: "totalCredit",
-            header: "贷方合计",
-            cell: ({ row }) => <AmountText value={row.original.totalCredit} />,
-        }),
-        voucherColumn.display({
-            id: "preparer",
-            header: "制单人",
-            cell: ({ row }) => (
-                <span className="text-slate-500">{row.original.preparer ?? "—"}</span>
+        },
+        {
+            title: "日期",
+            className: "whitespace-nowrap",
+            render: (_, r) => <span className="text-slate-500">{toISODate(r.date)}</span>,
+        },
+        { title: "借方合计", align: "right", className: "tabular-nums", render: (_, r) => <AmountText value={r.totalDebit} /> },
+        { title: "贷方合计", align: "right", className: "tabular-nums", render: (_, r) => <AmountText value={r.totalCredit} /> },
+        { title: "制单人", render: (_, r) => <span className="text-slate-500">{r.preparer ?? "—"}</span> },
+        {
+            title: "操作",
+            align: "right",
+            render: (_, r) => (
+                <div className="flex items-center justify-end gap-0">
+                    {r.status === 1 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            title="编辑凭证"
+                            loading={ops.openingId === r.id}
+                            disabled={ops.openingId === r.id}
+                            icon={<EditOutlined />}
+                            onClick={() => ops.onEdit(r)}
+                        />
+                    )}
+                    {r.status === 1 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            title="审核凭证"
+                            loading={ops.workflowId === r.id}
+                            disabled={ops.workflowId === r.id}
+                            icon={<CheckCircleOutlined style={{ color: "#10b981" }} />}
+                            onClick={() => ops.onReview(r)}
+                        />
+                    )}
+                    {r.status === 2 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            title="反审核（退回草稿）"
+                            loading={ops.workflowId === r.id}
+                            disabled={ops.workflowId === r.id}
+                            icon={<RollbackOutlined />}
+                            onClick={() => ops.onUnreview(r)}
+                        />
+                    )}
+                    {r.status === 2 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            title="过账（登记入账锁定）"
+                            loading={ops.workflowId === r.id}
+                            disabled={ops.workflowId === r.id}
+                            icon={<AccountBookOutlined style={{ color: "#10b981" }} />}
+                            onClick={() => ops.onPost(r)}
+                        />
+                    )}
+                    {r.status !== 3 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            danger
+                            title="删除凭证"
+                            loading={ops.deletingId === r.id}
+                            disabled={ops.deletingId === r.id}
+                            icon={<DeleteOutlined />}
+                            onClick={() => ops.onDelete(r)}
+                        />
+                    )}
+                </div>
             ),
-        }),
-        voucherColumn.display({
-            id: "actions",
-            header: "操作",
-            cell: ({ row }) => {
-                const r = row.original
-                return (
-                    <div className="flex items-center justify-end gap-0.5">
-                        {r.status === 1 && (
-                            <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                disabled={ops.openingId === r.id}
-                                onClick={() => ops.onEdit(r)}
-                                title="编辑凭证"
-                                className={ICON_BTN}
-                            >
-                                {ops.openingId === r.id ? <Spinner /> : <Pencil />}
-                            </Button>
-                        )}
-                        {r.status === 1 && (
-                            <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                disabled={ops.workflowId === r.id}
-                                onClick={() => ops.onReview(r)}
-                                title="审核凭证"
-                                className={ICON_BTN_SUCCESS}
-                            >
-                                {ops.workflowId === r.id ? <Spinner /> : <CheckCircle2 />}
-                            </Button>
-                        )}
-                        {r.status === 2 && (
-                            <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                disabled={ops.workflowId === r.id}
-                                onClick={() => ops.onUnreview(r)}
-                                title="反审核（退回草稿）"
-                                className={ICON_BTN}
-                            >
-                                {ops.workflowId === r.id ? <Spinner /> : <Undo2 />}
-                            </Button>
-                        )}
-                        {r.status === 2 && (
-                            <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                disabled={ops.workflowId === r.id}
-                                onClick={() => ops.onPost(r)}
-                                title="过账（登记入账锁定）"
-                                className={ICON_BTN_SUCCESS}
-                            >
-                                {ops.workflowId === r.id ? <Spinner /> : <ClipboardCheck />}
-                            </Button>
-                        )}
-                        {r.status !== 3 && (
-                            <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                disabled={ops.deletingId === r.id}
-                                onClick={() => ops.onDelete(r)}
-                                title="删除凭证"
-                                className={ICON_BTN_DANGER}
-                            >
-                                {ops.deletingId === r.id ? <Spinner /> : <Trash2 />}
-                            </Button>
-                        )}
-                    </div>
-                )
-            },
-        }),
+        },
     ]
-}
-
-/** 生成分页页码序列：页数过多时首尾保留、中间折叠为省略号。 */
-function pageItems(current: number, total: number): (number | "gap")[] {
-    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-    const items: (number | "gap")[] = [1]
-    const start = Math.max(2, current - 1)
-    const end = Math.min(total - 1, current + 1)
-    if (start > 2) items.push("gap")
-    for (let p = start; p <= end; p++) items.push(p)
-    if (end < total - 1) items.push("gap")
-    items.push(total)
-    return items
 }
 
 /** 凭证状态瓦片的取数口径。 */
@@ -323,14 +253,14 @@ function buildTiles(vouchers: VoucherListItemDto[]) {
             label: "凭证总数",
             value: total,
             tone: "blue",
-            icon: FileText,
+            icon: FileTextOutlined,
             hint: `借方合计 ${fmtMoney(debitSum)}`,
         },
         {
             label: "草稿待审",
             value: draft,
             tone: "amber",
-            icon: Pencil,
+            icon: EditOutlined,
             hint: `${Math.round(pct(draft) * 100)}%`,
             ratio: pct(draft),
         },
@@ -338,7 +268,7 @@ function buildTiles(vouchers: VoucherListItemDto[]) {
             label: "已审核待过账",
             value: reviewed,
             tone: "purple",
-            icon: CheckCircle2,
+            icon: CheckCircleOutlined,
             hint: `${Math.round(pct(reviewed) * 100)}%`,
             ratio: pct(reviewed),
         },
@@ -346,7 +276,7 @@ function buildTiles(vouchers: VoucherListItemDto[]) {
             label: "已过账入册",
             value: posted,
             tone: "green",
-            icon: ClipboardCheck,
+            icon: AccountBookOutlined,
             hint: `${Math.round(pct(posted) * 100)}%`,
             ratio: pct(posted),
         },
@@ -571,15 +501,12 @@ export default function VoucherManagePage() {
     const currentPage = Math.min(pageIndex, pageCount - 1)
     const pageRows = vouchers.slice(currentPage * pageSize, currentPage * pageSize + pageSize)
 
-    const table = useTable({ features, columns, data: pageRows, getRowId })
-    const headerGroups = table.getHeaderGroups()
-    const rows = table.getRowModel().rows
-    const leafCount = table.getLeafHeaders().length
+    const expandedRowKeys = useMemo(() => [...expandedIds], [expandedIds])
 
     return (
         <div className="flex flex-col gap-5">
             <PageHeader
-                icon={FileText}
+                icon={FileTextOutlined}
                 title="凭证管理"
                 subtitle={
                     <>
@@ -589,16 +516,17 @@ export default function VoucherManagePage() {
                 }
                 actions={
                     <>
-                        <Button variant="outline" onClick={() => void load()} disabled={!accountSetId || loading} className={PAGE_BTN_GHOST}>
-                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                        <Button
+                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                            disabled={!accountSetId || loading}
+                            onClick={() => void load()}
+                        >
                             刷新
                         </Button>
-                        <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!accountSetId} className={PAGE_BTN_GHOST}>
-                            <Upload data-icon="inline-start" />
+                        <Button icon={<UploadOutlined />} disabled={!accountSetId} onClick={() => setImportOpen(true)}>
                             导入凭证
                         </Button>
-                        <Button onClick={handleCreate} disabled={!accountSetId} className={PAGE_BTN_PRIMARY}>
-                            <Plus data-icon="inline-start" />
+                        <Button type="primary" icon={<PlusOutlined />} disabled={!accountSetId} onClick={handleCreate}>
                             新增凭证
                         </Button>
                     </>
@@ -612,19 +540,14 @@ export default function VoucherManagePage() {
                 ))}
             </section>
 
-            {error && (
-                <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                    <CircleAlert />
-                    <AlertTitle>{error}</AlertTitle>
-                </Alert>
-            )}
+            {error && <Alert type="error" showIcon title={error} />}
 
             {/* 凭证列表 */}
             <SectionCard
                 title={
                     <>
                         <h3 className="text-[14px] font-semibold text-slate-800">凭证列表</h3>
-                        {loading && <Spinner className="size-3.5 text-slate-300" />}
+                        {loading && <Spin size="small" />}
                     </>
                 }
                 bodyClassName="p-0"
@@ -652,316 +575,207 @@ export default function VoucherManagePage() {
                             }}
                             disabled={!accountSetId}
                             allowClear
-                            className={DATE_FIELD}
                         />
                     </div>
                 }
             >
-                <div className="px-2">
-                    <Table>
-                        <TableHeader>
-                            {headerGroups.map((headerGroup) => (
-                                <TableRow key={headerGroup.id} className="border-slate-100 hover:bg-transparent">
-                                    {headerGroup.headers.map((header) => (
-                                        <TableHead
-                                            key={header.id}
-                                            className={COLUMN_CLASS[header.column.id]?.head}
-                                        >
-                                            <table.FlexRender header={header} />
-                                        </TableHead>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableHeader>
-                        <TableBody>
-                            {loading && rows.length === 0 ? (
-                                <TableRow className="hover:bg-transparent">
-                                    <TableCell colSpan={leafCount} className="py-10 text-center">
-                                        <Spinner className="mx-auto size-5 text-slate-300" />
-                                    </TableCell>
-                                </TableRow>
-                            ) : rows.length === 0 ? (
-                                <TableRow className="hover:bg-transparent">
-                                    <TableCell colSpan={leafCount} className="py-10 text-center text-[13px] text-slate-400">
-                                        暂无凭证，点击右上角「新增凭证」开始记账。
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                rows.map((row) => {
-                                    const record = row.original
-                                    const id = record.id ?? ""
-                                    const expanded = expandedIds.has(id)
-                                    return (
-                                        <Fragment key={row.id}>
-                                            <TableRow>
-                                                {row.getAllCells().map((cell) => (
-                                                    <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
-                                                        <table.FlexRender cell={cell} />
-                                                    </TableCell>
-                                                ))}
-                                            </TableRow>
-                                            {/* 展开行：分录明细 + 合计条，等价原 expandedRowRender */}
-                                            {expanded && (
-                                                <TableRow className="border-0 hover:bg-transparent">
-                                                    <TableCell colSpan={leafCount} className="p-0">
-                                                        <div className={cn(SOFT_PANEL, "mx-3 mb-3 overflow-hidden")}>
-                                                            {(record.entries?.length ?? 0) > 0 && (
-                                                                <EntryTable entries={record.entries ?? []} />
-                                                            )}
-                                                            <EntryTotals record={record} />
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </Fragment>
-                                    )
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                <Table<VoucherListItemDto>
+                    rowKey={(row) => row.id ?? ""}
+                    columns={columns}
+                    dataSource={pageRows}
+                    pagination={false}
+                    size="small"
+                    loading={loading && vouchers.length === 0}
+                    locale={{ emptyText: "暂无凭证，点击右上角「新增凭证」开始记账。" }}
+                    // 展开行 = 分录明细 + 合计条；展开按钮自绘在凭证号列，故隐藏默认列。
+                    expandable={{
+                        showExpandColumn: false,
+                        expandedRowKeys,
+                        expandedRowRender: (record) => (
+                            <>
+                                {(record.entries?.length ?? 0) > 0 && <EntryTable entries={record.entries ?? []} />}
+                                <EntryTotals record={record} />
+                            </>
+                        ),
+                    }}
+                />
 
                 {/* 客户端分页 */}
-                <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 px-5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3">
                     <span className="whitespace-nowrap text-[12.5px] text-slate-400">共 {vouchers.length} 张凭证</span>
-                    <Select
-                        value={String(pageSize)}
-                        onValueChange={(v) => {
-                            setPageSize(Number(v))
-                            setPageIndex(0)
+                    <Pagination
+                        size="small"
+                        current={currentPage + 1}
+                        pageSize={pageSize}
+                        total={vouchers.length}
+                        pageSizeOptions={PAGE_SIZE_OPTIONS}
+                        showSizeChanger
+                        onChange={(page, size) => {
+                            if (size !== pageSize) {
+                                setPageSize(size)
+                                setPageIndex(0)
+                            } else {
+                                setPageIndex(page - 1)
+                            }
                         }}
-                    >
-                        <SelectTrigger
-                            size="sm"
-                            className="w-auto border-slate-200 text-[12px] text-slate-500 shadow-none [&>svg]:text-slate-400"
-                        >
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {PAGE_SIZE_OPTIONS.map((n) => (
-                                <SelectItem key={n} value={String(n)}>{`${n} 条/页`}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Pagination className="mx-0 w-auto justify-end">
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious
-                                    text="上一页"
-                                    className="text-[12.5px] text-slate-500 hover:bg-slate-100"
-                                    onClick={() => setPageIndex(Math.max(0, currentPage - 1))}
-                                />
-                            </PaginationItem>
-                            {pageItems(currentPage + 1, pageCount).map((item, i) =>
-                                item === "gap" ? (
-                                    <PaginationItem key={`gap-${i}`}>
-                                        <PaginationEllipsis className="text-slate-300" />
-                                    </PaginationItem>
-                                ) : (
-                                    <PaginationItem key={item}>
-                                        <PaginationLink
-                                            isActive={item === currentPage + 1}
-                                            className={
-                                                item === currentPage + 1
-                                                    ? "bg-[#2f6bff] text-white shadow-[0_1px_2px_rgba(47,107,255,0.25)] hover:bg-[#255ce0]"
-                                                    : "text-[12.5px] text-slate-500 hover:bg-slate-100"
-                                            }
-                                            onClick={() => setPageIndex(item - 1)}
-                                        >
-                                            {item}
-                                        </PaginationLink>
-                                    </PaginationItem>
-                                ),
-                            )}
-                            <PaginationItem>
-                                <PaginationNext
-                                    text="下一页"
-                                    className="text-[12.5px] text-slate-500 hover:bg-slate-100"
-                                    onClick={() => setPageIndex(Math.min(pageCount - 1, currentPage + 1))}
-                                />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
+                    />
                 </div>
             </SectionCard>
 
             {/* 新增 / 编辑凭证抽屉 */}
-            <Sheet
+            <Drawer
                 open={open}
-                onOpenChange={(next) => {
-                    if (next) return
+                size={1152}
+                title={editing ? `编辑凭证 ${editing.voucherNo}` : "新增凭证"}
+                onClose={() => {
                     setOpen(false)
                     setEditing(null)
                 }}
+                styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
             >
-                <SheetContent className="sm:max-w-6xl" aria-describedby={undefined}>
-                    <SheetHeader>
-                        <SheetTitle className="text-[16px] font-bold text-slate-800">
-                            {editing ? `编辑凭证 ${editing.voucherNo}` : "新增凭证"}
-                        </SheetTitle>
-                    </SheetHeader>
-                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-5 pb-5">
-                        {open && (
-                            <VoucherForm
-                                key={editing?.id ?? "new"}
-                                accountSetId={accountSetId}
-                                accounts={accounts}
-                                preparer={user?.displayName}
-                                token={token ?? undefined}
-                                initial={editing ?? undefined}
-                                onSaved={handleSaved}
-                                onCancel={() => {
-                                    setOpen(false)
-                                    setEditing(null)
-                                }}
-                            />
-                        )}
-                    </div>
-                </SheetContent>
-            </Sheet>
+                {open && (
+                    <VoucherForm
+                        key={editing?.id ?? "new"}
+                        accountSetId={accountSetId}
+                        accounts={accounts}
+                        preparer={user?.displayName}
+                        token={token ?? undefined}
+                        initial={editing ?? undefined}
+                        onSaved={handleSaved}
+                        onCancel={() => {
+                            setOpen(false)
+                            setEditing(null)
+                        }}
+                    />
+                )}
+            </Drawer>
 
             {/* 导入凭证抽屉 */}
-            <Sheet
+            <Drawer
                 open={importOpen}
-                onOpenChange={(next) => {
-                    if (next) return
+                size={672}
+                title="导入凭证"
+                onClose={() => {
                     setImportOpen(false)
                     pickImportFile(null)
                 }}
+                styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
             >
-                <SheetContent className="sm:max-w-2xl">
-                    <SheetHeader>
-                        <SheetTitle className="text-[16px] font-bold text-slate-800">导入凭证</SheetTitle>
-                        <SheetDescription className="text-[12.5px] text-slate-500">
-                            支持导入其他平台导出的记账凭证文件（.xls / .xlsx）。系统按凭证号聚合分录、自动补建缺失科目，
-                            借贷金额原样保留。
-                        </SheetDescription>
-                    </SheetHeader>
-                    <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto px-5 pb-5">
+                <p className="text-[12.5px] text-slate-400">
+                    支持导入其他平台导出的记账凭证文件（.xls / .xlsx）。系统按凭证号聚合分录、自动补建缺失科目，
+                    借贷金额原样保留。
+                </p>
+
+                <div className="flex flex-col gap-1">
+                    <span className="font-medium">导入到账套</span>
+                    <span className="text-[12.5px] text-slate-400">
+                        {currentSet?.name ?? accountSetId}
+                        {currentSet?.isCurrent ? "（当前）" : ""}
+                    </span>
+                </div>
+
+                {/* 冲突策略 */}
+                <div className="flex flex-col gap-2">
+                    <span className="text-[13px] font-semibold text-slate-700">重复凭证处理</span>
+                    <Segmented
+                        value={String(importConflict)}
+                        options={[
+                            { value: "0", label: "跳过" },
+                            { value: "1", label: "覆盖" },
+                        ]}
+                        onChange={(v) => setImportConflict(v === "1" ? 1 : 0)}
+                    />
+                </div>
+
+                {/* 文件拖放 / 选择区 */}
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => importInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") importInputRef.current?.click()
+                    }}
+                    onDragOver={(e) => {
+                        e.preventDefault()
+                        setImportDragging(true)
+                    }}
+                    onDragLeave={() => setImportDragging(false)}
+                    onDrop={onImportDrop}
+                    className={cn(
+                        "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
+                        importDragging ? "border-[#bfdbfe] bg-[#eef4ff]" : "border-slate-200",
+                    )}
+                >
+                    <FileExcelOutlined className="text-[40px]" style={ICON_STYLE.placeholder} />
+                    {importFile ? (
                         <div className="flex flex-col gap-1">
-                            <span className="text-[13px] font-semibold text-slate-700">导入到账套</span>
-                            <span className="text-[12.5px] text-slate-500">
-                                {currentSet?.name ?? accountSetId}
-                                {currentSet?.isCurrent ? "（当前）" : ""}
+                            <span className="font-medium">{importFile.name}</span>
+                            <span className="text-sm leading-normal font-normal text-slate-400">
+                                {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
                             </span>
                         </div>
+                    ) : (
+                        <div className="flex flex-col gap-1">
+                            <span className="font-medium">点击选择，或拖拽文件到此处</span>
+                            <span className="text-sm leading-normal font-normal text-slate-400">支持 .xls / .xlsx，最大 10MB</span>
+                        </div>
+                    )}
+                    <input
+                        ref={importInputRef}
+                        type="file"
+                        accept={ACCEPT}
+                        className="hidden"
+                        onChange={(e) => pickImportFile(e.target.files?.[0] ?? null)}
+                    />
+                </div>
 
-                        {/* 冲突策略 */}
-                        <div className="flex flex-col gap-2">
-                            <span className="text-[13px] font-semibold text-slate-700">重复凭证处理</span>
-                            <ToggleGroup
-                                type="single"
-                                variant="outline"
-                                size="sm"
-                                spacing={0}
-                                value={String(importConflict)}
-                                // 单选组取消选择时回传空串，保持原有两项必选其一的语义
-                                onValueChange={(v) => {
-                                    if (v) setImportConflict(v === "1" ? 1 : 0)
-                                }}
-                            >
-                                <ToggleGroupItem value="0">跳过</ToggleGroupItem>
-                                <ToggleGroupItem value="1">覆盖</ToggleGroupItem>
-                            </ToggleGroup>
+                <div className="flex items-center gap-3">
+                    <Button
+                        type="primary"
+                        loading={importing}
+                        icon={importing ? undefined : <UploadOutlined />}
+                        disabled={!importFile || !accountSetId}
+                        onClick={() => void handleImport()}
+                    >
+                        {importing ? "导入中…" : "开始导入"}
+                    </Button>
+                    {importFile && !importing && <Button onClick={() => pickImportFile(null)}>清除</Button>}
+                </div>
+
+                {importError && <Alert type="error" showIcon title={importError} />}
+
+                {/* 导入结果 */}
+                {importResult && (
+                    <div className={cn(SOFT_PANEL, "flex flex-col gap-4 p-4")}>
+                        <h3 className="text-[13px] font-semibold text-slate-800">导入结果</h3>
+                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                            <Tile label="解析行数" value={importResult.totalRows ?? 0} tone="blue" icon={FileExcelOutlined} />
+                            <Tile label="导入凭证" value={importResult.importedVouchers ?? 0} tone="green" icon={CheckCircleOutlined} />
+                            <Tile label="导入分录" value={importResult.importedEntries ?? 0} tone="purple" icon={FileTextOutlined} />
+                            <Tile label="新建科目" value={importResult.createdAccounts ?? 0} tone="amber" icon={PlusOutlined} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Tile label="覆盖凭证" value={importResult.overwrittenVouchers ?? 0} tone="gray" icon={RollbackOutlined} />
+                            <Tile label="跳过凭证" value={importResult.skippedVouchers ?? 0} tone="gray" icon={RightOutlined} />
                         </div>
 
-                        {/* 文件拖放 / 选择区 */}
-                        <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => importInputRef.current?.click()}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") importInputRef.current?.click()
-                            }}
-                            onDragOver={(e) => {
-                                e.preventDefault()
-                                setImportDragging(true)
-                            }}
-                            onDragLeave={() => setImportDragging(false)}
-                            onDrop={onImportDrop}
-                            className={cn(
-                                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors",
-                                importDragging ? "border-[#2f6bff] bg-[#dbeafe]" : "border-slate-200 bg-muted",
-                            )}
-                        >
-                            <span className="flex size-12 items-center justify-center rounded-2xl bg-[#e8f1ff] text-[#2f6bff]">
-                                <FileSpreadsheet className="size-6" />
-                            </span>
-                            {importFile ? (
-                                <div className="flex flex-col gap-1">
-                                    <span className="truncate text-[13px] font-medium text-slate-700">{importFile.name}</span>
-                                    <span className="text-[12px] text-slate-400">
-                                        {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
-                                    </span>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[13px] font-medium text-slate-700">点击选择，或拖拽文件到此处</span>
-                                    <span className="text-[12px] text-slate-400">支持 .xls / .xlsx，最大 10MB</span>
-                                </div>
-                            )}
-                            <input
-                                ref={importInputRef}
-                                type="file"
-                                accept={ACCEPT}
-                                className="hidden"
-                                onChange={(e) => pickImportFile(e.target.files?.[0] ?? null)}
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <Button onClick={() => void handleImport()} disabled={!importFile || !accountSetId || importing} className={PAGE_BTN_PRIMARY}>
-                                {importing ? <Spinner data-icon="inline-start" /> : <Upload data-icon="inline-start" />}
-                                {importing ? "导入中…" : "开始导入"}
-                            </Button>
-                            {importFile && !importing && (
-                                <Button variant="outline" onClick={() => pickImportFile(null)} className={PAGE_BTN_GHOST}>
-                                    清除
-                                </Button>
-                            )}
-                        </div>
-
-                        {importError && (
-                            <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                <CircleAlert />
-                                <AlertTitle>{importError}</AlertTitle>
-                            </Alert>
-                        )}
-
-                        {/* 导入结果 */}
-                        {importResult && (
-                            <div className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                                <h3 className="text-[14px] font-semibold text-slate-800">导入结果</h3>
-                                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                                    <Tile label="解析行数" value={importResult.totalRows ?? 0} tone="blue" icon={FileSpreadsheet} />
-                                    <Tile label="导入凭证" value={importResult.importedVouchers ?? 0} tone="green" icon={CheckCircle2} />
-                                    <Tile label="导入分录" value={importResult.importedEntries ?? 0} tone="purple" icon={FileText} />
-                                    <Tile label="新建科目" value={importResult.createdAccounts ?? 0} tone="amber" icon={Plus} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Tile label="覆盖凭证" value={importResult.overwrittenVouchers ?? 0} tone="gray" icon={Undo2} />
-                                    <Tile label="跳过凭证" value={importResult.skippedVouchers ?? 0} tone="gray" icon={ChevronRight} />
-                                </div>
-
-                                {importResult.warnings && importResult.warnings.length > 0 && (
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-[12.5px] text-slate-400">
-                                            告警（{importResult.warnings.length}）
-                                        </span>
-                                        <ul className={cn(SOFT_PANEL, "max-h-64 overflow-auto p-3 text-[12.5px] text-slate-500")}>
-                                            {importResult.warnings.map((w, i) => (
-                                                <li key={i} className="py-0.5">
-                                                    · {w}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
+                        {importResult.warnings && importResult.warnings.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                                <span className="text-[12.5px] text-slate-400">
+                                    告警（{importResult.warnings.length}）
+                                </span>
+                                <ul className="max-h-64 overflow-auto rounded-lg border border-slate-100 bg-white p-3 text-[12.5px] text-slate-500">
+                                    {importResult.warnings.map((w, i) => (
+                                        <li key={i} className="py-0.5">
+                                            · {w}
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         )}
                     </div>
-                </SheetContent>
-            </Sheet>
+                )}
+            </Drawer>
 
             {confirmDialog}
         </div>

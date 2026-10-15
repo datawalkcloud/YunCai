@@ -1,19 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-    ChevronDown,
-    ChevronRight,
-    CircleAlert,
-    Download,
-    FileSpreadsheet,
-    ListTree,
-    Pencil,
-    Plus,
-    RefreshCw,
-    Tags,
-    Trash2,
-    Upload,
-} from "lucide-react"
-import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
+    Alert,
+    Button,
+    Checkbox,
+    Drawer,
+    Input,
+    Modal,
+    Radio,
+    Segmented,
+    Select,
+    Spin,
+    Table,
+} from "antd"
+import type { TableColumnsType } from "antd"
+import {
+    DeleteOutlined,
+    DownloadOutlined,
+    DownOutlined,
+    EditOutlined,
+    FileExcelOutlined,
+    PartitionOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    RightOutlined,
+    TagsOutlined,
+    UploadOutlined,
+} from "@ant-design/icons"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -25,55 +37,30 @@ import { useConfirm } from "@/hooks/useConfirm"
 import { ASSIST_TYPES, assistLabel } from "@/components/assist/constants"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile } from "@/components/page/tile"
+import { FormField } from "@/components/page/form-field"
 import { StatusPill } from "@/components/page/status-pill"
-import { ICON_BTN, ICON_BTN_DANGER, PAGE_BTN_GHOST, PAGE_BTN_PRIMARY, SOFT_PANEL } from "@/components/page/styles"
+import { ICON_STYLE, SOFT_PANEL } from "@/components/page/styles"
 import {
     fetchAccountAssistTypes,
     setAccountAssistTypesCache,
     useAccountAssistConfigs,
     useAssistCategories,
 } from "@/components/assist/assist-store"
-import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
-import { Spinner } from "@/components/ui/spinner"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 /** 会计科目类别（数值对应后端枚举 AccountCategory）。 */
-const CATEGORY_OPTIONS = [
+const CATEGORY_OPTIONS: { value: number; label: string }[] = [
     { value: 1, label: "资产" },
     { value: 2, label: "负债" },
     { value: 3, label: "权益" },
     { value: 4, label: "成本" },
     { value: 5, label: "损益" },
-] as const
+]
 
 /** 余额方向（数值对应后端枚举 BalanceDirection）。 */
-const DIRECTION_OPTIONS = [
+const DIRECTION_OPTIONS: { value: number; label: string }[] = [
     { value: 1, label: "借" },
     { value: 2, label: "贷" },
-] as const
+]
 
 const CATEGORY_LABELS: Record<number, string> = Object.fromEntries(
     CATEGORY_OPTIONS.map((c) => [c.value, c.label]),
@@ -84,19 +71,6 @@ const DIRECTION_LABELS: Record<number, string> = Object.fromEntries(
 
 /** 科目导入支持的文件格式。 */
 const ACCEPT = ".xls,.xlsx"
-
-/** Radix Select 不允许空串作为选项值，用这个哨兵表示「不选上级（顶级科目）」，等价于原来的 allowClear。 */
-const TOP_PARENT = "__top__"
-
-/** 列表列数，用于空态与加载态的跨列单元格。 */
-const COLUMN_COUNT = 7
-
-/** 各列对齐方式按列 id 取用，避免写行内样式。 */
-const COLUMN_CLASS: Record<string, string> = {
-    level: "text-center",
-    isEnabled: "text-center",
-    actions: "text-right",
-}
 
 /** 树形层级缩进：按可见深度取 pl-* 结构类，最多 10 级（编码方案上限）。 */
 const INDENT_CLASS = [
@@ -184,12 +158,6 @@ function resolveLevel(accounts: AccountDto[], schemeSegments: number[], parentId
     const levelDigits = schemeSegments[newLevel - 1] ?? 2
     return { parent, newLevel, expectedCodeLength, levelDigits }
 }
-
-const features = tableFeatures({})
-const helper = createColumnHelper<typeof features, VisibleRow>()
-
-/** 行以科目 id 为键，等价原先的 rowKey="id"。 */
-const getRowId = (row: VisibleRow) => row.node.id ?? ""
 
 export default function AccountsPage() {
     const { token } = useAuth()
@@ -642,27 +610,23 @@ export default function AccountsPage() {
 
     const expandedSet = useMemo(() => new Set(expandedKeys.map((k) => String(k))), [expandedKeys])
 
-    const columns = [
-        helper.display({
-            id: "code",
-            header: "科目编码",
-            cell: ({ row }) => {
-                const { node, depth } = row.original
+    const columns: TableColumnsType<VisibleRow> = [
+        {
+            title: "科目编码",
+            render: (_, { node, depth }) => {
                 const id = String(node.id)
                 const expanded = expandedSet.has(id)
                 return (
                     <div className={cn("flex items-center gap-1", indentClass(depth))}>
                         {node.children ? (
                             <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className={ICON_BTN}
+                                type="text"
+                                size="small"
                                 aria-label={expanded ? "收起下级科目" : "展开下级科目"}
                                 aria-expanded={expanded}
+                                icon={expanded ? <DownOutlined /> : <RightOutlined />}
                                 onClick={() => toggleExpand(id)}
-                            >
-                                {expanded ? <ChevronDown /> : <ChevronRight />}
-                            </Button>
+                            />
                         ) : (
                             // 占位，保持与可展开行同宽，编码列纵向对齐。
                             <span className="size-6 shrink-0" />
@@ -671,12 +635,10 @@ export default function AccountsPage() {
                     </div>
                 )
             },
-        }),
-        helper.display({
-            id: "name",
-            header: "科目名称",
-            cell: ({ row }) => {
-                const node = row.original.node
+        },
+        {
+            title: "科目名称",
+            render: (_, { node }) => {
                 // 已挂辅助核算的科目给一个轻量标记（星号表示该维度必录）。
                 const types = assistConfigs[node.id ?? ""] ?? []
                 return (
@@ -694,71 +656,45 @@ export default function AccountsPage() {
                     </div>
                 )
             },
-        }),
-        helper.display({
-            id: "level",
-            header: "级次",
-            cell: ({ row }) => <span>{row.original.node.level ?? "—"}</span>,
-        }),
-        helper.display({
-            id: "category",
-            header: "类别",
-            cell: ({ row }) => <span>{CATEGORY_LABELS[row.original.node.category ?? 0] ?? "—"}</span>,
-        }),
-        helper.display({
-            id: "direction",
-            header: "余额方向",
-            cell: ({ row }) => <span>{DIRECTION_LABELS[row.original.node.direction ?? 0] ?? "—"}</span>,
-        }),
-        helper.display({
-            id: "isEnabled",
-            header: "状态",
-            cell: ({ row }) => (
-                row.original.node.isEnabled
+        },
+        { title: "级次", align: "center", render: (_, { node }) => node.level ?? "—" },
+        { title: "类别", render: (_, { node }) => CATEGORY_LABELS[node.category ?? 0] ?? "—" },
+        { title: "余额方向", render: (_, { node }) => DIRECTION_LABELS[node.direction ?? 0] ?? "—" },
+        {
+            title: "状态",
+            align: "center",
+            render: (_, { node }) => (
+                node.isEnabled
                     ? <StatusPill tone="green">启用</StatusPill>
                     : <StatusPill tone="gray">停用</StatusPill>
             ),
-        }),
-        helper.display({
-            id: "actions",
-            header: "",
-            cell: ({ row }) => {
-                const account = row.original.node
-                return (
-                    <div className="flex items-center justify-end gap-0">
-                        <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            className={ICON_BTN}
-                            title="设置辅助核算"
-                            onClick={() => void openAssistDialog(account)}
-                        >
-                            <Tags />
-                        </Button>
-                        <Button variant="ghost" size="icon-xs" className={ICON_BTN} title="编辑科目" onClick={() => openEditDrawer(account)}>
-                            <Pencil />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            className={ICON_BTN_DANGER}
-                            title={account.children ? "删除科目（需先删除下级）" : "删除科目"}
-                            disabled={deletingId === account.id}
-                            onClick={() => void removeAccount(account)}
-                        >
-                            {deletingId === account.id
-                                ? <Spinner data-icon="inline-start" />
-                                : <Trash2 data-icon="inline-start" />}
-                        </Button>
-                    </div>
-                )
-            },
-        }),
+        },
+        {
+            title: "",
+            align: "right",
+            render: (_, { node }) => (
+                <div className="flex items-center justify-end gap-0">
+                    <Button
+                        type="text"
+                        size="small"
+                        title="设置辅助核算"
+                        icon={<TagsOutlined />}
+                        onClick={() => void openAssistDialog(node)}
+                    />
+                    <Button type="text" size="small" title="编辑科目" icon={<EditOutlined />} onClick={() => openEditDrawer(node)} />
+                    <Button
+                        type="text"
+                        size="small"
+                        danger
+                        title={node.children ? "删除科目（需先删除下级）" : "删除科目"}
+                        disabled={deletingId === node.id}
+                        icon={deletingId === node.id ? <ReloadOutlined spin /> : <DeleteOutlined />}
+                        onClick={() => void removeAccount(node)}
+                    />
+                </div>
+            ),
+        },
     ]
-
-    const table = useTable({ features, columns, data: visibleRows, getRowId })
-    const headerGroups = table.getHeaderGroups()
-    const rows = table.getRowModel().rows
 
     const filterOptions: { value: string; label: string }[] = [
         { value: "全部", label: "全部" },
@@ -768,7 +704,7 @@ export default function AccountsPage() {
     return (
         <div className="flex flex-col gap-5">
             <PageHeader
-                icon={ListTree}
+                icon={PartitionOutlined}
                 title="科目"
                 subtitle={
                     <>
@@ -779,20 +715,16 @@ export default function AccountsPage() {
                 }
                 actions={
                     <>
-                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void load()} disabled={!accountSetId || loading}>
-                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                        <Button icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />} disabled={!accountSetId || loading} onClick={() => void load()}>
                             刷新
                         </Button>
-                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => setImportOpen(true)} disabled={!accountSetId}>
-                            <Upload data-icon="inline-start" />
+                        <Button icon={<UploadOutlined />} disabled={!accountSetId} onClick={() => setImportOpen(true)}>
                             导入科目
                         </Button>
-                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={openSchemeModal} disabled={!accountSetId}>
-                            <Pencil data-icon="inline-start" />
+                        <Button icon={<EditOutlined />} disabled={!accountSetId} onClick={openSchemeModal}>
                             编码方案
                         </Button>
-                        <Button className={PAGE_BTN_PRIMARY} onClick={openDrawer} disabled={!accountSetId}>
-                            <Plus data-icon="inline-start" />
+                        <Button type="primary" icon={<PlusOutlined />} disabled={!accountSetId} onClick={openDrawer}>
                             新增科目
                         </Button>
                     </>
@@ -803,675 +735,488 @@ export default function AccountsPage() {
                 title={<h3 className="text-[14px] font-semibold text-slate-800">科目列表</h3>}
                 bodyClassName="flex flex-col gap-4"
             >
-                {loadError && (
-                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                        <CircleAlert />
-                        <AlertTitle>{loadError}</AlertTitle>
-                    </Alert>
-                )}
+                {loadError && <Alert type="error" showIcon title={loadError} />}
 
                 <div className={cn(SOFT_PANEL, "flex flex-wrap items-center gap-2 px-3 py-2")}>
-                    <ToggleGroup
-                        type="single"
-                        variant="outline"
-                        size="sm"
-                        spacing={0}
+                    <Segmented
                         value={filter === "全部" ? "全部" : String(filter)}
-                        onValueChange={(v) => {
-                            if (!v) return
-                            setFilter(v === "全部" ? "全部" : Number(v))
-                        }}
-                        className="flex-wrap"
-                    >
-                        {filterOptions.map((o) => (
-                            <ToggleGroupItem key={o.value} value={o.value}>
-                                {o.label}
-                            </ToggleGroupItem>
-                        ))}
-                    </ToggleGroup>
+                        options={filterOptions}
+                        onChange={(v) => setFilter(v === "全部" ? "全部" : Number(v))}
+                    />
                 </div>
 
-                <Table>
-                    <TableHeader>
-                        {headerGroups.map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id} className={COLUMN_CLASS[header.column.id]}>
-                                        <table.FlexRender header={header} />
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {loading && accounts.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={COLUMN_COUNT} className="py-8 text-center">
-                                    <Spinner className="mx-auto size-5 text-slate-300" />
-                                </TableCell>
-                            </TableRow>
-                        ) : rows.length === 0 ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={COLUMN_COUNT}
-                                    className="py-8 text-center text-slate-400"
-                                >
-                                    {accountSetId
-                                        ? "暂无科目，可点击「新增科目」或通过凭证导入自动建立。"
-                                        : "请先选择账套。"}
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            rows.map((row) => (
-                                <TableRow key={row.id}>
-                                    {row.getAllCells().map((cell) => (
-                                        <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]}>
-                                            <table.FlexRender cell={cell} />
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                <Table<VisibleRow>
+                    rowKey={(row) => row.node.id ?? ""}
+                    columns={columns}
+                    dataSource={visibleRows}
+                    pagination={false}
+                    size="small"
+                    loading={loading && accounts.length === 0}
+                    locale={{
+                        emptyText: accountSetId
+                            ? "暂无科目，可点击「新增科目」或通过凭证导入自动建立。"
+                            : "请先选择账套。",
+                    }}
+                />
             </SectionCard>
 
             {/* 新增科目抽屉 */}
-            <Sheet open={open} onOpenChange={setOpen}>
-                <SheetContent className="sm:max-w-lg">
-                    <SheetHeader>
-                        <SheetTitle>新增科目</SheetTitle>
-                        <SheetDescription>
-                            先选择类别，再选择上级科目（可选）。选中上级后将创建明细科目，方向自动继承。
-                        </SheetDescription>
-                    </SheetHeader>
-                    <div className="flex flex-1 flex-col gap-4 overflow-auto px-4">
-                        <Field data-invalid={Boolean(createForm.errors.category)}>
-                            <FieldLabel htmlFor="create-category">类别</FieldLabel>
-                            <Select
-                                value={String(createForm.values.category)}
-                                onValueChange={(v) => {
-                                    // 切换类别时清空上级科目，避免跨类别挂载。
-                                    createForm.patch({ category: Number(v), parentId: null })
-                                }}
-                            >
-                                <SelectTrigger id="create-category">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CATEGORY_OPTIONS.map((c) => (
-                                        <SelectItem key={c.value} value={String(c.value)}>{c.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FieldError>{createForm.errors.category}</FieldError>
-                        </Field>
-
-                        <Field>
-                            <FieldLabel htmlFor="create-parent">上级科目</FieldLabel>
-                            <Select
-                                value={createForm.values.parentId ?? TOP_PARENT}
-                                onValueChange={(v) => {
-                                    if (v === TOP_PARENT) {
-                                        createForm.patch({ parentId: null })
-                                        return
-                                    }
-                                    const p = accounts.find((a) => a.id === v)
-                                    if (p) {
-                                        // 明细科目方向继承上级。
-                                        createForm.patch({ parentId: v, direction: p.direction })
-                                    } else {
-                                        createForm.patch({ parentId: v })
-                                    }
-                                }}
-                            >
-                                <SelectTrigger id="create-parent">
-                                    <SelectValue placeholder="（顶级科目）" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={TOP_PARENT}>（顶级科目）</SelectItem>
-                                    {parentOptions.map((o) => (
-                                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </Field>
-
-                        <Field data-invalid={Boolean(createForm.errors.code)}>
-                            <FieldLabel htmlFor="create-code">科目编码</FieldLabel>
-                            <Input
-                                id="create-code"
-                                value={createForm.values.code}
-                                onChange={(e) => createForm.patch({ code: e.target.value })}
-                                placeholder={
-                                    parent
-                                        ? `${parent.code}${"0".repeat(levelDigits)}（${expectedCodeLength} 位）`
-                                        : `${"0".repeat(levelDigits)}（${expectedCodeLength} 位）`
-                                }
-                                aria-invalid={Boolean(createForm.errors.code)}
-                            />
-                            <FieldError>{createForm.errors.code}</FieldError>
-                        </Field>
-
-                        <Field data-invalid={Boolean(createForm.errors.name)}>
-                            <FieldLabel htmlFor="create-name">科目名称</FieldLabel>
-                            <Input
-                                id="create-name"
-                                value={createForm.values.name}
-                                onChange={(e) => createForm.patch({ name: e.target.value })}
-                                placeholder="如 库存现金"
-                                aria-invalid={Boolean(createForm.errors.name)}
-                            />
-                            <FieldError>{createForm.errors.name}</FieldError>
-                        </Field>
-
-                        <Field data-invalid={Boolean(createForm.errors.direction)}>
-                            <FieldLabel htmlFor="create-direction">余额方向</FieldLabel>
-                            <RadioGroup
-                                id="create-direction"
-                                className="flex flex-row items-center gap-4"
-                                disabled={parent !== null}
-                                value={String(createForm.values.direction)}
-                                onValueChange={(v) => createForm.patch({ direction: Number(v) })}
-                            >
-                                {DIRECTION_OPTIONS.map((d) => (
-                                    <div key={d.value} className="flex items-center gap-2">
-                                        <RadioGroupItem
-                                            value={String(d.value)}
-                                            id={`create-direction-${d.value}`}
-                                        />
-                                        <FieldLabel htmlFor={`create-direction-${d.value}`}>{d.label}</FieldLabel>
-                                    </div>
-                                ))}
-                            </RadioGroup>
-                            <FieldError>{createForm.errors.direction}</FieldError>
-                        </Field>
-
-                        <Field>
-                            <FieldLabel htmlFor="create-mnemonic">助记码</FieldLabel>
-                            <Input
-                                id="create-mnemonic"
-                                value={createForm.values.mnemonic}
-                                onChange={(e) => createForm.patch({ mnemonic: e.target.value })}
-                                placeholder="拼音首字母等快速检索用，可留空"
-                            />
-                        </Field>
-
-                        <Field>
-                            <FieldLabel htmlFor="create-enabled">状态</FieldLabel>
-                            <RadioGroup
-                                id="create-enabled"
-                                className="flex flex-row items-center gap-4"
-                                value={createForm.values.isEnabled ? "true" : "false"}
-                                onValueChange={(v) => createForm.patch({ isEnabled: v === "true" })}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <RadioGroupItem value="true" id="create-enabled-true" />
-                                    <FieldLabel htmlFor="create-enabled-true">启用</FieldLabel>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <RadioGroupItem value="false" id="create-enabled-false" />
-                                    <FieldLabel htmlFor="create-enabled-false">停用</FieldLabel>
-                                </div>
-                            </RadioGroup>
-                        </Field>
-
-                        {parent && (
-                            <FieldDescription>
-                                将作为「{parent.code} {parent.name}」的第 {newLevel} 级明细科目（本级 {levelDigits} 位，编码方案：
-                                {codingScheme}），余额方向已继承上级。
-                            </FieldDescription>
-                        )}
-                        {!parent && (
-                            <FieldDescription>
-                                一级科目编码固定 {expectedCodeLength} 位（编码方案：{codingScheme}）。
-                            </FieldDescription>
-                        )}
-
-                        {error && (
-                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                <CircleAlert />
-                                <AlertTitle>{error}</AlertTitle>
-                            </Alert>
-                        )}
-                    </div>
-                    <SheetFooter className="flex-row justify-end">
-                        <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-                        <Button onClick={() => void addAccount()} disabled={saving}>
-                            {saving ? <Spinner data-icon="inline-start" /> : <Plus data-icon="inline-start" />}
+            <Drawer
+                open={open}
+                size={512}
+                title="新增科目"
+                onClose={() => setOpen(false)}
+                styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
+                footer={
+                    <div className="flex justify-end gap-2">
+                        <Button onClick={() => setOpen(false)}>取消</Button>
+                        <Button type="primary" loading={saving} icon={<PlusOutlined />} onClick={() => void addAccount()}>
                             添加科目
                         </Button>
-                    </SheetFooter>
-                </SheetContent>
-            </Sheet>
+                    </div>
+                }
+            >
+                <p className="text-[12.5px] text-slate-400">
+                    先选择类别，再选择上级科目（可选）。选中上级后将创建明细科目，方向自动继承。
+                </p>
+
+                <FormField label="类别" htmlFor="create-category" error={createForm.errors.category}>
+                    <Select
+                        id="create-category"
+                        className="w-full"
+                        value={createForm.values.category}
+                        options={CATEGORY_OPTIONS}
+                        onChange={(v) => {
+                            // 切换类别时清空上级科目，避免跨类别挂载。
+                            createForm.patch({ category: v, parentId: null })
+                        }}
+                    />
+                </FormField>
+
+                <FormField label="上级科目" htmlFor="create-parent">
+                    <Select
+                        id="create-parent"
+                        className="w-full"
+                        allowClear
+                        placeholder="（顶级科目）"
+                        value={createForm.values.parentId ?? undefined}
+                        options={parentOptions}
+                        onChange={(v) => {
+                            // 清空即不选上级，创建顶级科目。
+                            if (v == null) {
+                                createForm.patch({ parentId: null })
+                                return
+                            }
+                            const p = accounts.find((a) => a.id === v)
+                            if (p) {
+                                // 明细科目方向继承上级。
+                                createForm.patch({ parentId: v, direction: p.direction })
+                            } else {
+                                createForm.patch({ parentId: v })
+                            }
+                        }}
+                    />
+                </FormField>
+
+                <FormField label="科目编码" htmlFor="create-code" required error={createForm.errors.code}>
+                    <Input
+                        id="create-code"
+                        value={createForm.values.code}
+                        onChange={(e) => createForm.patch({ code: e.target.value })}
+                        placeholder={
+                            parent
+                                ? `${parent.code}${"0".repeat(levelDigits)}（${expectedCodeLength} 位）`
+                                : `${"0".repeat(levelDigits)}（${expectedCodeLength} 位）`
+                        }
+                        status={createForm.errors.code ? "error" : undefined}
+                    />
+                </FormField>
+
+                <FormField label="科目名称" htmlFor="create-name" required error={createForm.errors.name}>
+                    <Input
+                        id="create-name"
+                        value={createForm.values.name}
+                        onChange={(e) => createForm.patch({ name: e.target.value })}
+                        placeholder="如 库存现金"
+                        status={createForm.errors.name ? "error" : undefined}
+                    />
+                </FormField>
+
+                <FormField label="余额方向" htmlFor="create-direction">
+                    <Radio.Group
+                        id="create-direction"
+                        disabled={parent !== null}
+                        value={createForm.values.direction}
+                        options={DIRECTION_OPTIONS}
+                        onChange={(e) => createForm.patch({ direction: e.target.value })}
+                    />
+                </FormField>
+
+                <FormField label="助记码" htmlFor="create-mnemonic">
+                    <Input
+                        id="create-mnemonic"
+                        value={createForm.values.mnemonic}
+                        onChange={(e) => createForm.patch({ mnemonic: e.target.value })}
+                        placeholder="拼音首字母等快速检索用，可留空"
+                    />
+                </FormField>
+
+                <FormField label="状态" htmlFor="create-enabled">
+                    <Radio.Group
+                        id="create-enabled"
+                        value={createForm.values.isEnabled ? 1 : 2}
+                        options={[{ value: 1, label: "启用" }, { value: 2, label: "停用" }]}
+                        onChange={(e) => createForm.patch({ isEnabled: e.target.value === 1 })}
+                    />
+                </FormField>
+
+                {parent ? (
+                    <p className="text-sm leading-normal font-normal text-slate-400">
+                        将作为「{parent.code} {parent.name}」的第 {newLevel} 级明细科目（本级 {levelDigits} 位，
+                        编码方案：{codingScheme}），余额方向已继承上级。
+                    </p>
+                ) : (
+                    <p className="text-sm leading-normal font-normal text-slate-400">
+                        一级科目编码固定 {expectedCodeLength} 位（编码方案：{codingScheme}）。
+                    </p>
+                )}
+
+                {error && <Alert type="error" showIcon title={error} />}
+            </Drawer>
 
             {/* 编辑科目抽屉 */}
-            <Sheet
+            <Drawer
                 open={editOpen}
-                onOpenChange={(next) => {
-                    setEditOpen(next)
-                    if (!next) setEditTarget(null)
+                size={512}
+                title={`编辑科目 — ${editTarget?.code ?? ""}`}
+                onClose={() => {
+                    setEditOpen(false)
+                    setEditTarget(null)
                 }}
-            >
-                <SheetContent aria-describedby={undefined} className="sm:max-w-lg">
-                    <SheetHeader>
-                        <SheetTitle>{`编辑科目 — ${editTarget?.code ?? ""}`}</SheetTitle>
-                    </SheetHeader>
-                    {editTarget && (
-                        <>
-                            <div className="flex flex-1 flex-col gap-4 overflow-auto px-4">
-                                <Field>
-                                    <FieldLabel>科目编码</FieldLabel>
-                                    <span>{editTarget.code}</span>
-                                </Field>
-                                <Field>
-                                    <FieldLabel>类别</FieldLabel>
-                                    <span>{CATEGORY_LABELS[editTarget.category!] ?? "—"}</span>
-                                </Field>
-                                <Field data-invalid={Boolean(editForm.errors.name)}>
-                                    <FieldLabel htmlFor="edit-name">科目名称</FieldLabel>
-                                    <Input
-                                        id="edit-name"
-                                        value={editForm.values.name}
-                                        onChange={(e) => editForm.patch({ name: e.target.value })}
-                                        placeholder="如 库存现金"
-                                        aria-invalid={Boolean(editForm.errors.name)}
-                                    />
-                                    <FieldError>{editForm.errors.name}</FieldError>
-                                </Field>
-                                <Field data-invalid={Boolean(editForm.errors.direction)}>
-                                    <FieldLabel htmlFor="edit-direction">余额方向</FieldLabel>
-                                    <RadioGroup
-                                        id="edit-direction"
-                                        className="flex flex-row items-center gap-4"
-                                        disabled={!editTarget.isLeaf}
-                                        value={String(editForm.values.direction)}
-                                        onValueChange={(v) => editForm.patch({ direction: Number(v) })}
-                                    >
-                                        {DIRECTION_OPTIONS.map((d) => (
-                                            <div key={d.value} className="flex items-center gap-2">
-                                                <RadioGroupItem
-                                                    value={String(d.value)}
-                                                    id={`edit-direction-${d.value}`}
-                                                />
-                                                <FieldLabel htmlFor={`edit-direction-${d.value}`}>{d.label}</FieldLabel>
-                                            </div>
-                                        ))}
-                                    </RadioGroup>
-                                    {!editTarget.isLeaf && (
-                                        <FieldDescription>
-                                            非末级科目不允许修改余额方向。
-                                        </FieldDescription>
-                                    )}
-                                    <FieldError>{editForm.errors.direction}</FieldError>
-                                </Field>
-                                <Field>
-                                    <FieldLabel htmlFor="edit-mnemonic">助记码</FieldLabel>
-                                    <Input
-                                        id="edit-mnemonic"
-                                        value={editForm.values.mnemonic}
-                                        onChange={(e) => editForm.patch({ mnemonic: e.target.value })}
-                                        placeholder="拼音首字母等快速检索用，可留空"
-                                    />
-                                </Field>
-                                <Field>
-                                    <FieldLabel htmlFor="edit-enabled">状态</FieldLabel>
-                                    <RadioGroup
-                                        id="edit-enabled"
-                                        className="flex flex-row items-center gap-4"
-                                        value={editForm.values.isEnabled ? "true" : "false"}
-                                        onValueChange={(v) => editForm.patch({ isEnabled: v === "true" })}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <RadioGroupItem value="true" id="edit-enabled-true" />
-                                            <FieldLabel htmlFor="edit-enabled-true">启用</FieldLabel>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <RadioGroupItem value="false" id="edit-enabled-false" />
-                                            <FieldLabel htmlFor="edit-enabled-false">停用</FieldLabel>
-                                        </div>
-                                    </RadioGroup>
-                                </Field>
-                                {editError && (
-                                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                        <CircleAlert />
-                                        <AlertTitle>{editError}</AlertTitle>
-                                    </Alert>
-                                )}
-                            </div>
-                            <SheetFooter className="flex-row justify-end">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        setEditOpen(false)
-                                        setEditTarget(null)
-                                    }}
-                                >
-                                    取消
-                                </Button>
-                                <Button onClick={() => void saveEdit()} disabled={editSaving}>
-                                    {editSaving && <Spinner data-icon="inline-start" />}
-                                    保存
-                                </Button>
-                            </SheetFooter>
-                        </>
-                    )}
-                </SheetContent>
-            </Sheet>
-
-            {/* 导入科目抽屉 */}
-            <Sheet
-                open={importOpen}
-                onOpenChange={(next) => {
-                    setImportOpen(next)
-                    if (!next) pickImportFile(null)
-                }}
-            >
-                <SheetContent className="sm:max-w-2xl">
-                    <SheetHeader>
-                        <SheetTitle>导入科目</SheetTitle>
-                        <SheetDescription>
-                            支持从 Excel 文件批量导入会计科目。系统按编码查重，已存在的科目自动跳过并告警。
-                        </SheetDescription>
-                    </SheetHeader>
-                    <div className="flex flex-1 flex-col gap-4 overflow-auto px-4 pb-4">
-                        <div className="flex flex-col gap-1">
-                            <span className="font-medium">导入到账套</span>
-                            <span className="text-[12.5px] text-slate-400">
-                                {currentSet?.name ?? accountSetId}
-                                {currentSet?.isCurrent ? "（当前）" : ""}
-                            </span>
-                        </div>
-
-                        {/* 下载模板 */}
-                        <div className="flex items-center gap-3">
-                            <Button variant="outline" onClick={() => void downloadTemplate()} disabled={!accountSetId}>
-                                <Download data-icon="inline-start" />
-                                下载导入模板
-                            </Button>
-                        </div>
-
-                        {/* 文件拖放 / 选择区 */}
-                        <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => importInputRef.current?.click()}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") importInputRef.current?.click()
-                            }}
-                            onDragOver={(e) => {
-                                e.preventDefault()
-                                setImportDragging(true)
-                            }}
-                            onDragLeave={() => setImportDragging(false)}
-                            onDrop={onImportDrop}
-                            className={cn(
-                                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
-                                importDragging ? "border-[#bfdbfe] bg-[#eef4ff]" : "border-slate-200",
-                            )}
-                        >
-                            <FileSpreadsheet size={40} strokeWidth={1.2} className="text-slate-300" />
-                            {importFile ? (
-                                <div className="flex flex-col gap-1">
-                                    <span className="font-medium">{importFile.name}</span>
-                                    <FieldDescription>
-                                        {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
-                                    </FieldDescription>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-1">
-                                    <span className="font-medium">点击选择，或拖拽文件到此处</span>
-                                    <FieldDescription>支持 .xls / .xlsx，最大 10MB</FieldDescription>
-                                </div>
-                            )}
-                            <input
-                                ref={importInputRef}
-                                type="file"
-                                accept={ACCEPT}
-                                className="hidden"
-                                onChange={(e) => pickImportFile(e.target.files?.[0] ?? null)}
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <Button
-                                onClick={() => void handleImport()}
-                                disabled={!importFile || !accountSetId || importing}
-                            >
-                                {importing ? <Spinner data-icon="inline-start" /> : <Upload data-icon="inline-start" />}
-                                {importing ? "导入中…" : "开始导入"}
-                            </Button>
-                            {importFile && !importing && (
-                                <Button variant="outline" onClick={() => pickImportFile(null)}>清除</Button>
-                            )}
-                        </div>
-
-                        {importError && (
-                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                <CircleAlert />
-                                <AlertTitle>{importError}</AlertTitle>
-                            </Alert>
-                        )}
-
-                        {/* 导入结果 */}
-                        {importResult && (
-                            <div className={cn(SOFT_PANEL, "flex flex-col gap-4 p-4")}>
-                                <h3 className="text-[13px] font-semibold text-slate-800">导入结果</h3>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <Tile label="解析行数" value={importResult.totalRows ?? 0} tone="blue" icon={FileSpreadsheet} />
-                                    <Tile label="导入科目" value={importResult.importedAccounts ?? 0} tone="green" icon={Plus} />
-                                    <Tile label="跳过科目" value={importResult.skippedAccounts ?? 0} tone="gray" icon={ChevronRight} />
-                                </div>
-
-                                {importResult.warnings && importResult.warnings.length > 0 && (
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-[12.5px] text-slate-400">
-                                            告警（{importResult.warnings.length}）
-                                        </span>
-                                        <ul className="max-h-64 overflow-auto rounded-lg border border-slate-100 bg-white p-3 text-[12.5px] text-slate-500">
-                                            {importResult.warnings.map((w, i) => (
-                                                <li key={i} className={cn("py-0.5")}>
-                                                    · {w}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </SheetContent>
-            </Sheet>
-
-            {/* 编码方案弹窗 */}
-            <Dialog open={schemeModalOpen} onOpenChange={setSchemeModalOpen}>
-                <DialogContent aria-describedby={undefined} className="sm:max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>科目编码方案</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4">
-                        <Field>
-                            <FieldLabel htmlFor="scheme-levels">科目级次</FieldLabel>
-                            <Select
-                                value={String(schemeLevels)}
-                                onValueChange={(v) => handleSchemeLevelsChange(Number(v))}
-                            >
-                                <SelectTrigger id="scheme-levels">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {Array.from({ length: 7 }, (_, i) => (
-                                        <SelectItem key={i} value={String(i + 4)}>{`${i + 4} 级`}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </Field>
-
-                        <Field>
-                            <FieldLabel>各级位数</FieldLabel>
-                            <div className="flex flex-wrap items-center gap-2">
-                                {Array.from({ length: schemeLevels }, (_, i) => (
-                                    <div key={i} className="flex items-center gap-2">
-                                        {i > 0 && <span className="text-slate-400">-</span>}
-                                        <Select
-                                            value={String(schemeDigits[i] ?? 2)}
-                                            onValueChange={(v) => handleSchemeDigitChange(i, Number(v))}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {[2, 3, 4].map((d) => (
-                                                    <SelectItem key={d} value={String(d)}>{`${d}`}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                ))}
-                            </div>
-                        </Field>
-
-                        {/* 示例预览 */}
-                        <div className={cn(SOFT_PANEL, "flex flex-col gap-1 px-4 py-3")}>
-                            <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
-                                <span className="text-slate-400">
-                                    编码方案：{schemeDigits.slice(0, schemeLevels).join("-")}
-                                </span>
-                                <code className="whitespace-nowrap text-[13px] font-medium text-slate-700 tabular-nums">{schemePreview}</code>
-                            </div>
-                            <span className="text-[12.5px] text-slate-400">
-                                各级总位数：{schemeTotalDigits.join(" → ")}
-                            </span>
-                        </div>
-
-                        {schemeError && (
-                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                <CircleAlert />
-                                <AlertTitle>{schemeError}</AlertTitle>
-                            </Alert>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setSchemeModalOpen(false)}>取消</Button>
-                        <Button onClick={() => saveScheme()} disabled={schemeSaving}>
-                            {schemeSaving && <Spinner data-icon="inline-start" />}
-                            保存
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* 更改编码方案的二次确认（原 Modal.confirm） */}
-            <Dialog open={schemeConfirmOpen} onOpenChange={setSchemeConfirmOpen}>
-                <DialogContent aria-describedby="scheme-confirm-desc">
-                    <DialogHeader>
-                        <DialogTitle>更改编码方案</DialogTitle>
-                        <DialogDescription id="scheme-confirm-desc">
-                            {`当前账套下已有 ${accounts.length} 个科目。更改编码方案将按新规则重建所有科目编码（如二级 "01" 变为 "001"）。确定继续吗？`}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setSchemeConfirmOpen(false)}>取消</Button>
+                styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
+                footer={
+                    <div className="flex justify-end gap-2">
                         <Button
-                            variant="destructive"
-                            disabled={schemeSaving}
                             onClick={() => {
-                                setSchemeConfirmOpen(false)
-                                void doSaveScheme(pendingScheme)
-                            }}
-                        >
-                            {schemeSaving && <Spinner data-icon="inline-start" />}
-                            确定
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* 辅助核算设置弹窗：勾选该科目启用的类别，并可关闭「必录」 */}
-            <Dialog
-                open={assistOpen}
-                onOpenChange={(next) => {
-                    setAssistOpen(next)
-                    if (!next) setAssistTarget(null)
-                }}
-            >
-                <DialogContent aria-describedby="assist-setting-desc" className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>{`辅助核算 — ${assistTarget?.code ?? ""} ${assistTarget?.name ?? ""}`}</DialogTitle>
-                        <DialogDescription id="assist-setting-desc">
-                            挂上辅助核算后，凭证里该科目分录必须录入对应类别的核算项目档案（标「必录」）。改动只影响后续制单，历史凭证取值不变。
-                        </DialogDescription>
-                    </DialogHeader>
-                    {assistLoading ? (
-                        <div className="flex items-center gap-2 py-4 text-slate-400">
-                            <Spinner />
-                            加载中…
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-2">
-                            {assistRows.map((row) => {
-                                const meta = ASSIST_TYPES.find((t) => t.value === row.type)
-                                const enabledInSet = assistCategories.find((c) => c.type === row.type)?.isEnabled === true
-                                return (
-                                    <div key={row.type} className="flex items-center gap-3">
-                                        <label className="flex flex-1 items-center gap-2">
-                                            <Checkbox
-                                                checked={row.checked}
-                                                disabled={!enabledInSet && !row.checked}
-                                                onCheckedChange={(v) =>
-                                                    setAssistRows((prev) =>
-                                                        prev.map((r) => (r.type === row.type ? { ...r, checked: v === true } : r)),
-                                                    )
-                                                }
-                                            />
-                                            <span>{meta?.label ?? row.type}</span>
-                                            {!enabledInSet && !row.checked && (
-                                                <span className="text-[11px] text-slate-400">账套未启用</span>
-                                            )}
-                                        </label>
-                                        {row.checked && (
-                                            <label className="flex items-center gap-2 text-sm">
-                                                <Checkbox
-                                                    checked={row.isRequired}
-                                                    onCheckedChange={(v) =>
-                                                        setAssistRows((prev) =>
-                                                            prev.map((r) =>
-                                                                r.type === row.type ? { ...r, isRequired: v === true } : r,
-                                                            ),
-                                                        )
-                                                    }
-                                                />
-                                                必录
-                                            </label>
-                                        )}
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
-                    {assistError && (
-                        <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                            <CircleAlert />
-                            <AlertTitle>{assistError}</AlertTitle>
-                        </Alert>
-                    )}
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setAssistOpen(false)
-                                setAssistTarget(null)
+                                setEditOpen(false)
+                                setEditTarget(null)
                             }}
                         >
                             取消
                         </Button>
-                        <Button onClick={() => void saveAssistDialog()} disabled={assistSaving || assistLoading}>
-                            {assistSaving && <Spinner data-icon="inline-start" />}
+                        <Button type="primary" loading={editSaving} onClick={() => void saveEdit()}>
                             保存
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </div>
+                }
+            >
+                {editTarget && (
+                    <>
+                        <FormField label="科目编码">
+                            <span>{editTarget.code}</span>
+                        </FormField>
+                        <FormField label="类别">
+                            <span>{CATEGORY_LABELS[editTarget.category!] ?? "—"}</span>
+                        </FormField>
+                        <FormField label="科目名称" htmlFor="edit-name" required error={editForm.errors.name}>
+                            <Input
+                                id="edit-name"
+                                value={editForm.values.name}
+                                onChange={(e) => editForm.patch({ name: e.target.value })}
+                                placeholder="如 库存现金"
+                                status={editForm.errors.name ? "error" : undefined}
+                            />
+                        </FormField>
+                        <FormField
+                            label="余额方向"
+                            htmlFor="edit-direction"
+                            error={editForm.errors.direction}
+                            description={!editTarget.isLeaf ? "非末级科目不允许修改余额方向。" : undefined}
+                        >
+                            <Radio.Group
+                                id="edit-direction"
+                                disabled={!editTarget.isLeaf}
+                                value={editForm.values.direction}
+                                options={DIRECTION_OPTIONS}
+                                onChange={(e) => editForm.patch({ direction: e.target.value })}
+                            />
+                        </FormField>
+                        <FormField label="助记码" htmlFor="edit-mnemonic">
+                            <Input
+                                id="edit-mnemonic"
+                                value={editForm.values.mnemonic}
+                                onChange={(e) => editForm.patch({ mnemonic: e.target.value })}
+                                placeholder="拼音首字母等快速检索用，可留空"
+                            />
+                        </FormField>
+                        <FormField label="状态" htmlFor="edit-enabled">
+                            <Radio.Group
+                                id="edit-enabled"
+                                value={editForm.values.isEnabled ? 1 : 2}
+                                options={[{ value: 1, label: "启用" }, { value: 2, label: "停用" }]}
+                                onChange={(e) => editForm.patch({ isEnabled: e.target.value === 1 })}
+                            />
+                        </FormField>
+                        {editError && <Alert type="error" showIcon title={editError} />}
+                    </>
+                )}
+            </Drawer>
+
+            {/* 导入科目抽屉 */}
+            <Drawer
+                open={importOpen}
+                size={672}
+                title="导入科目"
+                onClose={() => {
+                    setImportOpen(false)
+                    pickImportFile(null)
+                }}
+                styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
+            >
+                <p className="text-[12.5px] text-slate-400">
+                    支持从 Excel 文件批量导入会计科目。系统按编码查重，已存在的科目自动跳过并告警。
+                </p>
+
+                <div className="flex flex-col gap-1">
+                    <span className="font-medium">导入到账套</span>
+                    <span className="text-[12.5px] text-slate-400">
+                        {currentSet?.name ?? accountSetId}
+                        {currentSet?.isCurrent ? "（当前）" : ""}
+                    </span>
+                </div>
+
+                {/* 下载模板 */}
+                <div className="flex items-center gap-3">
+                    <Button icon={<DownloadOutlined />} disabled={!accountSetId} onClick={() => void downloadTemplate()}>
+                        下载导入模板
+                    </Button>
+                </div>
+
+                {/* 文件拖放 / 选择区 */}
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => importInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") importInputRef.current?.click()
+                    }}
+                    onDragOver={(e) => {
+                        e.preventDefault()
+                        setImportDragging(true)
+                    }}
+                    onDragLeave={() => setImportDragging(false)}
+                    onDrop={onImportDrop}
+                    className={cn(
+                        "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
+                        importDragging ? "border-[#bfdbfe] bg-[#eef4ff]" : "border-slate-200",
+                    )}
+                >
+                    <FileExcelOutlined className="text-[40px]" style={ICON_STYLE.placeholder} />
+                    {importFile ? (
+                        <div className="flex flex-col gap-1">
+                            <span className="font-medium">{importFile.name}</span>
+                            <span className="text-sm leading-normal font-normal text-slate-400">
+                                {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-1">
+                            <span className="font-medium">点击选择，或拖拽文件到此处</span>
+                            <span className="text-sm leading-normal font-normal text-slate-400">支持 .xls / .xlsx，最大 10MB</span>
+                        </div>
+                    )}
+                    <input
+                        ref={importInputRef}
+                        type="file"
+                        accept={ACCEPT}
+                        className="hidden"
+                        onChange={(e) => pickImportFile(e.target.files?.[0] ?? null)}
+                    />
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <Button
+                        type="primary"
+                        loading={importing}
+                        icon={importing ? undefined : <UploadOutlined />}
+                        disabled={!importFile || !accountSetId}
+                        onClick={() => void handleImport()}
+                    >
+                        {importing ? "导入中…" : "开始导入"}
+                    </Button>
+                    {importFile && !importing && <Button onClick={() => pickImportFile(null)}>清除</Button>}
+                </div>
+
+                {importError && <Alert type="error" showIcon title={importError} />}
+
+                {/* 导入结果 */}
+                {importResult && (
+                    <div className={cn(SOFT_PANEL, "flex flex-col gap-4 p-4")}>
+                        <h3 className="text-[13px] font-semibold text-slate-800">导入结果</h3>
+                        <div className="grid grid-cols-3 gap-3">
+                            <Tile label="解析行数" value={importResult.totalRows ?? 0} tone="blue" icon={FileExcelOutlined} />
+                            <Tile label="导入科目" value={importResult.importedAccounts ?? 0} tone="green" icon={PlusOutlined} />
+                            <Tile label="跳过科目" value={importResult.skippedAccounts ?? 0} tone="gray" icon={RightOutlined} />
+                        </div>
+
+                        {importResult.warnings && importResult.warnings.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                                <span className="text-[12.5px] text-slate-400">
+                                    告警（{importResult.warnings.length}）
+                                </span>
+                                <ul className="max-h-64 overflow-auto rounded-lg border border-slate-100 bg-white p-3 text-[12.5px] text-slate-500">
+                                    {importResult.warnings.map((w, i) => (
+                                        <li key={i} className={cn("py-0.5")}>
+                                            · {w}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Drawer>
+
+            {/* 编码方案弹窗 */}
+            <Modal
+                open={schemeModalOpen}
+                width={768}
+                title="科目编码方案"
+                okText="保存"
+                cancelText="取消"
+                confirmLoading={schemeSaving}
+                onOk={() => saveScheme()}
+                onCancel={() => setSchemeModalOpen(false)}
+            >
+                <div className="flex flex-col gap-4">
+                    <FormField label="科目级次" htmlFor="scheme-levels">
+                        <Select
+                            id="scheme-levels"
+                            className="w-full"
+                            value={schemeLevels}
+                            options={Array.from({ length: 7 }, (_, i) => ({ value: i + 4, label: `${i + 4} 级` }))}
+                            onChange={(v) => handleSchemeLevelsChange(v)}
+                        />
+                    </FormField>
+
+                    <FormField label="各级位数">
+                        <div className="flex flex-wrap items-center gap-2">
+                            {Array.from({ length: schemeLevels }, (_, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    {i > 0 && <span className="text-slate-400">-</span>}
+                                    <Select
+                                        className="w-16"
+                                        value={schemeDigits[i] ?? 2}
+                                        options={[2, 3, 4].map((d) => ({ value: d, label: `${d}` }))}
+                                        onChange={(v) => handleSchemeDigitChange(i, v)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </FormField>
+
+                    {/* 示例预览 */}
+                    <div className={cn(SOFT_PANEL, "flex flex-col gap-1 px-4 py-3")}>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+                            <span className="text-slate-400">
+                                编码方案：{schemeDigits.slice(0, schemeLevels).join("-")}
+                            </span>
+                            <code className="whitespace-nowrap text-[13px] font-medium text-slate-700 tabular-nums">{schemePreview}</code>
+                        </div>
+                        <span className="text-[12.5px] text-slate-400">
+                            各级总位数：{schemeTotalDigits.join(" → ")}
+                        </span>
+                    </div>
+
+                    {schemeError && <Alert type="error" showIcon title={schemeError} />}
+                </div>
+            </Modal>
+
+            {/* 更改编码方案的二次确认 */}
+            <Modal
+                open={schemeConfirmOpen}
+                width={384}
+                title="更改编码方案"
+                okText="确定"
+                cancelText="取消"
+                okButtonProps={{ danger: true, loading: schemeSaving }}
+                onOk={() => {
+                    setSchemeConfirmOpen(false)
+                    void doSaveScheme(pendingScheme)
+                }}
+                onCancel={() => setSchemeConfirmOpen(false)}
+            >
+                <p className="text-[13px] text-slate-500">
+                    {`当前账套下已有 ${accounts.length} 个科目。更改编码方案将按新规则重建所有科目编码（如二级 "01" 变为 "001"）。确定继续吗？`}
+                </p>
+            </Modal>
+
+            {/* 辅助核算设置弹窗：勾选该科目启用的类别，并可关闭「必录」 */}
+            <Modal
+                open={assistOpen}
+                width={448}
+                title={`辅助核算 — ${assistTarget?.code ?? ""} ${assistTarget?.name ?? ""}`}
+                okText="保存"
+                cancelText="取消"
+                confirmLoading={assistSaving}
+                okButtonProps={{ disabled: assistLoading }}
+                onOk={() => void saveAssistDialog()}
+                onCancel={() => {
+                    setAssistOpen(false)
+                    setAssistTarget(null)
+                }}
+            >
+                <p className="mb-4 text-[12.5px] text-slate-400">
+                    挂上辅助核算后，凭证里该科目分录必须录入对应类别的核算项目档案（标「必录」）。改动只影响后续制单，历史凭证取值不变。
+                </p>
+                {assistLoading ? (
+                    <div className="flex items-center gap-2 py-4 text-slate-400">
+                        <Spin />
+                        加载中…
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-2">
+                        {assistRows.map((row) => {
+                            const meta = ASSIST_TYPES.find((t) => t.value === row.type)
+                            const enabledInSet = assistCategories.find((c) => c.type === row.type)?.isEnabled === true
+                            return (
+                                <div key={row.type} className="flex items-center gap-3">
+                                    <Checkbox
+                                        className="flex-1"
+                                        checked={row.checked}
+                                        disabled={!enabledInSet && !row.checked}
+                                        onChange={(e) =>
+                                            setAssistRows((prev) =>
+                                                prev.map((r) => (r.type === row.type ? { ...r, checked: e.target.checked } : r)),
+                                            )
+                                        }
+                                    >
+                                        {meta?.label ?? row.type}
+                                        {!enabledInSet && !row.checked && (
+                                            <span className="ml-1 text-[11px] text-slate-400">账套未启用</span>
+                                        )}
+                                    </Checkbox>
+                                    {row.checked && (
+                                        <Checkbox
+                                            checked={row.isRequired}
+                                            onChange={(e) =>
+                                                setAssistRows((prev) =>
+                                                    prev.map((r) =>
+                                                        r.type === row.type ? { ...r, isRequired: e.target.checked } : r,
+                                                    ),
+                                                )
+                                            }
+                                        >
+                                            必录
+                                        </Checkbox>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+                {assistError && <Alert className="mt-4" type="error" showIcon title={assistError} />}
+            </Modal>
 
             {confirmDialog}
         </div>

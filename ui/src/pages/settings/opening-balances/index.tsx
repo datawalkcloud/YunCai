@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
-import { CircleAlert, CircleCheck, Coins, RefreshCw, Save, TriangleAlert, X } from "lucide-react"
+import { Alert, Button, Spin, Table } from "antd"
+import type { TableColumnsType } from "antd"
+import {
+    CheckCircleOutlined,
+    CloseOutlined,
+    MoneyCollectOutlined,
+    ReloadOutlined,
+    SaveOutlined,
+    WarningFilled,
+} from "@ant-design/icons"
 
 import { useAuth } from "@/auth/AuthContext"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -10,31 +18,13 @@ import { fmtAmount } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { StatusPill } from "@/components/page/status-pill"
-import { PAGE_BTN_GHOST, PAGE_BTN_PRIMARY } from "@/components/page/styles"
-import { Alert, AlertAction, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
 import { NumberField } from "@/components/fields/number-field"
-import { Spinner } from "@/components/ui/spinner"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 /** 科目层级缩进：每级 1rem，等价原来的 paddingLeft: (level - 1) * 16。 */
 const LEVEL_INDENT = ["", "pl-4", "pl-8", "pl-12", "pl-16", "pl-20", "pl-24", "pl-28", "pl-32", "pl-36"]
 function indentFor(level?: number): string {
     return LEVEL_INDENT[Math.max(0, Math.min(LEVEL_INDENT.length - 1, (level ?? 1) - 1))]
 }
-
-/** 各列对齐方式按列 id 取用，避免写行内样式。 */
-const COLUMN_CLASS: Record<string, { head: string, cell: string }> = {
-    code: { head: "text-left", cell: "whitespace-nowrap" },
-    name: { head: "text-left", cell: "w-full" },
-    direction: { head: "text-center", cell: "text-center" },
-    openingBalance: { head: "text-right", cell: "text-right" },
-    debit: { head: "text-right", cell: "text-right tabular-nums" },
-    credit: { head: "text-right", cell: "text-right tabular-nums" },
-}
-
-const features = tableFeatures({})
-const column = createColumnHelper<typeof features, OpeningBalanceRowDto>()
 
 /**
  * 期初余额录入页：末级科目按余额方向录入期初余额（反方向余额用负数），
@@ -109,109 +99,115 @@ export default function OpeningBalancesPage() {
         }
     }
 
-    const columns = [
-        column.display({
-            id: "code",
-            header: "科目编码",
-            cell: ({ row }) => <span className={indentFor(row.original.level)}>{row.original.code}</span>,
-        }),
-        column.display({
-            id: "name",
-            header: "科目名称",
-            cell: ({ row }) =>
-                row.original.isLeaf
-                    ? <div className="truncate">{row.original.name}</div>
-                    : <div className="truncate font-medium">{row.original.name}</div>,
-        }),
-        column.display({
-            id: "direction",
-            header: "方向",
-            cell: ({ row }) => (
-                <StatusPill tone={row.original.direction === 1 ? "blue" : "purple"}>
-                    {row.original.direction === 1 ? "借" : "贷"}
-                </StatusPill>
-            ),
-        }),
-        column.display({
-            id: "openingBalance",
-            header: "期初余额（按方向）",
-            cell: ({ row }) => {
-                const item = row.original
-                if (!item.isLeaf || !item.accountId) {
-                    return <span className="text-slate-400">{fmtAmount(item.openingBalance)}</span>
-                }
-                const id = item.accountId
-                return (
-                    <NumberField
-                        className="w-40"
-                        precision={2}
-                        value={edits[id] ?? item.openingBalance ?? 0}
-                        onChange={(value) => {
-                            setEdits((prev) => ({ ...prev, [id]: value ?? 0 }))
-                            setSavedTip(false)
-                        }}
-                    />
-                )
+    const columns: TableColumnsType<OpeningBalanceRowDto> = useMemo(
+        () => [
+            {
+                title: "科目编码",
+                dataIndex: "code",
+                className: "whitespace-nowrap",
+                render: (_, row) => <span className={indentFor(row.level)}>{row.code}</span>,
             },
-        }),
-        column.display({
-            id: "debit",
-            header: "借方",
-            cell: ({ row }) => fmtAmount(row.original.debit),
-        }),
-        column.display({
-            id: "credit",
-            header: "贷方",
-            cell: ({ row }) => fmtAmount(row.original.credit),
-        }),
-    ]
-
-    const table = useTable({
-        features,
-        columns,
-        data: data?.rows ?? [],
-        getRowId: (row) => row.accountId ?? row.code ?? "",
-    })
-    const headerGroups = table.getHeaderGroups()
-    const rows = table.getRowModel().rows
+            {
+                title: "科目名称",
+                dataIndex: "name",
+                render: (_, row) => (
+                    <div className={cn("truncate", !row.isLeaf && "font-medium")}>{row.name}</div>
+                ),
+            },
+            {
+                title: "方向",
+                dataIndex: "direction",
+                align: "center",
+                render: (_, row) => (
+                    <StatusPill tone={row.direction === 1 ? "blue" : "purple"}>
+                        {row.direction === 1 ? "借" : "贷"}
+                    </StatusPill>
+                ),
+            },
+            {
+                title: "期初余额（按方向）",
+                dataIndex: "openingBalance",
+                align: "right",
+                render: (_, row) => {
+                    if (!row.isLeaf || !row.accountId) {
+                        return <span className="text-slate-400">{fmtAmount(row.openingBalance)}</span>
+                    }
+                    const id = row.accountId
+                    return (
+                        <NumberField
+                            className="w-40"
+                            precision={2}
+                            value={edits[id] ?? row.openingBalance ?? 0}
+                            onChange={(value) => {
+                                setEdits((prev) => ({ ...prev, [id]: value ?? 0 }))
+                                setSavedTip(false)
+                            }}
+                        />
+                    )
+                },
+            },
+            {
+                title: "借方",
+                dataIndex: "debit",
+                align: "right",
+                className: "tabular-nums",
+                render: (v) => fmtAmount(v),
+            },
+            {
+                title: "贷方",
+                dataIndex: "credit",
+                align: "right",
+                className: "tabular-nums",
+                render: (v) => fmtAmount(v),
+            },
+        ],
+        [edits],
+    )
 
     return (
         <div className="flex w-full flex-col gap-5">
             <PageHeader
-                icon={Coins}
+                icon={MoneyCollectOutlined}
                 title="期初余额"
                 subtitle="录入账套启用期间的科目期初余额；末级科目按余额方向录入，反方向余额用负数。"
                 actions={
                     <>
-                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void load()} disabled={loading}>
-                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                        <Button
+                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                            disabled={loading}
+                            onClick={() => void load()}
+                        >
                             刷新
                         </Button>
-                        <Button className={PAGE_BTN_PRIMARY} disabled={!dirty || saving} onClick={() => void save()}>
-                            {saving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
+                        <Button
+                            type="primary"
+                            icon={saving ? <SaveOutlined spin /> : <SaveOutlined />}
+                            disabled={!dirty || saving}
+                            onClick={() => void save()}
+                        >
                             保存
                         </Button>
                     </>
                 }
             />
 
-            {error && (
-                <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                    <CircleAlert />
-                    <AlertTitle>{error}</AlertTitle>
-                </Alert>
-            )}
+            {error && <Alert type="error" showIcon title={error} />}
 
             {savedTip && !dirty && (
-                <Alert className="rounded-2xl border-[#a7f3d0] bg-[#d1fae5] text-[#10b981]">
-                    <CircleCheck />
-                    <AlertTitle>期初余额已保存。</AlertTitle>
-                    <AlertAction>
-                        <Button variant="ghost" size="icon-xs" title="关闭" onClick={() => setSavedTip(false)}>
-                            <X />
-                        </Button>
-                    </AlertAction>
-                </Alert>
+                <Alert
+                    type="success"
+                    showIcon
+                    title="期初余额已保存。"
+                    action={
+                        <Button
+                            type="text"
+                            size="small"
+                            title="关闭"
+                            icon={<CloseOutlined />}
+                            onClick={() => setSavedTip(false)}
+                        />
+                    }
+                />
             )}
 
             <SectionCard bodyClassName="flex flex-col gap-4">
@@ -223,7 +219,11 @@ export default function OpeningBalancesPage() {
                             : "border-[#fecaca] bg-[#fef2f2] text-[#ef4444]",
                     )}
                 >
-                    {totals.balanced ? <CircleCheck className="size-4" /> : <TriangleAlert className="size-4" />}
+                    {totals.balanced ? (
+                        <CheckCircleOutlined className="text-[16px]" />
+                    ) : (
+                        <WarningFilled className="text-[16px]" />
+                    )}
                     <span>
                         {totals.balanced
                             ? `试算平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}。`
@@ -233,40 +233,16 @@ export default function OpeningBalancesPage() {
 
                 {loading && !data ? (
                     <div className="flex justify-center py-10">
-                        <Spinner className="size-5 text-slate-300" />
+                        <Spin />
                     </div>
                 ) : (
-                    <Table>
-                        <TableHeader>
-                            {headerGroups.map((hg) => (
-                                <TableRow key={hg.id}>
-                                    {hg.headers.map((h) => (
-                                        <TableHead key={h.id} className={COLUMN_CLASS[h.column.id]?.head}>
-                                            <table.FlexRender header={h} />
-                                        </TableHead>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableHeader>
-                        <TableBody>
-                            {rows.map((row) => (
-                                <TableRow key={row.id}>
-                                    {row.getAllCells().map((cell) => (
-                                        <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
-                                            <table.FlexRender cell={cell} />
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))}
-                            {rows.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={columns.length} className="py-8 text-center text-slate-400">
-                                        暂无数据
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                    <Table
+                        columns={columns}
+                        dataSource={data?.rows ?? []}
+                        rowKey={(row) => row.accountId ?? row.code ?? ""}
+                        pagination={false}
+                        size="small"
+                    />
                 )}
             </SectionCard>
         </div>

@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useRef } from "react"
-import { createColumnHelper } from "@tanstack/react-table"
+import { Table } from "antd"
+import type { TableColumnsType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { type AssistCombineCellDto, LedgersApi } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
 import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import { LedgerTable } from "@/components/ledger/LedgerTable"
-import { asDate, assistTypeLabel, ledgerFeatures } from "@/components/ledger/types"
+import { asDate, assistTypeLabel } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 import { useAssistCategories } from "@/components/ledger/useLedgerOptions"
-import { TableCell, TableRow } from "@/components/ui/table"
 
 /** 交叉表一行对应一个主档案：次维度发生额按列下标摊平进 cells。 */
 type CombineRow = {
@@ -25,46 +26,38 @@ type CombineRow = {
     totalCredit?: number
 }
 
-const helper = createColumnHelper<typeof ledgerFeatures, CombineRow>()
-
-const AMOUNT_ID = /(Debit|Credit)$/
-const isAmount = (id: string) => AMOUNT_ID.test(id)
-
 const FIELDS: readonly LedgerField[] = ["date", "accountRange", "assistType", "secondaryAssistType"]
 
 /** 列随次维度档案变化：按返回体的 columns 重建借/贷成组的交叉列。 */
-function buildColumns(assistTypeText: string, cells: AssistCombineCellDto[]) {
-    return helper.columns([
-        helper.accessor("code", { header: `主${assistTypeText}编码` }),
-        helper.accessor("name", { header: `主${assistTypeText}名称` }),
-        ...cells.map(
-            (cell, index) =>
-                helper.group({
-                    id: `secondary${index}`,
-                    header: `${cell.code} ${cell.name}`,
-                    columns: helper.columns([
-                        helper.accessor((row) => row.cells[`${index}Debit`], {
-                            id: `secondary${index}Debit`,
-                            header: "借方",
-                            cell: (info) => fmtAmount(info.getValue()),
-                        }),
-                        helper.accessor((row) => row.cells[`${index}Credit`], {
-                            id: `secondary${index}Credit`,
-                            header: "贷方",
-                            cell: (info) => fmtAmount(info.getValue()),
-                        }),
-                    ]),
-                }),
-        ),
-        helper.accessor("totalDebit", {
-            header: "合计-借方",
-            cell: (info) => fmtAmount(info.getValue()),
-        }),
-        helper.accessor("totalCredit", {
-            header: "合计-贷方",
-            cell: (info) => fmtAmount(info.getValue()),
-        }),
-    ])
+function buildColumns(
+    assistTypeText: string,
+    cells: AssistCombineCellDto[],
+): TableColumnsType<CombineRow> {
+    const cell = (key: string) => (_: unknown, row: CombineRow) => fmtAmount(row.cells[key])
+    return [
+        { title: `主${assistTypeText}编码`, dataIndex: "code" },
+        { title: `主${assistTypeText}名称`, dataIndex: "name" },
+        ...cells.map((item, index) => ({
+            key: `secondary${index}`,
+            title: `${item.code} ${item.name}`,
+            children: [
+                {
+                    key: `secondary${index}Debit`,
+                    title: "借方",
+                    render: cell(`${index}Debit`),
+                    ...AMOUNT_COL,
+                },
+                {
+                    key: `secondary${index}Credit`,
+                    title: "贷方",
+                    render: cell(`${index}Credit`),
+                    ...AMOUNT_COL,
+                },
+            ],
+        })),
+        { title: "合计-借方", dataIndex: "totalDebit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+        { title: "合计-贷方", dataIndex: "totalCredit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    ]
 }
 
 export default function AssistCombinePage() {
@@ -184,21 +177,20 @@ export default function AssistCombinePage() {
                     data={rows}
                     loading={query.loading}
                     emptyText="该区间内无已过账的分录数据。"
-                    getRowId={(row) => row.rowKey}
-                    isAmountColumn={isAmount}
+                    rowKey={(row) => row.rowKey}
                     footer={
-                        <TableRow>
-                            <TableCell colSpan={2} className="font-medium">
+                        <Table.Summary.Row>
+                            <Table.Summary.Cell index={0} colSpan={2} className="font-medium">
                                 合计
-                            </TableCell>
-                            <TableCell colSpan={cells.length * 2} />
-                            <TableCell className="text-right tabular-nums font-medium">
+                            </Table.Summary.Cell>
+                            <Table.Summary.Cell index={2} colSpan={cells.length * 2} />
+                            <Table.Summary.Cell index={3} align="right" className="tabular-nums font-medium">
                                 {fmtAmount(dto?.totalDebit, true)}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums font-medium">
+                            </Table.Summary.Cell>
+                            <Table.Summary.Cell index={4} align="right" className="tabular-nums font-medium">
                                 {fmtAmount(dto?.totalCredit, true)}
-                            </TableCell>
-                        </TableRow>
+                            </Table.Summary.Cell>
+                        </Table.Summary.Row>
                     }
                 />
             )}

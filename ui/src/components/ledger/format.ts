@@ -3,9 +3,6 @@ import { ROW_KIND } from "./types"
 
 export { fmtAmount } from "@/lib/format"
 
-/** 金额列统一右对齐并使用等宽数字。 */
-export const amountCls = "text-right tabular-nums"
-
 /** 期初 / 合计行与逐笔行区分开，避免误读成发生额；各分段账页共用此口径。 */
 export function kindRowClass(kind?: number): string | undefined {
     if (kind === ROW_KIND.opening) return "text-slate-400"

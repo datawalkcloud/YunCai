@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from "react"
-import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
 import dayjs from "dayjs"
-import { ArrowLeftRight, CircleAlert, FileText, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react"
+import { Alert, Button, Input, Modal, Select, Table } from "antd"
+import type { TableColumnsType } from "antd"
+import {
+    DeleteOutlined,
+    EditOutlined,
+    FileTextOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    SwapOutlined,
+} from "@ant-design/icons"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -16,18 +24,11 @@ import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtMoney, toISODate } from "@/lib/format"
 import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
+import { FormField } from "@/components/page/form-field"
 import { StatusPill } from "@/components/page/status-pill"
-import { ICON_BTN, ICON_BTN_DANGER, PAGE_BTN_GHOST, PAGE_BTN_PRIMARY } from "@/components/page/styles"
-import { Alert, AlertAction, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import { AMOUNT_COL, ICON_STYLE } from "@/components/page/styles"
 import { DateField } from "@/components/fields/date-fields"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
 import { NumberField } from "@/components/fields/number-field"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Spinner } from "@/components/ui/spinner"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 /** 新建/编辑转账表单值。 */
 interface TransferFormValues {
@@ -61,21 +62,6 @@ function validate(values: TransferFormValues): Partial<Record<keyof TransferForm
     if (values.amount == null || values.amount <= 0) errors.amount = "请填写大于 0 的转账金额。"
     return errors
 }
-
-/** 各列对齐方式按列 id 取用。 */
-const COLUMN_CLASS: Record<string, { head: string, cell: string }> = {
-    date: { head: "text-left", cell: "whitespace-nowrap" },
-    summary: { head: "text-left", cell: "w-full" },
-    from: { head: "text-left", cell: "whitespace-nowrap" },
-    to: { head: "text-left", cell: "whitespace-nowrap" },
-    amount: { head: "text-right", cell: "text-right tabular-nums" },
-    remark: { head: "text-left", cell: "" },
-    voucher: { head: "text-center", cell: "text-center" },
-    actions: { head: "text-right", cell: "text-right" },
-}
-
-const features = tableFeatures({})
-const column = createColumnHelper<typeof features, TransferDto>()
 
 export default function TransferPage() {
     const { token } = useAuth()
@@ -123,6 +109,10 @@ export default function TransferPage() {
 
     // 停用的账户不能参与转账；仅启用账户出现在下拉。
     const enabledJournals = journals.filter((j) => j.isEnabled !== false)
+    const journalOptions = enabledJournals.map((j) => ({
+        value: j.id ?? "",
+        label: `${j.name ?? ""}${j.type === 1 ? "（现金）" : "（银行）"}`,
+    }))
 
     function setFormValue<K extends keyof TransferFormValues>(key: K, value: TransferFormValues[K]) {
         const next: TransferFormValues = { ...formValues, [key]: value }
@@ -210,88 +200,77 @@ export default function TransferPage() {
         }
     }
 
-    const columns = [
-        column.display({
-            id: "date",
-            header: "日期",
-            cell: ({ row }) => <span>{toISODate(row.original.date)}</span>,
-        }),
-        column.display({
-            id: "summary",
-            header: "摘要",
-            cell: ({ row }) => <div className="truncate">{row.original.summary}</div>,
-        }),
-        column.display({
-            id: "from",
-            header: "转出账户",
-            cell: ({ row }) => <span className="text-slate-600">{row.original.fromJournalName}</span>,
-        }),
-        column.display({
-            id: "to",
-            header: "转入账户",
-            cell: ({ row }) => <span className="text-slate-600">{row.original.toJournalName}</span>,
-        }),
-        column.display({
-            id: "amount",
-            header: "金额",
-            cell: ({ row }) => <span className="font-medium text-slate-700">{fmtMoney(row.original.amount ?? 0)}</span>,
-        }),
-        column.display({
-            id: "remark",
-            header: "备注",
-            cell: ({ row }) => <div className="truncate text-slate-500">{row.original.remark ?? ""}</div>,
-        }),
-        column.display({
-            id: "voucher",
-            header: "凭证",
-            cell: ({ row }) =>
-                row.original.voucherNo
-                    ? <StatusPill tone="blue">{row.original.voucherNo}</StatusPill>
+    const columns: TableColumnsType<TransferDto> = [
+        { title: "日期", className: "whitespace-nowrap", render: (_, t) => toISODate(t.date) },
+        { title: "摘要", render: (_, t) => <div className="truncate">{t.summary}</div> },
+        {
+            title: "转出账户",
+            className: "whitespace-nowrap",
+            render: (_, t) => <span className="text-slate-600">{t.fromJournalName}</span>,
+        },
+        {
+            title: "转入账户",
+            className: "whitespace-nowrap",
+            render: (_, t) => <span className="text-slate-600">{t.toJournalName}</span>,
+        },
+        {
+            title: "金额",
+            ...AMOUNT_COL,
+            render: (_, t) => <span className="font-medium text-slate-700">{fmtMoney(t.amount ?? 0)}</span>,
+        },
+        { title: "备注", render: (_, t) => <div className="truncate text-slate-500">{t.remark ?? ""}</div> },
+        {
+            title: "凭证",
+            align: "center",
+            render: (_, t) =>
+                t.voucherNo
+                    ? <StatusPill tone="blue">{t.voucherNo}</StatusPill>
                     : <span className="text-slate-300">—</span>,
-        }),
-        column.display({
-            id: "actions",
-            header: "操作",
-            cell: ({ row }) => {
-                const t = row.original
+        },
+        {
+            title: "操作",
+            align: "right",
+            render: (_, t) => {
                 const hasVoucher = Boolean(t.voucherId)
+                const busy = voucherBusyId === t.id
                 return (
                     <div className="flex items-center justify-end gap-0">
-                        <Button variant="ghost" size="icon-xs" title={hasVoucher ? "已生成凭证，不能修改" : "编辑转账"} disabled={hasVoucher} onClick={() => openEdit(t)} className={ICON_BTN}>
-                            <Pencil />
-                        </Button>
                         <Button
-                            variant="ghost"
-                            size="icon-xs"
+                            type="text"
+                            size="small"
+                            title={hasVoucher ? "已生成凭证，不能修改" : "编辑转账"}
+                            disabled={hasVoucher}
+                            icon={<EditOutlined />}
+                            onClick={() => openEdit(t)}
+                        />
+                        <Button
+                            type="text"
+                            size="small"
                             title={hasVoucher ? "已生成凭证" : "生成转账凭证（借 转入科目 / 贷 转出科目）"}
-                            disabled={hasVoucher || voucherBusyId === t.id}
+                            disabled={hasVoucher || busy}
+                            loading={busy}
+                            icon={<FileTextOutlined />}
                             onClick={() => void handleGenerateVoucher(t)}
-                            className={ICON_BTN}
-                        >
-                            {voucherBusyId === t.id ? <Spinner className="size-3.5" /> : <FileText />}
-                        </Button>
-                        <Button variant="ghost" size="icon-xs" title={hasVoucher ? "已生成凭证，不能删除" : "删除转账"} disabled={hasVoucher} onClick={() => void handleDelete(t)} className={ICON_BTN_DANGER}>
-                            <Trash2 />
-                        </Button>
+                        />
+                        <Button
+                            type="text"
+                            size="small"
+                            danger
+                            title={hasVoucher ? "已生成凭证，不能删除" : "删除转账"}
+                            disabled={hasVoucher}
+                            icon={<DeleteOutlined />}
+                            onClick={() => void handleDelete(t)}
+                        />
                     </div>
                 )
             },
-        }),
+        },
     ]
-
-    const table = useTable({
-        features,
-        data: transfers,
-        columns,
-        getRowId: (r) => r.id ?? r.summary ?? "",
-    })
-    const headerGroups = table.getHeaderGroups()
-    const rows = table.getRowModel().rows
 
     return (
         <div className="flex w-full flex-col gap-5">
             <PageHeader
-                icon={ArrowLeftRight}
+                icon={SwapOutlined}
                 title="内部转账"
                 subtitle={
                     <>
@@ -301,42 +280,33 @@ export default function TransferPage() {
                 }
                 actions={
                     <>
-                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void loadTransfers()} disabled={!accountSetId || loading}>
-                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                        <Button
+                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                            disabled={!accountSetId || loading}
+                            onClick={() => void loadTransfers()}
+                        >
                             刷新
                         </Button>
-                        <Button className={PAGE_BTN_PRIMARY} onClick={openCreate} disabled={!accountSetId || enabledJournals.length < 2}>
-                            <Plus data-icon="inline-start" />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!accountSetId || enabledJournals.length < 2}>
                             新建转账
                         </Button>
                     </>
                 }
             />
 
-            {error && (
-                <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                    <CircleAlert />
-                    <AlertTitle>{error}</AlertTitle>
-                    <AlertAction>
-                        <Button variant="ghost" size="icon-xs" title="关闭" onClick={() => setError(null)}>
-                            <X />
-                        </Button>
-                    </AlertAction>
-                </Alert>
-            )}
+            {error && <Alert type="error" showIcon closable title={error} onClose={() => setError(null)} />}
 
             {transfers.length === 0 && !loading ? (
                 <SectionCard bodyClassName="p-0">
                     <div className="flex flex-col items-center gap-3 py-12">
-                        <ArrowLeftRight size={40} strokeWidth={1.2} className="text-slate-300" />
+                        <SwapOutlined className="text-[34px]" style={ICON_STYLE.placeholder} />
                         <p className="text-[13px] text-slate-400">
                             {enabledJournals.length < 2
                                 ? "至少需要两个启用的资金账户才能登记内部转账，请先到「资金流水」创建或启用账户。"
                                 : "还没有内部转账记录。点击「新建转账」在资金账户之间划转。"}
                         </p>
                         {accountSetId && enabledJournals.length >= 2 && (
-                            <Button className={PAGE_BTN_PRIMARY} onClick={openCreate}>
-                                <Plus data-icon="inline-start" />
+                            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                                 新建转账
                             </Button>
                         )}
@@ -347,144 +317,99 @@ export default function TransferPage() {
                     title={<h3 className="text-[14px] font-semibold text-slate-800">转账记录</h3>}
                     bodyClassName="p-0"
                 >
-                    <Table>
-                        <TableHeader>
-                            {headerGroups.map((hg) => (
-                                <TableRow key={hg.id}>
-                                    {hg.headers.map((h) => (
-                                        <TableHead key={h.id} className={COLUMN_CLASS[h.column.id]?.head}>
-                                            <table.FlexRender header={h} />
-                                        </TableHead>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableHeader>
-                        <TableBody>
-                            {rows.map((row) => (
-                                <TableRow key={row.id}>
-                                    {row.getAllCells().map((cell) => (
-                                        <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
-                                            <table.FlexRender cell={cell} />
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))}
-                            {rows.length === 0 && !loading && (
-                                <TableRow>
-                                    <TableCell colSpan={columns.length} className="py-8 text-center text-slate-400">
-                                        暂无数据
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                    <Table<TransferDto>
+                        columns={columns}
+                        dataSource={transfers}
+                        rowKey={(t) => t.id ?? t.summary ?? ""}
+                        pagination={false}
+                        size="small"
+                        loading={loading && transfers.length === 0}
+                        locale={{ emptyText: "暂无数据" }}
+                    />
                 </SectionCard>
             )}
 
             {/* 新建/编辑转账 */}
-            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent aria-describedby={undefined}>
-                    <DialogHeader>
-                        <DialogTitle>{editing ? "编辑转账" : "新建转账"}</DialogTitle>
-                        <DialogDescription>
-                            保存后自动在两端账户登记流水（转出记支出、转入记收入，类别「内部转账」）。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4">
-                        <div className="grid grid-cols-2 gap-3">
-                            <Field data-invalid={Boolean(formErrors.date)}>
-                                <FieldLabel htmlFor="transfer-date">日期</FieldLabel>
-                                <DateField
-                                    value={formValues.date}
-                                    onChange={(v) => setFormValue("date", v)}
-                                    allowClear={false}
-                                    className="w-full"
-                                />
-                                <FieldError>{formErrors.date}</FieldError>
-                            </Field>
-                            <Field data-invalid={Boolean(formErrors.amount)}>
-                                <FieldLabel htmlFor="transfer-amount">金额</FieldLabel>
-                                <NumberField
-                                    id="transfer-amount"
-                                    value={formValues.amount}
-                                    onChange={(v) => setFormValue("amount", v)}
-                                    precision={2}
-                                    min={0}
-                                    placeholder="0.00"
-                                />
-                                <FieldError>{formErrors.amount}</FieldError>
-                            </Field>
-                        </div>
-                        <Field data-invalid={Boolean(formErrors.summary)}>
-                            <FieldLabel htmlFor="transfer-summary">摘要</FieldLabel>
-                            <Input
-                                id="transfer-summary"
-                                value={formValues.summary}
-                                onChange={(e) => setFormValue("summary", e.target.value)}
-                                placeholder="如：提取现金、内部调拨"
-                                maxLength={200}
-                                aria-invalid={Boolean(formErrors.summary)}
+            <Modal
+                open={modalOpen}
+                title={editing ? "编辑转账" : "新建转账"}
+                onCancel={() => setModalOpen(false)}
+                onOk={() => void handleSubmit()}
+                okText={editing ? "保存" : "创建"}
+                cancelText="取消"
+                confirmLoading={saving}
+                width={560}
+            >
+                <p className="mb-4 text-[12.5px] text-slate-400">
+                    保存后自动在两端账户登记流水（转出记支出、转入记收入，类别「内部转账」）。
+                </p>
+                <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <FormField label="日期" required error={formErrors.date}>
+                            <DateField
+                                value={formValues.date}
+                                onChange={(v) => setFormValue("date", v)}
+                                allowClear={false}
+                                className="w-full"
                             />
-                            <FieldError>{formErrors.summary}</FieldError>
-                        </Field>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Field data-invalid={Boolean(formErrors.fromJournalId)}>
-                                <FieldLabel htmlFor="transfer-from">转出账户</FieldLabel>
-                                <Select value={formValues.fromJournalId} onValueChange={(v) => setFormValue("fromJournalId", v)}>
-                                    <SelectTrigger id="transfer-from" className="w-full" aria-invalid={Boolean(formErrors.fromJournalId)}>
-                                        <SelectValue placeholder="选择转出账户" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            {enabledJournals.map((j) => (
-                                                <SelectItem key={j.id} value={j.id ?? ""}>
-                                                    {j.name}{j.type === 1 ? "（现金）" : "（银行）"}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-                                <FieldError>{formErrors.fromJournalId}</FieldError>
-                            </Field>
-                            <Field data-invalid={Boolean(formErrors.toJournalId)}>
-                                <FieldLabel htmlFor="transfer-to">转入账户</FieldLabel>
-                                <Select value={formValues.toJournalId} onValueChange={(v) => setFormValue("toJournalId", v)}>
-                                    <SelectTrigger id="transfer-to" className="w-full" aria-invalid={Boolean(formErrors.toJournalId)}>
-                                        <SelectValue placeholder="选择转入账户" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            {enabledJournals.map((j) => (
-                                                <SelectItem key={j.id} value={j.id ?? ""}>
-                                                    {j.name}{j.type === 1 ? "（现金）" : "（银行）"}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-                                <FieldError>{formErrors.toJournalId}</FieldError>
-                            </Field>
-                        </div>
-                        <Field>
-                            <FieldLabel htmlFor="transfer-remark">备注（选填）</FieldLabel>
-                            <Input
-                                id="transfer-remark"
-                                value={formValues.remark}
-                                onChange={(e) => setFormValue("remark", e.target.value)}
-                                placeholder="补充说明"
-                                maxLength={200}
+                        </FormField>
+                        <FormField label="金额" htmlFor="transfer-amount" required error={formErrors.amount}>
+                            <NumberField
+                                id="transfer-amount"
+                                value={formValues.amount}
+                                onChange={(v) => setFormValue("amount", v)}
+                                precision={2}
+                                min={0}
+                                placeholder="0.00"
+                                className="w-full"
                             />
-                        </Field>
+                        </FormField>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setModalOpen(false)}>取消</Button>
-                        <Button onClick={() => void handleSubmit()} disabled={saving}>
-                            {saving && <Spinner data-icon="inline-start" />}
-                            {editing ? "保存" : "创建"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    <FormField label="摘要" htmlFor="transfer-summary" required error={formErrors.summary}>
+                        <Input
+                            id="transfer-summary"
+                            value={formValues.summary}
+                            onChange={(e) => setFormValue("summary", e.target.value)}
+                            placeholder="如：提取现金、内部调拨"
+                            maxLength={200}
+                            status={formErrors.summary ? "error" : undefined}
+                        />
+                    </FormField>
+                    <div className="grid grid-cols-2 gap-3">
+                        <FormField label="转出账户" htmlFor="transfer-from" required error={formErrors.fromJournalId}>
+                            <Select
+                                id="transfer-from"
+                                className="w-full"
+                                placeholder="选择转出账户"
+                                value={formValues.fromJournalId || undefined}
+                                onChange={(v) => setFormValue("fromJournalId", v)}
+                                options={journalOptions}
+                                status={formErrors.fromJournalId ? "error" : undefined}
+                            />
+                        </FormField>
+                        <FormField label="转入账户" htmlFor="transfer-to" required error={formErrors.toJournalId}>
+                            <Select
+                                id="transfer-to"
+                                className="w-full"
+                                placeholder="选择转入账户"
+                                value={formValues.toJournalId || undefined}
+                                onChange={(v) => setFormValue("toJournalId", v)}
+                                options={journalOptions}
+                                status={formErrors.toJournalId ? "error" : undefined}
+                            />
+                        </FormField>
+                    </div>
+                    <FormField label="备注（选填）" htmlFor="transfer-remark">
+                        <Input
+                            id="transfer-remark"
+                            value={formValues.remark}
+                            onChange={(e) => setFormValue("remark", e.target.value)}
+                            placeholder="补充说明"
+                            maxLength={200}
+                        />
+                    </FormField>
+                </div>
+            </Modal>
 
             {confirmDialog}
         </div>

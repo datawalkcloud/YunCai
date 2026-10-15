@@ -1,8 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react"
-import { TriangleAlert } from "lucide-react"
+import { WarningFilled } from "@ant-design/icons"
+import { Button } from "antd"
 import { isRouteErrorResponse, useRouteError } from "react-router"
-
-import { Button } from "@/components/ui/button"
 
 /**
  * 统一的错误兜底界面：中文说明 + 「重试 / 返回首页」两个动作。
@@ -12,15 +11,13 @@ import { Button } from "@/components/ui/button"
 function ErrorFallback({ description }: { description: string }) {
     return (
         <div className="flex min-h-svh flex-col items-center justify-center gap-2 p-6 text-center">
-            <TriangleAlert className="mb-1 size-8 text-destructive" />
-            <h2 className="text-base font-medium text-foreground">页面出错了</h2>
-            <p className="max-w-md text-sm text-muted-foreground">{description}</p>
-            <p className="text-xs text-muted-foreground">详细信息已输出到浏览器控制台，可反馈给技术支持。</p>
+            <WarningFilled className="mb-1 text-[32px] text-[#ef4444]" />
+            <h2 className="text-base font-medium text-slate-800">页面出错了</h2>
+            <p className="max-w-md text-sm text-slate-500">{description}</p>
+            <p className="text-xs text-slate-400">详细信息已输出到浏览器控制台，可反馈给技术支持。</p>
             <div className="mt-3 flex items-center gap-2">
                 <Button onClick={() => window.location.reload()}>重试</Button>
-                <Button variant="outline" asChild>
-                    <a href="/app">返回首页</a>
-                </Button>
+                <Button href="/app">返回首页</Button>
             </div>
         </div>
     )

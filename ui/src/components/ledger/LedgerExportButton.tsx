@@ -1,11 +1,9 @@
 import { useState } from "react"
-import { Download } from "lucide-react"
+import { DownloadOutlined } from "@ant-design/icons"
+import { Button } from "antd"
 
 import { apiErrorMessage } from "@/lib/api-client"
 import { toISODate } from "@/lib/format"
-import { Button } from "@/components/ui/button"
-import { PAGE_BTN_GHOST } from "@/components/page/styles"
-import { Spinner } from "@/components/ui/spinner"
 import type { LedgerConditions } from "./types"
 
 /** 导出接口认识的账页标识，与后端 LedgerExportKindText 的解析结果一一对应。 */
@@ -116,13 +114,11 @@ export function LedgerExportButton({
     return (
         <div className="flex items-center gap-2">
             <Button
-                type="button"
-                variant="outline"
-                disabled={!accountSetId || busy}
+                loading={busy}
+                disabled={!accountSetId}
                 onClick={() => void download()}
-                className={PAGE_BTN_GHOST}
+                icon={<DownloadOutlined />}
             >
-                {busy ? <Spinner className="size-3.5" /> : <Download data-icon="inline-start" />}
                 {label}
             </Button>
             {error && <span className="text-[12.5px] text-[#ef4444]">{error}</span>}

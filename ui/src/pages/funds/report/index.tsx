@@ -1,21 +1,34 @@
+import type { ReactNode } from "react"
 import { useCallback, useEffect, useState } from "react"
 import dayjs from "dayjs"
-import { ArrowDownLeft, ArrowUpRight, BarChart3, CircleAlert, PiggyBank, RefreshCw, Scale, Wallet, X } from "lucide-react"
+import {
+    Alert,
+    Button,
+    Segmented,
+    Table,
+} from "antd"
+import type { TableColumnsType } from "antd"
+import {
+    BarChartOutlined,
+    BankOutlined,
+    FundOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    ReloadOutlined,
+    SwapOutlined,
+    WalletOutlined,
+} from "@ant-design/icons"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { FundReportsApi, type FundReportDto, type FundReportRowDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtAmount, fmtMoney } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile, type TileTone } from "@/components/page/tile"
-import { DATE_FIELD, PAGE_BTN_GHOST } from "@/components/page/styles"
-import { Alert, AlertAction, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { DateRangeField, parseDate } from "@/components/fields/date-fields"
-import { Spinner } from "@/components/ui/spinner"
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 /** 报表维度（与后端 FundReportDimensions 对齐）。 */
 type Dimension = "account" | "category" | "counterparty"
@@ -31,6 +44,11 @@ const DIMENSION_LABEL: Record<Dimension, string> = {
     category: "收支类别",
     counterparty: "往来单位",
 }
+
+const DIMENSION_OPTIONS = (Object.keys(DIMENSION_LABEL) as Dimension[]).map((d) => ({
+    value: d,
+    label: DIMENSION_LABEL[d],
+}))
 
 export default function FundReportPage() {
     const { token } = useAuth()
@@ -84,30 +102,64 @@ export default function FundReportPage() {
         hint?: string
     }[] = isAccount
         ? [
-            { label: "期初合计", value: fmtMoney(total?.openingBalance ?? 0), tone: "gray", icon: Wallet },
-            { label: "区间收入", value: fmtMoney(total?.totalIncome ?? 0), tone: "green", icon: ArrowDownLeft },
-            { label: "区间支出", value: fmtMoney(total?.totalExpense ?? 0), tone: "red", icon: ArrowUpRight },
-            { label: "期末合计", value: fmtMoney(total?.balance ?? 0), tone: "blue", icon: PiggyBank },
+            { label: "期初合计", value: fmtMoney(total?.openingBalance ?? 0), tone: "gray", icon: WalletOutlined },
+            { label: "区间收入", value: fmtMoney(total?.totalIncome ?? 0), tone: "green", icon: PlusCircleOutlined },
+            { label: "区间支出", value: fmtMoney(total?.totalExpense ?? 0), tone: "red", icon: MinusCircleOutlined },
+            { label: "期末合计", value: fmtMoney(total?.balance ?? 0), tone: "blue", icon: BankOutlined },
         ]
         : [
-            { label: "区间收入", value: fmtMoney(total?.totalIncome ?? 0), tone: "green", icon: ArrowDownLeft },
-            { label: "区间支出", value: fmtMoney(total?.totalExpense ?? 0), tone: "red", icon: ArrowUpRight },
-            { label: "收支净额", value: fmtMoney(total?.balance ?? 0), tone: "blue", icon: Scale },
+            { label: "区间收入", value: fmtMoney(total?.totalIncome ?? 0), tone: "green", icon: PlusCircleOutlined },
+            { label: "区间支出", value: fmtMoney(total?.totalExpense ?? 0), tone: "red", icon: MinusCircleOutlined },
+            { label: "收支净额", value: fmtMoney(total?.balance ?? 0), tone: "blue", icon: SwapOutlined },
             {
                 label: "变动笔数",
                 value: `${(total?.incomeCount ?? 0) + (total?.expenseCount ?? 0)}`,
                 tone: "gray",
-                icon: BarChart3,
+                icon: BarChartOutlined,
                 hint: `收 ${total?.incomeCount ?? 0} · 支 ${total?.expenseCount ?? 0}`,
             },
         ]
 
-    const cellAlign = { income: "text-right tabular-nums", expense: "text-right tabular-nums", balance: "text-right tabular-nums", opening: "text-right tabular-nums" }
+    const columns: TableColumnsType<FundReportRowDto> = [
+        {
+            title: DIMENSION_LABEL[dimension],
+            render: (_, r) => <span className="truncate font-medium text-slate-700">{r.name}</span>,
+        },
+        ...(isAccount
+            ? [
+                  {
+                      title: "对应科目",
+                      className: "whitespace-nowrap text-slate-500",
+                      render: (_: unknown, r: FundReportRowDto) => r.code ?? "",
+                  },
+                  {
+                      title: "期初余额",
+                      ...AMOUNT_COL,
+                      className: cn(AMOUNT_COL.className, "text-slate-500"),
+                      render: (_: unknown, r: FundReportRowDto) => fmtMoney(r.openingBalance ?? 0),
+                  },
+              ]
+            : []),
+        { title: "收入", render: (_, r) => fmtAmount(r.totalIncome), ...AMOUNT_COL },
+        { title: "支出", render: (_, r) => fmtAmount(r.totalExpense), ...AMOUNT_COL },
+        {
+            title: isAccount ? "期末余额" : "净额",
+            ...AMOUNT_COL,
+            className: cn(AMOUNT_COL.className, "font-medium text-slate-700"),
+            render: (_, r) => fmtMoney(r.balance ?? 0),
+        },
+        {
+            title: "笔数（收 / 支）",
+            ...AMOUNT_COL,
+            className: cn(AMOUNT_COL.className, "text-slate-500"),
+            render: (_, r) => `${r.incomeCount ?? 0} / ${r.expenseCount ?? 0}`,
+        },
+    ]
 
     return (
         <div className="flex w-full flex-col gap-5">
             <PageHeader
-                icon={BarChart3}
+                icon={FundOutlined}
                 title="资金报表"
                 subtitle={
                     <>
@@ -116,24 +168,17 @@ export default function FundReportPage() {
                     </>
                 }
                 actions={
-                    <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void load()} disabled={!accountSetId || loading}>
-                        {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                    <Button
+                        icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                        disabled={!accountSetId || loading}
+                        onClick={() => void load()}
+                    >
                         刷新
                     </Button>
                 }
             />
 
-            {error && (
-                <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                    <CircleAlert />
-                    <AlertTitle>{error}</AlertTitle>
-                    <AlertAction>
-                        <Button variant="ghost" size="icon-xs" title="关闭" onClick={() => setError(null)}>
-                            <X />
-                        </Button>
-                    </AlertAction>
-                </Alert>
-            )}
+            {error && <Alert type="error" showIcon closable title={error} onClose={() => setError(null)} />}
 
             <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
                 {tiles.map((t) => (
@@ -145,18 +190,11 @@ export default function FundReportPage() {
                 title={<h3 className="text-[14px] font-semibold text-slate-800">{`按${DIMENSION_LABEL[dimension]}汇总`}</h3>}
                 action={
                     <div className="flex flex-wrap items-center gap-2">
-                        <ToggleGroup
-                            type="single"
-                            variant="outline"
-                            size="sm"
-                            spacing={0}
+                        <Segmented
+                            options={DIMENSION_OPTIONS}
                             value={dimension}
-                            onValueChange={(v) => v && setDimension(v as Dimension)}
-                        >
-                            <ToggleGroupItem value="account">账户</ToggleGroupItem>
-                            <ToggleGroupItem value="category">收支类别</ToggleGroupItem>
-                            <ToggleGroupItem value="counterparty">往来单位</ToggleGroupItem>
-                        </ToggleGroup>
+                            onChange={(v) => setDimension(v as Dimension)}
+                        />
                         <span className="text-[12px] text-slate-400">区间</span>
                         <DateRangeField
                             value={{ from: parseDate(range.start), to: parseDate(range.end) }}
@@ -170,76 +208,50 @@ export default function FundReportPage() {
                             }}
                             disabled={!accountSetId}
                             allowClear={false}
-                            className={DATE_FIELD}
                         />
                     </div>
                 }
                 bodyClassName="p-0"
             >
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="text-left">{DIMENSION_LABEL[dimension]}</TableHead>
-                            {isAccount && <TableHead className="text-left">对应科目</TableHead>}
-                            {isAccount && <TableHead className="text-right">期初余额</TableHead>}
-                            <TableHead className="text-right">收入</TableHead>
-                            <TableHead className="text-right">支出</TableHead>
-                            <TableHead className="text-right">{isAccount ? "期末余额" : "净额"}</TableHead>
-                            <TableHead className="text-right">笔数（收 / 支）</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {rows.map((r) => (
-                            <TableRow key={`${dimension}-${r.name}`}>
-                                <TableCell className="w-full">
-                                    <div className="truncate font-medium text-slate-700">{r.name}</div>
-                                </TableCell>
-                                {isAccount && (
-                                    <TableCell className="whitespace-nowrap text-slate-500">{r.code ?? ""}</TableCell>
-                                )}
-                                {isAccount && (
-                                    <TableCell className={cellAlign.opening}>
-                                        <span className="text-slate-500">{fmtMoney(r.openingBalance ?? 0)}</span>
-                                    </TableCell>
-                                )}
-                                <TableCell className={cellAlign.income}>{fmtAmount(r.totalIncome)}</TableCell>
-                                <TableCell className={cellAlign.expense}>{fmtAmount(r.totalExpense)}</TableCell>
-                                <TableCell className={cellAlign.balance}>
-                                    <span className="font-medium text-slate-700">{fmtMoney(r.balance ?? 0)}</span>
-                                </TableCell>
-                                <TableCell className="text-right text-slate-500 tabular-nums">
-                                    {`${r.incomeCount ?? 0} / ${r.expenseCount ?? 0}`}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                        {rows.length === 0 && !loading && (
-                            <TableRow>
-                                <TableCell colSpan={isAccount ? 7 : 5} className="py-8 text-center text-slate-400">
-                                    所选区间内暂无资金收付数据。
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                    {rows.length > 0 && total && (
-                        <TableFooter>
-                            <TableRow>
-                                <TableCell>总计</TableCell>
-                                {isAccount && <TableCell />}
-                                {isAccount && (
-                                    <TableCell className="text-right tabular-nums">
-                                        {fmtMoney(total.openingBalance ?? 0)}
-                                    </TableCell>
-                                )}
-                                <TableCell className="text-right tabular-nums">{fmtMoney(total.totalIncome ?? 0)}</TableCell>
-                                <TableCell className="text-right tabular-nums">{fmtMoney(total.totalExpense ?? 0)}</TableCell>
-                                <TableCell className="text-right tabular-nums">{fmtMoney(total.balance ?? 0)}</TableCell>
-                                <TableCell className="text-right tabular-nums text-slate-500">
-                                    {`${total.incomeCount ?? 0} / ${total.expenseCount ?? 0}`}
-                                </TableCell>
-                            </TableRow>
-                        </TableFooter>
-                    )}
-                </Table>
+                <Table
+                    columns={columns}
+                    dataSource={rows}
+                    rowKey={(r) => `${dimension}-${r.name}`}
+                    pagination={false}
+                    loading={loading}
+                    size="small"
+                    locale={{ emptyText: "所选区间内暂无资金收付数据。" }}
+                    summary={
+                        rows.length > 0 && total
+                            ? () => {
+                                  // 合计单元格随维度增减，用递增下标保证 index 与列序一致。
+                                  const cells: ReactNode[] = []
+                                  const cell = (content: ReactNode, props?: Record<string, unknown>) => {
+                                      cells.push(
+                                          <Table.Summary.Cell key={cells.length} index={cells.length} {...props}>
+                                              {content}
+                                          </Table.Summary.Cell>,
+                                      )
+                                  }
+                                  cell("总计")
+                                  if (isAccount) cell(null)
+                                  if (isAccount) cell(fmtMoney(total.openingBalance ?? 0), AMOUNT_COL)
+                                  cell(fmtMoney(total.totalIncome ?? 0), AMOUNT_COL)
+                                  cell(fmtMoney(total.totalExpense ?? 0), AMOUNT_COL)
+                                  cell(fmtMoney(total.balance ?? 0), AMOUNT_COL)
+                                  cell(`${total.incomeCount ?? 0} / ${total.expenseCount ?? 0}`, {
+                                      ...AMOUNT_COL,
+                                      className: cn(AMOUNT_COL.className, "text-slate-500"),
+                                  })
+                                  return (
+                                      <Table.Summary>
+                                          <Table.Summary.Row>{cells}</Table.Summary.Row>
+                                      </Table.Summary>
+                                  )
+                              }
+                            : undefined
+                    }
+                />
             </SectionCard>
         </div>
     )

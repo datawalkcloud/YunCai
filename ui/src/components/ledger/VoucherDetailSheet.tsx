@@ -1,25 +1,15 @@
 import { useEffect, useState } from "react"
 
-import { type VoucherDetailDto, VouchersApi } from "@/apis-gen"
+import { Alert, Drawer, Spin, Table } from "antd"
+import type { ColumnsType } from "antd/es/table"
+
+import { type VoucherDetailDto, type VoucherEntryDto, VouchersApi } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { Alert, AlertTitle } from "@/components/ui/alert"
 import { Chip } from "@/components/page/chip"
 import { StatusPill } from "@/components/page/status-pill"
 import { voucherStatusTone } from "@/components/page/styles"
-import { Spinner } from "@/components/ui/spinner"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableFooter,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { amountCls } from "./format"
 import { dayKey } from "./useVoucherLookup"
 
 export interface VoucherDetailSheetProps {
@@ -29,6 +19,32 @@ export interface VoucherDetailSheetProps {
     voucherId: string | null
     onOpenChange: (open: boolean) => void
 }
+
+const amountCol = { align: "right", className: "tabular-nums" } as const
+
+const ENTRY_COLUMNS: ColumnsType<VoucherEntryDto> = [
+    { title: "行次", dataIndex: "lineNumber", width: 56 },
+    { title: "摘要", dataIndex: "summary" },
+    {
+        title: "科目",
+        render: (_, entry) => (
+            <>
+                <span className="text-slate-400">{entry.accountCode} </span>
+                {entry.accountName}
+            </>
+        ),
+    },
+    {
+        title: "辅助核算",
+        render: (_, entry) => (
+            <span className="text-slate-400">
+                {entry.assists?.map((a) => `${a.typeText}：${a.itemName}`).join("、") ?? ""}
+            </span>
+        ),
+    },
+    { title: "借方", dataIndex: "debit", ...amountCol, render: (v) => fmtAmount(v) },
+    { title: "贷方", dataIndex: "credit", ...amountCol, render: (v) => fmtAmount(v) },
+]
 
 /**
  * 凭证详情抽屉：正文即整张凭证（凭证头 + 全部分录 + 辅助核算 + 合计），
@@ -74,104 +90,62 @@ export function VoucherDetailSheet({
     const entries = detail?.entries ?? []
 
     return (
-        <Sheet open={Boolean(voucherId)} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-4xl" aria-describedby={undefined}>
-                <SheetHeader className="border-b border-slate-100">
-                    <SheetTitle className="text-[15px] font-semibold text-slate-800">
-                        凭证 {detail?.voucherNo ?? ""}
-                    </SheetTitle>
-                </SheetHeader>
-                <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 pb-4">
-                    {loading && (
-                        <div className="flex justify-center py-8">
-                            <Spinner className="size-5 text-slate-300" />
-                        </div>
-                    )}
-                    {!loading && error && (
-                        <Alert
-                            variant="destructive"
-                            className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]"
-                        >
-                            <AlertTitle>{error}</AlertTitle>
-                        </Alert>
-                    )}
-                    {!loading && !error && detail && (
-                        <>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                                <Chip label="日期" value={dayKey(detail.date)} />
-                                <Chip label="附件" value={`${detail.attachmentCount ?? 0} 张`} />
-                                <Chip label="制单人" value={detail.preparer} />
-                                <Chip label="审核人" value={detail.reviewer} />
-                                <StatusPill tone={voucherStatusTone(detail.status, detail.isBalanced)}>
-                                    {detail.statusText}
-                                </StatusPill>
-                            </div>
-
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-12">行次</TableHead>
-                                        <TableHead>摘要</TableHead>
-                                        <TableHead>科目</TableHead>
-                                        <TableHead>辅助核算</TableHead>
-                                        <TableHead className={amountCls}>借方</TableHead>
-                                        <TableHead className={amountCls}>贷方</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {entries.map((entry) => (
-                                        <TableRow key={entry.id ?? entry.lineNumber}>
-                                            <TableCell>{entry.lineNumber}</TableCell>
-                                            <TableCell>{entry.summary}</TableCell>
-                                            <TableCell>
-                                                <span className="text-slate-400">
-                                                    {entry.accountCode}{" "}
-                                                </span>
-                                                {entry.accountName}
-                                            </TableCell>
-                                            <TableCell className="text-slate-400">
-                                                {entry.assists?.length
-                                                    ? entry.assists
-                                                          .map((a) => `${a.typeText}：${a.itemName}`)
-                                                          .join("、")
-                                                    : ""}
-                                            </TableCell>
-                                            <TableCell className={amountCls}>
-                                                {fmtAmount(entry.debit)}
-                                            </TableCell>
-                                            <TableCell className={amountCls}>
-                                                {fmtAmount(entry.credit)}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                                <TableFooter>
-                                    <TableRow>
-                                        <TableCell colSpan={4}>合计</TableCell>
-                                        <TableCell className={amountCls}>
-                                            {fmtAmount(detail.totalDebit, true)}
-                                        </TableCell>
-                                        <TableCell className={amountCls}>
-                                            {fmtAmount(detail.totalCredit, true)}
-                                        </TableCell>
-                                    </TableRow>
-                                </TableFooter>
-                            </Table>
-
-                            <span
-                                className={cn(
-                                    "text-[12.5px] text-slate-400",
-                                    !detail.isBalanced && "text-[#ef4444]",
-                                )}
-                            >
-                                {detail.isBalanced
-                                    ? "借贷平衡"
-                                    : "借贷不平衡，请核对凭证分录。"}
-                            </span>
-                        </>
-                    )}
+        <Drawer
+            open={Boolean(voucherId)}
+            onClose={() => onOpenChange(false)}
+            size={896}
+            title={`凭证 ${detail?.voucherNo ?? ""}`}
+            styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
+        >
+            {loading && (
+                <div className="flex justify-center py-8">
+                    <Spin />
                 </div>
-            </SheetContent>
-        </Sheet>
+            )}
+            {!loading && error && <Alert type="error" showIcon title={error} />}
+            {!loading && !error && detail && (
+                <>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <Chip label="日期" value={dayKey(detail.date)} />
+                        <Chip label="附件" value={`${detail.attachmentCount ?? 0} 张`} />
+                        <Chip label="制单人" value={detail.preparer} />
+                        <Chip label="审核人" value={detail.reviewer} />
+                        <StatusPill tone={voucherStatusTone(detail.status, detail.isBalanced)}>
+                            {detail.statusText}
+                        </StatusPill>
+                    </div>
+
+                    <Table
+                        columns={ENTRY_COLUMNS}
+                        dataSource={entries}
+                        rowKey={(row) => row.id ?? String(row.lineNumber)}
+                        pagination={false}
+                        size="small"
+                        summary={() => (
+                            <Table.Summary.Row>
+                                <Table.Summary.Cell index={0} colSpan={4}>
+                                    合计
+                                </Table.Summary.Cell>
+                                <Table.Summary.Cell index={4} align="right" className="tabular-nums">
+                                    {fmtAmount(detail.totalDebit, true)}
+                                </Table.Summary.Cell>
+                                <Table.Summary.Cell index={5} align="right" className="tabular-nums">
+                                    {fmtAmount(detail.totalCredit, true)}
+                                </Table.Summary.Cell>
+                            </Table.Summary.Row>
+                        )}
+                    />
+
+                    <span
+                        className={cn(
+                            "text-[12.5px] text-slate-400",
+                            !detail.isBalanced && "text-[#ef4444]",
+                        )}
+                    >
+                        {detail.isBalanced ? "借贷平衡" : "借贷不平衡，请核对凭证分录。"}
+                    </span>
+                </>
+            )}
+        </Drawer>
     )
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { createColumnHelper } from "@tanstack/react-table"
+import type { TableColumnsType } from "antd"
 import { useSearchParams } from "react-router"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -12,11 +12,12 @@ import {
 import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
 import { kindRowClass } from "@/components/ledger/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
 import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
-import { ROW_KIND, asDate, type LedgerConditions, ledgerFeatures } from "@/components/ledger/types"
+import { ROW_KIND, asDate, type LedgerConditions } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 import { useAccounts } from "@/components/ledger/useLedgerOptions"
 import { useVoucherLookup } from "@/components/ledger/useVoucherLookup"
@@ -37,40 +38,29 @@ type MultiRow = {
     cells: Record<string, number>
 }
 
-const helper = createColumnHelper<typeof ledgerFeatures, MultiRow>()
-
 const FIELDS: readonly LedgerField[] = ["account", "date", "summary"]
 
 /** 借方 / 贷方栏（d{i} / c{i}）与余额列右对齐等宽数字。 */
-const isAmount = (id: string) => id === "balance" || /^[dc]\d+$/.test(id)
+function buildColumns(columns: MultiColumnHeaderDto[]): TableColumnsType<MultiRow> {
+    const cell = (key: string) => (_: unknown, row: MultiRow) => fmtAmount(row.cells[key])
+    return [
+        { title: "日期", dataIndex: "date" },
+        { title: "凭证字号", dataIndex: "voucherNo" },
+        { title: "摘要", dataIndex: "summary" },
+        ...columns.map((col, index) => ({
+            key: `col${index}`,
+            title: `${col.code} ${col.name}`,
+            children: [
+                { key: `d${index}`, title: "借方", render: cell(`d${index}`), ...AMOUNT_COL },
+                { key: `c${index}`, title: "贷方", render: cell(`c${index}`), ...AMOUNT_COL },
+            ],
+        })),
+        { title: "方向", dataIndex: "direction" },
+        { title: "余额", dataIndex: "balance", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    ]
+}
 
-function buildColumns(columns: MultiColumnHeaderDto[]) {
-    return helper.columns([
-        helper.accessor("date", { header: "日期" }),
-        helper.accessor("voucherNo", { header: "凭证字号" }),
-        helper.accessor("summary", { header: "摘要" }),
-        ...columns.map((col, index) =>
-            helper.group({
-                id: `col${index}`,
-                header: `${col.code} ${col.name}`,
-                columns: helper.columns([
-                    helper.accessor((row) => row.cells[`d${index}`], {
-                        id: `d${index}`,
-                        header: "借方",
-                        cell: (info) => fmtAmount(info.getValue()),
-                    }),
-                    helper.accessor((row) => row.cells[`c${index}`], {
-                        id: `c${index}`,
-                        header: "贷方",
-                        cell: (info) => fmtAmount(info.getValue()),
-                    }),
-                ]),
-            }),
-        ),
-        helper.accessor("direction", { header: "方向" }),
-        helper.accessor("balance", { header: "余额", cell: (info) => fmtAmount(info.getValue()) }),
-    ])
-}function MultiColumnLedger({
+function MultiColumnLedger({
     initial,
     accounts,
 }: {
@@ -178,8 +168,7 @@ function buildColumns(columns: MultiColumnHeaderDto[]) {
                         data={rows}
                         loading={query.loading}
                         emptyText="本科目该期间无发生额。"
-                        getRowId={(row) => row.rowKey}
-                        isAmountColumn={isAmount}
+                        rowKey={(row) => row.rowKey}
                         rowClassName={(row) => kindRowClass(row.kind)}
                         onRowClick={(row) => {
                             if (row.kind !== ROW_KIND.entry || !row.voucherNo) return

@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useRef } from "react"
-import { createColumnHelper } from "@tanstack/react-table"
+import { Alert } from "antd"
+import type { TableColumnsType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { type AgeingBucketDto, LedgersApi } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
 import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
-import { asDate, ledgerFeatures } from "@/components/ledger/types"
+import { asDate } from "@/components/ledger/types"
 import { useAssistCategories, useAssistItems } from "@/components/ledger/useLedgerOptions"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
-import { Alert, AlertTitle } from "@/components/ui/alert"
 
 /** 账龄一行对应一个档案，buckets 与表头 bucketLabels 按下标对齐。 */
 type AgeingRow = {
@@ -25,45 +26,36 @@ type AgeingRow = {
     buckets: AgeingBucketDto[]
 }
 
-const helper = createColumnHelper<typeof ledgerFeatures, AgeingRow>()
-
-const isAmount = (id: string) => id === "total" || id.startsWith("bucket")
-
 const FIELDS: readonly LedgerField[] = ["date", "accountRange", "assistType", "assistItem"]
 
 /** 账龄档数量由后端给出，列头按 bucketLabels 动态生成。 */
-function buildColumns(assistTypeText: string, bucketLabels: string[]) {
-    return helper.columns([
-        helper.accessor("code", { header: `${assistTypeText}编码` }),
-        helper.accessor("name", { header: `${assistTypeText}名称` }),
-        helper.accessor("direction", { header: "方向" }),
-        helper.accessor("total", {
-            header: "期末余额",
-            cell: (info) => fmtAmount(info.getValue()),
-        }),
-        ...bucketLabels.map(
-            (label, index) =>
-                helper.accessor((row) => row.buckets[index]?.amount, {
-                    id: `bucket${index}`,
-                    header: label,
-                    cell: (info) => {
-                        const amount = fmtAmount(info.getValue())
-                        const ratio = info.row.original.buckets[index]?.ratio
-                        if (!amount) return ""
-                        return (
-                            <div className="flex flex-col">
-                                <span>{amount}</span>
-                                {ratio != null && (
-                                    <span className="text-xs text-muted-foreground">
-                                        {(ratio * 100).toFixed(1)}%
-                                    </span>
-                                )}
-                            </div>
-                        )
-                    },
-                }),
-        ),
-    ])
+function buildColumns(assistTypeText: string, bucketLabels: string[]): TableColumnsType<AgeingRow> {
+    return [
+        { title: `${assistTypeText}编码`, dataIndex: "code" },
+        { title: `${assistTypeText}名称`, dataIndex: "name" },
+        { title: "方向", dataIndex: "direction" },
+        { title: "期末余额", dataIndex: "total", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+        ...bucketLabels.map((label, index) => ({
+            key: `bucket${index}`,
+            title: label,
+            ...AMOUNT_COL,
+            render: (_: unknown, row: AgeingRow) => {
+                const amount = fmtAmount(row.buckets[index]?.amount)
+                const ratio = row.buckets[index]?.ratio
+                if (!amount) return ""
+                return (
+                    <div className="flex flex-col">
+                        <span>{amount}</span>
+                        {ratio != null && (
+                            <span className="text-xs text-muted-foreground">
+                                {(ratio * 100).toFixed(1)}%
+                            </span>
+                        )}
+                    </div>
+                )
+            },
+        })),
+    ]
 }
 
 export default function AgeingAnalysisPage() {
@@ -161,11 +153,7 @@ export default function AgeingAnalysisPage() {
                 </span>
             ) : (
                 <>
-                    {dto?.note && (
-                        <Alert>
-                            <AlertTitle>{dto.note}</AlertTitle>
-                        </Alert>
-                    )}
+                    {dto?.note && <Alert type="info" showIcon title={dto.note} />}
 
                     {accounts.map((account) => {
                         const rows: AgeingRow[] = (account.items ?? []).map((item, index) => ({
@@ -188,8 +176,7 @@ export default function AgeingAnalysisPage() {
                                     data={rows}
                                     loading={query.loading}
                                     emptyText="本科目该区间无未核销余额。"
-                                    getRowId={(row) => row.rowKey}
-                                    isAmountColumn={isAmount}
+                                    rowKey={(row) => row.rowKey}
                                 />
                             </LedgerSection>
                         )

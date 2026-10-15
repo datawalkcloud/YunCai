@@ -5,12 +5,20 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Archive, ChevronDown, Crown, FileText, Folder, FolderOpen, Image } from "lucide-react";
+import {
+    CrownOutlined,
+    DownOutlined,
+    FileTextOutlined,
+    FolderOpenOutlined,
+    FolderOutlined,
+    HddOutlined,
+    PictureOutlined,
+} from "@ant-design/icons";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import { StatusPill } from "@/components/page/status-pill";
-import type { PillTone } from "@/components/page/styles";
+import { ICON_STYLE, type PillTone } from "@/components/page/styles";
 
 
 import {
@@ -292,7 +300,7 @@ export default function LemonERecord() {
     );
 
     return (
-        <Page title="会计电子档案" subtitle="凭证附件、回单、发票等资料的电子化归档管理" icon={Archive}>
+        <Page title="会计电子档案" subtitle="凭证附件、回单、发票等资料的电子化归档管理" icon={HddOutlined}>
             <SubTabs tabs={["电子档案列表", "电子档案归档"]} active={tab} onChange={setTab} />
             {tool}
             {toolArchived}
@@ -375,9 +383,9 @@ export default function LemonERecord() {
                                         <td className={td2}>
                                             <span className="inline-flex cursor-pointer items-center gap-1.5" onClick={() => void download(it)} title="点击下载">
                                                 {(it.fileName ?? "").endsWith(".pdf") ? (
-                                                    <FileText className="h-3.5 w-3.5 text-[#ef4444]" />
+                                                    <FileTextOutlined className="text-[14px]" style={ICON_STYLE.danger} />
                                                 ) : (
-                                                    <Image className="h-3.5 w-3.5 text-[#10b981]" />
+                                                    <PictureOutlined className="text-[14px]" style={{ color: "#10b981" }} />
                                                 )}
                                                 <span className="text-[#2f6bff] hover:underline">{it.fileName}</span>
                                             </span>
@@ -420,7 +428,7 @@ export default function LemonERecord() {
                         {usage ? fmtBytes(usage.total) : "10.00 MB"} )
                     </div>
                     <div className="mt-2 inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 text-[13px] text-[#92640b]">
-                        <Crown className="h-3.5 w-3.5" /> 升级扩容
+                        <CrownOutlined className="text-[14px]" /> 升级扩容
                     </div>
                     <div className="mt-4 flex flex-col text-[13px]">
                         <div
@@ -430,8 +438,8 @@ export default function LemonERecord() {
                             onClick={() => setFolder(null)}
                         >
                             <span className="flex items-center gap-1.5">
-                                <ChevronDown className="h-3 w-3 text-[#2f6bff]" />
-                                <Folder className="h-3.5 w-3.5 text-[#f59e0b]" /> 所有文件
+                                <DownOutlined className="text-[12px]" style={ICON_STYLE.brand} />
+                                <FolderOutlined className="text-[14px]" style={ICON_STYLE.warn} /> 所有文件
                             </span>
                             <span className="text-slate-400">⋮</span>
                         </div>
@@ -443,11 +451,11 @@ export default function LemonERecord() {
                                 }`}
                                 onClick={() => setFolder(f)}
                             >
-                                <FolderOpen className="h-3.5 w-3.5 text-[#f59e0b]" /> {f}
+                                <FolderOpenOutlined className="text-[14px]" style={ICON_STYLE.warn} /> {f}
                             </div>
                         ))}
                         <div className="mt-2 flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-slate-700 hover:bg-slate-100">
-                            <Folder className="h-3.5 w-3.5 text-[#f59e0b]" /> 数据备份
+                            <FolderOutlined className="text-[14px]" style={ICON_STYLE.warn} /> 数据备份
                         </div>
                     </div>
                 </div>

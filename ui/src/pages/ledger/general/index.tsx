@@ -1,4 +1,4 @@
-import { createColumnHelper } from "@tanstack/react-table"
+import type { TableColumnsType, TableColumnType } from "antd"
 import { useNavigate, useParams } from "react-router"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -6,55 +6,56 @@ import { useAuth } from "@/auth/AuthContext"
 import { type GeneralLedgerRowDto, LedgersApi } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { type LedgerField, LedgerQueryPanel } from "@/components/ledger/LedgerQueryPanel"
 import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
-import { asDate, ledgerFeatures } from "@/components/ledger/types"
+import { asDate } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 
 /** 总账的月份行加上稳定行键。 */
 type GeneralRow = GeneralLedgerRowDto & { rowKey: string }
 
-const helper = createColumnHelper<typeof ledgerFeatures, GeneralRow>()
-
-const AMOUNT_IDS = [
-    "openingDebit",
-    "openingCredit",
-    "debit",
-    "credit",
-    "endingDebit",
-    "endingCredit",
-] as const
-const isAmount = (id: string) => (AMOUNT_IDS as readonly string[]).includes(id)
+type AmountKey =
+    | "openingDebit"
+    | "openingCredit"
+    | "debit"
+    | "credit"
+    | "endingDebit"
+    | "endingCredit"
 
 const FIELDS: readonly LedgerField[] = ["date", "accountRange", "maxLevel"]
 const SWITCHES = ["showOnlyLeaf", "hideZeroBalance", "hideNoActivity", "includeIdleAccounts"] as const
 
 /** 金额叶子列：格式化与科目余额表一致。 */
-const amount = (accessor: (typeof AMOUNT_IDS)[number], title: string) =>
-    helper.accessor(accessor, { header: title, cell: (info) => fmtAmount(info.getValue()) })
+const amount = (dataIndex: AmountKey, title: string): TableColumnType<GeneralRow> => ({
+    title,
+    dataIndex,
+    render: (v) => fmtAmount(v),
+    ...AMOUNT_COL,
+})
 
 /** 多级表头：期初 / 本期 / 期末各带借方、贷方两个子列。 */
-const columns = helper.columns([
-    helper.accessor("periodText", { header: "期间" }),
-    helper.group({
-        id: "opening",
-        header: "期初余额",
-        columns: helper.columns([amount("openingDebit", "借方"), amount("openingCredit", "贷方")]),
-    }),
-    helper.group({
-        id: "period",
-        header: "本期发生额",
-        columns: helper.columns([amount("debit", "借方"), amount("credit", "贷方")]),
-    }),
-    helper.group({
-        id: "ending",
-        header: "期末余额",
-        columns: helper.columns([amount("endingDebit", "借方"), amount("endingCredit", "贷方")]),
-    }),
-    helper.accessor("direction", { header: "方向" }),
-])
+const columns: TableColumnsType<GeneralRow> = [
+    { title: "期间", dataIndex: "periodText" },
+    {
+        key: "opening",
+        title: "期初余额",
+        children: [amount("openingDebit", "借方"), amount("openingCredit", "贷方")],
+    },
+    {
+        key: "period",
+        title: "本期发生额",
+        children: [amount("debit", "借方"), amount("credit", "贷方")],
+    },
+    {
+        key: "ending",
+        title: "期末余额",
+        children: [amount("endingDebit", "借方"), amount("endingCredit", "贷方")],
+    },
+    { title: "方向", dataIndex: "direction" },
+]
 
 export default function GeneralLedgerPage() {
     const { token } = useAuth()
@@ -146,8 +147,7 @@ export default function GeneralLedgerPage() {
                                 data={rows}
                                 loading={query.loading}
                                 emptyText="本科目该期间无发生额。"
-                                getRowId={(row) => row.rowKey}
-                                isAmountColumn={isAmount}
+                                rowKey={(row) => row.rowKey}
                                 onRowClick={() => goSubsidiary(account.code ?? "")}
                             />
                         </LedgerSection>

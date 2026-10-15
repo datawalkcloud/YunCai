@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react"
+import { Alert } from "antd"
 
 import type { LedgerMetaDto } from "@/apis-gen"
 import { Chip } from "@/components/page/chip"
@@ -27,12 +27,11 @@ export function LedgerMetaHeader({ meta }: { meta?: LedgerMetaDto | null }) {
                 />
             </div>
             {unposted > 0 && (
-                <div className="flex items-start gap-2 rounded-xl border border-[#fde68a] bg-[#fef3c7] px-3 py-2 text-[12.5px] text-[#b45309]">
-                    <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                    <span>
-                        {meta.periodText} 内有 {unposted} 张未过账凭证未纳入账簿，请先在凭证页完成审核并过账。
-                    </span>
-                </div>
+                <Alert
+                    type="warning"
+                    showIcon
+                    title={`${meta.periodText} 内有 ${unposted} 张未过账凭证未纳入账簿，请先在凭证页完成审核并过账。`}
+                />
             )}
         </div>
     )

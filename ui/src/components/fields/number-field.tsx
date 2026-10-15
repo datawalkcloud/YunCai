@@ -1,53 +1,43 @@
+import { InputNumber } from "antd"
 import { cn } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
 
 /**
- * 数字输入，替代 antd InputNumber。沿用原生 number 输入的浏览器校验，
- * precision 只控制步进与落值精度。
+ * 金额/数字输入。对外仍是 Date-free 的 number 契约：空值回传 undefined，
+ * precision 决定落值精度与步进，调用方无需接触 dayjs/antd 类型。
  */
 export function NumberField({
-  value,
-  onChange,
-  precision = 0,
-  min,
-  max,
-  disabled,
-  placeholder,
-  className,
-  id,
+    value,
+    onChange,
+    precision = 0,
+    min,
+    max,
+    disabled,
+    placeholder,
+    className,
+    id,
 }: {
-  value?: number
-  onChange?: (value?: number) => void
-  precision?: number
-  min?: number
-  max?: number
-  disabled?: boolean
-  placeholder?: string
-  className?: string
-  id?: string
+    value?: number
+    onChange?: (value?: number) => void
+    precision?: number
+    min?: number
+    max?: number
+    disabled?: boolean
+    placeholder?: string
+    className?: string
+    id?: string
 }) {
-  const step = precision > 0 ? "0." + "0".repeat(precision - 1) + "1" : "1"
-
-  return (
-    <Input
-      id={id}
-      type="number"
-      step={step}
-      min={min}
-      max={max}
-      disabled={disabled}
-      placeholder={placeholder}
-      className={cn("text-right tabular-nums", className)}
-      value={value === undefined ? "" : String(value)}
-      onChange={(e) => {
-        const raw = e.target.value
-        if (raw === "") {
-          onChange?.(undefined)
-          return
-        }
-        const parsed = Number(raw)
-        onChange?.(Number.isNaN(parsed) ? undefined : Number(parsed.toFixed(precision)))
-      }}
-    />
-  )
+    return (
+        <InputNumber
+            id={id}
+            className={cn("w-24 [&>input]:text-right [&>input]:tabular-nums", className)}
+            placeholder={placeholder}
+            disabled={disabled}
+            min={min}
+            max={max}
+            precision={precision}
+            controls={false}
+            value={value ?? null}
+            onChange={(v) => onChange?.(v == null ? undefined : Number(v))}
+        />
+    )
 }

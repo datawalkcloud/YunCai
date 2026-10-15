@@ -1,37 +1,36 @@
 import type { ComponentType, ReactNode } from "react"
 import {
-    BookOpen,
-    Briefcase,
-    Calculator,
-    Columns2,
-    FolderTree,
-    Hourglass,
-    Layers,
-    LayoutGrid,
-    ListOrdered,
-    ListTree,
-    Scale,
-    TriangleAlert,
-} from "lucide-react"
+    ApartmentOutlined,
+    AuditOutlined,
+    BookOutlined,
+    CalculatorOutlined,
+    ColumnWidthOutlined,
+    FieldTimeOutlined,
+    FolderOpenOutlined,
+    OrderedListOutlined,
+    ProfileOutlined,
+    TableOutlined,
+    AccountBookOutlined,
+} from "@ant-design/icons"
+import { Alert } from "antd"
 
 import type { LedgerMetaDto } from "@/apis-gen"
-import { Alert, AlertTitle } from "@/components/ui/alert"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { LedgerMetaHeader } from "./LedgerMetaHeader"
 import { LedgerTabs } from "./LedgerTabs"
 
 /** 各账页标题图标，按账页标识取，缺省用通用账簿图标。 */
 const PAGE_ICONS: Record<string, ComponentType<{ className?: string }>> = {
-    "trial-balance": Scale,
-    subsidiary: ListTree,
-    general: Layers,
-    journal: ListOrdered,
-    "voucher-summary": Calculator,
-    "multi-column": Columns2,
-    "assist-balance": Briefcase,
-    "assist-subsidiary": FolderTree,
-    "assist-combine": LayoutGrid,
-    ageing: Hourglass,
+    "trial-balance": AuditOutlined,
+    subsidiary: ApartmentOutlined,
+    general: ProfileOutlined,
+    journal: OrderedListOutlined,
+    "voucher-summary": CalculatorOutlined,
+    "multi-column": ColumnWidthOutlined,
+    "assist-balance": AccountBookOutlined,
+    "assist-subsidiary": FolderOpenOutlined,
+    "assist-combine": TableOutlined,
+    ageing: FieldTimeOutlined,
 }
 
 export interface LedgerPageShellProps {
@@ -63,22 +62,14 @@ export function LedgerPageShell({
 }: LedgerPageShellProps) {
     return (
         <div className="flex flex-col gap-4">
-            <PageHeader icon={PAGE_ICONS[page] ?? BookOpen} title={title} subtitle={hint} />
+            <PageHeader icon={PAGE_ICONS[page] ?? BookOutlined} title={title} subtitle={hint} />
 
             <LedgerTabs current={page} />
 
             <SectionCard bodyClassName="flex flex-col gap-4">
                 {panel}
                 <LedgerMetaHeader meta={meta} />
-                {error && (
-                    <Alert
-                        variant="destructive"
-                        className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]"
-                    >
-                        <TriangleAlert />
-                        <AlertTitle>{error}</AlertTitle>
-                    </Alert>
-                )}
+                {error && <Alert type="error" showIcon title={error} />}
                 {children}
                 <span className="text-[12px] text-slate-400">单位：元</span>
             </SectionCard>

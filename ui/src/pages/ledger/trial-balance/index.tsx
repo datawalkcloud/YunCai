@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
-import { Scale } from "lucide-react"
+import { Alert, Spin, Table } from "antd"
+import type { TableColumnsType, TableColumnType } from "antd"
+import { AuditOutlined } from "@ant-design/icons"
 import dayjs from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -9,20 +10,10 @@ import { ReportsApi, type TrialBalanceRowDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 import { DateRangeField, parseDate } from "@/components/fields/date-fields"
+import { AMOUNT_COL, SOFT_PANEL } from "@/components/page/styles"
+import { LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerTabs } from "@/components/ledger/LedgerTabs"
 import { PageHeader, SectionCard } from "@/components/page/section"
-import { DATE_FIELD, SOFT_PANEL } from "@/components/page/styles"
-import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Spinner } from "@/components/ui/spinner"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableFooter,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
 
 /** 选定的日期范围。 */
 interface DateRange {
@@ -39,11 +30,7 @@ const AMOUNT_KEYS = [
     "endingCredit",
 ] as const
 
-const features = tableFeatures({})
-const helper = createColumnHelper<typeof features, TrialBalanceRowDto>()
-
-/** 行以科目编码为键，等价原先的 rowKey="code"。 */
-const getRowId = (row: TrialBalanceRowDto) => row.code ?? ""
+type AmountKey = (typeof AMOUNT_KEYS)[number]
 
 function fmt(value: number, force = false): string {
     if (value === 0 && !force) return ""
@@ -54,37 +41,33 @@ function fmt(value: number, force = false): string {
 }
 
 /** 金额列（借贷方向）右对齐并使用等宽数字，表头与单元格一致。 */
-const amountIds: readonly string[] = AMOUNT_KEYS
-const isAmountColumn = (id: string) => amountIds.includes(id)
-const amountCls = "text-right tabular-nums"
-
-/** 生成一个金额叶子列：取值的格式化与原先的 render 一致。 */
-const amount = (accessor: (typeof AMOUNT_KEYS)[number], title: string) =>
-    helper.accessor(accessor, {
-        header: title,
-        cell: (info) => fmt(info.getValue() ?? 0),
-    })
+const amount = (dataIndex: AmountKey, title: string): TableColumnType<TrialBalanceRowDto> => ({
+    title,
+    dataIndex,
+    render: (v) => fmt(v ?? 0),
+    ...AMOUNT_COL,
+})
 
 /** 多级表头：编码、名称为单层列，三组余额各带借方/贷方两个子列。 */
-const columns = helper.columns([
-    helper.accessor("code", { header: "科目编码" }),
-    helper.accessor("name", { header: "科目名称" }),
-    helper.group({
-        id: "opening",
-        header: "期初余额",
-        columns: helper.columns([amount("openingDebit", "借方"), amount("openingCredit", "贷方")]),
-    }),
-    helper.group({
-        id: "period",
-        header: "本期发生额",
-        columns: helper.columns([amount("periodDebit", "借方"), amount("periodCredit", "贷方")]),
-    }),
-    helper.group({
-        id: "ending",
-        header: "期末余额",
-        columns: helper.columns([amount("endingDebit", "借方"), amount("endingCredit", "贷方")]),
-    }),
-])
+const columns: TableColumnsType<TrialBalanceRowDto> = [
+    { title: "科目编码", dataIndex: "code" },
+    { title: "科目名称", dataIndex: "name" },
+    {
+        key: "opening",
+        title: "期初余额",
+        children: [amount("openingDebit", "借方"), amount("openingCredit", "贷方")],
+    },
+    {
+        key: "period",
+        title: "本期发生额",
+        children: [amount("periodDebit", "借方"), amount("periodCredit", "贷方")],
+    },
+    {
+        key: "ending",
+        title: "期末余额",
+        children: [amount("endingDebit", "借方"), amount("endingCredit", "贷方")],
+    },
+]
 
 export default function TrialBalancePage() {
     const { token } = useAuth()
@@ -149,13 +132,10 @@ export default function TrialBalancePage() {
         }
     }, [rows])
 
-    const table = useTable({ features, columns, data: rows, getRowId })
-    const leafCount = table.getLeafHeaders().length
-
     return (
         <div className="flex flex-col gap-4">
             <PageHeader
-                icon={Scale}
+                icon={AuditOutlined}
                 title="科目余额表"
                 subtitle={
                     <>
@@ -172,7 +152,7 @@ export default function TrialBalancePage() {
                     <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[12.5px] text-slate-500">日期范围：</span>
                         <DateRangeField
-                            className={cn(DATE_FIELD, "w-56")}
+                            className="w-56"
                             value={
                                 dateRange
                                     ? {
@@ -197,83 +177,32 @@ export default function TrialBalancePage() {
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        {loading && <Spinner className="size-4 text-slate-300" />}
+                        {loading && <Spin size="small" />}
                         <span className="text-[12.5px] text-slate-400">单位：元</span>
                     </div>
                 </div>
 
-                {error && (
-                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                        <AlertTitle>{error}</AlertTitle>
-                    </Alert>
-                )}
+                {error && <Alert type="error" showIcon title={error} />}
 
-                <Table>
-                    <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) =>
-                                    // rowSpan 为 0 表示被上层跨行表头覆盖，跳过该占位表头。
-                                    header.rowSpan === 0 ? null : (
-                                        <TableHead
-                                            key={header.id}
-                                            colSpan={header.colSpan}
-                                            rowSpan={header.rowSpan}
-                                            className={cn(
-                                                isAmountColumn(header.column.id) && amountCls,
-                                            )}
-                                        >
-                                            <table.FlexRender header={header} />
-                                        </TableHead>
-                                    ),
-                                )}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {loading && rows.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={leafCount} className="py-8 text-center">
-                                    <Spinner className="mx-auto size-5 text-slate-300" />
-                                </TableCell>
-                            </TableRow>
-                        ) : rows.length === 0 ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={leafCount}
-                                    className="py-8 text-center text-slate-400"
-                                >
-                                    {accountSetId ? "该期间暂无科目余额数据。" : "请先选择账套。"}
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow key={row.id}>
-                                    {row.getAllCells().map((cell) => (
-                                        <TableCell
-                                            key={cell.id}
-                                            className={cn(isAmountColumn(cell.column.id) && amountCls)}
-                                        >
-                                            <table.FlexRender cell={cell} />
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                    {rows.length > 0 && (
-                        <TableFooter>
-                            <TableRow>
-                                <TableCell colSpan={2}>合计</TableCell>
-                                {AMOUNT_KEYS.map((key) => (
-                                    <TableCell key={key} className={amountCls}>
-                                        {fmt(totals[key], true)}
-                                    </TableCell>
-                                ))}
-                            </TableRow>
-                        </TableFooter>
-                    )}
-                </Table>
+                <LedgerTable
+                    columns={columns}
+                    data={rows}
+                    loading={loading}
+                    emptyText={accountSetId ? "该期间暂无科目余额数据。" : "请先选择账套。"}
+                    rowKey={(row) => row.code ?? ""}
+                    footer={
+                        <Table.Summary.Row>
+                            <Table.Summary.Cell index={0} colSpan={2}>
+                                合计
+                            </Table.Summary.Cell>
+                            {AMOUNT_KEYS.map((key, i) => (
+                                <Table.Summary.Cell key={key} index={2 + i} {...AMOUNT_COL}>
+                                    {fmt(totals[key], true)}
+                                </Table.Summary.Cell>
+                            ))}
+                        </Table.Summary.Row>
+                    }
+                />
 
                 {rows.length > 0 && (
                     <span className={cn("text-[12.5px] text-slate-400", !balanced && "text-[#ef4444]")}>

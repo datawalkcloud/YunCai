@@ -1,10 +1,10 @@
 import type { ComponentType, ReactNode } from "react"
 
+import { Alert, Spin } from "antd"
+
 import { cn } from "@/lib/utils"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { SOFT_PANEL } from "@/components/page/styles"
-import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Spinner } from "@/components/ui/spinner"
 
 export interface ReportPageShellProps {
     /** 页头图标。 */
@@ -70,15 +70,11 @@ export function ReportPageShell({
                     </div>
                 </div>
 
-                {error && (
-                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                        <AlertTitle>{error}</AlertTitle>
-                    </Alert>
-                )}
+                {error && <Alert type="error" showIcon title={error} />}
 
                 {loading ? (
                     <div className="flex items-center justify-center py-16">
-                        <Spinner className="size-5 text-slate-300" />
+                        <Spin />
                     </div>
                 ) : placeholder != null ? (
                     <div className="py-16 text-center text-[13px] text-slate-400">{placeholder}</div>

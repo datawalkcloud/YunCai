@@ -1,47 +1,40 @@
 import { useState } from "react"
-import { createColumnHelper } from "@tanstack/react-table"
+import { Table } from "antd"
+import type { TableColumnsType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { LedgersApi, type VoucherJournalRowDto } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
 import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
-import { SORT_BY, asDate, ledgerFeatures } from "@/components/ledger/types"
+import { SORT_BY, asDate } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 import { useVoucherLookup } from "@/components/ledger/useVoucherLookup"
 import { VoucherDetailSheet } from "@/components/ledger/VoucherDetailSheet"
-import { TableCell, TableRow } from "@/components/ui/table"
 
 /** 序时账按「凭证 + 分录」出行，行键用凭证字号与行次组合。 */
 type JournalRow = VoucherJournalRowDto & { rowKey: string }
 
-const helper = createColumnHelper<typeof ledgerFeatures, JournalRow>()
-
-const AMOUNT_IDS = ["debit", "credit"]
-const isAmount = (id: string) => AMOUNT_IDS.includes(id)
-
 const FIELDS: readonly LedgerField[] = ["date", "accountRange", "summary", "sortBy"]
 const SWITCHES = ["showOnlyLeaf"] as const
 
-const columns = helper.columns([
-    helper.accessor("date", { header: "日期" }),
-    helper.accessor("voucherNo", { header: "凭证字号" }),
-    helper.accessor("summary", { header: "摘要" }),
-    helper.accessor("accountCode", { header: "科目编码" }),
-    helper.accessor("accountName", { header: "科目名称" }),
-    helper.accessor("debit", { header: "借方", cell: (info) => fmtAmount(info.getValue()) }),
-    helper.accessor("credit", { header: "贷方", cell: (info) => fmtAmount(info.getValue()) }),
-    helper.accessor("preparer", { header: "制单人" }),
-    helper.accessor("reviewer", { header: "审核人" }),
-    helper.accessor("attachmentCount", {
-        header: "附件",
-        cell: (info) => (info.getValue() ? String(info.getValue()) : ""),
-    }),
-])
+const columns: TableColumnsType<JournalRow> = [
+    { title: "日期", dataIndex: "date" },
+    { title: "凭证字号", dataIndex: "voucherNo" },
+    { title: "摘要", dataIndex: "summary" },
+    { title: "科目编码", dataIndex: "accountCode" },
+    { title: "科目名称", dataIndex: "accountName" },
+    { title: "借方", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    { title: "贷方", dataIndex: "credit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    { title: "制单人", dataIndex: "preparer" },
+    { title: "审核人", dataIndex: "reviewer" },
+    { title: "附件", dataIndex: "attachmentCount", render: (v) => (v ? String(v) : "") },
+]
 
 export default function VoucherJournalPage() {
     const { token } = useAuth()
@@ -113,25 +106,24 @@ export default function VoucherJournalPage() {
                 emptyText={
                     accountSetId ? "该期间暂无已过账凭证分录。" : "请先选择账套。"
                 }
-                getRowId={(row) => row.rowKey}
-                isAmountColumn={isAmount}
+                rowKey={(row) => row.rowKey}
                 onRowClick={(row) => {
                     const id = lookup.resolveId(row.date, row.voucherNo)
                     if (id) setVoucherId(id)
                 }}
                 footer={
-                    <TableRow>
-                        <TableCell colSpan={5} className="font-medium">
+                    <Table.Summary.Row>
+                        <Table.Summary.Cell index={0} colSpan={5} className="font-medium">
                             合计
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums font-medium">
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={5} align="right" className="tabular-nums font-medium">
                             {fmtAmount(query.data?.totalDebit, true)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums font-medium">
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={6} align="right" className="tabular-nums font-medium">
                             {fmtAmount(query.data?.totalCredit, true)}
-                        </TableCell>
-                        <TableCell colSpan={3} />
-                    </TableRow>
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={7} colSpan={3} />
+                    </Table.Summary.Row>
                 }
             />
 

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { FileSpreadsheet, RefreshCw } from "lucide-react"
+import type { ReactNode } from "react"
+import { AccountBookOutlined, ReloadOutlined } from "@ant-design/icons"
+import { Button, Table } from "antd"
+import type { TableColumnsType } from "antd"
 import dayjs from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -9,17 +12,7 @@ import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 import { PeriodField } from "@/components/fields/date-fields"
 import { ReportPageShell } from "@/components/report/ReportPageShell"
-import { PAGE_BTN_GHOST, PERIOD_FIELD } from "@/components/page/styles"
-import { Button } from "@/components/ui/button"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Spinner } from "@/components/ui/spinner"
+import { AMOUNT_COL } from "@/components/page/styles"
 
 type RowKind = "section" | "item" | "total"
 
@@ -177,40 +170,57 @@ function buildLiabilityRows(map: AmountMap): SheetLine[] {
     ]
 }
 
-const cellCls = "border border-border px-2 py-1 align-middle"
-const amountCls = cn(cellCls, "text-right tabular-nums")
+/** 表格一行 = 左右两半各一条报表行；较短的一侧留空。 */
+interface SheetRow {
+    id: number
+    a?: SheetLine
+    b?: SheetLine
+}
 
-/** 渲染半张表（资产 / 负债及权益）的一行的 4 个单元格，空行时输出占位单元格。 */
-function HalfRow({ row }: { row?: SheetLine }) {
-    if (!row) {
-        return (
-            <>
-                <TableCell className={cellCls} />
-                <TableCell className={cellCls} />
-                <TableCell className={amountCls} />
-                <TableCell className={amountCls} />
-            </>
-        )
-    }
-    if (row.kind === "section") {
-        return (
-            <>
-                <TableCell className={cn(cellCls, "whitespace-normal font-medium")}>{row.label}</TableCell>
-                <TableCell className={cellCls} />
-                <TableCell className={amountCls} />
-                <TableCell className={amountCls} />
-            </>
-        )
-    }
-    const isTotal = row.kind === "total"
-    return (
-        <>
-            <TableCell className={cn(cellCls, "whitespace-normal", isTotal ? "font-medium" : "pl-6")}>{row.label}</TableCell>
-            <TableCell className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>{row.line}</TableCell>
-            <TableCell className={cn(amountCls, isTotal && "font-medium")}>{fmt(row.ending, isTotal)}</TableCell>
-            <TableCell className={cn(amountCls, isTotal && "font-medium")}>{fmt(row.opening, isTotal)}</TableCell>
-        </>
-    )
+/**
+ * 半张表共用的 4 列（名称 / 行次 / 期末 / 年初）。
+ * 资产负债表是左右对排的打印格式，取数按 kind 决定缩进与加粗，空侧渲染空单元格。
+ */
+function halfColumns(nameTitle: string, pick: (row: SheetRow) => SheetLine | undefined): TableColumnsType<SheetRow> {
+    /** 该侧为空时补一个占位单元格，保持网格完整。 */
+    const cell = (render: (line: SheetLine) => ReactNode) =>
+        (_: unknown, row: SheetRow) => {
+            const line = pick(row)
+            return line ? render(line) : null
+        }
+
+    return [
+        {
+            title: nameTitle,
+            render: cell((line) =>
+                line.kind === "section"
+                    ? <span className="font-medium">{line.label}</span>
+                    : <span className={cn(line.kind === "total" ? "font-medium" : "ml-4")}>{line.label}</span>,
+            ),
+        },
+        {
+            title: "行次",
+            align: "center",
+            width: 56,
+            render: cell((line) => <span className="tabular-nums text-muted-foreground">{line.line}</span>),
+        },
+        {
+            title: "期末余额",
+            width: 130,
+            ...AMOUNT_COL,
+            render: cell((line) => (
+                <span className={line.kind === "total" ? "font-medium" : undefined}>{fmt(line.ending, line.kind === "total")}</span>
+            )),
+        },
+        {
+            title: "年初余额",
+            width: 130,
+            ...AMOUNT_COL,
+            render: cell((line) => (
+                <span className={line.kind === "total" ? "font-medium" : undefined}>{fmt(line.opening, line.kind === "total")}</span>
+            )),
+        },
+    ]
 }
 
 export default function BalanceSheetPage() {
@@ -276,11 +286,19 @@ export default function BalanceSheetPage() {
         }
     }, [lines])
 
-    const rowCount = Math.max(assetRows.length, liabilityRows.length)
+    // 左右两半按行号并排，较短的一侧留空。
+    const rows: SheetRow[] = useMemo(
+        () => Array.from({ length: Math.max(assetRows.length, liabilityRows.length) }, (_, i) => ({
+            id: i,
+            a: assetRows[i],
+            b: liabilityRows[i],
+        })),
+        [assetRows, liabilityRows],
+    )
 
     return (
         <ReportPageShell
-            icon={FileSpreadsheet}
+            icon={AccountBookOutlined}
             title="资产负债表"
             subtitle={
                 <>
@@ -293,7 +311,6 @@ export default function BalanceSheetPage() {
                 <>
                     <span className="text-[12.5px] text-slate-500">会计期间：</span>
                     <PeriodField
-                        className={PERIOD_FIELD}
                         value={toPeriodDate(period)}
                         onChange={(d) => d && setPeriod({ year: dayjs(d).year(), month: dayjs(d).month() + 1 })}
                         disabled={!accountSetId}
@@ -303,16 +320,10 @@ export default function BalanceSheetPage() {
             }
             actions={
                 <Button
-                    variant="outline"
+                    icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
                     onClick={() => void load()}
                     disabled={loading || !accountSetId}
-                    className={cn(PAGE_BTN_GHOST, "bg-white")}
                 >
-                    {loading ? (
-                        <Spinner data-icon="inline-start" />
-                    ) : (
-                        <RefreshCw data-icon="inline-start" />
-                    )}
                     刷新
                 </Button>
             }
@@ -334,40 +345,15 @@ export default function BalanceSheetPage() {
                 ) : undefined
             }
         >
-            <Table className="min-w-[900px] border-collapse">
-                <colgroup>
-                    <col />
-                    <col className="w-12" />
-                    <col className="w-[130px]" />
-                    <col className="w-[130px]" />
-                    <col />
-                    <col className="w-12" />
-                    <col className="w-[130px]" />
-                    <col className="w-[130px]" />
-                </colgroup>
-                <TableHeader>
-                    <TableRow className="bg-muted hover:bg-muted">
-                        <TableHead className={cn(cellCls, "whitespace-normal text-left font-medium text-slate-500")}>资产</TableHead>
-                        <TableHead className={cn(cellCls, "text-center font-medium text-slate-500")}>行次</TableHead>
-                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>期末余额</TableHead>
-                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>年初余额</TableHead>
-                        <TableHead className={cn(cellCls, "whitespace-normal text-left font-medium text-slate-500")}>
-                            负债和所有者权益（或股东权益）
-                        </TableHead>
-                        <TableHead className={cn(cellCls, "text-center font-medium text-slate-500")}>行次</TableHead>
-                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>期末余额</TableHead>
-                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>年初余额</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {Array.from({ length: rowCount }).map((_, i) => (
-                        <TableRow key={i} className="hover:bg-transparent">
-                            <HalfRow row={assetRows[i]} />
-                            <HalfRow row={liabilityRows[i]} />
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+            <Table<SheetRow>
+                columns={[...halfColumns("资产", (r) => r.a), ...halfColumns("负债和所有者权益（或股东权益）", (r) => r.b)]}
+                dataSource={rows}
+                rowKey="id"
+                pagination={false}
+                size="small"
+                bordered
+                scroll={{ x: 900 }}
+            />
         </ReportPageShell>
     )
 }

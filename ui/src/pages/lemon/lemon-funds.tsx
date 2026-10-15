@@ -6,17 +6,28 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronDown, Coins, Info, Landmark, Receipt, Settings2, Wallet } from "lucide-react";
+import {
+    DownOutlined,
+    InfoCircleOutlined,
+    BankOutlined,
+    MoneyCollectOutlined,
+    ProfileOutlined,
+    SettingOutlined,
+    WalletOutlined,
+} from "@ant-design/icons";
+import { Input } from "antd";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { shiftPeriod, useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
+import { ICON_STYLE } from "@/components/page/styles";
 import { AccountsApi } from "@/apis-gen";
 
 
 import {
     Btn,
     CheckBox,
+    DateInput,
     Dialog,
     EmptyTip,
     Page,
@@ -75,8 +86,8 @@ function useJournals() {
 
 /* ---------- 现金/银行日记账（已接后端） ---------- */
 
-const jpEdit =
-    "h-7 w-full rounded-lg border border-slate-200 px-1.5 text-[13px] text-slate-700 outline-none focus:border-[#2f6bff] focus:ring-2 focus:ring-[#2f6bff]/15";
+/** 行内编辑单元格控件尺寸：antd 的 .ant-input 是无层级声明，Tailwind 的 h-/text- 压不过，只能内联。 */
+const jpEdit = { height: 28, fontSize: 13 } as const;
 
 /** 日记账页面：行来自后端流水；勾选行→生成凭证走「未选提示 toast / 未设科目引导弹窗 / 批量出票」三条链路。 */
 function JournalPage({
@@ -319,14 +330,14 @@ function JournalPage({
             key: "ops",
             title: (
                 <span className="inline-flex items-center gap-1">
-                    操作 <Settings2 className="h-3 w-3 text-slate-400" />
+                    操作 <SettingOutlined className="text-[12px]" style={ICON_STYLE.muted} />
                 </span>
             ),
             width: "230px",
         },
     ];
     return (
-        <Page title={bank ? "银行日记账" : "现金日记账"} icon={bank ? Landmark : Coins}>
+        <Page title={bank ? "银行日记账" : "现金日记账"} icon={bank ? BankOutlined : MoneyCollectOutlined}>
             <ToolRow
                 left={
                     <>
@@ -355,7 +366,7 @@ function JournalPage({
                     <>
                         {bank && (
                             <span className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#2f6bff]/40 bg-[#eef4ff] px-3 text-sm text-[#2f6bff]">
-                                银企互联 <Info className="h-3.5 w-3.5" />
+                                银企互联 <InfoCircleOutlined className="text-[14px]" />
                             </span>
                         )}
                         <Btn onClick={() => void openAdd()}>新增日记账</Btn>
@@ -394,7 +405,7 @@ function JournalPage({
                                 >
                                     {c.title}
                                     {["summary", "ieType", "partner"].includes(String(c.key)) && (
-                                        <ChevronDown className="ml-1 inline h-3 w-3 text-slate-400" />
+                                        <DownOutlined className="ml-1 text-[12px]" style={ICON_STYLE.muted} />
                                     )}
                                 </th>
                             ))}
@@ -466,22 +477,47 @@ function JournalPage({
                         <tr className="border-b border-slate-100">
                             <td />
                             <td className="px-2 py-1.5">
-                                <input type="date" className={jpEdit} value={draft.date} onChange={(ev) => setDraft({ ...draft, date: ev.target.value })} />
+                                <DateInput className="w-full" value={draft.date} onChange={(v) => setDraft({ ...draft, date: v })} />
                             </td>
                             <td className="px-2 py-1.5">
-                                <input className={`${jpEdit} border-[#2f6bff]`} value={draft.summary} onChange={(ev) => setDraft({ ...draft, summary: ev.target.value })} />
+                                <Input
+                                    className="w-full"
+                                    style={{ ...jpEdit, borderColor: "#2f6bff" }}
+                                    value={draft.summary}
+                                    onChange={(ev) => setDraft({ ...draft, summary: ev.target.value })}
+                                />
                             </td>
                             <td className="px-2 py-1.5">
-                                <input className={jpEdit} value={draft.category} onChange={(ev) => setDraft({ ...draft, category: ev.target.value })} />
+                                <Input
+                                    className="w-full"
+                                    style={jpEdit}
+                                    value={draft.category}
+                                    onChange={(ev) => setDraft({ ...draft, category: ev.target.value })}
+                                />
                             </td>
                             <td className="px-2 py-1.5">
-                                <input className={jpEdit} value={draft.counterparty} onChange={(ev) => setDraft({ ...draft, counterparty: ev.target.value })} />
+                                <Input
+                                    className="w-full"
+                                    style={jpEdit}
+                                    value={draft.counterparty}
+                                    onChange={(ev) => setDraft({ ...draft, counterparty: ev.target.value })}
+                                />
                             </td>
                             <td className="px-2 py-1.5">
-                                <input className={`${jpEdit} text-right`} value={draft.income} onChange={(ev) => setDraft({ ...draft, income: ev.target.value.replace(/[^\d.]/g, "") })} />
+                                <Input
+                                    className="w-full"
+                                    style={{ ...jpEdit, textAlign: "right" }}
+                                    value={draft.income}
+                                    onChange={(ev) => setDraft({ ...draft, income: ev.target.value.replace(/[^\d.]/g, "") })}
+                                />
                             </td>
                             <td className="px-2 py-1.5">
-                                <input className={`${jpEdit} text-right`} value={draft.expense} onChange={(ev) => setDraft({ ...draft, expense: ev.target.value.replace(/[^\d.]/g, "") })} />
+                                <Input
+                                    className="w-full"
+                                    style={{ ...jpEdit, textAlign: "right" }}
+                                    value={draft.expense}
+                                    onChange={(ev) => setDraft({ ...draft, expense: ev.target.value.replace(/[^\d.]/g, "") })}
+                                />
                             </td>
                             <td className="px-3 py-2 text-right text-[13px]" />
                             <td />
@@ -751,7 +787,7 @@ export function LemonDraft() {
     };
 
     return (
-        <Page title="票据管理" subtitle="按期间登记与查询应收票据" icon={Receipt}>
+        <Page title="票据管理" subtitle="按期间登记与查询应收票据" icon={ProfileOutlined}>
             <SubTabs tabs={["票据台账"]} />
             <ToolRow
                 left={
@@ -762,7 +798,7 @@ export function LemonDraft() {
                             onNext={() => setUserPeriod(shiftPeriod(period, 1))}
                         />
                         <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
-                            如何管理票据？ <Info className="h-3.5 w-3.5" />
+                            如何管理票据？ <InfoCircleOutlined className="text-[14px]" />
                         </span>
                         <CheckBox label="显示所有信息" />
                     </>
@@ -866,11 +902,11 @@ export function LemonDraft() {
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="w-[90px] text-right">出票日：</span>
-                            <TextInput className="flex-1" type="date" value={form.issueDate} onChange={(v) => setForm({ ...form, issueDate: v })} />
+                            <DateInput className="flex-1" value={form.issueDate} onChange={(v) => setForm({ ...form, issueDate: v })} />
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="w-[90px] text-right">汇票到期日：</span>
-                            <TextInput className="flex-1" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
+                            <DateInput className="flex-1" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="w-[90px] text-right">收支类别：</span>
@@ -1066,7 +1102,7 @@ export function LemonAccountSettings() {
                   opsCol,
               ];
     return (
-        <Page title="账户设置" subtitle="现金与银行存款资金账户的启停用、编辑与新增" icon={Wallet}>
+        <Page title="账户设置" subtitle="现金与银行存款资金账户的启停用、编辑与新增" icon={WalletOutlined}>
             <SubTabs tabs={["现金", "银行存款"]} active={tab} onChange={setTab} />
             {/* 银企互联列已移除：后端未提供绑定端点，功能建设中 */}
             <WipNotice text="银企互联（绑定银行 / 预约开户）建设中，后端未提供端点，列表暂不展示绑定相关列；启停用、编辑、删除与新增均已接真实数据。" />

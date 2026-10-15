@@ -1,21 +1,26 @@
 import { useCallback, useEffect, useState } from "react"
 import dayjs from "dayjs"
-import { CircleAlert, CircleCheck, FileCheck, RefreshCw, Scale, TriangleAlert, Wallet, X } from "lucide-react"
+import {
+    CheckCircleOutlined,
+    DiffOutlined,
+    FileDoneOutlined,
+    ReloadOutlined,
+    WalletOutlined,
+    WarningOutlined,
+} from "@ant-design/icons"
+import { Alert, Button, Table } from "antd"
+import type { TableColumnsType } from "antd"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
-import { FundReportsApi, type FundReconciliationDto } from "@/apis-gen"
+import { FundReportsApi, type FundReconciliationDto, type FundReconciliationRowDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtMoney } from "@/lib/format"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile, type TileTone } from "@/components/page/tile"
 import { StatusPill } from "@/components/page/status-pill"
-import { DATE_FIELD, PAGE_BTN_GHOST } from "@/components/page/styles"
-import { Alert, AlertAction, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import { AMOUNT_COL, ICON_STYLE } from "@/components/page/styles"
 import { DateField } from "@/components/fields/date-fields"
-import { Spinner } from "@/components/ui/spinner"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function ReconciliationPage() {
     const { token } = useAuth()
@@ -63,16 +68,59 @@ export default function ReconciliationPage() {
         icon: React.ComponentType<{ className?: string }>
         hint?: string
     }[] = [
-        { label: "资金账户", value: `${rows.length}`, tone: "gray", icon: Wallet },
-        { label: "已核平", value: `${rows.length - diffCount}`, tone: "green", icon: CircleCheck },
-        { label: "有差异", value: `${diffCount}`, tone: diffCount > 0 ? "red" : "gray", icon: TriangleAlert },
-        { label: "差异金额合计", value: fmtMoney(absDiff), tone: "blue", icon: Scale, hint: "各账户差异绝对值之和" },
+        { label: "资金账户", value: `${rows.length}`, tone: "gray", icon: WalletOutlined },
+        { label: "已核平", value: `${rows.length - diffCount}`, tone: "green", icon: CheckCircleOutlined },
+        { label: "有差异", value: `${diffCount}`, tone: diffCount > 0 ? "red" : "gray", icon: WarningOutlined },
+        { label: "差异金额合计", value: fmtMoney(absDiff), tone: "blue", icon: DiffOutlined, hint: "各账户差异绝对值之和" },
+    ]
+
+    const columns: TableColumnsType<FundReconciliationRowDto> = [
+        {
+            title: "账户",
+            render: (_, r) => <span className="truncate font-medium text-slate-700">{r.journalName}</span>,
+        },
+        {
+            title: "类型",
+            render: (_, r) => (
+                <StatusPill tone={r.journalType === 1 ? "green" : "blue"}>
+                    {r.journalType === 1 ? "现金" : "银行"}
+                </StatusPill>
+            ),
+        },
+        {
+            title: "对应科目",
+            className: "whitespace-nowrap text-slate-500",
+            render: (_, r) => (r.accountCode ? `${r.accountCode} ${r.accountName}` : ""),
+        },
+        { title: "出纳余额", render: (_, r) => fmtMoney(r.journalBalance ?? 0), ...AMOUNT_COL },
+        { title: "总账余额", render: (_, r) => fmtMoney(r.ledgerBalance ?? 0), ...AMOUNT_COL },
+        {
+            title: "差异",
+            ...AMOUNT_COL,
+            render: (_, r) =>
+                r.balanced ? (
+                    <span className="text-slate-300">0.00</span>
+                ) : (
+                    <span className="font-medium text-[#ef4444]">{fmtMoney(r.difference ?? 0)}</span>
+                ),
+        },
+        {
+            title: "状态",
+            align: "center",
+            render: (_, r) =>
+                r.balanced ? <StatusPill tone="green">已平</StatusPill> : <StatusPill tone="amber">有差异</StatusPill>,
+        },
+        {
+            title: "备注",
+            className: "text-[12px] text-[#b45309]",
+            render: (_, r) => r.note ?? "",
+        },
     ]
 
     return (
         <div className="flex w-full flex-col gap-5">
             <PageHeader
-                icon={FileCheck}
+                icon={FileDoneOutlined}
                 title="核对总账"
                 subtitle={
                     <>
@@ -81,40 +129,33 @@ export default function ReconciliationPage() {
                     </>
                 }
                 actions={
-                    <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void load()} disabled={!accountSetId || loading}>
-                        {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                    <Button
+                        icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                        disabled={!accountSetId || loading}
+                        onClick={() => void load()}
+                    >
                         刷新
                     </Button>
                 }
             />
 
-            {error && (
-                <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                    <CircleAlert />
-                    <AlertTitle>{error}</AlertTitle>
-                    <AlertAction>
-                        <Button variant="ghost" size="icon-xs" title="关闭" onClick={() => setError(null)}>
-                            <X />
-                        </Button>
-                    </AlertAction>
-                </Alert>
-            )}
+            {error && <Alert type="error" showIcon closable title={error} onClose={() => setError(null)} />}
 
-            {data && rows.length > 0 && (
-                data.allBalanced ? (
-                    <Alert className="rounded-2xl border-[#a7f3d0] bg-[#ecfdf5] text-[#059669]">
-                        <CircleCheck />
-                        <AlertTitle>出纳账与总账全部核对一致（截至 {dayjs(asOf).format("YYYY-MM-DD")}）。</AlertTitle>
-                    </Alert>
+            {data &&
+                rows.length > 0 &&
+                (data.allBalanced ? (
+                    <Alert
+                        type="success"
+                        showIcon
+                        title={`出纳账与总账全部核对一致（截至 ${dayjs(asOf).format("YYYY-MM-DD")}）。`}
+                    />
                 ) : (
-                    <Alert className="rounded-2xl border-[#fde68a] bg-[#fffbeb] text-[#b45309]">
-                        <TriangleAlert />
-                        <AlertTitle>
-                            {`存在 ${diffCount} 个账户余额不一致（截至 ${dayjs(asOf).format("YYYY-MM-DD")}），请逐项核对。`}
-                        </AlertTitle>
-                    </Alert>
-                )
-            )}
+                    <Alert
+                        type="warning"
+                        showIcon
+                        title={`存在 ${diffCount} 个账户余额不一致（截至 ${dayjs(asOf).format("YYYY-MM-DD")}），请逐项核对。`}
+                    />
+                ))}
 
             <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
                 {tiles.map((t) => (
@@ -125,7 +166,7 @@ export default function ReconciliationPage() {
             {rows.length === 0 && !loading ? (
                 <SectionCard bodyClassName="p-0">
                     <div className="flex flex-col items-center gap-3 py-12">
-                        <FileCheck size={40} strokeWidth={1.2} className="text-slate-300" />
+                        <FileDoneOutlined className="text-[40px]" style={ICON_STYLE.placeholder} />
                         <p className="text-[13px] text-slate-400">
                             {accountSetId ? "还没有资金账户，无法核对。请先到「资金流水」创建账户。" : "请先选择账套。"}
                         </p>
@@ -137,67 +178,20 @@ export default function ReconciliationPage() {
                     action={
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[12px] text-slate-400">对账截止日</span>
-                            <DateField
-                                value={asOf}
-                                onChange={(v) => v && setAsOf(v)}
-                                allowClear={false}
-                                className={DATE_FIELD}
-                            />
+                            <DateField value={asOf} onChange={(v) => v && setAsOf(v)} allowClear={false} />
                         </div>
                     }
                     bodyClassName="p-0"
                 >
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="text-left">账户</TableHead>
-                                <TableHead className="text-left">类型</TableHead>
-                                <TableHead className="text-left">对应科目</TableHead>
-                                <TableHead className="text-right">出纳余额</TableHead>
-                                <TableHead className="text-right">总账余额</TableHead>
-                                <TableHead className="text-right">差异</TableHead>
-                                <TableHead className="text-center">状态</TableHead>
-                                <TableHead className="text-left">备注</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rows.map((r) => (
-                                <TableRow key={r.journalId}>
-                                    <TableCell className="w-full">
-                                        <div className="truncate font-medium text-slate-700">{r.journalName}</div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <StatusPill tone={r.journalType === 1 ? "green" : "blue"}>
-                                            {r.journalType === 1 ? "现金" : "银行"}
-                                        </StatusPill>
-                                    </TableCell>
-                                    <TableCell className="whitespace-nowrap text-slate-500">
-                                        {r.accountCode ? `${r.accountCode} ${r.accountName}` : ""}
-                                    </TableCell>
-                                    <TableCell className="text-right tabular-nums">{fmtMoney(r.journalBalance ?? 0)}</TableCell>
-                                    <TableCell className="text-right tabular-nums">{fmtMoney(r.ledgerBalance ?? 0)}</TableCell>
-                                    <TableCell className="text-right tabular-nums">
-                                        {r.balanced
-                                            ? <span className="text-slate-300">0.00</span>
-                                            : <span className="font-medium text-[#ef4444]">{fmtMoney(r.difference ?? 0)}</span>}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        {r.balanced
-                                            ? <StatusPill tone="green">已平</StatusPill>
-                                            : <StatusPill tone="amber">有差异</StatusPill>}
-                                    </TableCell>
-                                    <TableCell className="text-[12px] text-[#b45309]">{r.note ?? ""}</TableCell>
-                                </TableRow>
-                            ))}
-                            {rows.length === 0 && !loading && (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="py-8 text-center text-slate-400">
-                                        暂无数据
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                    <Table
+                        columns={columns}
+                        dataSource={rows}
+                        rowKey={(r) => r.journalId ?? ""}
+                        pagination={false}
+                        loading={loading}
+                        size="small"
+                        locale={{ emptyText: "暂无数据" }}
+                    />
                 </SectionCard>
             )}
         </div>

@@ -9,7 +9,19 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { FileCheck, FileText, HelpCircle, KeyRound, Landmark, ReceiptText, RefreshCw, ShieldAlert, Wallet } from "lucide-react";
+import {
+    AlertOutlined,
+    BankOutlined,
+    FileDoneOutlined,
+    FileTextOutlined,
+    KeyOutlined,
+    ProfileOutlined,
+    QuestionCircleOutlined,
+    ReloadOutlined,
+    WalletOutlined,
+} from "@ant-design/icons";
+
+import { ICON_STYLE, type PillTone } from "@/components/page/styles";
 
 import {
     Btn,
@@ -18,6 +30,7 @@ import {
     EmptyTip,
     FakeInput,
     FakeSelect,
+    DateInput,
     Page,
     Pager,
     PeriodBlock,
@@ -35,7 +48,6 @@ import {
 } from "./components/ui";
 import type { Col, Row } from "./components/ui";
 import { StatusPill } from "@/components/page/status-pill";
-import type { PillTone } from "@/components/page/styles";
 import { InvoicesApi, type InvoiceDto, type InvoiceFundOverviewRowDto, type InvoiceSummaryDto } from "@/apis-gen";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
@@ -130,7 +142,7 @@ export function LemonInvoiceFetch() {
         <Page
             title="一键取票"
             subtitle="只需一次维护，即可直接获取进销项发票数据、数电发票电子文件，实现发票智能化"
-            icon={RefreshCw}
+            icon={ReloadOutlined}
         >
             <WipNotice text="一键取票需对接税局发票取得服务，后端尚未提供端点，本页为功能介绍（建设中）。" />
             <div className="flex flex-1 flex-col items-center justify-center py-16">
@@ -319,7 +331,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
     ];
     const tabs = kind === "sales" ? ["销项发票", "商品明细"] : ["进项发票", "商品明细", "暂不入账发票"];
     return (
-        <Page title={kind === "sales" ? "销项发票" : "进项发票"} subtitle={kind === "sales" ? "销项发票的登记、开具与入账情况" : "进项发票的登记、认证与抵扣情况"} icon={kind === "sales" ? FileText : FileCheck}>
+        <Page title={kind === "sales" ? "销项发票" : "进项发票"} subtitle={kind === "sales" ? "销项发票的登记、开具与入账情况" : "进项发票的登记、认证与抵扣情况"} icon={kind === "sales" ? FileTextOutlined : FileDoneOutlined}>
             <SubTabs tabs={tabs} active={tab} onChange={setTab} />
             <ToolRow
                 left={
@@ -373,7 +385,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                             voucher: "",
                             source: "",
                             status: "",
-                            __cls: "bg-muted font-medium",
+                            __style: { background: "var(--muted)", fontWeight: 500 },
                         } as Row,
                         ...data.invoices.map(
                             (inv) =>
@@ -395,7 +407,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                                     voucher: inv.voucherText,
                                     source: inv.source,
                                     status: <StatusPill tone={invoiceStatusTone(inv.statusText)}>{inv.statusText}</StatusPill>,
-                                    __cls: selected.has(inv.id ?? "") ? "bg-[#eef4ff]" : undefined,
+                                    __style: selected.has(inv.id ?? "") ? { background: "#eef4ff" } : undefined,
                                 }) as Row
                         ),
                     ]}
@@ -421,7 +433,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                     <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
                         {([
                             ["发票种类：", <Select key="t" className="w-[220px]" value={addForm.invoiceType} onChange={(v) => setAddForm({ ...addForm, invoiceType: v })} options={["增值税专用发票", "增值税普通发票", "电子发票"]} />],
-                            ["开票日期：", <TextInput key="d" type="date" className="w-[220px]" value={addForm.issueDate} onChange={(v) => setAddForm({ ...addForm, issueDate: v })} />],
+                            ["开票日期：", <DateInput key="d" className="w-[220px]" value={addForm.issueDate} onChange={(v) => setAddForm({ ...addForm, issueDate: v })} />],
                             ["发票号码：", <TextInput key="n" className="w-[220px]" value={addForm.invoiceNo} onChange={(v) => setAddForm({ ...addForm, invoiceNo: v })} />],
                             [kind === "sales" ? "客户名称：" : "供应商名称：", <TextInput key="p" className="w-[220px]" value={addForm.partnerName} onChange={(v) => setAddForm({ ...addForm, partnerName: v })} />],
                             ["商品名称：", <TextInput key="g" className="w-[220px]" value={addForm.goodsName} onChange={(v) => setAddForm({ ...addForm, goodsName: v })} />],
@@ -474,7 +486,7 @@ export function LemonExpenseBill() {
         { key: "no", title: "单据编号", width: "130px" },
     ];
     return (
-        <Page title="费用单据" subtitle="费用单据登记与生成凭证（建设中，暂无真实数据）" icon={ReceiptText}>
+        <Page title="费用单据" subtitle="费用单据登记与生成凭证（建设中，暂无真实数据）" icon={ProfileOutlined}>
             <WipNotice text="费用单据后端未提供数据端点，本页为界面复刻占位（建设中），无真实数据。" />
             <ToolRow
                 left={
@@ -525,7 +537,7 @@ export function LemonInvoiceSummary() {
         ops: <WipTag text="核对建设中" />,
     }));
     return (
-        <Page title="发票资金一览表" subtitle="按往来单位比对发票与收付款差异" icon={Wallet}>
+        <Page title="发票资金一览表" subtitle="按往来单位比对发票与收付款差异" icon={WalletOutlined}>
             <ToolRow
                 left={
                     <PeriodStepper
@@ -573,7 +585,7 @@ const RISK_POINTS = [
 
 export function LemonInvoiceRisk() {
     return (
-        <Page title="发票风险分析" subtitle="多维度检测发票潜在风险与销售采购资金情况" icon={ShieldAlert}>
+        <Page title="发票风险分析" subtitle="多维度检测发票潜在风险与销售采购资金情况" icon={AlertOutlined}>
             <WipNotice text="发票风险分析依赖一键取票取得的税局发票数据，后端尚未提供分析端点，本页为功能介绍（建设中）。" />
             <div className="flex flex-1 items-center justify-center py-10">
                 <div className="flex w-[1100px] items-center gap-10 rounded-2xl border border-slate-100 bg-white px-10 py-12 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
@@ -667,13 +679,13 @@ function InvoiceGoodsTable({
                   rate: "",
                   tax: sum("tax").toFixed(2),
                   total: sum("total").toFixed(2),
-                  __cls: "bg-muted font-bold text-slate-800",
+                  __style: { background: "var(--muted)", fontWeight: 700, color: "#1e293b" },
               },
               ...flat,
           ]
         : [];
     return (
-        <Page title={kind === "sales" ? "销项发票" : "进项发票"} subtitle="发票商品明细逐行摊示" icon={kind === "sales" ? FileText : FileCheck}>
+        <Page title={kind === "sales" ? "销项发票" : "进项发票"} subtitle="发票商品明细逐行摊示" icon={kind === "sales" ? FileTextOutlined : FileDoneOutlined}>
             <SubTabs tabs={kind === "sales" ? ["销项发票", "商品明细"] : ["进项发票", "商品明细", "暂不入账发票"]} active={1} onChange={onTab} />
             <ToolRow
                 left={
@@ -779,7 +791,7 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
                       total: (data.summary?.totalWithTax ?? 0).toFixed(2),
                       source: "",
                       ops: "",
-                      __cls: "bg-muted",
+                      __style: { background: "var(--muted)" },
                   } as Row,
               ]
             : []),
@@ -808,7 +820,7 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
         ),
     ];
     return (
-        <Page title="进项发票" subtitle="暂不入账发票可恢复入账流程" icon={FileCheck}>
+        <Page title="进项发票" subtitle="暂不入账发票可恢复入账流程" icon={FileDoneOutlined}>
             <SubTabs tabs={["进项发票", "商品明细", "暂不入账发票"]} active={2} onChange={onTab} />
             <WipNotice text="「入账」仅把发票恢复为未入账状态；发票生成凭证端点后端尚未提供，仍属建设中。导出与批量操作建设中。" />
             <ToolRow
@@ -844,7 +856,7 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
 /** 收票宝落地页（建设中）。 */
 export function LemonSpb() {
     return (
-        <Page title="收票宝" subtitle="员工收票交票，财务审批归档，企业电子档案管理好帮手" icon={ReceiptText}>
+        <Page title="收票宝" subtitle="员工收票交票，财务审批归档，企业电子档案管理好帮手" icon={ProfileOutlined}>
             <WipNotice text="收票宝需对接员工收票 / 电子档案服务，后端尚未提供端点，本页为功能介绍（建设中）。" />
             <div className="flex flex-1 flex-col items-center pt-10">
                 <div className="text-[16px] text-slate-500">帮您智能收取票据，一键提交财务，解放双手之神器</div>
@@ -879,7 +891,7 @@ const BANK_TABS = ["工商银行", "中国银行", "招商银行", "邮储银行
 export function LemonBankLink() {
     const [bank, setBank] = useState(1);
     return (
-        <Page title="银企互联" subtitle="实时同步对账单，自动生成凭证，银行级加密，安全可靠" icon={Landmark}>
+        <Page title="银企互联" subtitle="实时同步对账单，自动生成凭证，银行级加密，安全可靠" icon={BankOutlined}>
             <WipNotice text="银企互联需对接银行直连服务，后端尚未提供端点，本页为签约流程示意（建设中），表单内容不会提交。" />
             <SubTabs tabs={BANK_TABS} active={bank} onChange={setBank} />
             <div className="mx-auto my-6 w-[1220px] max-w-full rounded-2xl border border-slate-200 bg-white p-8">
@@ -909,7 +921,7 @@ export function LemonBankLink() {
                             <span className="w-[170px] text-right text-sm text-slate-700">企业客户号：</span>
                             <span className="inline-flex h-8 w-[320px] items-center rounded-lg border border-slate-200 px-2.5 text-[13px] text-slate-400">
                                 若集团账号签约，请输入企业客户号
-                                <HelpCircle className="ml-auto h-3.5 w-3.5 text-slate-400" />
+                                <QuestionCircleOutlined className="ml-auto text-[14px]" style={ICON_STYLE.muted} />
                             </span>
                         </div>
                     </div>
@@ -946,7 +958,7 @@ export function LemonTaxLogin() {
         <Page
             title="一键登录税局"
             subtitle="只需一次维护，即可直接登录电子税务局，进行取票、开票、报税、社保业务、征纳互动等操作"
-            icon={KeyRound}
+            icon={KeyOutlined}
         >
             <WipNotice text="一键登录税局需对接电子税务局免密登录服务，后端尚未提供端点，本页与弹窗均为流程示意（建设中）。" />
             <Dialog

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { createColumnHelper } from "@tanstack/react-table"
+import type { TableColumnsType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -7,6 +7,7 @@ import { type SubsidiaryLedgerRowDto, LedgersApi } from "@/apis-gen"
 import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
 import { kindRowClass } from "@/components/ledger/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
@@ -14,7 +15,6 @@ import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import {
     ROW_KIND,
     asDate,
-    ledgerFeatures,
     type LedgerConditions,
 } from "@/components/ledger/types"
 import { useAssistCategories, useAssistItems } from "@/components/ledger/useLedgerOptions"
@@ -24,11 +24,6 @@ import { VoucherDetailSheet } from "@/components/ledger/VoucherDetailSheet"
 
 /** 档案段内的明细账行加上稳定行键。 */
 type AssistRow = SubsidiaryLedgerRowDto & { rowKey: string }
-
-const helper = createColumnHelper<typeof ledgerFeatures, AssistRow>()
-
-const AMOUNT_IDS = ["debit", "credit", "balance"]
-const isAmount = (id: string) => AMOUNT_IDS.includes(id)
 
 const FIELDS: readonly LedgerField[] = [
     "date",
@@ -42,20 +37,20 @@ const SWITCHES = ["showCounterAccount", "hideZeroBalance", "hideNoActivity"] as 
 /** 后端把 assistType 作为必填参数，未选类别时不发请求。 */
 const canQuery = (conditions: LedgerConditions) => Boolean(conditions.assistType)
 
-function buildColumns(showCounterAccount: boolean) {
-    return helper.columns([
-        helper.accessor("date", { header: "日期" }),
-        helper.accessor("voucherNo", { header: "凭证字号" }),
-        helper.accessor("summary", { header: "摘要" }),
-        ...(showCounterAccount
-            ? [helper.accessor("counterAccount", { header: "对方科目" })]
-            : []),
-        helper.accessor("debit", { header: "借方", cell: (info) => fmtAmount(info.getValue()) }),
-        helper.accessor("credit", { header: "贷方", cell: (info) => fmtAmount(info.getValue()) }),
-        helper.accessor("direction", { header: "方向" }),
-        helper.accessor("balance", { header: "余额", cell: (info) => fmtAmount(info.getValue()) }),
-    ])
-}export default function AssistSubsidiaryPage() {
+function buildColumns(showCounterAccount: boolean): TableColumnsType<AssistRow> {
+    return [
+        { title: "日期", dataIndex: "date" },
+        { title: "凭证字号", dataIndex: "voucherNo" },
+        { title: "摘要", dataIndex: "summary" },
+        ...(showCounterAccount ? [{ title: "对方科目", dataIndex: "counterAccount" }] : []),
+        { title: "借方", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+        { title: "贷方", dataIndex: "credit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+        { title: "方向", dataIndex: "direction" },
+        { title: "余额", dataIndex: "balance", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    ]
+}
+
+export default function AssistSubsidiaryPage() {
     const { token } = useAuth()
     const accountSetId = useCurrentAccountSetId() ?? ""
 
@@ -177,8 +172,7 @@ function buildColumns(showCounterAccount: boolean) {
                                             data={rows}
                                             loading={query.loading}
                                             emptyText="本档案该期间无发生额。"
-                                            getRowId={(row) => row.rowKey}
-                                            isAmountColumn={isAmount}
+                                            rowKey={(row) => row.rowKey}
                                             rowClassName={(row) => kindRowClass(row.kind)}
                                             onRowClick={(row) => {
                                                 if (row.kind !== ROW_KIND.entry || !row.voucherNo) return

@@ -1,26 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import {
-    ArrowDownLeft,
-    ArrowUpRight,
-    CircleAlert,
-    CircleCheck,
-    Download,
-    FileSpreadsheet,
-    FileText,
-    Info,
-    Landmark,
-    Pencil,
-    PiggyBank,
-    Plus,
-    RefreshCw,
-    Trash2,
-    TriangleAlert,
-    Upload,
-    Wallet,
-    X,
-} from "lucide-react"
-import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
 import dayjs from "dayjs"
+import {
+    Alert,
+    Button,
+    Checkbox,
+    Input,
+    Modal,
+    Radio,
+    Segmented,
+    Select,
+    Spin,
+    Table,
+} from "antd"
+import type { TableColumnsType } from "antd"
+import {
+    BankOutlined,
+    DeleteOutlined,
+    DownloadOutlined,
+    EditOutlined,
+    FileExcelOutlined,
+    FileTextOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    UploadOutlined,
+    WalletOutlined,
+} from "@ant-design/icons"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -43,34 +49,13 @@ import { useLocalForm } from "@/hooks/useLocalForm"
 import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile, type TileTone } from "@/components/page/tile"
+import { FormField } from "@/components/page/form-field"
 import { StatusPill } from "@/components/page/status-pill"
-import {
-    CARD_BTN,
-    CARD_BTN_DANGER,
-    CARD_BTN_PRIMARY,
-    ICON_BTN,
-    ICON_BTN_DANGER,
-    PAGE_BTN_GHOST,
-    PAGE_BTN_PRIMARY,
-} from "@/components/page/styles"
-import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { AMOUNT_COL, ICON_STYLE } from "@/components/page/styles"
 import { DateField, parseDate } from "@/components/fields/date-fields"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
 import { NumberField } from "@/components/fields/number-field"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Spinner } from "@/components/ui/spinner"
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 const ACCEPT = ".xls,.xlsx"
-
-/** Radix Select 不允许空串作为选项值，用这个哨兵表示「不选收支类别」。 */
-const NO_CATEGORY = "__none__"
 
 /** 新建/编辑账户表单值。 */
 interface AccountFormValues {
@@ -137,20 +122,13 @@ function validateVoucher(values: VoucherFormValues): Partial<Record<keyof Vouche
     return errors
 }
 
-const features = tableFeatures({})
-const entryColumn = createColumnHelper<typeof features, JournalEntryDto>()
-
-/** 各列的对齐方式按列 id 取用，避免写行内样式。 */
-const COLUMN_CLASS: Record<string, { head: string, cell: string }> = {
-    select: { head: "w-[40px] pl-4", cell: "pl-4" },
-    sequence: { head: "text-center", cell: "text-center" },
-    summary: { head: "text-left", cell: "w-full" },
-    income: { head: "text-right", cell: "text-right tabular-nums" },
-    expense: { head: "text-right", cell: "text-right tabular-nums" },
-    balance: { head: "text-right", cell: "text-right tabular-nums" },
-    voucherNo: { head: "text-center", cell: "text-center" },
-    actions: { head: "text-right", cell: "text-right" },
-}
+/** 批量生成凭证的合并方式（与后端 MergeBy 对齐）。 */
+const MERGE_OPTIONS = [
+    { value: 1, label: "合并成一张凭证" },
+    { value: 2, label: "按日期分开" },
+    { value: 3, label: "按收支类别分开" },
+    { value: 4, label: "按收支方向分开（收入 / 支出各一张）" },
+]
 
 export default function CashJournalPage() {
     const { token } = useAuth()
@@ -206,7 +184,7 @@ export default function CashJournalPage() {
     const [importResult, setImportResult] = useState<JournalImportResult | null>(null)
     const [importError, setImportError] = useState<string | null>(null)
 
-    /** 加载账户（账簿）列表；keepSelection 为 false 或当前选中项已不存在时自动选中第一个。 */
+    /** 加载账户（账簿）列表；当前选中项已不存在时自动选中第一个。 */
     const loadJournals = useCallback(async () => {
         if (!accountSetId) return
         setLoading(true)
@@ -414,6 +392,7 @@ export default function CashJournalPage() {
         try {
             const api = new JournalsApi(apiConfig(token))
             const request = {
+                // toJSON 按 toISOString 截取日期；先归一到 UTC 零点，避免本地时区回退一天。
                 date: new Date(dayjs(date).format("YYYY-MM-DD")),
                 summary,
                 category: category || null,
@@ -595,8 +574,10 @@ export default function CashJournalPage() {
     // 视图筛选后的账户列表（全部 / 现金 / 银行）。
     const visibleJournals = journals.filter((j) => viewTab === "all" || String(j.type) === viewTab)
 
+    const entries = detail?.entries ?? []
+
     // 批量勾选：仅未生成凭证的流水可勾；全选针对这些行。
-    const selectableIds = (detail?.entries ?? []).filter((e) => !e.voucherId).map((e) => e.id ?? "")
+    const selectableIds = entries.filter((e) => !e.voucherId).map((e) => e.id ?? "")
     const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedEntryIds.has(id))
     const someSelected = !allSelected && selectableIds.some((id) => selectedEntryIds.has(id))
 
@@ -615,10 +596,10 @@ export default function CashJournalPage() {
         setSelectedEntryIds(checked ? new Set(selectableIds) : new Set())
     }
 
-    // 记账可选类别：填了收入只列收入类别，填了支出只列支出类别，否则分组全列。
+    // 记账可选类别：填了收入只列收入类别，填了支出只列支出类别，否则两组全列。
     const toCategoryItems = (type: number) =>
         categories.filter((c) => c.type === type).map((c) => c.name ?? "").filter((name) => name !== "")
-    const categoryGroups =
+    const categoryOptions = (
         (entryForm.values.income ?? 0) > 0
             ? [{ label: "收入类别", items: toCategoryItems(1) }]
             : (entryForm.values.expense ?? 0) > 0
@@ -627,6 +608,14 @@ export default function CashJournalPage() {
                     { label: "收入类别", items: toCategoryItems(1) },
                     { label: "支出类别", items: toCategoryItems(2) },
                 ]
+    )
+        .filter((g) => g.items.length > 0)
+        .map((g) => ({ label: g.label, options: g.items.map((name) => ({ value: name, label: name })) }))
+
+    // 对方科目候选：排除当前账户绑定的科目（单笔与批量生成共用）。
+    const counterAccountOptions = counterAccounts
+        .filter((a) => a.id !== detail?.accountId)
+        .map((a) => ({ value: a.id ?? "", label: `${a.code} ${a.name}` }))
 
     const tiles: {
         label: string
@@ -635,121 +624,89 @@ export default function CashJournalPage() {
         icon: React.ComponentType<{ className?: string }>
         hint?: string
     }[] = [
-        { label: "期初余额", value: fmtMoney(detail?.openingBalance ?? 0), tone: "gray", icon: Wallet },
-        { label: "本期收入", value: fmtMoney(detail?.totalIncome ?? 0), tone: "green", icon: ArrowDownLeft },
-        { label: "本期支出", value: fmtMoney(detail?.totalExpense ?? 0), tone: "red", icon: ArrowUpRight },
-        { label: "期末余额", value: fmtMoney(detail?.closingBalance ?? 0), tone: "blue", icon: PiggyBank, hint: "期初 + 收入 − 支出" },
+        { label: "期初余额", value: fmtMoney(detail?.openingBalance ?? 0), tone: "gray", icon: WalletOutlined },
+        { label: "本期收入", value: fmtMoney(detail?.totalIncome ?? 0), tone: "green", icon: PlusCircleOutlined },
+        { label: "本期支出", value: fmtMoney(detail?.totalExpense ?? 0), tone: "red", icon: MinusCircleOutlined },
+        { label: "期末余额", value: fmtMoney(detail?.closingBalance ?? 0), tone: "blue", icon: BankOutlined, hint: "期初 + 收入 − 支出" },
     ]
 
-    const columns = [
-        entryColumn.display({
-            id: "select",
-            header: () => (
+    const columns: TableColumnsType<JournalEntryDto> = [
+        {
+            title: (
                 <Checkbox
-                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                    onCheckedChange={(v) => toggleSelectAll(v === true)}
-                    aria-label="全选未生成凭证的流水"
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={(e) => toggleSelectAll(e.target.checked)}
                     disabled={selectableIds.length === 0}
+                    aria-label="全选未生成凭证的流水"
                 />
             ),
-            cell: ({ row }) => {
-                const e = row.original
+            width: 48,
+            render: (_, e) =>
                 // 已生成凭证的流水不可再勾选。
-                if (e.voucherId) return <span className="text-slate-300">—</span>
-                return (
-                    <Checkbox
-                        checked={selectedEntryIds.has(e.id ?? "")}
-                        onCheckedChange={(v) => toggleEntrySelected(e.id ?? "", v === true)}
-                        aria-label={`选择第 ${e.sequence} 笔流水`}
-                    />
-                )
-            },
-        }),
-        entryColumn.display({
-            id: "sequence",
-            header: "序号",
-            cell: ({ row }) => <span>{row.original.sequence}</span>,
-        }),
-        entryColumn.display({
-            id: "date",
-            header: "日期",
-            cell: ({ row }) => <span>{toISODate(row.original.date)}</span>,
-        }),
-        entryColumn.display({
-            id: "summary",
-            header: "摘要",
-            cell: ({ row }) => <div className="truncate">{row.original.summary}</div>,
-        }),
-        entryColumn.display({
-            id: "category",
-            header: "类别",
-            cell: ({ row }) => <span>{row.original.category ?? ""}</span>,
-        }),
-        entryColumn.display({
-            id: "counterparty",
-            header: "往来",
-            cell: ({ row }) => <span>{row.original.counterparty ?? ""}</span>,
-        }),
-        entryColumn.display({
-            id: "income",
-            header: "收入",
-            cell: ({ row }) => <span>{fmtAmount(row.original.income ?? 0)}</span>,
-        }),
-        entryColumn.display({
-            id: "expense",
-            header: "支出",
-            cell: ({ row }) => <span>{fmtAmount(row.original.expense ?? 0)}</span>,
-        }),
-        entryColumn.display({
-            id: "balance",
-            header: "余额",
-            cell: ({ row }) => <span className="font-medium text-slate-700">{fmtMoney(row.original.balance ?? 0)}</span>,
-        }),
-        entryColumn.display({
-            id: "voucherNo",
-            header: "凭证",
-            cell: ({ row }) =>
-                row.original.voucherNo
-                    ? <StatusPill tone="blue">{row.original.voucherNo}</StatusPill>
+                e.voucherId
+                    ? <span className="text-slate-300">—</span>
+                    : (
+                        <Checkbox
+                            checked={selectedEntryIds.has(e.id ?? "")}
+                            onChange={(ev) => toggleEntrySelected(e.id ?? "", ev.target.checked)}
+                            aria-label={`选择第 ${e.sequence} 笔流水`}
+                        />
+                    ),
+        },
+        { title: "序号", align: "center", width: 64, render: (_, e) => e.sequence },
+        { title: "日期", className: "whitespace-nowrap", render: (_, e) => toISODate(e.date) },
+        { title: "摘要", render: (_, e) => <div className="truncate">{e.summary}</div> },
+        { title: "类别", render: (_, e) => e.category ?? "" },
+        { title: "往来", render: (_, e) => e.counterparty ?? "" },
+        { title: "收入", ...AMOUNT_COL, render: (_, e) => fmtAmount(e.income ?? 0) },
+        { title: "支出", ...AMOUNT_COL, render: (_, e) => fmtAmount(e.expense ?? 0) },
+        {
+            title: "余额",
+            ...AMOUNT_COL,
+            className: cn(AMOUNT_COL.className, "font-medium text-slate-700"),
+            render: (_, e) => fmtMoney(e.balance ?? 0),
+        },
+        {
+            title: "凭证",
+            align: "center",
+            render: (_, e) =>
+                e.voucherNo
+                    ? <StatusPill tone="blue">{e.voucherNo}</StatusPill>
                     : <span className="text-slate-300">—</span>,
-        }),
-        entryColumn.display({
-            id: "actions",
-            header: "操作",
-            cell: ({ row }) => {
-                const e = row.original
-                return (
-                    <div className="flex items-center justify-end gap-0">
-                        <Button variant="ghost" size="icon-xs" title="编辑流水" onClick={() => openEditEntry(e)} className={ICON_BTN}>
-                            <Pencil />
-                        </Button>
-                        {!e.voucherId && (
-                            <Button variant="ghost" size="icon-xs" title="由此流水生成凭证" onClick={() => void openVoucherModal(e)} className={ICON_BTN}>
-                                <FileText />
-                            </Button>
-                        )}
-                        <Button variant="ghost" size="icon-xs" title="删除流水" onClick={() => void handleDeleteEntry(e)} className={ICON_BTN_DANGER}>
-                            <Trash2 />
-                        </Button>
-                    </div>
-                )
-            },
-        }),
+        },
+        {
+            title: "操作",
+            align: "right",
+            render: (_, e) => (
+                <div className="flex items-center justify-end gap-0">
+                    <Button type="text" size="small" title="编辑流水" icon={<EditOutlined />} onClick={() => openEditEntry(e)} />
+                    {!e.voucherId && (
+                        <Button
+                            type="text"
+                            size="small"
+                            title="由此流水生成凭证"
+                            icon={<FileTextOutlined />}
+                            onClick={() => void openVoucherModal(e)}
+                        />
+                    )}
+                    <Button
+                        type="text"
+                        size="small"
+                        danger
+                        title="删除流水"
+                        icon={<DeleteOutlined />}
+                        onClick={() => void handleDeleteEntry(e)}
+                    />
+                </div>
+            ),
+        },
     ]
-
-    const table = useTable({
-        features,
-        data: detail?.entries ?? [],
-        columns,
-        getRowId: (row) => row.id ?? String(row.sequence),
-    })
-    const headerGroups = table.getHeaderGroups()
-    const rows = table.getRowModel().rows
 
     return (
         <div className="flex w-full flex-col gap-5">
             <PageHeader
-                icon={Wallet}
+                icon={WalletOutlined}
                 title="资金流水"
                 subtitle={
                     <>
@@ -760,44 +717,30 @@ export default function CashJournalPage() {
                 actions={
                     <>
                         <Button
-                            variant="outline"
-                            className={PAGE_BTN_GHOST}
-                            onClick={() => { void loadJournals(); void loadDetail() }}
+                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
                             disabled={!accountSetId || loading}
+                            onClick={() => { void loadJournals(); void loadDetail() }}
                         >
-                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
                             刷新
                         </Button>
-                        <Button className={PAGE_BTN_PRIMARY} onClick={openCreateAccount} disabled={!accountSetId}>
-                            <Plus data-icon="inline-start" />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateAccount} disabled={!accountSetId}>
                             新建账户
                         </Button>
                     </>
                 }
             />
 
-            {error && (
-                <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                    <CircleAlert />
-                    <AlertTitle>{error}</AlertTitle>
-                    <AlertAction>
-                        <Button variant="ghost" size="icon-xs" title="关闭" onClick={() => setError(null)}>
-                            <X />
-                        </Button>
-                    </AlertAction>
-                </Alert>
-            )}
+            {error && <Alert type="error" showIcon closable title={error} onClose={() => setError(null)} />}
 
             {journals.length === 0 && !loading ? (
                 <SectionCard bodyClassName="p-0">
                     <div className="flex flex-col items-center gap-3 py-12">
-                        <FileSpreadsheet size={40} strokeWidth={1.2} className="text-slate-300" />
+                        <FileExcelOutlined className="text-[34px]" style={ICON_STYLE.placeholder} />
                         <p className="text-[13px] text-slate-400">
                             {accountSetId ? "还没有资金账户。点击「新建账户」创建现金或银行账户，开始登记流水。" : "请先选择账套。"}
                         </p>
                         {accountSetId && (
-                            <Button className={PAGE_BTN_PRIMARY} onClick={openCreateAccount}>
-                                <Plus data-icon="inline-start" />
+                            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateAccount}>
                                 新建账户
                             </Button>
                         )}
@@ -806,18 +749,15 @@ export default function CashJournalPage() {
             ) : (
                 <>
                     <div className="flex flex-wrap items-center gap-3">
-                        <ToggleGroup
-                            type="single"
-                            variant="outline"
-                            size="sm"
-                            spacing={0}
+                        <Segmented
+                            options={[
+                                { value: "all", label: "全部" },
+                                { value: "1", label: "现金账户" },
+                                { value: "2", label: "银行账户" },
+                            ]}
                             value={viewTab}
-                            onValueChange={(v) => v && switchViewTab(v as "all" | "1" | "2")}
-                        >
-                            <ToggleGroupItem value="all">全部</ToggleGroupItem>
-                            <ToggleGroupItem value="1">现金账户</ToggleGroupItem>
-                            <ToggleGroupItem value="2">银行账户</ToggleGroupItem>
-                        </ToggleGroup>
+                            onChange={(v) => switchViewTab(v as "all" | "1" | "2")}
+                        />
                         <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 rounded-2xl border border-slate-100 bg-white p-1.5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                             {visibleJournals.map((j) => {
                                 const active = j.id === selectedId
@@ -854,123 +794,107 @@ export default function CashJournalPage() {
                     </div>
 
                     {visibleJournals.length > 0 && (
-                    <>
-                    <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-                        {tiles.map((t) => (
-                            <Tile key={t.label} {...t} />
-                        ))}
-                    </section>
+                        <>
+                            <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                                {tiles.map((t) => (
+                                    <Tile key={t.label} {...t} />
+                                ))}
+                            </section>
 
-                    <SectionCard
-                        title={
-                            <>
-                                <h3 className="truncate text-[14px] font-semibold text-slate-800">
-                                    {selected?.name ?? "明细流水"}
-                                </h3>
-                                {selected?.accountCode && (
-                                    <span className="truncate text-[12px] text-slate-400">
-                                        对应科目：{selected.accountCode} {selected.accountName}
-                                    </span>
-                                )}
-                                {selected?.type === 2 && selected?.bankName && (
-                                    <span className="truncate text-[12px] text-slate-400">
-                                        开户行：{selected.bankName}
-                                        {selected.bankAccountNo ? ` · ${selected.bankAccountNo}` : ""}
-                                    </span>
-                                )}
-                                {selected && selected.isEnabled === false && <StatusPill tone="amber">已停用</StatusPill>}
-                                {detailLoading && <Spinner className="size-3.5 text-slate-300" />}
-                            </>
-                        }
-                        bodyClassName="p-0"
-                        action={
-                            <div className="flex flex-wrap items-center justify-end gap-2">
-                                <Button variant="outline" className={CARD_BTN} onClick={() => void downloadFile(`/accountsets/${accountSetId}/Journals/import/template`, "日记账导入模板.xlsx")}>
-                                    <Download data-icon="inline-start" />
-                                    模板
-                                </Button>
-                                <Button variant="outline" className={CARD_BTN} onClick={() => { setImportOpen(true); pickImportFile(null) }} disabled={!selectedId}>
-                                    <Upload data-icon="inline-start" />
-                                    导入
-                                </Button>
-                                <Button variant="outline" className={CARD_BTN} onClick={() => selectedId && void downloadFile(`/accountsets/${accountSetId}/Journals/${selectedId}/export`, `${selected?.name ?? "日记账"}.xlsx`)} disabled={!selectedId}>
-                                    <Download data-icon="inline-start" />
-                                    导出
-                                </Button>
-                                <Button variant="outline" className={CARD_BTN} onClick={() => selected && openEditAccount(selected)} disabled={!selected}>
-                                    <Pencil data-icon="inline-start" />
-                                    账户设置
-                                </Button>
-                                <Button variant="ghost" className={CARD_BTN_DANGER} onClick={() => selected && void handleDeleteAccount(selected)} disabled={!selected}>
-                                    <Trash2 data-icon="inline-start" />
-                                    删除账户
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className={CARD_BTN}
-                                    onClick={openBatchDialog}
-                                    disabled={!selectedId || selectedEntryIds.size === 0}
-                                    title="勾选左侧流水后批量生成凭证"
-                                >
-                                    <FileText data-icon="inline-start" />
-                                    批量生成凭证{selectedEntryIds.size > 0 ? `（${selectedEntryIds.size}）` : ""}
-                                </Button>
-                                <Button className={CARD_BTN_PRIMARY} onClick={openCreateEntry} disabled={!selectedId}>
-                                    <Plus data-icon="inline-start" />
-                                    登记流水
-                                </Button>
-                            </div>
-                        }
-                    >
-                        <Table>
-                            <TableHeader>
-                                {headerGroups.map((hg) => (
-                                    <TableRow key={hg.id}>
-                                        {hg.headers.map((h) => (
-                                            <TableHead key={h.id} className={COLUMN_CLASS[h.column.id]?.head}>
-                                                <table.FlexRender header={h} />
-                                            </TableHead>
-                                        ))}
-                                    </TableRow>
-                                ))}
-                            </TableHeader>
-                            <TableBody>
-                                {rows.map((row) => (
-                                    <TableRow key={row.id}>
-                                        {row.getAllCells().map((cell) => (
-                                            <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
-                                                <table.FlexRender cell={cell} />
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                ))}
-                                {rows.length === 0 && !detailLoading && (
-                                    <TableRow>
-                                        <TableCell colSpan={columns.length} className="text-center text-slate-400">
-                                            该账户暂无流水，点击「登记流水」或「导入」添加。
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                            {rows.length > 0 && (
-                                <TableFooter>
-                                    <TableRow>
-                                        <TableCell colSpan={6}>本期合计</TableCell>
-                                        <TableCell className="text-right tabular-nums">{fmtMoney(detail?.totalIncome ?? 0)}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{fmtMoney(detail?.totalExpense ?? 0)}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{fmtMoney(detail?.closingBalance ?? 0)}</TableCell>
-                                        <TableCell colSpan={2} />
-                                    </TableRow>
-                                </TableFooter>
-                            )}
-                        </Table>
-                    </SectionCard>
-                    </>
+                            <SectionCard
+                                title={
+                                    <>
+                                        <h3 className="truncate text-[14px] font-semibold text-slate-800">
+                                            {selected?.name ?? "明细流水"}
+                                        </h3>
+                                        {selected?.accountCode && (
+                                            <span className="truncate text-[12px] text-slate-400">
+                                                对应科目：{selected.accountCode} {selected.accountName}
+                                            </span>
+                                        )}
+                                        {selected?.type === 2 && selected?.bankName && (
+                                            <span className="truncate text-[12px] text-slate-400">
+                                                开户行：{selected.bankName}
+                                                {selected.bankAccountNo ? ` · ${selected.bankAccountNo}` : ""}
+                                            </span>
+                                        )}
+                                        {selected && selected.isEnabled === false && <StatusPill tone="amber">已停用</StatusPill>}
+                                        {detailLoading && <Spin size="small" />}
+                                    </>
+                                }
+                                bodyClassName="p-0"
+                                action={
+                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                        <Button icon={<DownloadOutlined />} onClick={() => void downloadFile(`/accountsets/${accountSetId}/Journals/import/template`, "日记账导入模板.xlsx")}>
+                                            模板
+                                        </Button>
+                                        <Button icon={<UploadOutlined />} onClick={() => { setImportOpen(true); pickImportFile(null) }} disabled={!selectedId}>
+                                            导入
+                                        </Button>
+                                        <Button
+                                            icon={<DownloadOutlined />}
+                                            disabled={!selectedId}
+                                            onClick={() => selectedId && void downloadFile(`/accountsets/${accountSetId}/Journals/${selectedId}/export`, `${selected?.name ?? "日记账"}.xlsx`)}
+                                        >
+                                            导出
+                                        </Button>
+                                        <Button icon={<EditOutlined />} onClick={() => selected && openEditAccount(selected)} disabled={!selected}>
+                                            账户设置
+                                        </Button>
+                                        <Button danger icon={<DeleteOutlined />} onClick={() => selected && void handleDeleteAccount(selected)} disabled={!selected}>
+                                            删除账户
+                                        </Button>
+                                        <Button
+                                            icon={<FileTextOutlined />}
+                                            onClick={openBatchDialog}
+                                            disabled={!selectedId || selectedEntryIds.size === 0}
+                                            title="勾选左侧流水后批量生成凭证"
+                                        >
+                                            批量生成凭证{selectedEntryIds.size > 0 ? `（${selectedEntryIds.size}）` : ""}
+                                        </Button>
+                                        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateEntry} disabled={!selectedId}>
+                                            登记流水
+                                        </Button>
+                                    </div>
+                                }
+                            >
+                                <Table<JournalEntryDto>
+                                    columns={columns}
+                                    dataSource={entries}
+                                    rowKey={(row) => row.id ?? String(row.sequence)}
+                                    pagination={false}
+                                    size="small"
+                                    loading={detailLoading && entries.length === 0}
+                                    locale={{ emptyText: "该账户暂无流水，点击「登记流水」或「导入」添加。" }}
+                                    summary={
+                                        entries.length > 0
+                                            ? () => (
+                                                <Table.Summary>
+                                                    <Table.Summary.Row>
+                                                        <Table.Summary.Cell index={0} colSpan={6}>本期合计</Table.Summary.Cell>
+                                                        <Table.Summary.Cell index={6} {...AMOUNT_COL}>
+                                                            {fmtMoney(detail?.totalIncome ?? 0)}
+                                                        </Table.Summary.Cell>
+                                                        <Table.Summary.Cell index={7} {...AMOUNT_COL}>
+                                                            {fmtMoney(detail?.totalExpense ?? 0)}
+                                                        </Table.Summary.Cell>
+                                                        <Table.Summary.Cell index={8} {...AMOUNT_COL}>
+                                                            {fmtMoney(detail?.closingBalance ?? 0)}
+                                                        </Table.Summary.Cell>
+                                                        <Table.Summary.Cell index={9} colSpan={2} />
+                                                    </Table.Summary.Row>
+                                                </Table.Summary>
+                                            )
+                                            : undefined
+                                    }
+                                />
+                            </SectionCard>
+                        </>
                     )}
                     {visibleJournals.length === 0 && (
                         <SectionCard bodyClassName="p-0">
                             <div className="flex flex-col items-center gap-3 py-12">
-                                <Landmark size={40} strokeWidth={1.2} className="text-slate-300" />
+                                <BankOutlined className="text-[34px]" style={ICON_STYLE.placeholder} />
                                 <p className="text-[13px] text-slate-400">
                                     该视图下暂无账户，可切换到「全部」或点击「新建账户」创建。
                                 </p>
@@ -981,413 +905,338 @@ export default function CashJournalPage() {
             )}
 
             {/* 新建/编辑账户 */}
-            <Dialog open={accountModalOpen} onOpenChange={setAccountModalOpen}>
-                <DialogContent aria-describedby={undefined}>
-                    <DialogHeader>
-                        <DialogTitle>{editingJournal ? "账户设置" : "新建账户"}</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4">
-                        <Field data-invalid={Boolean(accountForm.errors.name)}>
-                            <FieldLabel htmlFor="account-name">账户名称</FieldLabel>
-                            <Input
-                                id="account-name"
-                                value={accountForm.values.name}
-                                onChange={(e) => accountForm.set("name", e.target.value)}
-                                placeholder="如：工商银行、农业银行、现金"
-                                maxLength={100}
-                                aria-invalid={Boolean(accountForm.errors.name)}
-                            />
-                            <FieldError>{accountForm.errors.name}</FieldError>
-                        </Field>
-                        <Field>
-                            <FieldLabel htmlFor="account-type">账户类型</FieldLabel>
-                            <RadioGroup
-                                id="account-type"
-                                className="flex flex-row items-center gap-4"
-                                disabled={!!editingJournal}
-                                value={String(accountForm.values.type)}
-                                onValueChange={(v) =>
-                                    accountForm.patch(v === "1" ? { type: 1, bankName: undefined, bankAccountNo: undefined } : { type: 2 })
-                                }
+            <Modal
+                open={accountModalOpen}
+                title={editingJournal ? "账户设置" : "新建账户"}
+                onCancel={() => setAccountModalOpen(false)}
+                onOk={() => void handleAccountSubmit()}
+                okText={editingJournal ? "保存" : "创建"}
+                cancelText="取消"
+                confirmLoading={accountSaving}
+            >
+                <div className="flex flex-col gap-4 py-2">
+                    <FormField label="账户名称" htmlFor="account-name" required error={accountForm.errors.name}>
+                        <Input
+                            id="account-name"
+                            value={accountForm.values.name}
+                            onChange={(e) => accountForm.set("name", e.target.value)}
+                            placeholder="如：工商银行、农业银行、现金"
+                            maxLength={100}
+                            status={accountForm.errors.name ? "error" : undefined}
+                        />
+                    </FormField>
+                    <FormField label="账户类型" required>
+                        <Radio.Group
+                            disabled={!!editingJournal}
+                            value={accountForm.values.type}
+                            onChange={(e) =>
+                                accountForm.patch(
+                                    e.target.value === 1
+                                        ? { type: 1, bankName: undefined, bankAccountNo: undefined }
+                                        : { type: 2 },
+                                )
+                            }
+                            options={[
+                                { value: 2, label: "银行存款" },
+                                { value: 1, label: "现金" },
+                            ]}
+                        />
+                    </FormField>
+                    {accountForm.values.type === 2 && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField label="开户行（选填）" htmlFor="account-bank-name">
+                                <Input
+                                    id="account-bank-name"
+                                    value={accountForm.values.bankName ?? ""}
+                                    onChange={(e) => accountForm.set("bankName", e.target.value)}
+                                    placeholder="如：中国工商银行深圳分行"
+                                    maxLength={100}
+                                />
+                            </FormField>
+                            <FormField label="银行账号（选填）" htmlFor="account-bank-no">
+                                <Input
+                                    id="account-bank-no"
+                                    value={accountForm.values.bankAccountNo ?? ""}
+                                    onChange={(e) => accountForm.set("bankAccountNo", e.target.value)}
+                                    placeholder="如：6222020200112233445"
+                                    maxLength={50}
+                                />
+                            </FormField>
+                        </div>
+                    )}
+                    <FormField label="期初余额" htmlFor="account-opening-balance">
+                        <NumberField
+                            id="account-opening-balance"
+                            value={accountForm.values.openingBalance}
+                            onChange={(v) => accountForm.set("openingBalance", v)}
+                            precision={2}
+                            min={0}
+                            placeholder="0.00"
+                        />
+                    </FormField>
+                    {editingJournal ? (
+                        <div className="flex flex-col gap-2">
+                            <Checkbox
+                                checked={accountForm.values.isEnabled}
+                                onChange={(e) => accountForm.set("isEnabled", e.target.checked)}
                             >
-                                <div className="flex items-center gap-2">
-                                    <RadioGroupItem value="2" id="account-type-bank" />
-                                    <FieldLabel htmlFor="account-type-bank">银行存款</FieldLabel>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <RadioGroupItem value="1" id="account-type-cash" />
-                                    <FieldLabel htmlFor="account-type-cash">现金</FieldLabel>
-                                </div>
-                            </RadioGroup>
-                        </Field>
-                        {accountForm.values.type === 2 && (
-                            <div className="grid grid-cols-2 gap-3">
-                                <Field>
-                                    <FieldLabel htmlFor="account-bank-name">开户行（选填）</FieldLabel>
-                                    <Input
-                                        id="account-bank-name"
-                                        value={accountForm.values.bankName ?? ""}
-                                        onChange={(e) => accountForm.set("bankName", e.target.value)}
-                                        placeholder="如：中国工商银行深圳分行"
-                                        maxLength={100}
-                                    />
-                                </Field>
-                                <Field>
-                                    <FieldLabel htmlFor="account-bank-no">银行账号（选填）</FieldLabel>
-                                    <Input
-                                        id="account-bank-no"
-                                        value={accountForm.values.bankAccountNo ?? ""}
-                                        onChange={(e) => accountForm.set("bankAccountNo", e.target.value)}
-                                        placeholder="如：6222020200112233445"
-                                        maxLength={50}
-                                    />
-                                </Field>
-                            </div>
-                        )}
-                        <Field>
-                            <FieldLabel htmlFor="account-opening-balance">期初余额</FieldLabel>
+                                启用此账户
+                            </Checkbox>
+                            <p className="text-sm leading-normal font-normal text-slate-400">
+                                停用后不能再登记新流水（含导入、内部转账），历史数据与报表照常保留。
+                            </p>
+                        </div>
+                    ) : (
+                        <p className="text-sm leading-normal font-normal text-slate-400">
+                            创建后系统会自动在「库存现金 1001 / 银行存款 1002」下建立同名明细科目并与账户绑定。
+                        </p>
+                    )}
+                </div>
+            </Modal>
+
+            {/* 登记/编辑流水 */}
+            <Modal
+                open={entryModalOpen}
+                title={editingEntry ? "编辑流水" : "登记流水"}
+                onCancel={() => setEntryModalOpen(false)}
+                onOk={() => void handleEntrySubmit()}
+                okText="保存"
+                cancelText="取消"
+                confirmLoading={entrySaving}
+            >
+                <div className="flex flex-col gap-4 py-2">
+                    <FormField label="日期" required error={entryForm.errors.date}>
+                        <DateField
+                            value={entryForm.values.date}
+                            onChange={(v) => entryForm.set("date", v)}
+                            allowClear={false}
+                            className="w-full"
+                        />
+                    </FormField>
+                    <FormField label="摘要" htmlFor="entry-summary" required error={entryForm.errors.summary}>
+                        <Input
+                            id="entry-summary"
+                            value={entryForm.values.summary}
+                            onChange={(e) => entryForm.set("summary", e.target.value)}
+                            placeholder="如：收到货款、支付办公费"
+                            maxLength={200}
+                            status={entryForm.errors.summary ? "error" : undefined}
+                        />
+                    </FormField>
+                    <div className="grid grid-cols-2 gap-3">
+                        <FormField label="收支类别（选填）" htmlFor="entry-category">
+                            <Select
+                                id="entry-category"
+                                className="w-full"
+                                allowClear
+                                placeholder={categories.length > 0 ? "选择收支类别" : "先在「收支类别」页新建类别"}
+                                value={entryForm.values.category ?? undefined}
+                                onChange={(v) => entryForm.set("category", v || undefined)}
+                                options={categoryOptions}
+                            />
+                        </FormField>
+                        <FormField label="往来（选填）" htmlFor="entry-counterparty">
+                            <Input
+                                id="entry-counterparty"
+                                value={entryForm.values.counterparty ?? ""}
+                                onChange={(e) => entryForm.set("counterparty", e.target.value)}
+                                placeholder="往来单位或个人"
+                                maxLength={100}
+                            />
+                        </FormField>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <FormField label="收入" htmlFor="entry-income" error={entryForm.errors.income}>
                             <NumberField
-                                id="account-opening-balance"
-                                value={accountForm.values.openingBalance}
-                                onChange={(v) => accountForm.set("openingBalance", v)}
+                                id="entry-income"
+                                value={entryForm.values.income}
+                                onChange={(v) => entryForm.set("income", v)}
                                 precision={2}
                                 min={0}
                                 placeholder="0.00"
                             />
-                        </Field>
-                        {editingJournal && (
-                            <Field>
-                                <div className="flex items-center gap-2">
-                                    <Checkbox
-                                        id="account-enabled"
-                                        checked={accountForm.values.isEnabled}
-                                        onCheckedChange={(v) => accountForm.set("isEnabled", v === true)}
-                                    />
-                                    <FieldLabel htmlFor="account-enabled">启用此账户</FieldLabel>
-                                </div>
-                                <FieldDescription>
-                                    停用后不能再登记新流水（含导入、内部转账），历史数据与报表照常保留。
-                                </FieldDescription>
-                            </Field>
-                        )}
-                        {!editingJournal && (
-                            <FieldDescription>
-                                创建后系统会自动在「库存现金 1001 / 银行存款 1002」下建立同名明细科目并与账户绑定。
-                            </FieldDescription>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setAccountModalOpen(false)}>取消</Button>
-                        <Button onClick={() => void handleAccountSubmit()} disabled={accountSaving}>
-                            {accountSaving && <Spinner data-icon="inline-start" />}
-                            {editingJournal ? "保存" : "创建"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* 登记/编辑流水 */}
-            <Dialog open={entryModalOpen} onOpenChange={setEntryModalOpen}>
-                <DialogContent aria-describedby={undefined}>
-                    <DialogHeader>
-                        <DialogTitle>{editingEntry ? "编辑流水" : "登记流水"}</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4">
-                        <Field data-invalid={Boolean(entryForm.errors.date)}>
-                            <FieldLabel htmlFor="entry-date">日期</FieldLabel>
-                            <DateField
-                                value={entryForm.values.date}
-                                onChange={(v) => entryForm.set("date", v)}
-                                allowClear={false}
-                                className="w-full"
+                        </FormField>
+                        <FormField label="支出" htmlFor="entry-expense">
+                            <NumberField
+                                id="entry-expense"
+                                value={entryForm.values.expense}
+                                onChange={(v) => entryForm.set("expense", v)}
+                                precision={2}
+                                min={0}
+                                placeholder="0.00"
                             />
-                            <FieldError>{entryForm.errors.date}</FieldError>
-                        </Field>
-                        <Field data-invalid={Boolean(entryForm.errors.summary)}>
-                            <FieldLabel htmlFor="entry-summary">摘要</FieldLabel>
-                            <Input
-                                id="entry-summary"
-                                value={entryForm.values.summary}
-                                onChange={(e) => entryForm.set("summary", e.target.value)}
-                                placeholder="如：收到货款、支付办公费"
-                                maxLength={200}
-                                aria-invalid={Boolean(entryForm.errors.summary)}
-                            />
-                            <FieldError>{entryForm.errors.summary}</FieldError>
-                        </Field>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Field>
-                                <FieldLabel htmlFor="entry-category">收支类别（选填）</FieldLabel>
-                                <Select
-                                    value={entryForm.values.category ?? ""}
-                                    onValueChange={(v) => entryForm.set("category", v === NO_CATEGORY ? undefined : v)}
-                                >
-                                    <SelectTrigger id="entry-category" className="w-full">
-                                        <SelectValue placeholder={categories.length > 0 ? "选择收支类别" : "先在「收支类别」页新建类别"} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value={NO_CATEGORY}>请选择</SelectItem>
-                                        {categoryGroups.map((g) => (
-                                            <SelectGroup key={g.label}>
-                                                <SelectLabel>{g.label}</SelectLabel>
-                                                {g.items.map((name) => (
-                                                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                                                ))}
-                                            </SelectGroup>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </Field>
-                            <Field>
-                                <FieldLabel htmlFor="entry-counterparty">往来（选填）</FieldLabel>
-                                <Input
-                                    id="entry-counterparty"
-                                    value={entryForm.values.counterparty ?? ""}
-                                    onChange={(e) => entryForm.set("counterparty", e.target.value)}
-                                    placeholder="往来单位或个人"
-                                    maxLength={100}
-                                />
-                            </Field>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Field data-invalid={Boolean(entryForm.errors.income)}>
-                                <FieldLabel htmlFor="entry-income">收入</FieldLabel>
-                                <NumberField
-                                    id="entry-income"
-                                    value={entryForm.values.income}
-                                    onChange={(v) => entryForm.set("income", v)}
-                                    precision={2}
-                                    min={0}
-                                    placeholder="0.00"
-                                />
-                                <FieldError>{entryForm.errors.income}</FieldError>
-                            </Field>
-                            <Field>
-                                <FieldLabel htmlFor="entry-expense">支出</FieldLabel>
-                                <NumberField
-                                    id="entry-expense"
-                                    value={entryForm.values.expense}
-                                    onChange={(v) => entryForm.set("expense", v)}
-                                    precision={2}
-                                    min={0}
-                                    placeholder="0.00"
-                                />
-                            </Field>
-                        </div>
+                        </FormField>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setEntryModalOpen(false)}>取消</Button>
-                        <Button onClick={() => void handleEntrySubmit()} disabled={entrySaving}>
-                            {entrySaving && <Spinner data-icon="inline-start" />}
-                            保存
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                </div>
+            </Modal>
 
             {/* 由流水生成凭证 */}
-            <Dialog open={voucherEntry !== null} onOpenChange={(open) => { if (!open) setVoucherEntry(null) }}>
-                <DialogContent aria-describedby={undefined}>
-                    <DialogHeader>
-                        <DialogTitle>由流水生成凭证</DialogTitle>
-                    </DialogHeader>
-                    {voucherEntry && (
-                        <div className="flex flex-col gap-4">
-                            <Alert>
-                                <Info />
-                                <AlertTitle>
-                                    {voucherEntry.income
-                                        ? `收入 ${fmtMoney(voucherEntry.income)}：借 ${selected?.accountName ?? "货币资金"} / 贷 对方科目`
-                                        : `支出 ${fmtMoney(voucherEntry.expense ?? 0)}：借 对方科目 / 贷 ${selected?.accountName ?? "货币资金"}`}
-                                </AlertTitle>
-                                <AlertDescription>
-                                    {`${toISODate(voucherEntry.date)} ${voucherEntry.summary}`}
-                                </AlertDescription>
-                            </Alert>
-                            <Field data-invalid={Boolean(voucherForm.errors.counterAccountId)}>
-                                <FieldLabel htmlFor="voucher-counter-account">对方科目</FieldLabel>
-                                <Select
-                                    value={voucherForm.values.counterAccountId}
-                                    onValueChange={(v) => voucherForm.set("counterAccountId", v)}
-                                >
-                                    <SelectTrigger
-                                        id="voucher-counter-account"
-                                        className="w-full"
-                                        aria-invalid={Boolean(voucherForm.errors.counterAccountId)}
-                                    >
-                                        <SelectValue placeholder="选择对方科目（末级科目）" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            {counterAccounts
-                                                .filter((a) => a.id !== detail?.accountId)
-                                                .map((a) => (
-                                                    <SelectItem key={a.id} value={a.id ?? ""}>{`${a.code} ${a.name}`}</SelectItem>
-                                                ))}
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-                                <FieldError>{voucherForm.errors.counterAccountId}</FieldError>
-                            </Field>
-                        </div>
-                    )}
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setVoucherEntry(null)}>取消</Button>
-                        <Button onClick={() => void handleGenerateVoucher()} disabled={voucherSaving}>
-                            {voucherSaving && <Spinner data-icon="inline-start" />}
-                            生成凭证
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <Modal
+                open={voucherEntry !== null}
+                title="由流水生成凭证"
+                onCancel={() => setVoucherEntry(null)}
+                onOk={() => void handleGenerateVoucher()}
+                okText="生成凭证"
+                cancelText="取消"
+                confirmLoading={voucherSaving}
+            >
+                {voucherEntry && (
+                    <div className="flex flex-col gap-4 py-2">
+                        <Alert
+                            type="info"
+                            showIcon
+                            title={
+                                voucherEntry.income
+                                    ? `收入 ${fmtMoney(voucherEntry.income)}：借 ${selected?.accountName ?? "货币资金"} / 贷 对方科目`
+                                    : `支出 ${fmtMoney(voucherEntry.expense ?? 0)}：借 对方科目 / 贷 ${selected?.accountName ?? "货币资金"}`
+                            }
+                            description={`${toISODate(voucherEntry.date)} ${voucherEntry.summary}`}
+                        />
+                        <FormField label="对方科目" htmlFor="voucher-counter-account" required error={voucherForm.errors.counterAccountId}>
+                            <Select
+                                id="voucher-counter-account"
+                                className="w-full"
+                                placeholder="选择对方科目（末级科目）"
+                                value={voucherForm.values.counterAccountId || undefined}
+                                onChange={(v) => voucherForm.set("counterAccountId", v)}
+                                options={counterAccountOptions}
+                                status={voucherForm.errors.counterAccountId ? "error" : undefined}
+                            />
+                        </FormField>
+                    </div>
+                )}
+            </Modal>
 
             {/* 批量生成凭证 */}
-            <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
-                <DialogContent aria-describedby={undefined} className="sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>批量生成凭证</DialogTitle>
-                        <DialogDescription>
-                            {batchResult
-                                ? "凭证已生成并回填到对应流水。"
-                                : `已选 ${selectedEntryIds.size} 笔流水；同一张凭证内相同科目、相同方向的行将自动汇总为一行。`}
-                        </DialogDescription>
-                    </DialogHeader>
-                    {batchResult ? (
-                        <Alert>
-                            <CircleCheck />
-                            <AlertTitle>
-                                {`成功生成 ${batchResult.vouchers?.length ?? 0} 张凭证，共涉及 ${batchResult.entryCount ?? 0} 笔流水。`}
-                            </AlertTitle>
-                            <AlertDescription>
-                                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <Modal
+                open={batchOpen}
+                title="批量生成凭证"
+                onCancel={() => setBatchOpen(false)}
+                width={512}
+                footer={
+                    batchResult
+                        ? (
+                            <Button type="primary" onClick={() => setBatchOpen(false)}>
+                                完成
+                            </Button>
+                        )
+                        : (
+                            <>
+                                <Button onClick={() => setBatchOpen(false)}>取消</Button>
+                                <Button
+                                    type="primary"
+                                    loading={batchSaving}
+                                    disabled={selectedEntryIds.size === 0}
+                                    onClick={() => void handleBatchGenerate()}
+                                >
+                                    生成凭证
+                                </Button>
+                            </>
+                        )
+                }
+            >
+                <p className="mb-4 text-[12.5px] text-slate-400">
+                    {batchResult
+                        ? "凭证已生成并回填到对应流水。"
+                        : `已选 ${selectedEntryIds.size} 笔流水；同一张凭证内相同科目、相同方向的行将自动汇总为一行。`}
+                </p>
+                {batchResult ? (
+                    <Alert
+                        type="success"
+                        showIcon
+                        title={`成功生成 ${batchResult.vouchers?.length ?? 0} 张凭证，共涉及 ${batchResult.entryCount ?? 0} 笔流水。`}
+                        description={
+                            <div className="flex flex-col gap-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
                                     {batchResult.vouchers?.map((v) => (
                                         <StatusPill key={v.id} tone="blue">{v.label}</StatusPill>
                                     ))}
                                 </div>
-                                <p className="pt-2">生成的凭证为草稿状态，请到「凭证管理」审核并过账后计入账簿。</p>
-                            </AlertDescription>
-                        </Alert>
-                    ) : (
-                        <div className="flex flex-col gap-4">
-                            {batchError && (
-                                <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                    <CircleAlert />
-                                    <AlertTitle>{batchError}</AlertTitle>
-                                </Alert>
-                            )}
-                            <Field>
-                                <FieldLabel>合并方式</FieldLabel>
-                                <RadioGroup
-                                    className="flex flex-col gap-2"
-                                    value={String(batchMergeBy)}
-                                    onValueChange={(v) => setBatchMergeBy(Number(v))}
-                                >
-                                    {[
-                                        { v: "1", label: "合并成一张凭证" },
-                                        { v: "2", label: "按日期分开" },
-                                        { v: "3", label: "按收支类别分开" },
-                                        { v: "4", label: "按收支方向分开（收入 / 支出各一张）" },
-                                    ].map((o) => (
-                                        <div key={o.v} className="flex items-center gap-2">
-                                            <RadioGroupItem value={o.v} id={`batch-merge-${o.v}`} />
-                                            <FieldLabel htmlFor={`batch-merge-${o.v}`}>{o.label}</FieldLabel>
-                                        </div>
-                                    ))}
-                                </RadioGroup>
-                            </Field>
-                            <Field>
-                                <FieldLabel htmlFor="batch-counter-account">对方科目</FieldLabel>
-                                <Select value={batchCounterId} onValueChange={setBatchCounterId}>
-                                    <SelectTrigger id="batch-counter-account" className="w-full">
-                                        <SelectValue placeholder="选择对方科目" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="auto">自动：取「收支类别」的默认对方科目</SelectItem>
-                                        <SelectGroup>
-                                            {counterAccounts
-                                                .filter((a) => a.id !== detail?.accountId)
-                                                .map((a) => (
-                                                    <SelectItem key={a.id} value={a.id ?? ""}>{`${a.code} ${a.name}`}</SelectItem>
-                                                ))}
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-                                <FieldDescription>
-                                    未配置默认对方科目的流水将拒绝出票；可在此指定统一对方科目一次出票。
-                                </FieldDescription>
-                            </Field>
-                        </div>
-                    )}
-                    <DialogFooter>
-                        {batchResult ? (
-                            <Button onClick={() => setBatchOpen(false)}>完成</Button>
-                        ) : (
-                            <>
-                                <Button variant="outline" onClick={() => setBatchOpen(false)}>取消</Button>
-                                <Button onClick={() => void handleBatchGenerate()} disabled={batchSaving || selectedEntryIds.size === 0}>
-                                    {batchSaving && <Spinner data-icon="inline-start" />}
-                                    生成凭证
-                                </Button>
-                            </>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                                <p>生成的凭证为草稿状态，请到「凭证管理」审核并过账后计入账簿。</p>
+                            </div>
+                        }
+                    />
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        {batchError && <Alert type="error" showIcon title={batchError} />}
+                        <FormField label="合并方式">
+                            <Radio.Group
+                                className="flex flex-col gap-2"
+                                value={batchMergeBy}
+                                onChange={(e) => setBatchMergeBy(e.target.value)}
+                                options={MERGE_OPTIONS}
+                            />
+                        </FormField>
+                        <FormField
+                            label="对方科目"
+                            htmlFor="batch-counter-account"
+                            description="未配置默认对方科目的流水将拒绝出票；可在此指定统一对方科目一次出票。"
+                        >
+                            <Select
+                                id="batch-counter-account"
+                                className="w-full"
+                                value={batchCounterId}
+                                onChange={setBatchCounterId}
+                                options={[
+                                    { value: "auto", label: "自动：取「收支类别」的默认对方科目" },
+                                    ...counterAccountOptions,
+                                ]}
+                            />
+                        </FormField>
+                    </div>
+                )}
+            </Modal>
 
             {/* 导入流水 */}
-            <Dialog open={importOpen} onOpenChange={setImportOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{`导入流水${selected ? `：${selected.name}` : ""}`}</DialogTitle>
-                        <DialogDescription>
-                            支持 .xls / .xlsx 文件，列格式与导入模板一致（日期、摘要必填）。非法行会跳过并提示，不影响其余行导入。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Button variant="outline" onClick={() => importInputRef.current?.click()}>
-                                <FileSpreadsheet data-icon="inline-start" />
-                                {importFile ? importFile.name : "选择文件"}
-                            </Button>
-                            <input
-                                ref={importInputRef}
-                                type="file"
-                                accept={ACCEPT}
-                                className="hidden"
-                                onChange={(e) => pickImportFile(e.target.files?.[0] ?? null)}
-                            />
-                            <Button onClick={() => void handleImport()} disabled={!importFile || importing}>
-                                {importing ? <Spinner data-icon="inline-start" /> : <Upload data-icon="inline-start" />}
-                                {importing ? "导入中…" : "开始导入"}
-                            </Button>
-                            {importFile && !importing && (
-                                <Button variant="outline" onClick={() => pickImportFile(null)}>清除</Button>
-                            )}
-                        </div>
-                        {importError && (
-                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                <CircleAlert />
-                                <AlertTitle>{importError}</AlertTitle>
-                            </Alert>
-                        )}
-                        {importResult && (
-                            <Alert>
-                                {(importResult.skippedRows ?? 0) > 0 ? <TriangleAlert /> : <CircleCheck />}
-                                <AlertTitle>
-                                    {`共 ${importResult.totalRows ?? 0} 行，成功导入 ${importResult.importedEntries ?? 0} 条，跳过 ${importResult.skippedRows ?? 0} 行。`}
-                                </AlertTitle>
-                                {(importResult.warnings?.length ?? 0) > 0 && (
-                                    <AlertDescription>
-                                        <ul className="flex list-disc flex-col gap-1 ps-4">
-                                            {importResult.warnings?.map((w, i) => <li key={i}>{w}</li>)}
-                                        </ul>
-                                    </AlertDescription>
-                                )}
-                            </Alert>
-                        )}
+            <Modal
+                open={importOpen}
+                title={`导入流水${selected ? `：${selected.name}` : ""}`}
+                onCancel={() => setImportOpen(false)}
+                footer={null}
+            >
+                <p className="mb-4 text-[12.5px] text-slate-400">
+                    支持 .xls / .xlsx 文件，列格式与导入模板一致（日期、摘要必填）。非法行会跳过并提示，不影响其余行导入。
+                </p>
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button icon={<FileExcelOutlined />} onClick={() => importInputRef.current?.click()}>
+                            {importFile ? importFile.name : "选择文件"}
+                        </Button>
+                        <input
+                            ref={importInputRef}
+                            type="file"
+                            accept={ACCEPT}
+                            className="hidden"
+                            onChange={(e) => pickImportFile(e.target.files?.[0] ?? null)}
+                        />
+                        <Button
+                            type="primary"
+                            icon={importing ? undefined : <UploadOutlined />}
+                            loading={importing}
+                            disabled={!importFile}
+                            onClick={() => void handleImport()}
+                        >
+                            {importing ? "导入中…" : "开始导入"}
+                        </Button>
+                        {importFile && !importing && <Button onClick={() => pickImportFile(null)}>清除</Button>}
                     </div>
-                </DialogContent>
-            </Dialog>
+                    {importError && <Alert type="error" showIcon title={importError} />}
+                    {importResult && (
+                        <Alert
+                            type={(importResult.skippedRows ?? 0) > 0 ? "warning" : "success"}
+                            showIcon
+                            title={`共 ${importResult.totalRows ?? 0} 行，成功导入 ${importResult.importedEntries ?? 0} 条，跳过 ${importResult.skippedRows ?? 0} 行。`}
+                            description={
+                                (importResult.warnings?.length ?? 0) > 0 ? (
+                                    <ul className="flex list-disc flex-col gap-1 ps-4">
+                                        {importResult.warnings?.map((w, i) => <li key={i}>{w}</li>)}
+                                    </ul>
+                                ) : undefined
+                            }
+                        />
+                    )}
+                </div>
+            </Modal>
 
             {confirmDialog}
         </div>

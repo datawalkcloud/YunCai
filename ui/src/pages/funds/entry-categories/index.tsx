@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
-import { CircleAlert, Pencil, Plus, RefreshCw, Tags, Trash2, X } from "lucide-react"
+import { Alert, Button, Input, Modal, Radio, Segmented, Select, Table } from "antd"
+import type { TableColumnsType } from "antd"
+import {
+    DeleteOutlined,
+    EditOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    TagsOutlined,
+} from "@ant-design/icons"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -8,18 +15,9 @@ import { AccountsApi, EntryCategoriesApi, type AccountDto, type EntryCategoryDto
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { useConfirm } from "@/hooks/useConfirm"
 import { PageHeader, SectionCard } from "@/components/page/section"
+import { FormField } from "@/components/page/form-field"
 import { StatusPill } from "@/components/page/status-pill"
-import { ICON_BTN, ICON_BTN_DANGER, PAGE_BTN_GHOST, PAGE_BTN_PRIMARY } from "@/components/page/styles"
-import { Alert, AlertAction, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Spinner } from "@/components/ui/spinner"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { ICON_STYLE } from "@/components/page/styles"
 
 /** 新建/编辑类别表单值。 */
 interface CategoryFormValues {
@@ -37,6 +35,12 @@ const CLEAR_SUBJECT_GUID = "00000000-0000-0000-0000-000000000000"
 /** 类型筛选值：全部 / 收入 / 支出（替代原表头 filters）。 */
 type TypeFilter = "all" | "1" | "2"
 
+const TYPE_FILTER_OPTIONS = [
+    { value: "all", label: "全部" },
+    { value: "1", label: "收入" },
+    { value: "2", label: "支出" },
+]
+
 const emptyForm: CategoryFormValues = { type: 1, name: "", smartKeywords: "", voucherSubjectId: "" }
 
 /** 表单校验，提示文案与原 antd rules 逐条一致。 */
@@ -47,18 +51,6 @@ function validate(values: CategoryFormValues): Partial<Record<keyof CategoryForm
     if (!values.name.trim()) errors.name = "请填写类别名称，如「销售收入」「办公费」。"
     return errors
 }
-
-/** 各列对齐方式按列 id 取用，避免写行内样式。 */
-const COLUMN_CLASS: Record<string, { head: string, cell: string }> = {
-    type: { head: "text-left", cell: "" },
-    name: { head: "text-left", cell: "w-full" },
-    keywords: { head: "text-left", cell: "" },
-    subject: { head: "text-left", cell: "" },
-    actions: { head: "text-right", cell: "text-right" },
-}
-
-const features = tableFeatures({})
-const column = createColumnHelper<typeof features, EntryCategoryDto>()
 
 export default function EntryCategoriesPage() {
     const { token } = useAuth()
@@ -207,70 +199,55 @@ export default function EntryCategoriesPage() {
         [categories, typeFilter],
     )
 
-    const columns = [
-        column.display({
-            id: "type",
-            header: "类型",
-            cell: ({ row }) => (
-                <StatusPill tone={row.original.type === 1 ? "green" : "red"}>
-                    {row.original.type === 1 ? "收入" : "支出"}
-                </StatusPill>
+    const columns: TableColumnsType<EntryCategoryDto> = [
+        {
+            title: "类型",
+            render: (_, c) => (
+                <StatusPill tone={c.type === 1 ? "green" : "red"}>{c.type === 1 ? "收入" : "支出"}</StatusPill>
             ),
-        }),
-        column.display({
-            id: "name",
-            header: "类别名称",
-            cell: ({ row }) => <div className="truncate">{row.original.name}</div>,
-        }),
-        column.display({
-            id: "keywords",
-            header: "智能匹配关键字",
-            cell: ({ row }) =>
-                row.original.smartKeywords
-                    ? <div className="truncate text-slate-600">{row.original.smartKeywords}</div>
+        },
+        { title: "类别名称", render: (_, c) => <div className="truncate">{c.name}</div> },
+        {
+            title: "智能匹配关键字",
+            render: (_, c) =>
+                c.smartKeywords
+                    ? <div className="truncate text-slate-600">{c.smartKeywords}</div>
                     : <span className="text-slate-300">—</span>,
-        }),
-        column.display({
-            id: "subject",
-            header: "默认对方科目",
-            cell: ({ row }) =>
-                row.original.voucherSubjectId
+        },
+        {
+            title: "默认对方科目",
+            render: (_, c) =>
+                c.voucherSubjectId
                     ? (
                         <span className="whitespace-nowrap text-slate-600">
-                            {row.original.voucherSubjectCode} {row.original.voucherSubjectName}
+                            {c.voucherSubjectCode} {c.voucherSubjectName}
                         </span>
                     )
                     : <span className="text-slate-300">—</span>,
-        }),
-        column.display({
-            id: "actions",
-            header: "操作",
-            cell: ({ row }) => (
+        },
+        {
+            title: "操作",
+            align: "right",
+            render: (_, c) => (
                 <div className="flex items-center justify-end gap-0">
-                    <Button variant="ghost" size="icon-xs" title="编辑类别" onClick={() => openEdit(row.original)} className={ICON_BTN}>
-                        <Pencil />
-                    </Button>
-                    <Button variant="ghost" size="icon-xs" title="删除类别" onClick={() => void handleDelete(row.original)} className={ICON_BTN_DANGER}>
-                        <Trash2 />
-                    </Button>
+                    <Button type="text" size="small" title="编辑类别" icon={<EditOutlined />} onClick={() => openEdit(c)} />
+                    <Button
+                        type="text"
+                        size="small"
+                        danger
+                        title="删除类别"
+                        icon={<DeleteOutlined />}
+                        onClick={() => void handleDelete(c)}
+                    />
                 </div>
             ),
-        }),
+        },
     ]
-
-    const table = useTable({
-        features,
-        columns,
-        data: visibleCategories,
-        getRowId: (r) => r.id ?? r.name ?? "",
-    })
-    const headerGroups = table.getHeaderGroups()
-    const rows = table.getRowModel().rows
 
     return (
         <div className="flex w-full flex-col gap-5">
             <PageHeader
-                icon={Tags}
+                icon={TagsOutlined}
                 title="收支类别"
                 subtitle={
                     <>
@@ -280,40 +257,31 @@ export default function EntryCategoriesPage() {
                 }
                 actions={
                     <>
-                        <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void loadCategories()} disabled={!accountSetId || loading}>
-                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                        <Button
+                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                            disabled={!accountSetId || loading}
+                            onClick={() => void loadCategories()}
+                        >
                             刷新
                         </Button>
-                        <Button className={PAGE_BTN_PRIMARY} onClick={openCreate} disabled={!accountSetId}>
-                            <Plus data-icon="inline-start" />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!accountSetId}>
                             新建类别
                         </Button>
                     </>
                 }
             />
 
-            {error && (
-                <Alert variant="destructive" className="rounded-2xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                    <CircleAlert />
-                    <AlertTitle>{error}</AlertTitle>
-                    <AlertAction>
-                        <Button variant="ghost" size="icon-xs" title="关闭" onClick={() => setError(null)}>
-                            <X />
-                        </Button>
-                    </AlertAction>
-                </Alert>
-            )}
+            {error && <Alert type="error" showIcon closable title={error} onClose={() => setError(null)} />}
 
             {categories.length === 0 && !loading ? (
                 <SectionCard bodyClassName="p-0">
                     <div className="flex flex-col items-center gap-3 py-12">
-                        <Tags size={40} strokeWidth={1.2} className="text-slate-300" />
+                        <TagsOutlined className="text-[34px]" style={ICON_STYLE.placeholder} />
                         <p className="text-[13px] text-slate-400">
                             {accountSetId ? "还没有收支类别。点击「新建类别」添加，如「销售收入」「办公费」。" : "请先选择账套。"}
                         </p>
                         {accountSetId && (
-                            <Button className={PAGE_BTN_PRIMARY} onClick={openCreate}>
-                                <Plus data-icon="inline-start" />
+                            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                                 新建类别
                             </Button>
                         )}
@@ -325,152 +293,94 @@ export default function EntryCategoriesPage() {
                     action={
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[12px] text-slate-400">类型筛选</span>
-                            <ToggleGroup
-                                type="single"
-                                variant="outline"
-                                size="sm"
-                                spacing={0}
+                            <Segmented
+                                size="small"
+                                options={TYPE_FILTER_OPTIONS}
                                 value={typeFilter}
-                                onValueChange={(v) => v && setTypeFilter(v as TypeFilter)}
-                            >
-                                <ToggleGroupItem value="all">全部</ToggleGroupItem>
-                                <ToggleGroupItem value="1">收入</ToggleGroupItem>
-                                <ToggleGroupItem value="2">支出</ToggleGroupItem>
-                            </ToggleGroup>
+                                onChange={(v) => setTypeFilter(v as TypeFilter)}
+                            />
                         </div>
                     }
                     bodyClassName="p-0"
                 >
-                    <Table>
-                        <TableHeader>
-                            {headerGroups.map((hg) => (
-                                <TableRow key={hg.id}>
-                                    {hg.headers.map((h) => (
-                                        <TableHead key={h.id} className={COLUMN_CLASS[h.column.id]?.head}>
-                                            <table.FlexRender header={h} />
-                                        </TableHead>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableHeader>
-                        <TableBody>
-                            {loading && rows.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={columns.length} className="py-8 text-center">
-                                        <Spinner className="mx-auto size-5 text-slate-300" />
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                rows.map((row) => (
-                                    <TableRow key={row.id}>
-                                        {row.getAllCells().map((cell) => (
-                                            <TableCell key={cell.id} className={COLUMN_CLASS[cell.column.id]?.cell}>
-                                                <table.FlexRender cell={cell} />
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                ))
-                            )}
-                            {!loading && rows.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={columns.length} className="py-8 text-center text-slate-400">
-                                        暂无数据
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                    <Table<EntryCategoryDto>
+                        columns={columns}
+                        dataSource={visibleCategories}
+                        rowKey={(c) => c.id ?? c.name ?? ""}
+                        pagination={false}
+                        size="small"
+                        loading={loading && visibleCategories.length === 0}
+                        locale={{ emptyText: "暂无数据" }}
+                    />
                 </SectionCard>
             )}
 
             {/* 新建/编辑类别 */}
-            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent aria-describedby={undefined}>
-                    <DialogHeader>
-                        <DialogTitle>{editing ? "编辑类别" : "新建类别"}</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4">
-                        <Field>
-                            <FieldLabel htmlFor="entry-category-type">类型</FieldLabel>
-                            <RadioGroup
-                                id="entry-category-type"
-                                className="flex flex-row items-center gap-4"
-                                disabled={!!editing}
-                                value={String(formValues.type)}
-                                onValueChange={(v) => setFormValue("type", v === "1" ? 1 : 2)}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <RadioGroupItem value="1" id="entry-category-type-income" />
-                                    <FieldLabel htmlFor="entry-category-type-income">收入</FieldLabel>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <RadioGroupItem value="2" id="entry-category-type-expense" />
-                                    <FieldLabel htmlFor="entry-category-type-expense">支出</FieldLabel>
-                                </div>
-                            </RadioGroup>
-                        </Field>
-                        <Field data-invalid={Boolean(formErrors.name)}>
-                            <FieldLabel htmlFor="entry-category-name">类别名称</FieldLabel>
-                            <Input
-                                id="entry-category-name"
-                                value={formValues.name}
-                                onChange={(e) => setFormValue("name", e.target.value)}
-                                placeholder="如：销售收入、办公费、差旅费"
-                                maxLength={50}
-                                aria-invalid={Boolean(formErrors.name)}
-                            />
-                            <FieldError>{formErrors.name}</FieldError>
-                        </Field>
-                        <Field>
-                            <FieldLabel htmlFor="entry-category-keywords">智能匹配关键字（选填）</FieldLabel>
-                            <Input
-                                id="entry-category-keywords"
-                                value={formValues.smartKeywords}
-                                onChange={(e) => setFormValue("smartKeywords", e.target.value)}
-                                placeholder="逗号分隔，如：货款,销售"
-                                maxLength={200}
-                            />
-                            <FieldDescription>
-                                导入流水时，摘要包含任一关键字将自动归入该类别（同类命中取关键字最长者）。
-                            </FieldDescription>
-                        </Field>
-                        <Field>
-                            <FieldLabel htmlFor="entry-category-subject">默认对方科目（选填）</FieldLabel>
-                            <Select
-                                value={formValues.voucherSubjectId || "none"}
-                                onValueChange={(v) => setFormValue("voucherSubjectId", v === "none" ? "" : v)}
-                            >
-                                <SelectTrigger id="entry-category-subject" className="w-full">
-                                    <SelectValue placeholder="不指定" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">不指定</SelectItem>
-                                    <SelectGroup>
-                                        {subjectAccounts.map((a) => (
-                                            <SelectItem key={a.id} value={a.id ?? ""}>{`${a.code} ${a.name}`}</SelectItem>
-                                        ))}
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                            <FieldDescription>
-                                由流水生成凭证时，该类别默认使用的对方科目（仅末级科目）。
-                            </FieldDescription>
-                        </Field>
-                        {editing && (
-                            <FieldDescription>
-                                改名不影响既有流水中已登记的类别文本。
-                            </FieldDescription>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setModalOpen(false)}>取消</Button>
-                        <Button onClick={() => void handleSubmit()} disabled={saving}>
-                            {saving && <Spinner data-icon="inline-start" />}
-                            {editing ? "保存" : "创建"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <Modal
+                open={modalOpen}
+                title={editing ? "编辑类别" : "新建类别"}
+                onCancel={() => setModalOpen(false)}
+                onOk={() => void handleSubmit()}
+                okText={editing ? "保存" : "创建"}
+                cancelText="取消"
+                confirmLoading={saving}
+            >
+                <div className="flex flex-col gap-4 py-2">
+                    <FormField label="类型" required>
+                        <Radio.Group
+                            disabled={!!editing}
+                            value={formValues.type}
+                            onChange={(e) => setFormValue("type", e.target.value as 1 | 2)}
+                            options={[
+                                { value: 1, label: "收入" },
+                                { value: 2, label: "支出" },
+                            ]}
+                        />
+                    </FormField>
+                    <FormField label="类别名称" htmlFor="entry-category-name" required error={formErrors.name}>
+                        <Input
+                            id="entry-category-name"
+                            value={formValues.name}
+                            onChange={(e) => setFormValue("name", e.target.value)}
+                            placeholder="如：销售收入、办公费、差旅费"
+                            maxLength={50}
+                            status={formErrors.name ? "error" : undefined}
+                        />
+                    </FormField>
+                    <FormField
+                        label="智能匹配关键字（选填）"
+                        htmlFor="entry-category-keywords"
+                        description="导入流水时，摘要包含任一关键字将自动归入该类别（同类命中取关键字最长者）。"
+                    >
+                        <Input
+                            id="entry-category-keywords"
+                            value={formValues.smartKeywords}
+                            onChange={(e) => setFormValue("smartKeywords", e.target.value)}
+                            placeholder="逗号分隔，如：货款,销售"
+                            maxLength={200}
+                        />
+                    </FormField>
+                    <FormField
+                        label="默认对方科目（选填）"
+                        htmlFor="entry-category-subject"
+                        description="由流水生成凭证时，该类别默认使用的对方科目（仅末级科目）。"
+                    >
+                        <Select
+                            id="entry-category-subject"
+                            className="w-full"
+                            allowClear
+                            placeholder="不指定"
+                            value={formValues.voucherSubjectId || undefined}
+                            onChange={(v) => setFormValue("voucherSubjectId", v ?? "")}
+                            options={subjectAccounts.map((a) => ({
+                                value: a.id ?? "",
+                                label: `${a.code} ${a.name}`,
+                            }))}
+                        />
+                    </FormField>
+                    {editing && <p className="text-sm text-slate-400">改名不影响既有流水中已登记的类别文本。</p>}
+                </div>
+            </Modal>
 
             {confirmDialog}
         </div>

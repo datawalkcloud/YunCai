@@ -1,122 +1,45 @@
-import { useEffect, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate, useParams } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router";
 import {
-    BookOpen,
-    Building2,
-    CalendarDays,
-    Check,
-    ChevronDown,
-    ChevronRight,
-    ChevronsUpDown,
-    Construction,
-    FileText,
-    Home,
-    LogOut,
-    Receipt,
-    Settings,
-    TrendingUp,
-    Users,
-    Wallet,
-} from "lucide-react";
+    BankOutlined,
+    BookOutlined,
+    CalendarOutlined,
+    CheckOutlined,
+    DownOutlined,
+    FileDoneOutlined,
+    FileTextOutlined,
+    FundOutlined,
+    HomeOutlined,
+    LogoutOutlined,
+    SettingOutlined,
+    TeamOutlined,
+    ToolOutlined,
+    WalletOutlined,
+} from "@ant-design/icons";
+import { Avatar, Dropdown, Menu } from "antd";
+import type { MenuProps } from "antd";
 
 import { useAuth } from "@/auth/AuthContext";
 import { useAccountSets } from "@/accountSets/AccountSetsContext";
 import { AccountSetsApi } from "@/apis-gen";
 import { apiConfig } from "@/lib/api-client";
 import { WipTag } from "@/pages/lemon/components/ui";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ICON_STYLE } from "@/components/page/styles";
 
 /* ------------------------------------------------------------------ */
 /*  菜单模型：to 为账套下的相对子路径（每项都有真实链接）。                */
-/*  分组带 to 表示直接跳转项（无子菜单）；否则为手风琴分组；              */
-/*  wip 子项属「建设中 · 未接入」分组（界面复刻、后端未接）。             */
+/*  带 children 的是折叠分组；无 children 的是直达项（如期末结转）。        */
+/*  wip 子项属「建设中 · 未接入」分组（界面复刻、后端未接）。               */
 /* ------------------------------------------------------------------ */
 
-type MenuIconType = React.ComponentType<{ className?: string; strokeWidth?: number }>;
-type MenuLeaf = { label: string; icon?: MenuIconType; expand?: boolean; wip?: boolean; to: string };
-type MenuGroup = { label: string; icon: MenuIconType; to?: string; children?: MenuLeaf[] };
-
-/*
- * 原菜单层级（暂时注释，已按柠檬云菜单层级重建，见下方 menuGroups）。
- *
- * const menuGroups: MenuGroup[] = [
- *     {
- *         label: "总账管理",
- *         icon: BookOpen,
- *         children: [
- *             { label: "凭证管理", icon: FileText, expand: true, to: "vouchers/manage" },
- *             { label: "账簿查询", icon: Search, expand: true, to: "ledger/trial-balance" },
- *             { label: "期末结转", icon: CalendarDays, expand: true, to: "closing" },
- *             { label: "财务报表", icon: BarChart3 },
- *         ],
- *     },
- *     {
- *         label: "应收应付",
- *         icon: ArrowLeftRight,
- *         children: [
- *             { label: "应收管理", icon: Wallet, expand: true },
- *             { label: "应付管理", icon: CreditCard, expand: true },
- *             { label: "客户管理", icon: Users, expand: true },
- *             { label: "供应商管理", icon: Building2 },
- *         ],
- *     },
- *     {
- *         label: "资金管理",
- *         icon: Wallet,
- *         children: [
- *             { label: "银行账户", icon: Landmark, expand: true },
- *             { label: "资金流水", icon: ArrowRightLeft, expand: true, to: "funds/cash-journal" },
- *             { label: "内部转账", icon: ArrowLeftRight, expand: true, to: "funds/transfer" },
- *             { label: "资金报表", icon: BarChart3, expand: true, to: "funds/report" },
- *             { label: "核对总账", icon: Scale, expand: true, to: "funds/reconciliation" },
- *             { label: "收支类别", icon: Tags, expand: true, to: "funds/entry-categories" },
- *             { label: "银企对账", icon: FileCheck },
- *             { label: "资金计划", icon: Calculator },
- *         ],
- *     },
- *     {
- *         label: "发票管理",
- *         icon: Receipt,
- *         children: [
- *             { label: "发票开具", icon: Receipt, expand: true },
- *             { label: "发票管理", icon: FileText },
- *             { label: "发票统计", icon: PieChart },
- *             { label: "资金计划", icon: Calculator },
- *         ],
- *     },
- *     {
- *         label: "报表中心",
- *         icon: FileSpreadsheet,
- *         children: [
- *             { label: "财务报表", icon: BarChart3, expand: true, to: "reports/balance-sheet" },
- *             { label: "经营分析", icon: TrendingUp, expand: true },
- *             { label: "税务报表", icon: FileText, expand: true },
- *         ],
- *     },
- *     {
- *         label: "系统设置",
- *         icon: Settings,
- *         children: [
- *             { label: "基础设置", icon: Settings, expand: true, to: "settings/accounts" },
- *             { label: "辅助核算", icon: Layers, expand: true, to: "settings/assist-items" },
- *             { label: "用户管理", icon: UserCog },
- *             { label: "权限管理", icon: ShieldCheck },
- *         ],
- *     },
- * ];
- */
+type MenuLeaf = { label: string; wip?: boolean; to: string };
+type MenuGroup = { label: string; icon: React.ReactNode; to?: string; children?: MenuLeaf[] };
 
 /** 菜单层级：与柠檬云 J6 一致（首页 + 凭证/资金/发票/工资/资产/期末结转/账簿/报表/设置），末尾为「建设中 · 未接入」折叠分组。 */
 const menuGroups: MenuGroup[] = [
     {
         label: "凭证",
-        icon: BookOpen,
+        icon: <BookOutlined />,
         children: [
             { label: "新增凭证", to: "vouchers/new" },
             { label: "查看凭证", to: "vouchers/manage" },
@@ -125,7 +48,7 @@ const menuGroups: MenuGroup[] = [
     },
     {
         label: "资金",
-        icon: Wallet,
+        icon: <WalletOutlined />,
         children: [
             { label: "现金日记账", to: "funds/cash-journal" },
             { label: "银行日记账", to: "funds/deposit-journal" },
@@ -139,7 +62,7 @@ const menuGroups: MenuGroup[] = [
     },
     {
         label: "发票",
-        icon: Receipt,
+        icon: <FileDoneOutlined />,
         children: [
             { label: "销项发票", to: "invoices/sales" },
             { label: "进项发票", to: "invoices/purchase" },
@@ -148,7 +71,7 @@ const menuGroups: MenuGroup[] = [
     },
     {
         label: "工资",
-        icon: Users,
+        icon: <TeamOutlined />,
         children: [
             { label: "工资管理", to: "salary/manage" },
             { label: "员工信息", to: "salary/employee" },
@@ -158,7 +81,7 @@ const menuGroups: MenuGroup[] = [
     },
     {
         label: "资产",
-        icon: Building2,
+        icon: <BankOutlined />,
         children: [
             { label: "资产管理", to: "assets/manage" },
             { label: "折旧摊销明细表", to: "assets/depreciation" },
@@ -167,10 +90,10 @@ const menuGroups: MenuGroup[] = [
             { label: "资产核对总账", to: "assets/check" },
         ],
     },
-    { label: "期末结转", icon: CalendarDays, to: "closing" },
+    { label: "期末结转", icon: <CalendarOutlined />, to: "closing" },
     {
         label: "账簿",
-        icon: FileText,
+        icon: <FileTextOutlined />,
         children: [
             { label: "明细账", to: "ledger/subsidiary" },
             { label: "总账", to: "ledger/general" },
@@ -186,7 +109,7 @@ const menuGroups: MenuGroup[] = [
     },
     {
         label: "报表",
-        icon: TrendingUp,
+        icon: <FundOutlined />,
         children: [
             { label: "资产负债表", to: "reports/balance-sheet" },
             { label: "利润表", to: "reports/income-statement" },
@@ -205,7 +128,7 @@ const menuGroups: MenuGroup[] = [
     },
     {
         label: "设置",
-        icon: Settings,
+        icon: <SettingOutlined />,
         children: [
             { label: "账套", to: "settings/account-sets" },
             { label: "科目", to: "settings/accounts" },
@@ -220,7 +143,7 @@ const menuGroups: MenuGroup[] = [
     },
     {
         label: "建设中 · 未接入",
-        icon: Construction,
+        icon: <ToolOutlined />,
         children: [
             { label: "收票宝", to: "vouchers/spb", wip: true },
             { label: "银企互联", to: "funds/bank-link", wip: true },
@@ -263,17 +186,45 @@ export default function DashboardLayout() {
 
 function Sidebar() {
     const location = useLocation();
+    const navigate = useNavigate();
     const { accountSetId = "" } = useParams();
     const base = `/${accountSetId}`;
 
-    // 当前路由所在分组：手风琴默认展开它
+    /** 当前路由所在分组：手风琴只展开它，与菜单默认行为一致。 */
     const activeGroupLabel = menuGroups.find((g) =>
         g.children?.some((c) => location.pathname === `${base}/${c.to}`),
     )?.label;
-    const [expanded, setExpanded] = useState<string | undefined>(activeGroupLabel);
+    const [openKeys, setOpenKeys] = useState<string[]>(activeGroupLabel ? [activeGroupLabel] : []);
     useEffect(() => {
-        setExpanded(activeGroupLabel);
+        setOpenKeys(activeGroupLabel ? [activeGroupLabel] : []);
     }, [activeGroupLabel]);
+
+    const items = useMemo<MenuProps["items"]>(
+        () => [
+            { key: base, icon: <HomeOutlined />, label: "首页" },
+            ...menuGroups.map((group) =>
+                group.to
+                    ? { key: `${base}/${group.to}`, icon: group.icon, label: group.label }
+                    : {
+                          key: group.label,
+                          icon: group.icon,
+                          label: group.label,
+                          children: (group.children ?? []).map((child) => ({
+                              key: `${base}/${child.to}`,
+                              label: child.wip ? (
+                                  <span className="flex items-center justify-between gap-2">
+                                      {child.label}
+                                      <WipTag className="shrink-0" />
+                                  </span>
+                              ) : (
+                                  child.label
+                              ),
+                          })),
+                      },
+            ),
+        ],
+        [base],
+    );
 
     return (
         <aside className="hidden w-[232px] shrink-0 flex-col border-r border-slate-100 bg-white lg:flex">
@@ -285,35 +236,23 @@ function Sidebar() {
                 </div>
             </div>
             <AccountSetSwitcher />
-            <nav className="flex-1 overflow-y-auto px-3 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <HomeRow />
-                {menuGroups.map((group) =>
-                    group.to ? (
-                        <DirectRow
-                            key={group.label}
-                            label={group.label}
-                            icon={group.icon}
-                            to={group.to}
-                        />
-                    ) : (
-                        <div key={group.label} className="mt-0.5">
-                            <GroupRow
-                                group={group}
-                                expanded={expanded === group.label}
-                                onToggle={() =>
-                                    setExpanded((e) => (e === group.label ? undefined : group.label))
-                                }
-                            />
-                            {expanded === group.label && (
-                                <div className="mt-0.5 space-y-0.5">
-                                    {(group.children ?? []).map((child) => (
-                                        <ChildRow key={child.label} item={child} />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ),
-                )}
+            <nav className="flex-1 overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <Menu
+                    mode="inline"
+                    items={items}
+                    openKeys={openKeys}
+                    onOpenChange={(keys) => {
+                        // Menu 没有 accordion 属性，这里自己实现：只保留本次新展开的分组。
+                        const list = keys as string[];
+                        const opened = list.filter((k) => !openKeys.includes(k));
+                        setOpenKeys(opened.length > 0 ? [opened[opened.length - 1]] : list);
+                    }}
+                    selectedKeys={[location.pathname]}
+                    onClick={({ key }) => {
+                        if (key.startsWith("/")) navigate(key);
+                    }}
+                    style={{ borderInlineEnd: "none" }}
+                />
             </nav>
         </aside>
     );
@@ -355,192 +294,53 @@ function AccountSetSwitcher() {
 
     return (
         <div className="px-3 pb-3">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <button
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:bg-slate-50"
-                    >
-                        <Building2 className="size-[17px] shrink-0 text-[#2f6bff]" />
-                        <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13px] font-medium text-slate-800">
-                                {current?.name ?? "选择账套"}
-                            </span>
-                            {current?.companyName && current.companyName !== current.name && (
-                                <span className="block truncate text-[11px] text-slate-400">
-                                    {current.companyName}
+            <Dropdown
+                trigger={["click"]}
+                placement="bottomLeft"
+                menu={{
+                    style: { minWidth: 224 },
+                    selectable: false,
+                    items: accountSets.map((set) => ({
+                        key: set.id,
+                        label: (
+                            <span className="flex items-start justify-between gap-2">
+                                <span className="min-w-0">
+                                    <span className="block truncate text-[13px]">{set.name}</span>
+                                    {set.companyName && set.companyName !== set.name && (
+                                        <span className="block truncate text-[11px] text-slate-400">
+                                            {set.companyName}
+                                        </span>
+                                    )}
                                 </span>
-                            )}
-                        </span>
-                        <ChevronsUpDown className="size-3.5 shrink-0 text-slate-400" />
-                    </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                    align="start"
-                    className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
-                >
-                    <DropdownMenuLabel className="text-[12px] font-normal text-slate-400">
-                        切换账套
-                    </DropdownMenuLabel>
-                    {accountSets.map((set) => (
-                        <DropdownMenuItem key={set.id} onClick={() => void choose(set.id)}>
-                            <span className="min-w-0 flex-1">
-                                <span className="block truncate text-[13px]">{set.name}</span>
-                                {set.companyName && set.companyName !== set.name && (
-                                    <span className="block truncate text-[11px] text-slate-400">
-                                        {set.companyName}
-                                    </span>
+                                {set.id === accountSetId && (
+                                    <CheckOutlined className="shrink-0" style={ICON_STYLE.brand} />
                                 )}
                             </span>
-                            {set.id === accountSetId && (
-                                <Check className="size-4 shrink-0 text-[#2f6bff]" />
-                            )}
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
-            {error && (
-                <p className="mt-1 px-1 text-[11px] leading-4 text-red-500">{error}</p>
-            )}
+                        ),
+                    })),
+                    onClick: ({ key }) => void choose(key),
+                }}
+            >
+                <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:bg-slate-50"
+                >
+                    <BankOutlined className="shrink-0 text-[17px]" style={ICON_STYLE.brand} />
+                    <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium text-slate-800">
+                            {current?.name ?? "选择账套"}
+                        </span>
+                        {current?.companyName && current.companyName !== current.name && (
+                            <span className="block truncate text-[11px] text-slate-400">
+                                {current.companyName}
+                            </span>
+                        )}
+                    </span>
+                    <DownOutlined className="shrink-0 text-[11px]" style={ICON_STYLE.muted} />
+                </button>
+            </Dropdown>
+            {error && <p className="mt-1 px-1 text-[11px] leading-4 text-red-500">{error}</p>}
         </div>
-    );
-}
-
-/** 解析某个叶子项的目标链接与是否激活。 */
-function useNavTarget(item: MenuLeaf) {
-    const { accountSetId = "" } = useParams();
-    const location = useLocation();
-    const href = `/${accountSetId}/${item.to}`;
-    return { href, active: location.pathname === href };
-}
-
-/** 首页：浅蓝胶囊 + 实心蓝色房子图标，右侧贴边蓝色高亮条。 */
-function HomeRow() {
-    const { accountSetId = "" } = useParams();
-    const location = useLocation();
-    const base = `/${accountSetId}`;
-    const active = location.pathname === base;
-    return (
-        <Link
-            to={base}
-            className={
-                "relative mb-1 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-semibold transition-colors " +
-                (active ? "bg-[#e7f0ff] text-[#2f6bff]" : "text-slate-600 hover:bg-slate-50")
-            }
-        >
-            <Home
-                className="size-[18px] shrink-0"
-                fill={active ? "currentColor" : "none"}
-                strokeWidth={active ? 0 : 2}
-            />
-            <span>首页</span>
-            {active && (
-                <span className="absolute -right-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-l-full bg-[#2f6bff]" />
-            )}
-        </Link>
-    );
-}
-
-/** 分组标题：手风琴开关，点击展开/收起子项。 */
-function GroupRow({
-    group,
-    expanded,
-    onToggle,
-}: {
-    group: MenuGroup;
-    expanded: boolean;
-    onToggle: () => void;
-}) {
-    const { accountSetId = "" } = useParams();
-    const location = useLocation();
-    const base = `/${accountSetId}`;
-    const active = (group.children ?? []).some(
-        (c) => location.pathname === `${base}/${c.to}`,
-    );
-    return (
-        <button
-            type="button"
-            onClick={onToggle}
-            className={
-                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors " +
-                (active
-                    ? "font-medium text-[#2f6bff]"
-                    : "text-slate-700 hover:bg-slate-50")
-            }
-        >
-            <MenuGlyph icon={group.icon} active={active} />
-            <span className="flex-1 truncate">{group.label}</span>
-            <ChevronDown
-                className={
-                    "size-3.5 shrink-0 text-slate-300 transition-transform " +
-                    (expanded ? "rotate-180" : "")
-                }
-            />
-        </button>
-    );
-}
-
-/** 直达项（无子菜单，如期末结转）：样式同分组标题但可跳转。 */
-function DirectRow({
-    label,
-    icon,
-    to,
-}: {
-    label: string;
-    icon: MenuIconType;
-    to: string;
-}) {
-    const { href, active } = useNavTarget({ label, to });
-    return (
-        <Link
-            to={href}
-            className={
-                "mt-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors " +
-                (active
-                    ? "bg-[#e7f0ff] font-medium text-[#2f6bff]"
-                    : "text-slate-700 hover:bg-slate-50")
-            }
-        >
-            <MenuGlyph icon={icon} active={active} />
-            <span className="flex-1 truncate">{label}</span>
-        </Link>
-    );
-}
-
-/** 子项：可跳转；「建设中」项挂小标。子项不带图标时以小圆点占位。 */
-function ChildRow({ item }: { item: MenuLeaf }) {
-    const { href, active } = useNavTarget(item);
-    return (
-        <Link
-            to={href}
-            className={
-                "flex items-center gap-2.5 rounded-lg py-[7px] pl-[30px] pr-2.5 text-[13px] transition-colors " +
-                (active
-                    ? "bg-[#e7f0ff] font-medium text-[#2f6bff]"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800")
-            }
-        >
-            {item.icon ? (
-                <MenuGlyph icon={item.icon} active={active} />
-            ) : (
-                <span className="flex size-[17px] shrink-0 items-center justify-center">
-                    <span className="size-1 rounded-full bg-slate-300" />
-                </span>
-            )}
-            <span className="flex-1 truncate">{item.label}</span>
-            {item.wip && <WipTag className="shrink-0" />}
-            {item.expand && <ChevronRight className="size-3.5 shrink-0 text-slate-300" />}
-        </Link>
-    );
-}
-
-/** 菜单图标：直接使用 lucide 线性图标。 */
-function MenuGlyph({ icon: Icon, active }: { icon: MenuIconType; active?: boolean }) {
-    return (
-        <Icon
-            className={"size-[17px] shrink-0 " + (active ? "text-[#2f6bff]" : "text-slate-500")}
-            strokeWidth={2}
-        />
     );
 }
 
@@ -573,7 +373,6 @@ function TopBar() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const name = user?.displayName || user?.username || "";
-    const initial = name.slice(0, 1);
 
     function handleLogout() {
         logout();
@@ -582,26 +381,25 @@ function TopBar() {
 
     return (
         <header className="flex h-16 shrink-0 items-center justify-end border-b border-slate-100 bg-white px-6">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <button
-                        type="button"
-                        className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-slate-50"
+            <Dropdown
+                trigger={["click"]}
+                placement="bottomRight"
+                menu={{ items: [{ key: "logout", icon: <LogoutOutlined />, label: "退出登录", onClick: handleLogout }] }}
+            >
+                <button
+                    type="button"
+                    className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-slate-50"
+                >
+                    <Avatar
+                        size={32}
+                        style={{ background: "linear-gradient(135deg,#5b9bff,#2f6bff)", fontWeight: 500 }}
                     >
-                        <span className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-[#5b9bff] to-[#2f6bff] text-[13px] font-medium text-white">
-                            {initial}
-                        </span>
-                        <span className="text-[13px] font-medium text-slate-700">{name}</span>
-                        <ChevronDown className="size-4 text-slate-400" />
-                    </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-40">
-                    <DropdownMenuItem onClick={handleLogout}>
-                        <LogOut className="size-4" />
-                        退出登录
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                        {name.slice(0, 1)}
+                    </Avatar>
+                    <span className="text-[13px] font-medium text-slate-700">{name}</span>
+                    <DownOutlined className="text-[11px]" style={ICON_STYLE.muted} />
+                </button>
+            </Dropdown>
         </header>
     );
 }

@@ -1,25 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { RefreshCw, TrendingUp } from "lucide-react"
+import { FundOutlined, ReloadOutlined } from "@ant-design/icons"
+import { Button, Table } from "antd"
+import type { TableColumnsType } from "antd"
 import dayjs from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type IncomeStatementLineDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-import { cn } from "@/lib/utils"
 import { PeriodField } from "@/components/fields/date-fields"
 import { ReportPageShell } from "@/components/report/ReportPageShell"
-import { PAGE_BTN_GHOST, PERIOD_FIELD } from "@/components/page/styles"
-import { Button } from "@/components/ui/button"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Spinner } from "@/components/ui/spinner"
+import { AMOUNT_COL } from "@/components/page/styles"
 
 type RowKind = "item" | "total"
 
@@ -36,6 +27,8 @@ interface StatementLine {
     current: number
     yearToDate: number
     kind: RowKind
+    /** 缩进层级，来自行次模板定义。 */
+    indent?: number
 }
 
 /** 会企02表明细行定义：名称与报表行次；金额由后端按行次填入。 */
@@ -140,14 +133,50 @@ function buildRows(map: AmountMap): { rows: StatementLine[]; net: { current: num
     return { rows, net }
 }
 
-const cellCls = "border border-border px-3 py-1.5 align-middle"
-const amountCls = cn(cellCls, "text-right tabular-nums")
-
-/** 明细项缩进：单元格基础左内边距 12px，每级再加 16px（会企02表模板目前仅 0/1 两级）。 */
-function indentCls(indent: number): string | undefined {
-    if (indent <= 0) return undefined
-    return indent >= 2 ? "pl-11" : "pl-7"
+/**
+ * 明细项缩进：antd 的 .ant-table-cell 内边距压过 Tailwind 的 pl-*，故缩进做在单元格内的 span 上。
+ * 每级 16px（会企02表模板目前仅 0/1 两级）。
+ */
+function indentCls(indent?: number): string {
+    if (!indent) return ""
+    return indent >= 2 ? "ml-8" : "ml-4"
 }
+
+/** 合计行加粗，明细行常规。 */
+function cellCls(row: StatementLine): string {
+    return row.kind === "total" ? "font-medium" : ""
+}
+
+/** 会企02表四列：项目、行次、本期金额、本年累计金额。 */
+const COLUMNS: TableColumnsType<StatementLine> = [
+    {
+        title: "项目",
+        onCell: (row) => ({ className: cellCls(row) }),
+        render: (_, row) =>
+            row.indent ? <span className={indentCls(row.indent)}>{row.label}</span> : row.label,
+    },
+    {
+        title: "行次",
+        dataIndex: "line",
+        align: "center",
+        width: 64,
+        onCell: () => ({ className: "tabular-nums text-muted-foreground" }),
+    },
+    {
+        title: "本期金额",
+        width: 160,
+        ...AMOUNT_COL,
+        render: (_, row) => fmt(row.current, row.kind === "total"),
+        onCell: (row) => ({ className: cellCls(row) }),
+    },
+    {
+        title: "本年累计金额",
+        width: 160,
+        ...AMOUNT_COL,
+        render: (_, row) => fmt(row.yearToDate, row.kind === "total"),
+        onCell: (row) => ({ className: cellCls(row) }),
+    },
+]
 
 export default function IncomeStatementPage() {
     const { token } = useAuth()
@@ -204,7 +233,7 @@ export default function IncomeStatementPage() {
 
     return (
         <ReportPageShell
-            icon={TrendingUp}
+            icon={FundOutlined}
             title="利润表"
             subtitle={
                 <>
@@ -217,7 +246,6 @@ export default function IncomeStatementPage() {
                 <>
                     <span className="text-[12.5px] text-slate-500">会计期间：</span>
                     <PeriodField
-                        className={PERIOD_FIELD}
                         value={toPeriodDate(period)}
                         onChange={(d) => d && setPeriod({ year: dayjs(d).year(), month: dayjs(d).month() + 1 })}
                         disabled={!accountSetId}
@@ -227,16 +255,10 @@ export default function IncomeStatementPage() {
             }
             actions={
                 <Button
-                    variant="outline"
+                    icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
                     onClick={() => void load()}
                     disabled={loading || !accountSetId}
-                    className={cn(PAGE_BTN_GHOST, "bg-white")}
                 >
-                    {loading ? (
-                        <Spinner data-icon="inline-start" />
-                    ) : (
-                        <RefreshCw data-icon="inline-start" />
-                    )}
                     刷新
                 </Button>
             }
@@ -251,44 +273,15 @@ export default function IncomeStatementPage() {
             error={error}
             placeholder={!accountSetId ? "请先选择账套。" : undefined}
         >
-            <Table className="min-w-[560px] border-collapse">
-                <colgroup>
-                    <col />
-                    <col className="w-16" />
-                    <col className="w-40" />
-                    <col className="w-40" />
-                </colgroup>
-                <TableHeader>
-                    <TableRow className="bg-muted hover:bg-muted">
-                        <TableHead className={cn(cellCls, "text-left font-medium text-slate-500")}>项目</TableHead>
-                        <TableHead className={cn(cellCls, "text-center font-medium text-slate-500")}>行次</TableHead>
-                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>本期金额</TableHead>
-                        <TableHead className={cn(cellCls, "text-right font-medium text-slate-500")}>本年累计金额</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {rows.map((row, i) => {
-                        const isTotal = row.kind === "total"
-                        const indent = (row as StatementLine & { indent?: number }).indent ?? 0
-                        return (
-                            <TableRow key={i} className="hover:bg-transparent">
-                                <TableCell className={cn(cellCls, "whitespace-normal", indentCls(indent), isTotal && "font-medium")}>
-                                    {row.label}
-                                </TableCell>
-                                <TableCell className={cn(cellCls, "text-center tabular-nums text-muted-foreground")}>
-                                    {row.line}
-                                </TableCell>
-                                <TableCell className={cn(amountCls, isTotal && "font-medium")}>
-                                    {fmt(row.current, isTotal)}
-                                </TableCell>
-                                <TableCell className={cn(amountCls, isTotal && "font-medium")}>
-                                    {fmt(row.yearToDate, isTotal)}
-                                </TableCell>
-                            </TableRow>
-                        )
-                    })}
-                </TableBody>
-            </Table>
+            <Table<StatementLine>
+                columns={COLUMNS}
+                dataSource={rows}
+                rowKey={(_, i) => String(i)}
+                pagination={false}
+                size="small"
+                bordered
+                scroll={{ x: 560 }}
+            />
         </ReportPageShell>
     )
 }

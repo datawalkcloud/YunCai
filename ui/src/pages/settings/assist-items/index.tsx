@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Briefcase, ChevronDown, ChevronRight, CircleAlert, Plus, RefreshCw, Trash2, UserPen } from "lucide-react"
+import { Alert, Button, Checkbox, Input, Modal, Spin, Table } from "antd"
+import type { TableColumnsType } from "antd"
+import {
+    ApartmentOutlined,
+    DeleteOutlined,
+    DownOutlined,
+    EditOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    RightOutlined,
+} from "@ant-design/icons"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -10,24 +20,8 @@ import { cn } from "@/lib/utils"
 import { ASSIST_CODE_MAX_LENGTH, assistExpectedCodeLength, assistSupportsHierarchy } from "@/components/assist/constants"
 import { invalidateAssistItems } from "@/components/assist/assist-store"
 import { PageHeader, SectionCard } from "@/components/page/section"
+import { FormField } from "@/components/page/form-field"
 import { StatusPill } from "@/components/page/status-pill"
-import { CARD_BTN, CARD_BTN_PRIMARY, ICON_BTN, ICON_BTN_DANGER } from "@/components/page/styles"
-import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Spinner } from "@/components/ui/spinner"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
 
 /** 层级缩进类（档案最多十几级，够用即止）。 */
 const INDENT_CLASS = ["", "pl-4", "pl-8", "pl-12", "pl-16", "pl-20", "pl-24", "pl-28"]
@@ -51,9 +45,6 @@ interface ItemForm {
 }
 
 const emptyForm: ItemForm = { code: "", name: "", contact: "", remark: "" }
-
-/** 列表列数（编码 / 名称 / 联系资料 / 备注 / 状态 / 操作）。 */
-const COLUMN_COUNT = 6
 
 export default function AssistItemsPage() {
     const { token } = useAuth()
@@ -120,7 +111,7 @@ export default function AssistItemsPage() {
     return (
         <div className="flex flex-col gap-5">
             <PageHeader
-                icon={Briefcase}
+                icon={ApartmentOutlined}
                 title="辅助核算"
                 subtitle={
                     <>
@@ -140,7 +131,11 @@ export default function AssistItemsPage() {
                         title={<h3 className="text-[14px] font-semibold text-slate-800">核算类别</h3>}
                         bodyClassName="flex flex-col gap-1 p-3"
                     >
-                        {categoriesLoading && categories.length === 0 && <Spinner className="mx-auto size-5 text-slate-300" />}
+                        {categoriesLoading && categories.length === 0 && (
+                            <div className="flex justify-center py-4">
+                                <Spin />
+                            </div>
+                        )}
                         {categories.map((c) => {
                             const type = c.type as number
                             const hierarchical = assistSupportsHierarchy(type)
@@ -157,12 +152,17 @@ export default function AssistItemsPage() {
                                         className="flex flex-1 items-center gap-2 text-left"
                                         onClick={() => setActiveType(type)}
                                     >
-                                        <span className={cn("text-[13px]", type === activeType ? "font-medium text-[#2f6bff]" : "text-slate-600")}>
+                                        <span
+                                            className={cn(
+                                                "text-[13px]",
+                                                type === activeType
+                                                    ? "font-medium text-[#2f6bff]"
+                                                    : "text-slate-600",
+                                            )}
+                                        >
                                             {c.typeText}
                                         </span>
-                                        {hierarchical && (
-                                            <span className="text-[11px] text-slate-400">层级</span>
-                                        )}
+                                        {hierarchical && <span className="text-[11px] text-slate-400">层级</span>}
                                         <span className="ml-auto text-[11.5px] text-slate-400 tabular-nums">
                                             {c.itemCount ?? 0}
                                         </span>
@@ -171,7 +171,7 @@ export default function AssistItemsPage() {
                                         <Checkbox
                                             checked={c.isEnabled === true}
                                             disabled={switchingType !== null}
-                                            onCheckedChange={(v) => void toggleCategory(type, v === true)}
+                                            onChange={(e) => void toggleCategory(type, e.target.checked)}
                                             aria-label={`启用${c.typeText ?? ""}类别`}
                                         />
                                         启用
@@ -179,12 +179,7 @@ export default function AssistItemsPage() {
                                 </div>
                             )
                         })}
-                        {categoriesError && (
-                            <Alert variant="destructive" className="mt-2 rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                <CircleAlert />
-                                <AlertTitle>{categoriesError}</AlertTitle>
-                            </Alert>
-                        )}
+                        {categoriesError && <Alert className="mt-2" type="error" showIcon title={categoriesError} />}
                     </SectionCard>
 
                     <AssistItemListPanel
@@ -291,7 +286,7 @@ function AssistItemListPanel({
         return out
     }, [treeData, expandedKeys])
 
-    const topRows = useMemo<VisibleRow[]>(
+    const rows = useMemo<VisibleRow[]>(
         () => (hierarchical ? visibleRows : treeData.map((node) => ({ node, depth: 0 }))),
         [hierarchical, visibleRows, treeData],
     )
@@ -428,18 +423,131 @@ function AssistItemListPanel({
     const createLevel = (parentItem?.level ?? 0) + 1
     const expectedLength = assistExpectedCodeLength(type, createLevel)
 
+    const columns: TableColumnsType<VisibleRow> = [
+        {
+            title: "编码",
+            render: (_, { node, depth }) => (
+                <div className={cn("flex items-center gap-1", indentClass(depth))}>
+                    {node.children ? (
+                        <Button
+                            type="text"
+                            size="small"
+                            aria-label={
+                                expandedKeys.includes(String(node.id)) ? "收起下级" : "展开下级"
+                            }
+                            aria-expanded={expandedKeys.includes(String(node.id))}
+                            icon={
+                                expandedKeys.includes(String(node.id)) ? (
+                                    <DownOutlined />
+                                ) : (
+                                    <RightOutlined />
+                                )
+                            }
+                            onClick={() =>
+                                setExpandedKeys((prev) =>
+                                    prev.includes(String(node.id))
+                                        ? prev.filter((k) => k !== String(node.id))
+                                        : [...prev, String(node.id)],
+                                )
+                            }
+                        />
+                    ) : (
+                        <span className="size-6 shrink-0" />
+                    )}
+                    <span className="whitespace-nowrap">{node.code}</span>
+                </div>
+            ),
+        },
+        {
+            title: "名称",
+            render: (_, { node }) => (
+                <>
+                    <span className={node.children ? "font-medium text-slate-800" : undefined}>
+                        {node.name}
+                    </span>
+                    <span className="ml-2 text-[11.5px] text-slate-400">{levelOf(node)} 级</span>
+                </>
+            ),
+        },
+        {
+            title: "联系资料",
+            render: (_, { node }) => node.contact || "—",
+        },
+        {
+            title: "备注",
+            render: (_, { node }) => node.remark || "—",
+        },
+        {
+            title: "状态",
+            align: "center",
+            render: (_, { node }) => (
+                <StatusPill tone={node.isEnabled ? "green" : "gray"}>
+                    {node.isEnabled ? "启用" : "停用"}
+                </StatusPill>
+            ),
+        },
+        {
+            title: "操作",
+            align: "right",
+            render: (_, { node }) => {
+                const id = String(node.id)
+                return (
+                    <div className="flex items-center justify-end gap-0">
+                        {hierarchical && (
+                            <Button
+                                type="text"
+                                size="small"
+                                title="新增下级档案"
+                                icon={<PlusOutlined />}
+                                onClick={() => void openCreate(node)}
+                            />
+                        )}
+                        <Button
+                            type="text"
+                            size="small"
+                            title="编辑档案"
+                            icon={<EditOutlined />}
+                            onClick={() => openEdit(node)}
+                        />
+                        <Button
+                            type="text"
+                            size="small"
+                            className="text-[12px] text-slate-400"
+                            disabled={busyId === id}
+                            onClick={() => void toggleEnabled(node)}
+                        >
+                            {node.isEnabled ? "停用" : "启用"}
+                        </Button>
+                        <Button
+                            type="text"
+                            size="small"
+                            danger
+                            title={node.children ? "删除档案（需先删除下级）" : "删除档案"}
+                            disabled={busyId === id}
+                            icon={<DeleteOutlined />}
+                            onClick={() => void removeItem(node)}
+                        />
+                    </div>
+                )
+            },
+        },
+    ]
+
     return (
         <>
             <SectionCard
                 title={<h3 className="text-[14px] font-semibold text-slate-800">{hierarchical ? "档案结构" : "档案列表"}</h3>}
                 action={
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" className={CARD_BTN} onClick={() => void load()} disabled={loading}>
-                            {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+                        <Button icon={<ReloadOutlined />} onClick={() => void load()} disabled={loading}>
                             刷新
                         </Button>
-                        <Button className={CARD_BTN_PRIMARY} onClick={() => void openCreate(null)} disabled={!categoryEnabled}>
-                            <Plus data-icon="inline-start" />
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => void openCreate(null)}
+                            disabled={!categoryEnabled}
+                        >
                             新增档案
                         </Button>
                     </div>
@@ -447,223 +555,104 @@ function AssistItemListPanel({
                 bodyClassName="flex flex-col gap-4"
             >
                 {!categoryEnabled && (
-                    <Alert className="rounded-xl border-[#fde68a] bg-[#fef3c7] text-[#b45309]">
-                        <AlertTitle>
-                            该类别尚未在账套启用，不能新增档案。
-                            <Button variant="link" size="xs" onClick={onCategoryEnabledChange}>
-                                立即启用
-                            </Button>
-                        </AlertTitle>
-                    </Alert>
+                    <Alert
+                        type="warning"
+                        showIcon
+                        title={
+                            <>
+                                该类别尚未在账套启用，不能新增档案。
+                                <Button type="link" size="small" onClick={onCategoryEnabledChange}>
+                                    立即启用
+                                </Button>
+                            </>
+                        }
+                    />
                 )}
-                {error && (
-                    <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                        <CircleAlert />
-                        <AlertTitle>{error}</AlertTitle>
-                    </Alert>
-                )}
+                {error && <Alert type="error" showIcon title={error} />}
 
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>编码</TableHead>
-                            <TableHead>名称</TableHead>
-                            <TableHead>联系资料</TableHead>
-                            <TableHead>备注</TableHead>
-                            <TableHead className="text-center">状态</TableHead>
-                            <TableHead className="text-right">操作</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading && items.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={COLUMN_COUNT} className="py-8 text-center">
-                                    <Spinner className="mx-auto size-5 text-slate-300" />
-                                </TableCell>
-                            </TableRow>
-                        ) : topRows.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={COLUMN_COUNT} className="py-8 text-center text-slate-400">
-                                    该类别暂无档案，可点击「新增档案」建立。
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            topRows.map(({ node, depth }) => {
-                                const id = String(node.id)
-                                const expanded = expandedKeys.includes(id)
-                                return (
-                                    <TableRow key={id} className={node.isEnabled ? undefined : "text-slate-400"}>
-                                        <TableCell>
-                                            <div className={cn("flex items-center gap-1", indentClass(depth))}>
-                                                {node.children ? (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon-xs"
-                                                        className={ICON_BTN}
-                                                        aria-label={expanded ? "收起下级" : "展开下级"}
-                                                        aria-expanded={expanded}
-                                                        onClick={() =>
-                                                            setExpandedKeys((prev) =>
-                                                                prev.includes(id)
-                                                                    ? prev.filter((k) => k !== id)
-                                                                    : [...prev, id],
-                                                            )
-                                                        }
-                                                    >
-                                                        {expanded ? <ChevronDown /> : <ChevronRight />}
-                                                    </Button>
-                                                ) : (
-                                                    <span className="size-6 shrink-0" />
-                                                )}
-                                                <span className="whitespace-nowrap">{node.code}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <span className={node.children ? "font-medium text-slate-800" : undefined}>{node.name}</span>
-                                            <span className="ml-2 text-[11.5px] text-slate-400">{levelOf(node)} 级</span>
-                                        </TableCell>
-                                        <TableCell>{node.contact || "—"}</TableCell>
-                                        <TableCell>{node.remark || "—"}</TableCell>
-                                        <TableCell className="text-center">
-                                            <StatusPill tone={node.isEnabled ? "green" : "gray"}>{node.isEnabled ? "启用" : "停用"}</StatusPill>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-0">
-                                                {hierarchical && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon-xs"
-                                                        className={ICON_BTN}
-                                                        title="新增下级档案"
-                                                        onClick={() => void openCreate(node)}
-                                                    >
-                                                        <Plus />
-                                                    </Button>
-                                                )}
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-xs"
-                                                    className={ICON_BTN}
-                                                    title="编辑档案"
-                                                    onClick={() => openEdit(node)}
-                                                >
-                                                    <UserPen />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="xs"
-                                                    className="text-[12px] text-slate-400 hover:bg-muted hover:text-slate-700"
-                                                    disabled={busyId === id}
-                                                    onClick={() => void toggleEnabled(node)}
-                                                >
-                                                    {node.isEnabled ? "停用" : "启用"}
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-xs"
-                                                    className={ICON_BTN_DANGER}
-                                                    title={node.children ? "删除档案（需先删除下级）" : "删除档案"}
-                                                    disabled={busyId === id}
-                                                    onClick={() => void removeItem(node)}
-                                                >
-                                                    {busyId === id ? <Spinner /> : <Trash2 />}
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                )
-                            })
-                        )}
-                    </TableBody>
-                </Table>
+                {loading && items.length === 0 ? (
+                    <div className="flex justify-center py-8">
+                        <Spin />
+                    </div>
+                ) : (
+                    <Table
+                        columns={columns}
+                        dataSource={rows}
+                        rowKey={(row) => String(row.node.id)}
+                        rowClassName={(row) => (row.node.isEnabled ? "" : "text-slate-400")}
+                        pagination={false}
+                        size="small"
+                        locale={{ emptyText: "该类别暂无档案，可点击「新增档案」建立。" }}
+                    />
+                )}
             </SectionCard>
 
             {/* 新增 / 编辑档案 */}
-            <Dialog
+            <Modal
                 open={formOpen}
-                onOpenChange={(next) => {
-                    setFormOpen(next)
-                    if (!next) {
-                        setParentItem(null)
-                        setEditTarget(null)
-                    }
+                width={448}
+                title={
+                    formMode === "edit"
+                        ? `编辑档案 — ${editTarget?.code ?? ""}`
+                        : parentItem
+                          ? `新增下级档案 — ${parentItem.code} ${parentItem.name}`
+                          : "新增档案"
+                }
+                okText="保存"
+                confirmLoading={saving}
+                onOk={() => void submitForm()}
+                onCancel={() => {
+                    setFormOpen(false)
+                    setParentItem(null)
+                    setEditTarget(null)
                 }}
             >
-                <DialogContent aria-describedby="assist-item-form-desc" className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {formMode === "edit"
-                                ? `编辑档案 — ${editTarget?.code ?? ""}`
-                                : parentItem
-                                  ? `新增下级档案 — ${parentItem.code} ${parentItem.name}`
-                                  : "新增档案"}
-                        </DialogTitle>
-                        <DialogDescription id="assist-item-form-desc">
-                            {formMode === "create"
-                                ? `编码在同类别内唯一，第 ${createLevel} 级应为 ${expectedLength} 位${
-                                      hierarchical && parentItem ? `（以上级编码 ${parentItem.code} 为前缀）` : ""
-                                  }。`
-                                : "档案编码与所属类别不可变更。"}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4">
-                        {formMode === "create" && (
-                            <Field data-invalid={Boolean(formFieldError && !form.code.trim())}>
-                                <FieldLabel htmlFor="assist-code">档案编码</FieldLabel>
-                                <Input
-                                    id="assist-code"
-                                    value={form.code}
-                                    onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
-                                    placeholder="建议编码已自动带出，可修改"
-                                />
-                            </Field>
-                        )}
-                        <Field data-invalid={Boolean(formFieldError && !form.name.trim())}>
-                            <FieldLabel htmlFor="assist-name">档案名称</FieldLabel>
+                <p className="mb-4 text-sm text-slate-400">
+                    {formMode === "create"
+                        ? `编码在同类别内唯一，第 ${createLevel} 级应为 ${expectedLength} 位${
+                              hierarchical && parentItem ? `（以上级编码 ${parentItem.code} 为前缀）` : ""
+                          }。`
+                        : "档案编码与所属类别不可变更。"}
+                </p>
+                <div className="flex flex-col gap-4">
+                    {formMode === "create" && (
+                        <FormField label="档案编码" htmlFor="assist-code">
                             <Input
-                                id="assist-name"
-                                value={form.name}
-                                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                                placeholder="如 杭州某某贸易有限公司"
+                                id="assist-code"
+                                value={form.code}
+                                onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
+                                placeholder="建议编码已自动带出，可修改"
                             />
-                        </Field>
-                        <Field>
-                            <FieldLabel htmlFor="assist-contact">联系资料</FieldLabel>
-                            <Input
-                                id="assist-contact"
-                                value={form.contact}
-                                onChange={(e) => setForm((p) => ({ ...p, contact: e.target.value }))}
-                                placeholder="联系人 / 税号等，可留空"
-                            />
-                        </Field>
-                        <Field>
-                            <FieldLabel htmlFor="assist-remark">备注</FieldLabel>
-                            <Textarea
-                                id="assist-remark"
-                                value={form.remark}
-                                onChange={(e) => setForm((p) => ({ ...p, remark: e.target.value }))}
-                                rows={2}
-                            />
-                        </Field>
-                        {formFieldError && <FieldError>{formFieldError}</FieldError>}
-                        {formError && (
-                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                <CircleAlert />
-                                <AlertTitle>{formError}</AlertTitle>
-                            </Alert>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setFormOpen(false)}>
-                            取消
-                        </Button>
-                        <Button onClick={() => void submitForm()} disabled={saving}>
-                            {saving ? <Spinner data-icon="inline-start" /> : <Plus data-icon="inline-start" />}
-                            保存
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                        </FormField>
+                    )}
+                    <FormField label="档案名称" htmlFor="assist-name">
+                        <Input
+                            id="assist-name"
+                            value={form.name}
+                            onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                            placeholder="如 杭州某某贸易有限公司"
+                        />
+                    </FormField>
+                    <FormField label="联系资料" htmlFor="assist-contact">
+                        <Input
+                            id="assist-contact"
+                            value={form.contact}
+                            onChange={(e) => setForm((p) => ({ ...p, contact: e.target.value }))}
+                            placeholder="联系人 / 税号等，可留空"
+                        />
+                    </FormField>
+                    <FormField label="备注" htmlFor="assist-remark">
+                        <Input.TextArea
+                            id="assist-remark"
+                            value={form.remark}
+                            onChange={(e) => setForm((p) => ({ ...p, remark: e.target.value }))}
+                            rows={2}
+                        />
+                    </FormField>
+                    {formFieldError && <p className="text-sm text-[#ef4444]">{formFieldError}</p>}
+                    {formError && <Alert type="error" showIcon title={formError} />}
+                </div>
+            </Modal>
 
             {confirmDialog}
         </>

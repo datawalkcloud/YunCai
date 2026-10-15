@@ -1,5 +1,7 @@
 import { Fragment, useMemo, useRef, useState } from "react"
-import { Plus, Save, Trash2 } from "lucide-react"
+import { Button, DatePicker, Input, InputNumber, Modal, Select } from "antd"
+import { DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons"
+import dayjs from "dayjs"
 
 import { useAccountSets } from "@/accountSets/AccountSetsContext"
 import { VouchersApi, type AccountDto, type CreateVoucherRequest, type UpdateVoucherRequest, type VoucherDetailDto, type VoucherEntryDto } from "@/apis-gen"
@@ -10,11 +12,6 @@ import { cn } from "@/lib/utils"
 import { AssistItemSelect } from "@/components/assist/assist-item-select"
 import { assistLabel } from "@/components/assist/constants"
 import { useAccountAssistConfigs } from "@/components/assist/assist-store"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Spinner } from "@/components/ui/spinner"
 
 /**
  * 凭证分录行。借方与贷方以字符串保存，便于输入编辑；account 存科目 id；
@@ -245,6 +242,23 @@ export default function VoucherForm({
     const [directionModal, setDirectionModal] = useState<{ issues: number[] } | null>(null)
 
     const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a] as const)), [accounts])
+    // 分录科目下拉候选：编码 + 名称，可按名称/编码检索。
+    // 编辑历史凭证时，分录科目可能已停用或变成非末级而不在候选里，用详情带的编码名称补一项保住回显。
+    const accountOptions = useMemo(() => {
+        const opts = accounts.map((a) => ({ value: a.id ?? "", label: `${a.code} ${a.name}` }))
+        const known = new Set(opts.map((o) => o.value))
+        const stale: { value: string; label: string; disabled: boolean }[] = []
+        for (const e of initial?.entries ?? []) {
+            const id = e.accountId
+            if (!id || known.has(id) || stale.some((o) => o.value === id)) continue
+            stale.push({
+                value: id,
+                label: `${e.accountCode ?? ""} ${e.accountName ?? ""}`.trim() + "（当前不可选）",
+                disabled: true,
+            })
+        }
+        return [...opts, ...stale]
+    }, [accounts, initial])
 
     // 分录所选科目的辅助核算维度：只为实际用到的科目发请求（模块级缓存去重）。
     const entryAccountIds = useMemo(() => entries.map((e) => e.accountId), [entries])
@@ -416,16 +430,13 @@ export default function VoucherForm({
             {/* 凭证字号 / 日期 / 附件 */}
             <div className="flex items-end gap-4 text-sm whitespace-nowrap">
                 <div className="flex items-end gap-1 shrink-0">
-                    <Select value={voucherWord} onValueChange={setVoucherWord} disabled={editing}>
-                        <SelectTrigger size="sm" className="w-16">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {voucherWordOptions.map((w) => (
-                                <SelectItem key={w} value={w}>{w}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Select
+                        className="w-16"
+                        disabled={editing}
+                        value={voucherWord}
+                        options={voucherWordOptions.map((w) => ({ value: w, label: w }))}
+                        onChange={setVoucherWord}
+                    />
                     <span className="pb-1">字第</span>
                     <Input
                         value={voucherNo}
@@ -438,21 +449,24 @@ export default function VoucherForm({
                 </div>
                 <div className="flex items-end gap-1 shrink-0">
                     <span className="pb-1">日期：</span>
-                    <Input
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
+                    <DatePicker
                         className="w-32"
+                        format="YYYY-MM-DD"
+                        allowClear={false}
+                        value={dayjs(date)}
+                        onChange={(d) => {
+                            if (d) setDate(d.format("YYYY-MM-DD"))
+                        }}
                     />
                 </div>
                 <div className="flex items-end gap-1 shrink-0">
                     <span className="pb-1">附单据</span>
-                    <Input
-                        type="number"
-                        min={0}
+                    <InputNumber
+                        className="w-12"
+                        controls={false}
+                        min="0"
                         value={attachments}
-                        onChange={(e) => setAttachments(e.target.value)}
-                        className="w-12 text-center"
+                        onChange={(v) => setAttachments(v == null ? "" : String(v))}
                     />
                     <span className="pb-1">张</span>
                 </div>
@@ -505,40 +519,40 @@ export default function VoucherForm({
                             <tr>
                                 <td className={tdCls}>
                                     <div className="flex items-center">
-                                        <input
+                                        <Input
+                                            variant="borderless"
                                             value={entry.summary}
                                             onChange={(e) => updateEntry(entry.id, { summary: e.target.value })}
                                             placeholder="摘要"
-                                            className="h-9 w-full bg-transparent px-2 outline-none placeholder:text-muted-foreground"
+                                            className="flex-1"
                                         />
                                         <Button
-                                            variant="destructive"
-                                            size="icon-xs"
-                                            onClick={() => removeRow(entry.id)}
-                                            disabled={entries.length <= 1}
+                                            type="text"
+                                            size="small"
+                                            danger
                                             title="删除该行"
+                                            disabled={entries.length <= 1}
+                                            icon={<DeleteOutlined />}
                                             className="mr-1 shrink-0"
-                                        >
-                                            <Trash2 />
-                                        </Button>
+                                            onClick={() => removeRow(entry.id)}
+                                        />
                                     </div>
                                 </td>
                                 <td className={tdCls}>
-                                    <select
-                                        value={entry.accountId}
-                                        onChange={(e) =>
+                                    <Select
+                                        variant="borderless"
+                                        className="w-full"
+                                        placeholder="请选择科目"
+                                        allowClear
+                                        showSearch
+                                        optionFilterProp="label"
+                                        value={entry.accountId || undefined}
+                                        options={accountOptions}
+                                        onChange={(v) =>
                                             // 换科目后原辅助核算取值不再适用，清空重选。
-                                            updateEntry(entry.id, { accountId: e.target.value, assists: {} })
+                                            updateEntry(entry.id, { accountId: v ?? "", assists: {} })
                                         }
-                                        className="h-9 w-full bg-transparent px-1 text-sm outline-none"
-                                    >
-                                        <option value="">请选择科目</option>
-                                        {accounts.map((account) => (
-                                            <option key={account.id} value={account.id}>
-                                                {account.code} {account.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    />
                                 </td>
                                 <td className={tdCls} colSpan={11}>
                                     <AmountCells
@@ -615,8 +629,7 @@ export default function VoucherForm({
 
             {/* 操作区 */}
             <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-                <Button variant="outline" size="sm" onClick={addRow}>
-                    <Plus data-icon="inline-start" />
+                <Button size="small" icon={<PlusOutlined />} onClick={addRow}>
                     添加分录
                 </Button>
                 <span className={cn("text-sm", balanced ? "text-muted-foreground" : "text-destructive")}>
@@ -627,65 +640,54 @@ export default function VoucherForm({
                             : `借贷不平衡，差额 ${fmtMoney(Math.abs(totalDebit - totalCredit))}`}
                 </span>
                 <div className="flex-1" />
-                <Button variant="outline" onClick={onCancel} disabled={saving}>
+                <Button onClick={onCancel} disabled={saving}>
                     取消
                 </Button>
-                <Button onClick={handleSave} disabled={!canSave}>
-                    {saving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
+                <Button type="primary" disabled={!balanced} loading={saving} icon={saving ? undefined : <SaveOutlined />} onClick={() => void handleSave()}>
                     {saving ? "保存中…" : "保存凭证"}
                 </Button>
             </div>
 
             {/* 损益类科目方向警告弹窗 */}
-            <Dialog
+            <Modal
                 open={directionModal !== null}
-                onOpenChange={(next) => {
-                    if (next) return
-                    setDirectionModal(null)
-                }}
-            >
-                <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>
-                    <DialogHeader>
-                        <DialogTitle>凭证录入提示</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4">
-                        <div>
-                            <p className="font-medium text-foreground">系统检测到当前凭证存在损益科目录入不规范的凭证行哦~</p>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                                收入类 要做在 贷方 ， 费用类 要做在 借方 。 如果要冲回，应该录入相同方向的红字，即负数。否则科目余额表和利润表数据会对不上
-                            </p>
-                        </div>
-                        <p className="text-sm">
-                            需要调整金额方向的凭证行：<span className="font-semibold">{directionModal?.issues.join("、")}</span>
-                        </p>
-                    </div>
-                    <DialogFooter className="sm:flex-col">
-                        <Button
-                            className="w-full"
-                            onClick={() => {
-                                autoAdjustEntries()
-                            }}
-                        >
+                width={512}
+                title="凭证录入提示"
+                onCancel={() => setDirectionModal(null)}
+                footer={
+                    <div className="flex flex-col gap-2">
+                        <Button type="primary" block onClick={autoAdjustEntries}>
                             批量调整，系统帮您自动调整所有金额方向
                         </Button>
                         <Button
-                            variant="outline"
-                            className="w-full"
+                            block
                             onClick={() => {
                                 setDirectionModal(null)
                                 // 重新获取 active 并保存
                                 const active = entries.filter(isActiveEntry)
-                                doSave(active)
+                                void doSave(active)
                             }}
                         >
                             继续保存，直接保存凭证
                         </Button>
-                        <Button variant="outline" className="w-full" onClick={() => setDirectionModal(null)}>
+                        <Button block onClick={() => setDirectionModal(null)}>
                             关闭弹窗，自行修改凭证后重新保存
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </div>
+                }
+            >
+                <div className="flex flex-col gap-4">
+                    <div>
+                        <p className="font-medium text-foreground">系统检测到当前凭证存在损益科目录入不规范的凭证行哦~</p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            收入类 要做在 贷方 ， 费用类 要做在 借方 。 如果要冲回，应该录入相同方向的红字，即负数。否则科目余额表和利润表数据会对不上
+                        </p>
+                    </div>
+                    <p className="text-sm">
+                        需要调整金额方向的凭证行：<span className="font-semibold">{directionModal?.issues.join("、")}</span>
+                    </p>
+                </div>
+            </Modal>
         </div>
     )
 }

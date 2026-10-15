@@ -9,19 +9,21 @@
  */
 import { Fragment, useCallback, useEffect, useState } from "react";
 import {
-    Boxes,
-    Briefcase,
-    CircleDollarSign,
-    DatabaseBackup,
-    HelpCircle,
-    LayoutTemplate,
-    Receipt,
-    RotateCcw,
-    ScrollText,
-    ShieldCheck,
-    Stamp,
-    Upload,
-} from "lucide-react";
+    ClusterOutlined,
+    DatabaseOutlined,
+    DollarOutlined,
+    EyeOutlined,
+    FileDoneOutlined,
+    HistoryOutlined,
+    QuestionCircleOutlined,
+    RollbackOutlined,
+    SafetyCertificateOutlined,
+    SnippetsOutlined,
+    TagOutlined,
+    UploadOutlined,
+} from "@ant-design/icons";
+
+import { ICON_STYLE } from "@/components/page/styles";
 
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
@@ -48,6 +50,7 @@ import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import {
     Btn,
     CheckBox,
+    DateInput,
     Dialog,
     EmptyTip,
     FakeInput,
@@ -162,7 +165,7 @@ export function LemonCurrency() {
         },
     ];
     return (
-        <Page title="币别" subtitle="维护账套使用的外币种类与本位币汇率" icon={CircleDollarSign}>
+        <Page title="币别" subtitle="维护账套使用的外币种类与本位币汇率" icon={DollarOutlined}>
             <div className="mx-auto w-[1090px]">
                 <ToolRow left={<Btn variant="primary" onClick={openCreate}>新增</Btn>} right={<RefreshIcon />} />
                 {error && <div className="px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
@@ -296,7 +299,7 @@ export function LemonVoucherWord() {
         },
     ];
     return (
-        <Page title="凭证字" subtitle="设置凭证编号使用的文字与打印标题" icon={Stamp}>
+        <Page title="凭证字" subtitle="设置凭证编号使用的文字与打印标题" icon={TagOutlined}>
             <div className="mx-auto w-[1090px]">
                 <ToolRow left={<Btn variant="primary" onClick={openCreate}>新增</Btn>} right={<RefreshIcon />} />
                 {error && <div className="px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
@@ -406,7 +409,7 @@ export function LemonVoucherTemplate() {
     const td = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-600 tabular-nums";
     if (creating) {
         return (
-            <Page title="新建凭证模板" subtitle="按当月常用分录沉淀为可复用的凭证模板" icon={LayoutTemplate}>
+            <Page title="新建凭证模板" subtitle="按当月常用分录沉淀为可复用的凭证模板" icon={SnippetsOutlined}>
                 <ToolRow
                     left={
                         <>
@@ -478,7 +481,7 @@ export function LemonVoucherTemplate() {
         );
     }
     return (
-        <Page title="凭证模板" subtitle="沉淀常用分录，制单时一键套用" icon={LayoutTemplate}>
+        <Page title="凭证模板" subtitle="沉淀常用分录，制单时一键套用" icon={SnippetsOutlined}>
             <ToolRow
                 left={
                     <>
@@ -559,7 +562,7 @@ export function LemonPermission() {
         <Page
             title="权限设置"
             subtitle={accountSet?.companyName || accountSet?.name || "账套"}
-            icon={ShieldCheck}
+            icon={SafetyCertificateOutlined}
             actions={
                 <>
                     <WipBtn>+新增成员</WipBtn>
@@ -597,7 +600,7 @@ export function LemonPermission() {
 
 export function LemonBoss() {
     return (
-        <Page title="老板看账" subtitle="智能生成老板看得懂的财务报表" icon={Briefcase}>
+        <Page title="老板看账" subtitle="智能生成老板看得懂的财务报表" icon={EyeOutlined}>
             <WipNotice text="老板看账界面复刻，尚未接入后端：智能财务分析报告能力待建设。" />
             <div className="flex flex-1 flex-col items-center pt-6">
                 <div className="text-[24px] font-bold text-slate-800">帮您智能生成一份老板都看得懂的报表</div>
@@ -650,7 +653,7 @@ export function LemonBackup() {
     const isDownload = tab === 3;
     const isAudit = tab === 4;
     return (
-        <Page title="备份恢复" subtitle="账套数据包备份、归档导出与审计取数" icon={DatabaseBackup}>
+        <Page title="备份恢复" subtitle="账套数据包备份、归档导出与审计取数" icon={DatabaseOutlined}>
             <WipNotice text="备份恢复界面复刻，尚未接入后端：备份数据包 / 归档 / 审计取数能力待建设。" />
             <SubTabs tabs={BACKUP_TABS} active={tab} onChange={setTab} />
             {!isAudit && (
@@ -771,13 +774,13 @@ export function LemonLog() {
         { key: "time", title: "操作时间", width: "170px" },
     ];
     return (
-        <Page title="操作日志" subtitle="按日期与关键字检索账套内的关键操作记录" icon={ScrollText}>
+        <Page title="操作日志" subtitle="按日期与关键字检索账套内的关键操作记录" icon={HistoryOutlined}>
             <ToolRow
                 left={
                     <>
-                        <TextInput type="date" value={start} onChange={setStart} className="w-[150px]" />
+                        <DateInput value={start} onChange={setStart} className="w-[150px]" />
                         <span className="text-slate-400">至</span>
-                        <TextInput type="date" value={end} onChange={setEnd} className="w-[150px]" />
+                        <DateInput value={end} onChange={setEnd} className="w-[150px]" />
                         <TextInput value={keyword} onChange={setKeyword} placeholder="请输入日志的关键字搜索" className="w-[260px]" />
                         <Btn variant="primary" onClick={() => void load()}>查询</Btn>
                         <RefreshIcon />
@@ -850,7 +853,7 @@ function StepCard({ title, desc }: { title: string; desc: string }) {
 
 export function LemonEisRelation() {
     return (
-        <Page title="关联云发票" subtitle="打通云发票，开票数据自动生成凭证" icon={Receipt}>
+        <Page title="关联云发票" subtitle="打通云发票，开票数据自动生成凭证" icon={FileDoneOutlined}>
             <WipNotice text="关联云发票界面复刻，尚未接入后端：发票关联与自动凭证能力待建设。" />
             <ToolRow
                 left={<span className="text-[13px] text-slate-400">查看帮助（建设中）</span>}
@@ -878,7 +881,7 @@ export function LemonEisRelation() {
 
 export function LemonScmRelation() {
     return (
-        <Page title="关联进销存" subtitle="业财一体，进销存单据自动生成凭证" icon={Boxes}>
+        <Page title="关联进销存" subtitle="业财一体，进销存单据自动生成凭证" icon={ClusterOutlined}>
             <WipNotice text="关联进销存界面复刻，尚未接入后端：业财关联与凭证自动生成能力待建设。" />
             <ToolRow
                 left={<span className="text-[13px] text-slate-400">进销存+财务管理操作视频（建设中）</span>}
@@ -920,7 +923,7 @@ export function LemonScmRelation() {
 
 export function LemonImportOld() {
     return (
-        <Page title="旧账导入" subtitle="在线导入、导账工具或科目余额表迁移历史账套" icon={Upload}>
+        <Page title="旧账导入" subtitle="在线导入、导账工具或科目余额表迁移历史账套" icon={UploadOutlined}>
             <WipNotice text="旧账导入界面复刻，尚未接入后端：在线导账 / 工具导入 / 科目余额表导入能力待建设。" />
             <div className="mx-auto mt-6 mb-10 w-[1000px] rounded-2xl border border-slate-200 p-10">
                 <div className="mb-10 flex items-center justify-center">
@@ -940,7 +943,7 @@ export function LemonImportOld() {
                     <span className="text-[#ef4444]">*</span>
                     <span className="text-sm text-slate-700">选择软件厂商:</span>
                     <FakeSelect text="--请选择--" className="w-[280px]" />
-                    <HelpCircle className="h-4 w-4 text-slate-400" />
+                    <QuestionCircleOutlined className="text-[16px]" style={ICON_STYLE.muted} />
                 </div>
                 <div className="mt-8 flex justify-center">
                     <WipBtn>下一步</WipBtn>
@@ -1008,7 +1011,7 @@ export function LemonReinit() {
     }
 
     return (
-        <Page title="重新初始化" subtitle="清空账套全部业务数据并退回启用期间（不可恢复）" icon={RotateCcw}>
+        <Page title="重新初始化" subtitle="清空账套全部业务数据并退回启用期间（不可恢复）" icon={RollbackOutlined}>
             <div className="mx-auto mt-6 mb-10 w-[1000px] rounded-2xl border border-slate-200 p-10 text-center">
                 <div className="text-[14px] font-bold text-[#ef4444]">
                     重新初始化将彻底清空您在账套中录入的所有数据，并不可恢复，请慎重！！

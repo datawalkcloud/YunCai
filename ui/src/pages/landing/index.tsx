@@ -1,24 +1,24 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
-    ArrowRight,
-    ArrowUp,
-    BarChart3,
-    BookOpen,
-    CheckCircle2,
-    ChevronDown,
-    Cloud,
-    FileText,
-    LayoutDashboard,
-    ListChecks,
-    Lock,
-    ScaleIcon,
-    ShieldCheck,
-    Table2,
-    Upload,
-    Wallet,
-    Zap,
-} from "lucide-react";
+    AccountBookOutlined,
+    ArrowUpOutlined,
+    BarChartOutlined,
+    BookOutlined,
+    CheckCircleFilled,
+    CloudOutlined,
+    DashboardOutlined,
+    DownOutlined,
+    FileTextOutlined,
+    LockOutlined,
+    RightOutlined,
+    SafetyCertificateOutlined,
+    TableOutlined,
+    ThunderboltOutlined,
+    UnorderedListOutlined,
+    UploadOutlined,
+    WalletOutlined,
+} from "@ant-design/icons";
 
 import bannerFinanceImg from "@/assets/banner-finance-3d.png";
 import { useAuth } from "@/auth/AuthContext";
@@ -48,12 +48,12 @@ const BENTO_STATS = [
 ];
 
 const FEATURES = [
-    { icon: FileText, tag: "凭证处理", title: "凭证管理", desc: "录入、编辑、审核记账凭证，自动校验借贷平衡，支持金额大写。" },
-    { icon: Upload, tag: "批量建账", title: "凭证导入", desc: "从 Excel 一键批量导入历史凭证，快速完成建账初始化。" },
-    { icon: Table2, tag: "总账查询", title: "科目余额表", desc: "按期间实时汇总各科目发生额与余额，随时掌握账务全貌。" },
-    { icon: ScaleIcon, tag: "财务报表", title: "资产负债表", desc: "遵循会企 01 表标准行次，从凭证实时归集，报表随点随出。" },
-    { icon: BookOpen, tag: "资金管理", title: "现金日记账", desc: "自动从库存现金凭证派生序时账，逐笔余额一目了然。" },
-    { icon: LayoutDashboard, tag: "多公司", title: "多账套管理", desc: "一个账号管理多家公司账套，随时切换互不干扰。" },
+    { icon: FileTextOutlined, tag: "凭证处理", title: "凭证管理", desc: "录入、编辑、审核记账凭证，自动校验借贷平衡，支持金额大写。" },
+    { icon: UploadOutlined, tag: "批量建账", title: "凭证导入", desc: "从 Excel 一键批量导入历史凭证，快速完成建账初始化。" },
+    { icon: TableOutlined, tag: "总账查询", title: "科目余额表", desc: "按期间实时汇总各科目发生额与余额，随时掌握账务全貌。" },
+    { icon: AccountBookOutlined, tag: "财务报表", title: "资产负债表", desc: "遵循会企 01 表标准行次，从凭证实时归集，报表随点随出。" },
+    { icon: BookOutlined, tag: "资金管理", title: "现金日记账", desc: "自动从库存现金凭证派生序时账，逐笔余额一目了然。" },
+    { icon: DashboardOutlined, tag: "多公司", title: "多账套管理", desc: "一个账号管理多家公司账套，随时切换互不干扰。" },
 ];
 
 /** 单据行 token：kw=蓝色强调（借贷方向/单据名），str=绿色金额，dim=弱化。 */
@@ -63,7 +63,7 @@ const HIGHLIGHTS = [
     {
         key: "voucher",
         tab: "凭证全流程",
-        icon: ListChecks,
+        icon: UnorderedListOutlined,
         title: "从录入到审核，",
         titleMuted: "一气呵成。",
         desc: "结构化的分录录入界面，实时校验借贷平衡与金额大写，避免手工核算出错。历史凭证可从 Excel 批量导入，建账不再是负担。",
@@ -87,7 +87,7 @@ const HIGHLIGHTS = [
     {
         key: "report",
         tab: "报表实时生成",
-        icon: BarChart3,
+        icon: BarChartOutlined,
         title: "报表随点随出，",
         titleMuted: "无需等待。",
         desc: "科目余额表、资产负债表、现金日记账全部从凭证实时归集计算，按会计准则标准行次呈现，任意期间随时查看。",
@@ -111,7 +111,7 @@ const HIGHLIGHTS = [
     {
         key: "secure",
         tab: "安全与协作",
-        icon: ShieldCheck,
+        icon: SafetyCertificateOutlined,
         title: "多账套隔离，",
         titleMuted: "数据更安心。",
         desc: "一个账号即可管理多家公司账套，数据彼此隔离；登录鉴权保护每一次访问，账务数据只有你能看见。",
@@ -134,17 +134,17 @@ const HIGHLIGHTS = [
 ];
 
 const STEPS = [
-    { icon: LayoutDashboard, title: "创建账套", desc: "填写公司信息与启用期间，快速建立你的账套。" },
-    { icon: ListChecks, title: "初始化科目", desc: "使用预置标准科目模板，或按需增删调整。" },
-    { icon: FileText, title: "录入凭证", desc: "手工录入或从 Excel 导入，系统自动校验平衡。" },
-    { icon: BarChart3, title: "查看报表", desc: "余额表、资产负债表实时生成，随时掌握经营。" },
+    { icon: DashboardOutlined, title: "创建账套", desc: "填写公司信息与启用期间，快速建立你的账套。" },
+    { icon: UnorderedListOutlined, title: "初始化科目", desc: "使用预置标准科目模板，或按需增删调整。" },
+    { icon: FileTextOutlined, title: "录入凭证", desc: "手工录入或从 Excel 导入，系统自动校验平衡。" },
+    { icon: BarChartOutlined, title: "查看报表", desc: "余额表、资产负债表实时生成，随时掌握经营。" },
 ];
 
 const ADVANTAGES = [
-    { icon: Zap, title: "开箱即用", desc: "预置标准科目与报表模板，无需复杂配置即可开始记账。" },
-    { icon: Cloud, title: "在线随行", desc: "浏览器即可访问，数据集中存储，换台设备也能继续工作。" },
-    { icon: Lock, title: "安全可靠", desc: "登录鉴权 + 账套隔离，保障财务数据的私密与安全。" },
-    { icon: Wallet, title: "贴合准则", desc: "遵循企业会计准则科目编码与报表行次，出表即规范。" },
+    { icon: ThunderboltOutlined, title: "开箱即用", desc: "预置标准科目与报表模板，无需复杂配置即可开始记账。" },
+    { icon: CloudOutlined, title: "在线随行", desc: "浏览器即可访问，数据集中存储，换台设备也能继续工作。" },
+    { icon: LockOutlined, title: "安全可靠", desc: "登录鉴权 + 账套隔离，保障财务数据的私密与安全。" },
+    { icon: WalletOutlined, title: "贴合准则", desc: "遵循企业会计准则科目编码与报表行次，出表即规范。" },
 ];
 
 const FAQS = [
@@ -340,7 +340,7 @@ export default function LandingPage() {
                             <div className="flex flex-wrap items-center gap-3 pt-1">
                                 <Pill large onClick={() => navigate(primaryHref)}>
                                     {primaryLabel}
-                                    <ArrowRight className="size-4" />
+                                    <RightOutlined className="text-[16px]" />
                                 </Pill>
                                 <Pill large variant="ghost" href="#features">
                                     了解核心功能
@@ -349,7 +349,7 @@ export default function LandingPage() {
                             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-500">
                                 {["无需安装", "实时归集", "多账套"].map((t) => (
                                     <li key={t} className="flex items-center gap-1.5">
-                                        <CheckCircle2 className="size-4 text-[#22c55e]" />
+                                        <CheckCircleFilled className="text-[16px] text-[#22c55e]" />
                                         {t}
                                     </li>
                                 ))}
@@ -360,14 +360,14 @@ export default function LandingPage() {
                             <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(50%_50%_at_60%_40%,rgba(47,107,255,0.12),transparent)]" />
                             <img src={bannerFinanceImg} alt="" className="h-[340px] w-auto drop-shadow-2xl" />
                             <div className="absolute right-2 top-4 flex items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-lg">
-                                <CheckCircle2 className="size-5 text-[#22c55e]" />
+                                <CheckCircleFilled className="text-[20px] text-[#22c55e]" />
                                 <span className="text-sm font-medium text-slate-700">借贷平衡</span>
                             </div>
                             <div className="absolute bottom-6 left-0 w-56 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg">
                                 <p className="text-[12px] text-slate-400">本月净利润</p>
                                 <p className="mt-1 text-2xl font-bold text-slate-800">¥ 448,100</p>
                                 <p className="mt-1 flex items-center gap-1 text-[12px] font-medium text-[#16a34a]">
-                                    <ArrowUp className="size-3.5" /> 18.7% 较上月
+                                    <ArrowUpOutlined className="text-[14px]" /> 18.7% 较上月
                                 </p>
                             </div>
                         </div>
@@ -418,7 +418,7 @@ export default function LandingPage() {
                                     className="group flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-md"
                                 >
                                     <span className="flex size-11 items-center justify-center rounded-xl bg-[#eaf1ff] text-[#2f6bff]">
-                                        <f.icon className="size-5" />
+                                        <f.icon className="text-[20px]" />
                                     </span>
                                     <h3 className="mt-1 text-[17px] font-semibold text-slate-800">{f.title}</h3>
                                     <p className="text-sm leading-relaxed text-slate-500">{f.desc}</p>
@@ -447,7 +447,7 @@ export default function LandingPage() {
                                             : "border border-slate-200 bg-white text-slate-500 hover:text-slate-800")
                                     }
                                 >
-                                    <h.icon className="size-4" />
+                                    <h.icon className="text-[16px]" />
                                     {h.tab}
                                 </button>
                             ))}
@@ -464,7 +464,7 @@ export default function LandingPage() {
                                     <ul className="mt-7 flex flex-col gap-3">
                                         {active.points.map((p) => (
                                             <li key={p} className="flex items-center gap-2.5 text-[15px] text-slate-700">
-                                                <CheckCircle2 className="size-5 shrink-0 text-[#22c55e]" />
+                                                <CheckCircleFilled className="shrink-0 text-[20px] text-[#22c55e]" />
                                                 {p}
                                             </li>
                                         ))}
@@ -488,7 +488,7 @@ export default function LandingPage() {
                                 <div key={s.title} className="relative flex flex-col gap-3 rounded-2xl border border-slate-100 bg-[#f8fafc] p-7">
                                     <span className="absolute right-6 top-6 text-2xl font-bold text-slate-200">{String(i + 1).padStart(2, "0")}</span>
                                     <span className="flex size-11 items-center justify-center rounded-xl bg-[#eaf1ff] text-[#2f6bff]">
-                                        <s.icon className="size-5" />
+                                        <s.icon className="text-[20px]" />
                                     </span>
                                     <h3 className="mt-1 text-[17px] font-semibold text-slate-800">{s.title}</h3>
                                     <p className="text-sm leading-relaxed text-slate-500">{s.desc}</p>
@@ -506,7 +506,7 @@ export default function LandingPage() {
                             {ADVANTAGES.map((a) => (
                                 <div key={a.title} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                                     <span className="flex size-11 items-center justify-center rounded-xl bg-[#e6f8f0] text-[#10b981]">
-                                        <a.icon className="size-5" />
+                                        <a.icon className="text-[20px]" />
                                     </span>
                                     <h3 className="mt-1 text-[17px] font-semibold text-slate-800">{a.title}</h3>
                                     <p className="text-sm leading-relaxed text-slate-500">{a.desc}</p>
@@ -525,7 +525,7 @@ export default function LandingPage() {
                                 <details key={f.q} className="group px-6 [&_summary]:cursor-pointer">
                                     <summary className="flex min-h-[64px] list-none items-center justify-between gap-4 py-5 text-[16px] font-medium text-slate-800">
                                         {f.q}
-                                        <ChevronDown className="size-[18px] shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+                                        <DownOutlined className="text-[18px] shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
                                     </summary>
                                     <p className="max-w-[760px] pb-6 text-[15px] leading-relaxed text-slate-500">{f.a}</p>
                                 </details>
@@ -548,7 +548,7 @@ export default function LandingPage() {
                                 className="inline-flex h-[48px] items-center gap-2 rounded-full bg-white px-6 text-[15px] font-semibold text-[#2f6bff] shadow-sm transition-transform hover:-translate-y-0.5"
                             >
                                 {authed ? "进入控制台" : "登录使用"}
-                                <ArrowRight className="size-4" />
+                                <RightOutlined className="text-[16px]" />
                             </button>
                             <a
                                 href="#workflow"
@@ -615,7 +615,7 @@ export default function LandingPage() {
                             className="flex items-center gap-1.5 transition-colors hover:text-[#2f6bff]"
                         >
                             回到顶部
-                            <ArrowUp className="size-3.5" />
+                            <ArrowUpOutlined className="text-[14px]" />
                         </a>
                     </div>
                 </div>

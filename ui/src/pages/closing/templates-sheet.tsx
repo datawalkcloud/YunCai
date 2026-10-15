@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { CircleAlert, Layers, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react"
+import { Alert, Button, Checkbox, Drawer, Empty, Input, Modal, Select, Spin } from "antd"
+import {
+    AppstoreOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+} from "@ant-design/icons"
 
 import {
     AccountsApi,
@@ -11,31 +18,26 @@ import {
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { useConfirm } from "@/hooks/useConfirm"
-import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty"
-import { Field, FieldLabel } from "@/components/ui/field"
 import { NumberField } from "@/components/fields/number-field"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Spinner } from "@/components/ui/spinner"
-import { CARD_BTN_PRIMARY, ICON_BTN, ICON_BTN_DANGER, PAGE_BTN_GHOST } from "@/components/page/styles"
+import { FormField } from "@/components/page/form-field"
+import { StatusPill } from "@/components/page/status-pill"
+import { ICON_STYLE } from "@/components/page/styles"
 
 /** 取数方式（与后端 ClosingTemplateSourceType 对应）。 */
-const SOURCE_TYPES = [
+const SOURCE_OPTIONS = [
     { value: 1, label: "固定金额" },
     { value: 2, label: "科目本期借方发生额" },
     { value: 3, label: "科目本期贷方发生额" },
     { value: 4, label: "科目期末余额" },
-] as const
+]
 
-/** Radix Select 不接受空串作为选项值，用哨兵表示「未选择」。 */
-const NONE = "__closing_template_none__"
+/** 分录方向（与后端枚举一致：1 借 / 2 贷）。 */
+const DIRECTION_OPTIONS = [
+    { value: 1, label: "借" },
+    { value: 2, label: "贷" },
+]
 
-/** 编辑器行（category 与后端枚举一致：1 借 / 2 贷）。 */
+/** 编辑器行。 */
 interface EditorLine {
     key: number
     summary: string
@@ -85,9 +87,12 @@ export function ClosingTemplatesSheet({
     const [saving, setSaving] = useState(false)
     const [editorError, setEditorError] = useState<string | null>(null)
 
-    /** 可选科目：末级且启用。 */
-    const leafAccounts = useMemo(
-        () => accounts.filter((a) => a.isLeaf !== false && a.isEnabled !== false),
+    /** 可选科目下拉项：末级且启用。 */
+    const accountOptions = useMemo(
+        () =>
+            accounts
+                .filter((a) => a.isLeaf !== false && a.isEnabled !== false)
+                .map((a) => ({ value: a.id ?? "", label: `${a.code} ${a.name}` })),
         [accounts],
     )
 
@@ -226,268 +231,218 @@ export function ClosingTemplatesSheet({
 
     return (
         <>
-            <Sheet open={open} onOpenChange={onOpenChange}>
-                <SheetContent className="sm:max-w-2xl">
-                    <SheetHeader>
-                        <SheetTitle>结转模板</SheetTitle>
-                        <SheetDescription>
-                            月末结转时可复用生成凭证（如计提工资、结转成本）。金额在结转时按当月数据计算，结转前会先预览平衡情况。
-                        </SheetDescription>
-                    </SheetHeader>
+            <Drawer
+                open={open}
+                size={672}
+                title="结转模板"
+                onClose={() => onOpenChange(false)}
+                styles={{ body: { display: "flex", flexDirection: "column", gap: 16, overflow: "auto" } }}
+            >
+                <p className="text-[12.5px] text-slate-400">
+                    月末结转时可复用生成凭证（如计提工资、结转成本）。金额在结转时按当月数据计算，结转前会先预览平衡情况。
+                </p>
 
-                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4">
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-[12.5px] text-slate-400">共 {templates.length} 个模板</span>
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => void load()} disabled={loading}>
-                                    {loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
-                                    刷新
-                                </Button>
-                                <Button className={CARD_BTN_PRIMARY} onClick={openNew}>
-                                    <Plus data-icon="inline-start" />
-                                    新建模板
-                                </Button>
-                            </div>
-                        </div>
-
-                        {error && (
-                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                <CircleAlert />
-                                <AlertTitle>{error}</AlertTitle>
-                            </Alert>
-                        )}
-
-                        {loading && templates.length === 0 ? (
-                            <div className="flex justify-center py-10">
-                                <Spinner className="size-5 text-slate-300" />
-                            </div>
-                        ) : templates.length === 0 ? (
-                            <Empty>
-                                <EmptyHeader>
-                                    <EmptyMedia variant="icon">
-                                        <Layers />
-                                    </EmptyMedia>
-                                    <EmptyDescription>暂无结转模板，点击「新建模板」创建</EmptyDescription>
-                                </EmptyHeader>
-                            </Empty>
-                        ) : (
-                            <div className="flex flex-col gap-2.5">
-                                {templates.map((t) => (
-                                    <div key={t.id} className="rounded-xl border border-slate-100 bg-white p-3.5">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <div className="flex min-w-0 items-center gap-2">
-                                                <span className="truncate text-[13.5px] font-medium text-slate-800">{t.name}</span>
-                                                {t.isEnabled ? (
-                                                    <span className="rounded-full bg-[#d1fae5] px-2 py-0.5 text-[11px] font-medium text-[#10b981]">启用</span>
-                                                ) : (
-                                                    <span className="rounded-full bg-[#eef1f6] px-2 py-0.5 text-[11px] font-medium text-[#64748b]">停用</span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-0">
-                                                <Button variant="ghost" size="icon-xs" className={ICON_BTN} onClick={() => openEdit(t)} title="编辑">
-                                                    <Pencil />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-xs"
-                                                    className={ICON_BTN_DANGER}
-                                                    disabled={busyId === t.id}
-                                                    onClick={() => void remove(t)}
-                                                    title="删除"
-                                                >
-                                                    <Trash2 />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <div className="mt-2 flex flex-col gap-1">
-                                            {(t.lines ?? []).map((l) => (
-                                                <div key={l.id} className="flex items-center gap-2 text-[12.5px] text-slate-500">
-                                                    <span className="w-6 shrink-0 text-center text-slate-400">{l.directionText}</span>
-                                                    <span className="w-44 shrink-0 truncate text-slate-700">
-                                                        {l.accountCode} {l.accountName}
-                                                    </span>
-                                                    <span className="min-w-0 flex-1 truncate">{l.summary}</span>
-                                                    <span className="shrink-0 text-slate-400">
-                                                        {l.sourceType === 1
-                                                            ? `固定 ${l.amount ?? 0}`
-                                                            : `${l.sourceTypeText}：${l.sourceAccountCode ?? ""} ${l.sourceAccountName ?? ""}`}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12.5px] text-slate-400">共 {templates.length} 个模板</span>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                            onClick={() => void load()}
+                            disabled={loading}
+                        >
+                            刷新
+                        </Button>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={openNew}>
+                            新建模板
+                        </Button>
                     </div>
-                </SheetContent>
-            </Sheet>
+                </div>
 
-            <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-                <DialogContent className="max-h-[86vh] max-w-3xl overflow-hidden">
-                    <DialogHeader>
-                        <DialogTitle>{editingId ? "编辑结转模板" : "新建结转模板"}</DialogTitle>
-                        <DialogDescription>
-                            每行一条分录；全部为固定金额时保存即校验借贷平衡，取数型模板在结转时计算并校验。
-                        </DialogDescription>
-                    </DialogHeader>
+                {error && <Alert type="error" showIcon title={error} />}
 
-                    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto pr-1">
-                        <div className="flex items-end gap-3">
-                            <Field className="min-w-0 flex-1">
-                                <FieldLabel htmlFor="closing-template-name">模板名称</FieldLabel>
-                                <Input
-                                    id="closing-template-name"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="如：计提工资"
-                                    maxLength={50}
-                                />
-                            </Field>
-                            <label className="flex items-center gap-2 pb-2 text-[13px] text-slate-600">
-                                <Checkbox checked={isEnabled} onCheckedChange={(v) => setIsEnabled(v === true)} />
-                                启用（结转时默认勾选）
-                            </label>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                            {lines.map((l, index) => (
-                                <div key={l.key} className="rounded-xl border border-slate-100 p-2.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[12px] text-slate-400">第 {index + 1} 行</span>
+                {loading && templates.length === 0 ? (
+                    <div className="flex justify-center py-10">
+                        <Spin />
+                    </div>
+                ) : templates.length === 0 ? (
+                    <Empty image={<AppstoreOutlined className="text-[40px]" style={ICON_STYLE.placeholder} />} description="暂无结转模板，点击「新建模板」创建" />
+                ) : (
+                    <div className="flex flex-col gap-2.5">
+                        {templates.map((t) => (
+                            <div key={t.id} className="rounded-xl border border-slate-100 bg-white p-3.5">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <span className="truncate text-[13.5px] font-medium text-slate-800">{t.name}</span>
+                                        <StatusPill tone={t.isEnabled ? "green" : "gray"}>{t.isEnabled ? "启用" : "停用"}</StatusPill>
+                                    </div>
+                                    <div className="flex items-center gap-0">
                                         <Button
-                                            variant="ghost"
-                                            size="icon-xs"
-                                            className={ICON_BTN_DANGER}
-                                            onClick={() => setLines((rows) => rows.filter((r) => r.key !== l.key))}
-                                            title="删除该行"
-                                        >
-                                            <Trash2 />
-                                        </Button>
-                                    </div>
-                                    <div className="mt-1 grid grid-cols-12 gap-2">
-                                        <Input
-                                            className="col-span-4"
-                                            value={l.summary}
-                                            onChange={(e) => setLine(l.key, { summary: e.target.value })}
-                                            placeholder="摘要"
-                                            maxLength={100}
+                                            type="text"
+                                            size="small"
+                                            title="编辑"
+                                            icon={<EditOutlined />}
+                                            onClick={() => openEdit(t)}
                                         />
-                                        <div className="col-span-4">
-                                            <Select
-                                                value={l.accountId || NONE}
-                                                onValueChange={(v) => setLine(l.key, { accountId: v === NONE ? "" : v })}
-                                            >
-                                                <SelectTrigger size="sm" className="w-full">
-                                                    <SelectValue placeholder="会计科目" />
-                                                </SelectTrigger>
-                                                <SelectContent className="max-h-64">
-                                                    <SelectItem value={NONE}>（选择科目）</SelectItem>
-                                                    {leafAccounts.map((a) => (
-                                                        <SelectItem key={a.id} value={a.id ?? ""}>
-                                                            {a.code} {a.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <Select value={String(l.direction)} onValueChange={(v) => setLine(l.key, { direction: Number(v) })}>
-                                                <SelectTrigger size="sm" className="w-full">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectGroup>
-                                                        <SelectItem value="1">借</SelectItem>
-                                                        <SelectItem value="2">贷</SelectItem>
-                                                    </SelectGroup>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <Select value={String(l.sourceType)} onValueChange={(v) => setLine(l.key, { sourceType: Number(v) })}>
-                                                <SelectTrigger size="sm" className="w-full">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent className="max-h-64">
-                                                    <SelectGroup>
-                                                        {SOURCE_TYPES.map((s) => (
-                                                            <SelectItem key={s.value} value={String(s.value)}>
-                                                                {s.label}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectGroup>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    <div className="mt-2 grid grid-cols-12 gap-2">
-                                        {l.sourceType === 1 ? (
-                                            <>
-                                                <span className="col-span-8 flex items-center text-[12px] text-slate-400">
-                                                    固定金额将原样记入该行方向
-                                                </span>
-                                                <NumberField
-                                                    className="col-span-4"
-                                                    value={l.amount}
-                                                    onChange={(v) => setLine(l.key, { amount: v })}
-                                                    min={0.01}
-                                                    max={99999999.99}
-                                                    precision={2}
-                                                    placeholder="金额"
-                                                />
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div className="col-span-8">
-                                                    <Select
-                                                        value={l.sourceAccountId || NONE}
-                                                        onValueChange={(v) => setLine(l.key, { sourceAccountId: v === NONE ? "" : v })}
-                                                    >
-                                                        <SelectTrigger size="sm" className="w-full">
-                                                            <SelectValue placeholder="来源科目" />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="max-h-64">
-                                                            <SelectItem value={NONE}>（选择来源科目）</SelectItem>
-                                                            {leafAccounts.map((a) => (
-                                                                <SelectItem key={a.id} value={a.id ?? ""}>
-                                                                    {a.code} {a.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <span className="col-span-4 flex items-center text-[12px] text-slate-400">按结转期间计算金额</span>
-                                            </>
-                                        )}
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            danger
+                                            title="删除"
+                                            disabled={busyId === t.id}
+                                            icon={<DeleteOutlined />}
+                                            onClick={() => void remove(t)}
+                                        />
                                     </div>
                                 </div>
-                            ))}
-                            <Button variant="outline" className={PAGE_BTN_GHOST} onClick={() => setLines((rows) => [...rows, newLine()])}>
-                                <Plus data-icon="inline-start" />
-                                添加行
-                            </Button>
-                        </div>
+                                <div className="mt-2 flex flex-col gap-1">
+                                    {(t.lines ?? []).map((l) => (
+                                        <div key={l.id} className="flex items-center gap-2 text-[12.5px] text-slate-500">
+                                            <span className="w-6 shrink-0 text-center text-slate-400">{l.directionText}</span>
+                                            <span className="w-44 shrink-0 truncate text-slate-700">
+                                                {l.accountCode} {l.accountName}
+                                            </span>
+                                            <span className="min-w-0 flex-1 truncate">{l.summary}</span>
+                                            <span className="shrink-0 text-slate-400">
+                                                {l.sourceType === 1
+                                                    ? `固定 ${l.amount ?? 0}`
+                                                    : `${l.sourceTypeText}：${l.sourceAccountCode ?? ""} ${l.sourceAccountName ?? ""}`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </Drawer>
 
-                        {editorError && (
-                            <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                                <CircleAlert />
-                                <AlertTitle>{editorError}</AlertTitle>
-                            </Alert>
-                        )}
+            <Modal
+                open={editorOpen}
+                title={editingId ? "编辑结转模板" : "新建结转模板"}
+                width={768}
+                onCancel={() => setEditorOpen(false)}
+                onOk={() => void save()}
+                okText="保存"
+                cancelText="取消"
+                confirmLoading={saving}
+                styles={{ body: { maxHeight: "62vh", overflow: "auto" } }}
+            >
+                <p className="mb-4 text-[12.5px] text-slate-400">
+                    每行一条分录；全部为固定金额时保存即校验借贷平衡，取数型模板在结转时计算并校验。
+                </p>
+
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-end gap-3">
+                        <FormField label="模板名称" htmlFor="closing-template-name" className="min-w-0 flex-1">
+                            <Input
+                                id="closing-template-name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="如：计提工资"
+                                maxLength={50}
+                            />
+                        </FormField>
+                        <label className="flex items-center gap-2 pb-2 text-[13px] text-slate-600">
+                            <Checkbox checked={isEnabled} onChange={(e) => setIsEnabled(e.target.checked)} />
+                            启用（结转时默认勾选）
+                        </label>
                     </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditorOpen(false)}>
-                            取消
+                    <div className="flex flex-col gap-2">
+                        {lines.map((l, index) => (
+                            <div key={l.key} className="rounded-xl border border-slate-100 p-2.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[12px] text-slate-400">第 {index + 1} 行</span>
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        danger
+                                        title="删除该行"
+                                        icon={<DeleteOutlined />}
+                                        onClick={() => setLines((rows) => rows.filter((r) => r.key !== l.key))}
+                                    />
+                                </div>
+                                <div className="mt-1 grid grid-cols-12 gap-2">
+                                    <Input
+                                        className="col-span-4"
+                                        value={l.summary}
+                                        onChange={(e) => setLine(l.key, { summary: e.target.value })}
+                                        placeholder="摘要"
+                                        maxLength={100}
+                                    />
+                                    <div className="col-span-4">
+                                        <Select<string>
+                                            className="w-full"
+                                            size="small"
+                                            placeholder="会计科目"
+                                            allowClear
+                                            value={l.accountId || undefined}
+                                            options={accountOptions}
+                                            onChange={(v) => setLine(l.key, { accountId: v ?? "" })}
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Select<number>
+                                            className="w-full"
+                                            size="small"
+                                            value={l.direction}
+                                            options={DIRECTION_OPTIONS}
+                                            onChange={(v) => setLine(l.key, { direction: v })}
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Select<number>
+                                            className="w-full"
+                                            size="small"
+                                            value={l.sourceType}
+                                            options={SOURCE_OPTIONS}
+                                            onChange={(v) => setLine(l.key, { sourceType: v })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-2 grid grid-cols-12 gap-2">
+                                    {l.sourceType === 1 ? (
+                                        <>
+                                            <span className="col-span-8 flex items-center text-[12px] text-slate-400">
+                                                固定金额将原样记入该行方向
+                                            </span>
+                                            <NumberField
+                                                className="col-span-4"
+                                                value={l.amount}
+                                                onChange={(v) => setLine(l.key, { amount: v })}
+                                                min={0.01}
+                                                max={99999999.99}
+                                                precision={2}
+                                                placeholder="金额"
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="col-span-8">
+                                                <Select<string>
+                                                    className="w-full"
+                                                    size="small"
+                                                    placeholder="来源科目"
+                                                    allowClear
+                                                    value={l.sourceAccountId || undefined}
+                                                    options={accountOptions}
+                                                    onChange={(v) => setLine(l.key, { sourceAccountId: v ?? "" })}
+                                                />
+                                            </div>
+                                            <span className="col-span-4 flex items-center text-[12px] text-slate-400">按结转期间计算金额</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        <Button icon={<PlusOutlined />} onClick={() => setLines((rows) => [...rows, newLine()])}>
+                            添加行
                         </Button>
-                        <Button className={CARD_BTN_PRIMARY} disabled={saving} onClick={() => void save()}>
-                            {saving ? <Spinner data-icon="inline-start" /> : <Plus data-icon="inline-start" />}
-                            保存
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </div>
+
+                    {editorError && <Alert type="error" showIcon title={editorError} />}
+                </div>
+            </Modal>
 
             {confirmDialog}
         </>

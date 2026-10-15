@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useState } from "react"
 import dayjs from "dayjs"
-import { CircleAlert, Printer } from "lucide-react"
+import { PrinterOutlined } from "@ant-design/icons"
+import { Alert, Button, Drawer, Select, Spin } from "antd"
 
 import { VouchersApi, type VoucherDetailDto, type VoucherEntryDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
 import { amountToChineseUppercase } from "@/lib/amount-uppercase"
-import { Alert, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Field, FieldLabel } from "@/components/ui/field"
+import { FormField } from "@/components/page/form-field"
 import { NumberField } from "@/components/fields/number-field"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Spinner } from "@/components/ui/spinner"
-import { CARD_BTN_PRIMARY } from "@/components/page/styles"
 
 /** 打印设置（按账套保存在本机浏览器）。 */
 interface PrintSettings {
@@ -180,154 +175,142 @@ export function PrintVoucherSheet({
     while (previewRows.length < 5) previewRows.push(null)
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-3xl">
-                <SheetHeader>
-                    <SheetTitle>凭证打印{voucher ? ` · ${voucher.word}-${voucher.number}` : ""}</SheetTitle>
-                    <SheetDescription>
-                        标准记账凭证版式；可选 241×140 针式套打纸并微调偏移（打印设置按账套保存在本机浏览器）。
-                    </SheetDescription>
-                </SheetHeader>
-
-                <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4">
-                    {error && (
-                        <Alert variant="destructive" className="rounded-xl border-[#fecaca] bg-[#fef2f2] text-[#ef4444]">
-                            <CircleAlert />
-                            <AlertTitle>{error}</AlertTitle>
-                        </Alert>
-                    )}
-
-                    {loading && !voucher ? (
-                        <div className="flex justify-center py-10">
-                            <Spinner className="size-5 text-slate-300" />
-                        </div>
-                    ) : voucher ? (
-                        <>
-                            <div className="grid grid-cols-3 items-end gap-3">
-                                <Field>
-                                    <FieldLabel>纸型</FieldLabel>
-                                    <Select
-                                        value={settings.paper}
-                                        onValueChange={(v) => update({ paper: v === "V241" ? "V241" : "A4" })}
-                                    >
-                                        <SelectTrigger size="sm" className="w-full">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                                <SelectItem value="A4">A4 横向</SelectItem>
-                                                <SelectItem value="V241">241×140 针式套打</SelectItem>
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
-                                </Field>
-                                <Field>
-                                    <FieldLabel>左偏移（mm）</FieldLabel>
-                                    <NumberField
-                                        value={settings.offsetX}
-                                        onChange={(v) => update({ offsetX: v ?? 0 })}
-                                        min={-15}
-                                        max={15}
-                                        precision={1}
-                                    />
-                                </Field>
-                                <Field>
-                                    <FieldLabel>上偏移（mm）</FieldLabel>
-                                    <NumberField
-                                        value={settings.offsetY}
-                                        onChange={(v) => update({ offsetY: v ?? 0 })}
-                                        min={-15}
-                                        max={15}
-                                        precision={1}
-                                    />
-                                </Field>
-                            </div>
-
-                            <div className="overflow-auto rounded-xl border border-slate-200 bg-[#f1f5f9] p-3">
-                                <div
-                                    className="mx-auto bg-white shadow-[0_1px_4px_rgba(16,24,40,0.18)]"
-                                    style={{
-                                        width: isA4 ? "265mm" : "241mm",
-                                        padding: `${settings.offsetY}mm 6mm 6mm ${settings.offsetX}mm`,
-                                        fontFamily: "'SimSun','宋体',serif",
-                                    }}
-                                >
-                                    <div
-                                        className="text-center text-[19px] font-bold tracking-[6px] text-black"
-                                        style={{ fontFamily: "'SimHei','黑体',sans-serif" }}
-                                    >
-                                        记账凭证
-                                    </div>
-                                    <div className="mt-1 flex items-center justify-between text-[12.5px] text-black">
-                                        <span>日期：{voucher.date ? dayjs(voucher.date).format("YYYY年MM月DD日") : ""}</span>
-                                        <span>附单据 {voucher.attachmentCount ?? 0} 张</span>
-                                        <span>凭证字号：{voucher.word} - {voucher.number}</span>
-                                    </div>
-                                    <table className="mt-1 w-full border-collapse text-[12.5px]">
-                                        <colgroup>
-                                            <col style={{ width: "28%" }} />
-                                            <col style={{ width: "32%" }} />
-                                            <col style={{ width: "20%" }} />
-                                            <col style={{ width: "20%" }} />
-                                        </colgroup>
-                                        <thead>
-                                            <tr>
-                                                {["摘要", "会计科目", "借方金额", "贷方金额"].map((h) => (
-                                                    <th key={h} className="border border-black px-2 py-1 text-center font-normal">
-                                                        {h}
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {previewRows.map((e, i) => (
-                                                <tr key={i} className="h-8">
-                                                    <td className="border border-black px-2">{e?.summary ?? ""}</td>
-                                                    <td className="border border-black px-2">
-                                                        {e ? `${e.accountCode ?? ""} ${e.accountName ?? ""}` : ""}
-                                                    </td>
-                                                    <td className="border border-black px-2 text-right tabular-nums">
-                                                        {fmtAmount(e?.debit)}
-                                                    </td>
-                                                    <td className="border border-black px-2 text-right tabular-nums">
-                                                        {fmtAmount(e?.credit)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            <tr className="font-semibold">
-                                                <td className="border border-black px-2" colSpan={2}>
-                                                    合计：人民币（大写）{amountToChineseUppercase(voucher.totalDebit ?? 0)}
-                                                </td>
-                                                <td className="border border-black px-2 text-right tabular-nums">
-                                                    {fmtAmount(voucher.totalDebit, true)}
-                                                </td>
-                                                <td className="border border-black px-2 text-right tabular-nums">
-                                                    {fmtAmount(voucher.totalCredit, true)}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                    <div className="mt-2 flex items-center justify-between text-[12.5px] text-black">
-                                        <span>制单人：{voucher.preparer ?? ""}</span>
-                                        <span>审核人：{voucher.reviewer ?? ""}</span>
-                                        <span>状态：{voucher.statusText ?? ""}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    ) : null}
-                </div>
-
-                <SheetFooter className="sm:flex-row sm:justify-end">
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        关闭
-                    </Button>
-                    <Button className={CARD_BTN_PRIMARY} disabled={!voucher} onClick={doPrint}>
-                        <Printer data-icon="inline-start" />
+        <Drawer
+            open={open}
+            size={768}
+            title={`凭证打印${voucher ? ` · ${voucher.word}-${voucher.number}` : ""}`}
+            onClose={() => onOpenChange(false)}
+            styles={{ body: { display: "flex", flexDirection: "column", gap: 16, overflow: "auto" } }}
+            footer={
+                <div className="flex justify-end gap-2">
+                    <Button onClick={() => onOpenChange(false)}>关闭</Button>
+                    <Button type="primary" icon={<PrinterOutlined />} disabled={!voucher} onClick={doPrint}>
                         打印
                     </Button>
-                </SheetFooter>
-            </SheetContent>
-        </Sheet>
+                </div>
+            }
+        >
+            <p className="text-[12.5px] text-slate-400">
+                标准记账凭证版式；可选 241×140 针式套打纸并微调偏移（打印设置按账套保存在本机浏览器）。
+            </p>
+
+            {error && <Alert type="error" showIcon title={error} />}
+
+            {loading && !voucher ? (
+                <div className="flex justify-center py-10">
+                    <Spin />
+                </div>
+            ) : voucher ? (
+                <>
+                    <div className="grid grid-cols-3 items-end gap-3">
+                        <FormField label="纸型" htmlFor="print-paper">
+                            <Select
+                                id="print-paper"
+                                className="w-full"
+                                size="small"
+                                value={settings.paper}
+                                onChange={(v) => update({ paper: v === "V241" ? "V241" : "A4" })}
+                                options={[
+                                    { value: "A4", label: "A4 横向" },
+                                    { value: "V241", label: "241×140 针式套打" },
+                                ]}
+                            />
+                        </FormField>
+                        <FormField label="左偏移（mm）" htmlFor="print-offset-x">
+                            <NumberField
+                                id="print-offset-x"
+                                value={settings.offsetX}
+                                onChange={(v) => update({ offsetX: v ?? 0 })}
+                                min={-15}
+                                max={15}
+                                precision={1}
+                            />
+                        </FormField>
+                        <FormField label="上偏移（mm）" htmlFor="print-offset-y">
+                            <NumberField
+                                id="print-offset-y"
+                                value={settings.offsetY}
+                                onChange={(v) => update({ offsetY: v ?? 0 })}
+                                min={-15}
+                                max={15}
+                                precision={1}
+                            />
+                        </FormField>
+                    </div>
+
+                    <div className="overflow-auto rounded-xl border border-slate-200 bg-[#f1f5f9] p-3">
+                        <div
+                            className="mx-auto bg-white shadow-[0_1px_4px_rgba(16,24,40,0.18)]"
+                            style={{
+                                width: isA4 ? "265mm" : "241mm",
+                                padding: `${settings.offsetY}mm 6mm 6mm ${settings.offsetX}mm`,
+                                fontFamily: "'SimSun','宋体',serif",
+                            }}
+                        >
+                            <div
+                                className="text-center text-[19px] font-bold tracking-[6px] text-black"
+                                style={{ fontFamily: "'SimHei','黑体',sans-serif" }}
+                            >
+                                记账凭证
+                            </div>
+                            <div className="mt-1 flex items-center justify-between text-[12.5px] text-black">
+                                <span>日期：{voucher.date ? dayjs(voucher.date).format("YYYY年MM月DD日") : ""}</span>
+                                <span>附单据 {voucher.attachmentCount ?? 0} 张</span>
+                                <span>凭证字号：{voucher.word} - {voucher.number}</span>
+                            </div>
+                            <table className="mt-1 w-full border-collapse text-[12.5px]">
+                                <colgroup>
+                                    <col style={{ width: "28%" }} />
+                                    <col style={{ width: "32%" }} />
+                                    <col style={{ width: "20%" }} />
+                                    <col style={{ width: "20%" }} />
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        {["摘要", "会计科目", "借方金额", "贷方金额"].map((h) => (
+                                            <th key={h} className="border border-black px-2 py-1 text-center font-normal">
+                                                {h}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {previewRows.map((e, i) => (
+                                        <tr key={i} className="h-8">
+                                            <td className="border border-black px-2">{e?.summary ?? ""}</td>
+                                            <td className="border border-black px-2">
+                                                {e ? `${e.accountCode ?? ""} ${e.accountName ?? ""}` : ""}
+                                            </td>
+                                            <td className="border border-black px-2 text-right tabular-nums">
+                                                {fmtAmount(e?.debit)}
+                                            </td>
+                                            <td className="border border-black px-2 text-right tabular-nums">
+                                                {fmtAmount(e?.credit)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    <tr className="font-semibold">
+                                        <td className="border border-black px-2" colSpan={2}>
+                                            合计：人民币（大写）{amountToChineseUppercase(voucher.totalDebit ?? 0)}
+                                        </td>
+                                        <td className="border border-black px-2 text-right tabular-nums">
+                                            {fmtAmount(voucher.totalDebit, true)}
+                                        </td>
+                                        <td className="border border-black px-2 text-right tabular-nums">
+                                            {fmtAmount(voucher.totalCredit, true)}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div className="mt-2 flex items-center justify-between text-[12.5px] text-black">
+                                <span>制单人：{voucher.preparer ?? ""}</span>
+                                <span>审核人：{voucher.reviewer ?? ""}</span>
+                                <span>状态：{voucher.statusText ?? ""}</span>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            ) : null}
+        </Drawer>
     )
 }
