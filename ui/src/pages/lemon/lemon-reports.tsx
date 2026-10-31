@@ -9,7 +9,8 @@
  * 权益变动表为 year）重新请求后端；表头显示的期间恒等于实际请求的期间。
  * 报表与账簿只统计已过账凭证。
  */
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
     AppstoreOutlined,
     BarChartOutlined,
@@ -847,6 +848,17 @@ export function LemonDepartmentIncome() {
     const td = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-700";
     const departments = data?.departments ?? [];
     const rows = data?.rows ?? [];
+    // 接口只返回有金额的行；按「利润表」的 32 行模板铺满，缺失行补空，
+    // 与柠檬云部门利润表一致（整表列出，无数据行显示空/0.00）。
+    const fullRows = useMemo(() => {
+        const template = buildIncomeRows();
+        const byLine = new Map(rows.map((r) => [Number(r.line), r]));
+        return template.map((tpl) => {
+            const line = Number(tpl.seq);
+            const hit = byLine.get(line);
+            return { line, item: tpl.item, amounts: hit?.amounts };
+        });
+    }, [rows]);
     return (
         <Page title="部门利润表" subtitle="按部门辅助核算归集收入与费用，仅统计已过账凭证。" icon={TeamOutlined}>
             <ToolRow
@@ -896,14 +908,14 @@ export function LemonDepartmentIncome() {
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.length === 0 && !loading && !error && (
+                        {fullRows.length === 0 && !loading && !error && (
                             <tr>
                                 <td colSpan={2 + departments.length * 2} className="py-10 text-center text-[13px] text-slate-400">
                                     暂无数据
                                 </td>
                             </tr>
                         )}
-                        {rows.map((r) => (
+                        {fullRows.map((r: { line: number; item: ReactNode; amounts?: Array<{ current?: number; yearToDate?: number }> }) => (
                             <tr key={r.line}>
                                 <td className={td}>{r.item}</td>
                                 <td className={`${td} text-center text-slate-400`}>{r.line}</td>
