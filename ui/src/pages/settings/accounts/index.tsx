@@ -228,8 +228,8 @@ export default function AccountsPage() {
         try {
             const list = await new AccountsApi(apiConfig(token)).accountsetsAccountSetIdAccountsGet({ accountSetId })
             setAccounts(list)
-            // 默认展开所有含下级的科目，便于一览多级结构。
-            setExpandedKeys(list.filter((a) => a.parentId != null).map((a) => a.parentId as string))
+            // 与柠檬云一致：默认收起，只显示一级科目；展开由用户点击行首箭头
+            setExpandedKeys([])
         } catch (err) {
             setLoadError(await apiErrorMessage(err, "加载科目失败，请重试。"))
         } finally {
