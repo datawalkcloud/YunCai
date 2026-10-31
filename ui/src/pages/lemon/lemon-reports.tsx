@@ -424,12 +424,13 @@ export function LemonIncomeQuarter() {
 
 /* ---------- 现金流量表（月/季/标准） ---------- */
 
-/** 小企业口径行次 → 标准主表行次映射（标准行 28 同时覆盖利息与利润分配，展示在 17 行）。 */
-const CF_LINE_MAP: Record<string, number> = {
-    "1": 1, "2": 3, "3": 5, "4": 6, "5": 7, "6": 8, "7": 10,
-    "8": 11, "9": 12, "10": 13, "11": 18, "12": 17, "13": 22,
-    "14": 24, "15": 23, "16": 27, "17": 28,
-};
+/**
+ * 现金流量表行次：与企业会计准则主表（财政部 2007 版式）一一对应，序号即后端标准行次，
+ * 与柠檬云「现金流量表」完全一致（35 个行次 + 3 个活动小标题 = 38 行）。
+ */
+const CF_LINE_MAP: Record<string, number> = Object.fromEntries(
+    Array.from({ length: 35 }, (_, i) => [String(i + 1), i + 1]),
+);
 
 function CashFlowPage({
     variant,
@@ -512,30 +513,47 @@ function CashFlowPage({
 
     const mk = (label: string, seq: string) =>
         item(label, seq, cell(seq, "yearToDate"), cell(seq, "current"), { indent: true }, cell(seq, "lastYear"));
+    // 行次与文案严格对齐柠檬云「现金流量表」（企业会计准则 2007 版式，38 行）
     const rows: StmtRow[] = [
         item("一、经营活动产生的现金流量：", ""),
-        mk("销售产成品、商品、提供劳务收到的现金", "1"),
-        mk("收到其他与经营活动有关的现金", "2"),
-        mk("购买原材料、商品、接受劳务支付的现金", "3"),
-        mk("支付的职工薪酬", "4"),
-        mk("支付的税费", "5"),
-        mk("支付其他与经营活动有关的现金", "6"),
-        mk("经营活动产生的现金流量净额", "7"),
+        mk("销售商品、提供劳务收到的现金", "1"),
+        mk("收到的税费返还", "2"),
+        mk("收到其他与经营活动有关的现金", "3"),
+        mk("经营活动现金流入小计", "4"),
+        mk("购买商品、接受劳务支付的现金", "5"),
+        mk("支付给职工以及为职工支付的现金", "6"),
+        mk("支付的各项税费", "7"),
+        mk("支付其他与经营活动有关的现金", "8"),
+        mk("经营活动现金流出小计", "9"),
+        mk("经营活动产生的现金流量净额", "10"),
         item("二、投资活动产生的现金流量：", ""),
-        mk("收回短期投资、长期债券投资和长期股权投资收到的现金", "8"),
-        mk("取得投资收益收到的现金", "9"),
-        mk("处置固定资产、无形资产和其他非流动资产收回的现金净额", "10"),
-        mk("短期投资、长期债券投资和长期股权投资支付的现金", "11"),
-        mk("购建固定资产、无形资产和其他非流动资产支付的现金", "12"),
-        mk("投资活动产生的现金流量净额", "13"),
+        mk("收回投资收到的现金", "11"),
+        mk("取得投资收益收到的现金", "12"),
+        mk("处置固定资产、无形资产和其他长期资产收回的现金净额", "13"),
+        mk("处置子公司及其他营业单位收到的现金净额", "14"),
+        mk("收到其他与投资活动有关的现金", "15"),
+        mk("投资活动现金流入小计", "16"),
+        mk("购建固定资产、无形资产和其他长期资产支付的现金", "17"),
+        mk("投资支付的现金", "18"),
+        mk("取得子公司及其他营业单位支付的现金净额", "19"),
+        mk("支付其他与投资活动有关的现金", "20"),
+        mk("投资活动现金流出小计", "21"),
+        mk("投资活动产生的现金流量净额", "22"),
         item("三、筹资活动产生的现金流量：", ""),
-        mk("取得借款收到的现金", "14"),
-        mk("吸收投资者投资收到的现金", "15"),
-        mk("偿还借款本金支付的现金", "16"),
+        mk("吸收投资收到的现金", "23"),
+        mk("取得借款收到的现金", "24"),
+        mk("收到其他与筹资活动有关的现金", "25"),
+        mk("筹资活动现金流入小计", "26"),
+        mk("偿还债务支付的现金", "27"),
+        mk("分配股利、利润或偿付利息支付的现金", "28"),
+        mk("支付其他与筹资活动有关的现金", "29"),
+        mk("筹资活动现金流出小计", "30"),
+        mk("筹资活动产生的现金流量净额", "31"),
+        mk("四、汇率变动对现金及现金等价物的影响", "32"),
+        mk("五、现金及现金等价物净增加额", "33"),
+        mk("加：期初现金及现金等价物的余额", "34"),
+        mk("六、期末现金及现金等价物余额", "35"),
     ];
-    if (variant !== "month") {
-        rows.push(mk("偿还借款利息支付的现金", "17"), item("分配利润支付的现金", "18", "", "", { indent: true }));
-    }
 
     const cols: Col[] = [
         { key: "item", title: "项目" },
@@ -547,15 +565,18 @@ function CashFlowPage({
         { key: "cur", title: variant === "quarter" ? "本季金额" : "本期金额", align: "right", width: "140px", neg: true },
     ];
 
-    /* 补充资料（间接法）：按段落插入小标题行，合计行加底色。 */
+    /* 补充资料（间接法，仅标准现金流量表展示）：按段落插入小标题行，合计行加底色。 */
     const SUPPLEMENT_GROUPS: Record<number, string> = {
-        1: "1. 将净利润调节为经营活动现金流量",
-        2: "2. 不涉及现金收支的投资和筹资活动",
-        3: "3. 现金及现金等价物净增加情况",
+        1: "1.将净利润调节为经营活动现金流量：",
+        2: "2.不涉及现金收支的重大投资和筹资活动",
+        3: "3.现金及现金等价物净变动情况",
     };
     const supplementRows: Row[] = [];
     let lastGroup = 0;
-    for (const l of supplement?.lines ?? []) {
+    if (variant === "standard" && (supplement?.lines ?? []).length > 0) {
+        supplementRows.push({ item: <span className="font-medium">补充资料</span>, seq: "" });
+    }
+    for (const l of variant === "standard" ? supplement?.lines ?? [] : []) {
         const group = l.group ?? 1;
         if (group !== lastGroup) {
             supplementRows.push({
@@ -706,8 +727,8 @@ function CashFlowPage({
             {variant !== "quarter" && (
                 <div className="px-4 pb-2 text-[12.5px] leading-5 text-slate-400">
                     {variant === "standard"
-                        ? "口径说明：本表与「现金流量表」读取同一后端接口 /reports/cash-flow（直接法简化工作底稿，仅统计已过账凭证），差异仅在展示行次——标准表按企业会计准则主表排列，另列「偿还借款利息」「分配利润」两行明细；表下补充资料走间接法（/reports/cash-flow-supplement）。"
-                        : "口径说明：主表取 /reports/cash-flow 直接法简化工作底稿（仅统计已过账凭证），按小企业报表行次展示；切到「公式法」为补充资料（间接法），把净利润按折旧摊销、经营性资产负债变动逐项调节为经营活动现金流量净额，并与主表勾稽；「报表底稿」逐凭证列出分摊明细，可核对主表行次金额的来源。"}
+                        ? "口径说明：本表与「现金流量表」读取同一后端接口 /reports/cash-flow（直接法简化工作底稿，仅统计已过账凭证），按企业会计准则主表行次 1-35 排列；表下「补充资料」走间接法（/reports/cash-flow-supplement），行次 36-60。"
+                        : "口径说明：主表取 /reports/cash-flow 直接法简化工作底稿（仅统计已过账凭证），按企业会计准则主表行次 1-35 展示（与柠檬云一致）；「报表底稿」逐凭证列出分摊明细，可核对主表行次金额的来源。"}
                 </div>
             )}
             {loading && <LoadTip />}
@@ -715,7 +736,7 @@ function CashFlowPage({
             {supplementError && <ErrorTip text={supplementError} />}
             <div className="flex-1 overflow-auto px-4 pb-4">
                 {method === "direct" && <Table cols={cols} rows={rows} zebra={false} />}
-                {variant !== "quarter" && (
+                {variant === "standard" && (
                     <div className={method === "direct" ? "mt-6" : ""}>
                         <div className="mb-2 flex items-center gap-2 text-[13px] font-medium text-slate-600">
                             补充资料

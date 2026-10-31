@@ -85,49 +85,48 @@ namespace KuaiJi.Modules.Reports.Application
             decimal LiabilityIncrease(IEnumerable<Account> group, Dictionary<Guid, decimal> opening, Dictionary<Guid, decimal> ending) =>
                 -group.Sum(a => ending.GetValueOrDefault(a.Id) - opening.GetValueOrDefault(a.Id));
 
+            // 行次 36-52：与企业会计准则（2007）「将净利润调节为经营活动现金流量」一致
             var adjustment = new List<CashFlowSupplementLineDto>
             {
-                Line(1, "净利润", netProfit, netProfitYtd),
-                Line(2, "加：计提的资产减值准备",
+                Line(36, "净利润", netProfit, netProfitYtd),
+                Line(37, "加：资产减值准备",
                     Provision(sets.Impairments, periodMoves), Provision(sets.Impairments, yearMoves)),
-                Line(3, "固定资产折旧",
+                Line(38, "固定资产折旧、油气资产折耗、生产性生物资产折旧",
                     Provision(sets.Depreciation, periodMoves), Provision(sets.Depreciation, yearMoves)),
-                Line(4, "无形资产摊销",
+                Line(39, "无形资产摊销",
                     Provision(sets.IntangibleAmortization, periodMoves), Provision(sets.IntangibleAmortization, yearMoves)),
-                Line(5, "长期待摊费用摊销",
+                Line(40, "长期待摊费用摊销",
                     AssetDecrease(sets.LongTermDeferred, atPeriodStart, atPeriodEnd),
                     AssetDecrease(sets.LongTermDeferred, atYearStart, atPeriodEnd)),
-                Line(6, "待摊费用的减少（减：增加）",
-                    AssetDecrease(sets.DeferredExpenses, atPeriodStart, atPeriodEnd),
-                    AssetDecrease(sets.DeferredExpenses, atYearStart, atPeriodEnd)),
-                Line(7, "预提费用的增加（减：减少）",
-                    LiabilityIncrease(sets.AccruedExpenses, atPeriodStart, atPeriodEnd),
-                    LiabilityIncrease(sets.AccruedExpenses, atYearStart, atPeriodEnd)),
-                Line(8, "处置固定资产、无形资产和其他长期资产的损失（减：收益）",
+                Line(41, "处置固定资产、无形资产和其他长期资产的损失",
                     Sum(sets.AssetDisposal, periodMoves), Sum(sets.AssetDisposal, yearMoves)),
-                Line(9, "固定资产报废损失", 0m, 0m),
-                Line(10, "财务费用", Sum(sets.FinanceExpense, periodMoves), Sum(sets.FinanceExpense, yearMoves)),
-                Line(11, "存货的减少（减：增加）",
+                Line(42, "固定资产报废损失", 0m, 0m),
+                Line(43, "公允价值变动损失", 0m, 0m),
+                Line(44, "财务费用", Sum(sets.FinanceExpense, periodMoves), Sum(sets.FinanceExpense, yearMoves)),
+                Line(45, "投资损失", 0m, 0m),
+                Line(46, "递延所得税资产减少", 0m, 0m),
+                Line(47, "递延所得税负债增加", 0m, 0m),
+                Line(48, "存货的减少",
                     AssetDecrease(sets.Inventories, atPeriodStart, atPeriodEnd),
                     AssetDecrease(sets.Inventories, atYearStart, atPeriodEnd)),
-                Line(12, "经营性应收项目的减少（减：增加）",
+                Line(49, "经营性应收项目的减少",
                     AssetDecrease(sets.OperatingReceivables, atPeriodStart, atPeriodEnd),
                     AssetDecrease(sets.OperatingReceivables, atYearStart, atPeriodEnd)),
-                Line(13, "经营性应付项目的增加（减：减少）",
+                Line(50, "经营性应付项目的增加",
                     LiabilityIncrease(sets.OperatingPayables, atPeriodStart, atPeriodEnd),
                     LiabilityIncrease(sets.OperatingPayables, atYearStart, atPeriodEnd)),
-                Line(14, "其他", 0m, 0m),
+                Line(51, "其他", 0m, 0m),
             };
 
             var operatingNet = adjustment.Sum(l => l.Current);
             var operatingNetYtd = adjustment.Sum(l => l.YearToDate);
-            adjustment.Add(Line(15, "经营活动产生的现金流量净额", operatingNet, operatingNetYtd, isTotal: true));
+            adjustment.Add(Line(52, "经营活动产生的现金流量净额", operatingNet, operatingNetYtd, isTotal: true));
 
             var nonCash = new List<CashFlowSupplementLineDto>
             {
-                Line(16, "债务转为资本", 0m, 0m, CashFlowSupplementGroup.NonCashActivities),
-                Line(17, "一年内到期的可转换公司债券", 0m, 0m, CashFlowSupplementGroup.NonCashActivities),
-                Line(18, "融资租入固定资产", 0m, 0m, CashFlowSupplementGroup.NonCashActivities),
+                Line(53, "债务转为资本", 0m, 0m, CashFlowSupplementGroup.NonCashActivities),
+                Line(54, "一年内到期的可转换公司债券", 0m, 0m, CashFlowSupplementGroup.NonCashActivities),
+                Line(55, "融资租入固定资产", 0m, 0m, CashFlowSupplementGroup.NonCashActivities),
             };
 
             // 现金及现金等价物与主表同口径（一级编码 1001/1002/1012）；现金等价物本系统未单独核算。
@@ -137,11 +136,11 @@ namespace KuaiJi.Modules.Reports.Application
             var cashChanges = new List<CashFlowSupplementLineDto>
             {
                 // 期末余额两栏相同（本年累计栏取同一期末数），期初余额按各栏窗口起点区分。
-                Line(19, "现金的期末余额", cashEnding, cashEnding, CashFlowSupplementGroup.CashChanges),
-                Line(20, "减：现金的期初余额", cashOpening, cashYearOpening, CashFlowSupplementGroup.CashChanges),
-                Line(21, "加：现金等价物的期末余额", 0m, 0m, CashFlowSupplementGroup.CashChanges),
-                Line(22, "减：现金的期初余额", 0m, 0m, CashFlowSupplementGroup.CashChanges),
-                Line(23, "现金及现金等价物净增加额", cashEnding - cashOpening, cashEnding - cashYearOpening,
+                Line(56, "现金的期末余额", cashEnding, cashEnding, CashFlowSupplementGroup.CashChanges),
+                Line(57, "减：现金的期初余额", cashOpening, cashYearOpening, CashFlowSupplementGroup.CashChanges),
+                Line(58, "加：现金等价物的期末余额", 0m, 0m, CashFlowSupplementGroup.CashChanges),
+                Line(59, "减：现金等价物的期初余额", 0m, 0m, CashFlowSupplementGroup.CashChanges),
+                Line(60, "现金及现金等价物净增加额", cashEnding - cashOpening, cashEnding - cashYearOpening,
                     CashFlowSupplementGroup.CashChanges, isTotal: true),
             };
 
