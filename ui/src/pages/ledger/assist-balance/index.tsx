@@ -1,4 +1,6 @@
+import { PrinterOutlined } from "@ant-design/icons"
 import { useEffect, useMemo, useRef } from "react"
+import { Button } from "antd"
 import type { TableColumnsType, TableColumnType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -125,6 +127,16 @@ export default function AssistBalancePage() {
             page="assist-balance"
             title="核算项目余额表"
             hint="按科目分段列示各档案的期初余额、本期发生额与期末余额；一条分录在同一类别下挂多个档案时，各档案分别计全额。"
+            actions={
+
+                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+
+                    打印
+
+                </Button>
+
+            }
+
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}

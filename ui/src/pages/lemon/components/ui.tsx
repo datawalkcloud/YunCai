@@ -17,7 +17,6 @@ import {
     Input,
     Modal,
     Select as SelectInner,
-    Space,
     Switch,
     Table as AntTable,
     Tabs,
@@ -122,13 +121,30 @@ export function PeriodStepper({
     onNext?: () => void;
 }) {
     return (
-        <Space.Compact>
-            <Button type="primary" icon={<LeftOutlined />} disabled={!onPrev} onClick={onPrev} />
-            <Button type="primary" className="pointer-events-none font-medium" tabIndex={-1}>
+        // 期间名称用 span 展示（不是按钮），避免被当成可点击动作；两侧箭头才是按钮
+        <span className="inline-flex items-center overflow-hidden rounded border border-[#2f6bff]">
+            <button
+                type="button"
+                aria-label="上一期"
+                className="flex h-8 w-8 items-center justify-center bg-[#2f6bff] text-white disabled:opacity-60"
+                disabled={!onPrev}
+                onClick={onPrev}
+            >
+                <LeftOutlined />
+            </button>
+            <span className="inline-flex h-8 items-center bg-[#2f6bff] px-3 text-[13px] font-medium tabular-nums text-white">
                 {text}
-            </Button>
-            <Button type="primary" icon={<RightOutlined />} disabled={!onNext} onClick={onNext} />
-        </Space.Compact>
+            </span>
+            <button
+                type="button"
+                aria-label="下一期"
+                className="flex h-8 w-8 items-center justify-center bg-[#2f6bff] text-white disabled:opacity-60"
+                disabled={!onNext}
+                onClick={onNext}
+            >
+                <RightOutlined />
+            </button>
+        </span>
     );
 }
 

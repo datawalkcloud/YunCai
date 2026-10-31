@@ -1,4 +1,5 @@
-import { Table } from "antd"
+import { PrinterOutlined } from "@ant-design/icons"
+import { Button, Table  } from "antd"
 import type { TableColumnsType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -60,6 +61,16 @@ export default function VoucherSummaryPage() {
             page="voucher-summary"
             title="凭证汇总表"
             hint="按科目汇总区间内已过账凭证的借贷发生额，凭证张数与附件张数均按凭证去重统计。"
+            actions={
+
+                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+
+                    打印
+
+                </Button>
+
+            }
+
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}

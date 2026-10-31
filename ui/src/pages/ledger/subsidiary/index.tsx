@@ -1,4 +1,6 @@
+import { PrinterOutlined } from "@ant-design/icons"
 import { useMemo, useState } from "react"
+import { Button } from "antd"
 import type { TableColumnsType } from "antd"
 import { useSearchParams } from "react-router"
 
@@ -91,6 +93,16 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
             page="subsidiary"
             title="明细账"
             hint="按科目分段逐笔列示发生额与滚动余额，每月末结出本月合计，末尾结出本年累计。"
+            actions={
+
+                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+
+                    打印
+
+                </Button>
+
+            }
+
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}

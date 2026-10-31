@@ -44,6 +44,8 @@ export interface LedgerPageShellProps {
     meta?: LedgerMetaDto | null
     /** 接口返回的中文错误，直接展示。 */
     error?: string | null
+    /** 页头右侧动作（打印 / 导出等）。 */
+    actions?: ReactNode
     children: ReactNode
 }
 
@@ -58,11 +60,12 @@ export function LedgerPageShell({
     panel,
     meta,
     error,
+    actions,
     children,
 }: LedgerPageShellProps) {
     return (
         <div className="flex flex-col gap-4">
-            <PageHeader icon={PAGE_ICONS[page] ?? BookOutlined} title={title} subtitle={hint} />
+            <PageHeader icon={PAGE_ICONS[page] ?? BookOutlined} title={title} subtitle={hint} actions={actions} />
 
             <LedgerTabs current={page} />
 

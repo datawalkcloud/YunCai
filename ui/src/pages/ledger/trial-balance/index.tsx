@@ -1,6 +1,7 @@
+import { PrinterOutlined } from "@ant-design/icons"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router"
-import { Alert, Spin, Table } from "antd"
+import { Button, Alert, Spin, Table } from "antd";
 import type { TableColumnsType, TableColumnType } from "antd"
 import { AuditOutlined } from "@ant-design/icons"
 import dayjs from "dayjs"
@@ -154,6 +155,11 @@ export default function TrialBalancePage() {
                         账套：{currentSet?.name ?? (accountSetId || "未指定")}
                         。汇总各科目的期初余额、本期发生额与期末余额，用于试算平衡与结账核对。点击任一行可下钻该科目明细账。
                     </>
+                }
+                actions={
+                    <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                        打印
+                    </Button>
                 }
             />
 

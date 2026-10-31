@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
-import { AccountBookOutlined, ReloadOutlined } from "@ant-design/icons"
+import { AccountBookOutlined, DownloadOutlined, PrinterOutlined, ReloadOutlined } from "@ant-design/icons"
 import { Button, Table } from "antd"
 import type { TableColumnsType } from "antd"
 import dayjs from "dayjs"
@@ -318,6 +318,24 @@ export default function BalanceSheetPage() {
         [assetRows, liabilityRows],
     )
 
+    /** 导出当前期间的资产负债表（后端 ReportExport 生成 xlsx）。 */
+    const exportSheet = useCallback(async () => {
+        if (!token || !accountSetId || !period) return
+        const res = await fetch(
+            `/api/accountsets/${accountSetId}/reports/export?kind=balance-sheet&year=${period.year}&month=${period.month}`,
+            { headers: { Authorization: `Bearer ${token}` } },
+        )
+        if (!res.ok) return
+        const url = URL.createObjectURL(await res.blob())
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `资产负债表_${period?.year ?? ""}${String(period?.month ?? "").padStart(2, "0")}.xlsx`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+    }, [token, accountSetId, period])
+
     return (
         <ReportPageShell
             icon={AccountBookOutlined}
@@ -341,13 +359,26 @@ export default function BalanceSheetPage() {
                 </>
             }
             actions={
-                <Button
-                    icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
-                    onClick={() => void load()}
-                    disabled={loading || !accountSetId}
-                >
-                    刷新
-                </Button>
+                <>
+                    {/* 与柠檬云报表页一致：打印 / 导出 */}
+                    <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                        打印
+                    </Button>
+                    <Button
+                        icon={<DownloadOutlined />}
+                        onClick={() => void exportSheet()}
+                        disabled={!accountSetId || loading}
+                    >
+                        导出
+                    </Button>
+                    <Button
+                        icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                        onClick={() => void load()}
+                        disabled={loading || !accountSetId}
+                    >
+                        刷新
+                    </Button>
+                </>
             }
             meta={
                 <>
