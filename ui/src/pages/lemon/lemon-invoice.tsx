@@ -625,7 +625,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                 />
             </div>
             {/* 真实数据不足一页时隐藏分页控件，不显示假页码 */}
-            {data.invoices.length > 20 && <Pager total={data.invoices.length} count={1} />}
+            <Pager total={data.invoices.length} />
             {/* 新增发票弹窗 */}
             {showAdd && (
                 <Dialog
@@ -1313,7 +1313,7 @@ export function LemonExpenseBill() {
                     empty={visible.length === 0 && !loading ? <EmptyTip text="本期暂无费用单据" /> : undefined}
                 />
             </div>
-            {visible.length > 20 && <Pager total={visible.length} count={1} />}
+            <Pager total={visible.length} />
             {/* 新增 / 编辑单据 */}
             {form && (
                 <Dialog
@@ -1565,7 +1565,7 @@ export function LemonInvoiceSummary() {
                 <Table cols={cols} rows={tableRows} empty={rows.length === 0 && !loading && !error ? <EmptyTip /> : undefined} />
             </div>
             {/* 真实数据不足一页时隐藏分页控件，不显示假页码 */}
-            {rows.length > 20 && <Pager total={rows.length} count={1} />}
+            <Pager total={rows.length} />
         </Page>
     );
 }

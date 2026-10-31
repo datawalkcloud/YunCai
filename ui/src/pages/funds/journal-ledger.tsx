@@ -1804,10 +1804,10 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                     </Spin>
                 )}
 
-                {journals.length > 0 && (
+                {(
                     <Flex justify="space-between" align="center" gap={16} wrap style={{ marginTop: 12 }}>
                         <Typography.Text type="secondary">
-                            显示 {from} 到 {to}，共 {filtered.length} 条记录
+                            显示 {from} 到 {to}，共 {filtered.length} 条
                         </Typography.Text>
                         <Pagination
                             current={current}

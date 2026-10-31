@@ -37,35 +37,57 @@ export function LedgerTable<D>({
     const showSpinner = Boolean(loading) && data.length === 0
 
     return (
-        <Table<D>
-            columns={columns}
-            dataSource={data}
-            rowKey={rowKey}
-            pagination={false}
-            size="small"
-            rowClassName={(row, index) =>
-                cn(rowClassName?.(row, index), onRowClick && "cursor-pointer")
-            }
-            onRow={
-                onRowClick
-                    ? (row, index) => ({ onClick: () => onRowClick(row, index ?? 0) })
-                    : undefined
-            }
-            locale={{
-                emptyText: showSpinner ? (
-                    <div className="flex justify-center py-6">
-                        <Spin />
-                    </div>
-                ) : (
-                    emptyText
-                ),
-            }}
-            summary={
-                footer == null || data.length === 0
-                    ? undefined
-                    : () => <Table.Summary>{footer}</Table.Summary>
-            }
-        />
+        <div className="flex flex-col">
+            <Table<D>
+                columns={columns}
+                dataSource={data}
+                rowKey={rowKey}
+                pagination={false}
+                size="small"
+                rowClassName={(row, index) =>
+                    cn(rowClassName?.(row, index), onRowClick && "cursor-pointer")
+                }
+                onRow={
+                    onRowClick
+                        ? (row, index) => ({ onClick: () => onRowClick(row, index ?? 0) })
+                        : undefined
+                }
+                locale={{
+                    emptyText: showSpinner ? (
+                        <div className="flex justify-center py-6">
+                            <Spin />
+                        </div>
+                    ) : (
+                        emptyText
+                    ),
+                }}
+                summary={
+                    footer == null || data.length === 0
+                        ? undefined
+                        : () => <Table.Summary>{footer}</Table.Summary>
+                }
+            />
+            {/* 页脚：与柠檬云一致的「显示 x 到 y，共 z 条」 */}
+            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 text-[12.5px] text-slate-500">
+                <span>
+                    显示 {data.length ? 1 : 0} 到 {Math.min(data.length, 20)}，共 {data.length} 条
+                </span>
+                <span className="flex items-center gap-2">
+                    <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2">
+                        20
+                    </span>
+                    <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2 text-slate-400">
+                        ‹
+                    </span>
+                    <span className="inline-flex h-7 w-8 items-center justify-center rounded border border-[#2f6bff] text-[#2f6bff]">
+                        1
+                    </span>
+                    <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2 text-slate-400">
+                        ›
+                    </span>
+                </span>
+            </div>
+        </div>
     )
 }
 

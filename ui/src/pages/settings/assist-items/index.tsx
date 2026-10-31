@@ -575,15 +575,29 @@ function AssistItemListPanel({
                         <Spin />
                     </div>
                 ) : (
-                    <Table
-                        columns={columns}
-                        dataSource={rows}
-                        rowKey={(row) => String(row.node.id)}
-                        rowClassName={(row) => (row.node.isEnabled ? "" : "text-slate-400")}
-                        pagination={false}
-                        size="small"
-                        locale={{ emptyText: "该类别暂无档案，可点击「新增档案」建立。" }}
-                    />
+                    <>
+                        <Table
+                            columns={columns}
+                            dataSource={rows}
+                            rowKey={(row) => String(row.node.id)}
+                            rowClassName={(row) => (row.node.isEnabled ? "" : "text-slate-400")}
+                            pagination={false}
+                            size="small"
+                            locale={{ emptyText: "该类别暂无档案，可点击「新增档案」建立。" }}
+                        />
+                        {/* 页脚：与柠檬云一致的「显示 x 到 y，共 z 条」 */}
+                        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 text-[12.5px] text-slate-500">
+                            <span>
+                                显示 {rows.length ? 1 : 0} 到 {Math.min(rows.length, 20)}，共 {rows.length} 条
+                            </span>
+                            <span className="flex items-center gap-2">
+                                <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2">20</span>
+                                <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2 text-slate-400">‹</span>
+                                <span className="inline-flex h-7 w-8 items-center justify-center rounded border border-[#2f6bff] text-[#2f6bff]">1</span>
+                                <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2 text-slate-400">›</span>
+                            </span>
+                        </div>
+                    </>
                 )}
             </SectionCard>
 

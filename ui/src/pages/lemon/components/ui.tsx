@@ -359,7 +359,7 @@ export function Pager({ total = 0, count }: { total?: number; count?: number }) 
     return (
         <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-[12.5px] text-slate-500">
             <span>
-                显示 {records ? 1 : 0} 到 {Math.min(records, 20)}，共 {records} 条记录
+                显示 {records ? 1 : 0} 到 {Math.min(records, 20)}，共 {records} 条
             </span>
             <span className="flex items-center gap-2">
                 <span className="inline-flex h-7 items-center rounded-lg border border-slate-200 px-2">
