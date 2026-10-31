@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Alert, Button, Checkbox, Input, Modal, Spin, Table, Tabs } from "antd"
+import { Alert, Button, Checkbox, Dropdown, Input, Modal, Spin, Table, Tabs } from "antd"
 import type { TableColumnsType } from "antd"
 import {
     ApartmentOutlined,
+    DownloadOutlined,
+    SearchOutlined,
     DeleteOutlined,
     DownOutlined,
     EditOutlined,
     PlusOutlined,
-    ReloadOutlined,
     RightOutlined,
 } from "@ant-design/icons"
 
@@ -252,6 +253,9 @@ function AssistItemListPanel({
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [expandedKeys, setExpandedKeys] = useState<string[]>([])
+    /** 关键字查询（编码/名称/联系资料），点「查询」或回车生效。 */
+    const [keywordInput, setKeywordInput] = useState("")
+    const [keyword, setKeyword] = useState("")
     const [busyId, setBusyId] = useState<string | null>(null)
 
     const [formOpen, setFormOpen] = useState(false)
@@ -456,6 +460,38 @@ function AssistItemListPanel({
     const expectedLength = assistExpectedCodeLength(type, createLevel)
 
     const typeName = ASSIST_TYPE_NAMES[type] ?? ""
+    /** 关键字过滤后的行（表格与导出共用）。 */
+    const filteredRows = keyword.trim()
+        ? rows.filter((r) => {
+              const k = keyword.trim()
+              const n = r.node
+              return (n.code ?? "").includes(k) || (n.name ?? "").includes(k) || (n.contact ?? "").includes(k)
+          })
+        : rows
+
+    /** 导出当前类别档案为 CSV。 */
+    const exportCsv = () => {
+        const header = ["编码", "名称", "联系资料", "备注", "启用状态"]
+        const lines = [header.join(",")]
+        for (const r of filteredRows) {
+            const n = r.node
+            lines.push(
+                [n.code ?? "", n.name ?? "", n.contact ?? "", n.remark ?? "", n.isEnabled === false ? "停用" : "启用"]
+                    .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+                    .join(","),
+            )
+        }
+        const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${typeName}档案.csv`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+    }
+
     const columns: TableColumnsType<VisibleRow> = [
         {
             title: `${typeName}编码`,
@@ -571,9 +607,23 @@ function AssistItemListPanel({
             <SectionCard
                 title={<h3 className="text-[14px] font-semibold text-slate-800">{hierarchical ? "档案结构" : "档案列表"}</h3>}
                 action={
-                    <div className="flex items-center gap-2">
-                        <Button icon={<ReloadOutlined />} onClick={() => void load()} disabled={loading}>
-                            刷新
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* 与柠檬云「辅助核算」工具栏一致：查询 / 导出 / 新增 / 更多 */}
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined className="text-slate-400" />}
+                            className="w-[200px]"
+                            placeholder="输入编码/名称"
+                            value={keywordInput}
+                            onChange={(e) => {
+                                setKeywordInput(e.target.value)
+                                if (!e.target.value) setKeyword("")
+                            }}
+                            onPressEnter={() => setKeyword(keywordInput)}
+                        />
+                        <Button onClick={() => setKeyword(keywordInput)}>查询</Button>
+                        <Button icon={<DownloadOutlined />} onClick={exportCsv} disabled={filteredRows.length === 0}>
+                            导出
                         </Button>
                         <Button
                             type="primary"
@@ -581,8 +631,18 @@ function AssistItemListPanel({
                             onClick={() => void openCreate(null)}
                             disabled={!categoryEnabled}
                         >
-                            新增档案
+                            新增
                         </Button>
+                        <Dropdown
+                            menu={{
+                                items: [
+                                    { key: "import", label: "导入（建设中）", disabled: true },
+                                    { key: "template", label: "下载模板（建设中）", disabled: true },
+                                ],
+                            }}
+                        >
+                            <Button>更多</Button>
+                        </Dropdown>
                     </div>
                 }
                 bodyClassName="flex flex-col gap-4"
@@ -611,7 +671,7 @@ function AssistItemListPanel({
                     <>
                         <Table
                             columns={columns}
-                            dataSource={rows}
+                            dataSource={filteredRows}
                             rowKey={(row) => String(row.node.id)}
                             rowClassName={(row) => (row.node.isEnabled ? "" : "text-slate-400")}
                             pagination={false}
@@ -621,7 +681,7 @@ function AssistItemListPanel({
                         {/* 页脚：与柠檬云一致的「显示 x 到 y，共 z 条」 */}
                         <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 text-[12.5px] text-slate-500">
                             <span>
-                                显示 {rows.length ? 1 : 0} 到 {Math.min(rows.length, 20)}，共 {rows.length} 条
+                                显示 {filteredRows.length ? 1 : 0} 到 {Math.min(filteredRows.length, 20)}，共 {filteredRows.length} 条
                             </span>
                             <span className="flex items-center gap-2">
                                 <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2">20</span>
