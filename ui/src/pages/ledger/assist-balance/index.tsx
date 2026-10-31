@@ -66,7 +66,7 @@ function buildColumns(assistTypeText: string): TableColumnsType<BalanceRow> {
             title: "期末余额",
             children: [amount("endingDebit", "借方"), amount("endingCredit", "贷方")],
         },
-        { title: "方向", dataIndex: "direction" },
+
     ]
 }
 
@@ -118,7 +118,8 @@ export default function AssistBalancePage() {
         patch({ assistType: first }, true)
     }, [accountSetId, enabledTypes, assistType, patch])
 
-    const assistTypeText = query.data?.assistTypeText || assistTypeLabel(assistType)
+    // 未选类别时按「客户」展示表头，与柠檬云默认页签一致
+    const assistTypeText = query.data?.assistTypeText || assistTypeLabel(assistType) || "客户"
     const columns = useMemo(() => buildColumns(assistTypeText), [assistTypeText])
     const accounts = query.data?.accounts ?? []
 

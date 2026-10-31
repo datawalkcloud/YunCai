@@ -49,14 +49,20 @@ function buildColumns(columns: MultiColumnHeaderDto[]): TableColumnsType<MultiRo
         { title: "日期", dataIndex: "date" },
         { title: "凭证字号", dataIndex: "voucherNo" },
         { title: "摘要", dataIndex: "summary" },
-        ...columns.map((col, index) => ({
-            key: `col${index}`,
-            title: `${col.code} ${col.name}`,
-            children: [
-                { key: `d${index}`, title: "借方", render: cell(`d${index}`), ...AMOUNT_COL },
-                { key: `c${index}`, title: "贷方", render: cell(`c${index}`), ...AMOUNT_COL },
-            ],
-        })),
+        ...(columns.length === 0
+            ? // 未选科目时也给「借方 / 贷方」两栏，与柠檬云多栏账默认表头一致
+              [
+                  { key: "dEmpty", title: "借方", render: () => "", ...AMOUNT_COL },
+                  { key: "cEmpty", title: "贷方", render: () => "", ...AMOUNT_COL },
+              ]
+            : columns.map((col, index) => ({
+                  key: `col${index}`,
+                  title: `${col.code} ${col.name}`,
+                  children: [
+                      { key: `d${index}`, title: "借方", render: cell(`d${index}`), ...AMOUNT_COL },
+                      { key: `c${index}`, title: "贷方", render: cell(`c${index}`), ...AMOUNT_COL },
+                  ],
+              }))),
         { title: "方向", dataIndex: "direction" },
         { title: "余额", dataIndex: "balance", render: (v) => fmtAmount(v), ...AMOUNT_COL },
     ]
