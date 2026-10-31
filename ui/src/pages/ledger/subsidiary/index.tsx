@@ -37,10 +37,12 @@ const SWITCHES = [
     "includeIdleAccounts",
 ] as const
 
-function buildColumns(showCounterAccount: boolean): TableColumnsType<SubRow> {
+function buildColumns(showCounterAccount: boolean, accountLabel = ""): TableColumnsType<SubRow> {
     return [
         { title: "日期", dataIndex: "date" },
         { title: "凭证字号", dataIndex: "voucherNo" },
+        // 与柠檬云一致：科目列按分录行重复显示所属科目编码与名称
+        { title: "科目", width: "180px", render: () => accountLabel },
         { title: "摘要", dataIndex: "summary" },
         ...(showCounterAccount ? [{ title: "对方科目", dataIndex: "counterAccount" }] : []),
         { title: "借方", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
@@ -80,7 +82,7 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
     const lookup = useVoucherLookup(accountSetId, token)
     const [voucherId, setVoucherId] = useState<string | null>(null)
 
-    const showCounterAccount = query.conditions.showCounterAccount ?? true
+    const showCounterAccount = query.conditions.showCounterAccount ?? false
     const columns = useMemo(() => buildColumns(showCounterAccount), [showCounterAccount])
     const accounts = query.data?.accounts ?? []
 
@@ -126,6 +128,8 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
                         ...row,
                         rowKey: `${account.code}-${index}`,
                     }))
+                    // 柠檬云的「科目」列按分录行重复显示所属科目
+                    const accountLabel = `${account.code} ${account.name}`
                     return (
                         <LedgerSection
                             key={account.code}
@@ -138,7 +142,7 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
                             }
                         >
                             <LedgerTable
-                                columns={columns}
+                                columns={buildColumns(showCounterAccount, accountLabel)}
                                 data={rows}
                                 loading={query.loading}
                                 emptyText="本科目该期间无发生额。"

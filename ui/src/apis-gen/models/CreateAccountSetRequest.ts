@@ -63,6 +63,12 @@ export interface CreateAccountSetRequest {
     startMonth?: number;
     /**
      * 
+     * @type {boolean}
+     * @memberof CreateAccountSetRequest
+     */
+    preset?: boolean;
+    /**
+     * 
      * @type {string}
      * @memberof CreateAccountSetRequest
      */
@@ -93,6 +99,7 @@ export function CreateAccountSetRequestFromJSONTyped(json: any, ignoreDiscrimina
         'baseCurrency': json['baseCurrency'] == null ? undefined : json['baseCurrency'],
         'startYear': json['startYear'] == null ? undefined : json['startYear'],
         'startMonth': json['startMonth'] == null ? undefined : json['startMonth'],
+        'preset': json['preset'] == null ? undefined : json['preset'],
         'accountCodingScheme': json['accountCodingScheme'] == null ? undefined : json['accountCodingScheme'],
     };
 }
@@ -115,6 +122,7 @@ export function CreateAccountSetRequestToJSONTyped(value?: CreateAccountSetReque
         'baseCurrency': value['baseCurrency'],
         'startYear': value['startYear'],
         'startMonth': value['startMonth'],
+        'preset': value['preset'],
         'accountCodingScheme': value['accountCodingScheme'],
     };
 }

@@ -16,6 +16,7 @@ Name | Type
 `preparer` | string
 `reviewer` | string
 `attachmentCount` | number
+`remark` | string
 
 ## Example
 
@@ -34,6 +35,7 @@ const example = {
   "preparer": null,
   "reviewer": null,
   "attachmentCount": null,
+  "remark": null,
 } satisfies VoucherJournalRowDto
 
 console.log(example)

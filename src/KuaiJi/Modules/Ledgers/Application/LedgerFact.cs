@@ -60,6 +60,9 @@ namespace KuaiJi.Modules.Ledgers.Application
         /// <summary>凭证所附单据张数（同一凭证各行重复携带，参与合计时须按凭证去重）。</summary>
         public required int AttachmentCount { get; init; }
 
+        /// <summary>凭证备注（凭证头字段，同一凭证各行相同）。</summary>
+        public string? Remark { get; init; }
+
         /// <summary>该分录登记的辅助核算取值。</summary>
         public IReadOnlyList<AssistRef> Assists { get; init; } = [];
     }

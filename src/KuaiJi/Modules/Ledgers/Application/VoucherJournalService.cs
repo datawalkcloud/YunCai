@@ -32,6 +32,9 @@ namespace KuaiJi.Modules.Ledgers.Application
 
         /// <summary>凭证附件张数，同一凭证只在首行列示以免重复计数。</summary>
         public int AttachmentCount { get; init; }
+
+        /// <summary>凭证备注。</summary>
+        public string? Remark { get; init; }
     }
 
     /// <summary>序时账。</summary>
@@ -119,6 +122,7 @@ namespace KuaiJi.Modules.Ledgers.Application
                         Reviewer = entry.Reviewer,
                         // 附件数属于凭证头，只在首行列示，合计才不会随分录行数重复累加。
                         AttachmentCount = isFirstRow ? entry.AttachmentCount : 0,
+                    Remark = isFirstRow ? entry.Remark : null,
                     });
                     isFirstRow = false;
                 }

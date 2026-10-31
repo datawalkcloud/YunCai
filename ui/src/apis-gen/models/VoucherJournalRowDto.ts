@@ -79,6 +79,12 @@ export interface VoucherJournalRowDto {
      * @memberof VoucherJournalRowDto
      */
     attachmentCount?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof VoucherJournalRowDto
+     */
+    remark?: string | null;
 }
 
 /**
@@ -114,6 +120,7 @@ export function VoucherJournalRowDtoFromJSONTyped(json: any, ignoreDiscriminator
         'preparer': json['preparer'],
         'reviewer': json['reviewer'] == null ? undefined : json['reviewer'],
         'attachmentCount': json['attachmentCount'] == null ? undefined : json['attachmentCount'],
+        'remark': json['remark'] == null ? undefined : json['remark'],
     };
 }
 
@@ -138,6 +145,7 @@ export function VoucherJournalRowDtoToJSONTyped(value?: VoucherJournalRowDto | n
         'preparer': value['preparer'],
         'reviewer': value['reviewer'],
         'attachmentCount': value['attachmentCount'],
+        'remark': value['remark'],
     };
 }
 

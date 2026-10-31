@@ -13,6 +13,7 @@ Name | Type
 `baseCurrency` | string
 `startYear` | number
 `startMonth` | number
+`preset` | boolean
 `accountCodingScheme` | string
 
 ## Example
@@ -29,6 +30,7 @@ const example = {
   "baseCurrency": null,
   "startYear": null,
   "startMonth": null,
+  "preset": null,
   "accountCodingScheme": null,
 } satisfies CreateAccountSetRequest
 

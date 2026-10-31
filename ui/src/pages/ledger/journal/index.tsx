@@ -34,6 +34,8 @@ const columns: TableColumnsType<JournalRow> = [
     { title: "制单人", dataIndex: "preparer" },
     { title: "审核人", dataIndex: "reviewer" },
     { title: "附件数", dataIndex: "attachmentCount", render: (v) => (v ? String(v) : "") },
+    // 与柠檬云一致：凭证备注列
+    { title: "备注", dataIndex: "remark", render: (v) => v ?? "" },
 ]
 
 export default function VoucherJournalPage() {

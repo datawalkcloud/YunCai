@@ -40,6 +40,7 @@ namespace KuaiJi.Modules.Ledgers.Infrastructure
                     x.Preparer,
                     x.Reviewer,
                     x.AttachmentCount,
+                    x.Remark,
                 })
                 .ToListAsync(cancellationToken);
 
@@ -65,6 +66,7 @@ namespace KuaiJi.Modules.Ledgers.Infrastructure
                     Preparer = row.Preparer,
                     Reviewer = row.Reviewer,
                     AttachmentCount = row.AttachmentCount,
+                    Remark = row.Remark,
                     Assists = assistsByEntry.TryGetValue(row.EntryId, out var assists) ? assists : [],
                 });
             }
@@ -169,7 +171,8 @@ namespace KuaiJi.Modules.Ledgers.Infrastructure
                        entry.Credit,
                        voucher.Preparer,
                        voucher.Reviewer,
-                       voucher.AttachmentCount);
+                       voucher.AttachmentCount,
+                       voucher.Remark);
         }
 
         /// <summary>区间内已过账分录上的辅助核算取值（按分录标识与凭证日期关联）。</summary>
@@ -202,7 +205,8 @@ namespace KuaiJi.Modules.Ledgers.Infrastructure
             decimal Credit,
             string Preparer,
             string? Reviewer,
-            int AttachmentCount);
+            int AttachmentCount,
+            string? Remark);
 
         /// <summary>辅助核算取值投影行，日期取自所属凭证以便按区间过滤。</summary>
         private sealed record AssistRow(

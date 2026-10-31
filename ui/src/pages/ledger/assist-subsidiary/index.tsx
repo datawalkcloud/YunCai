@@ -37,10 +37,12 @@ const SWITCHES = ["showCounterAccount", "hideZeroBalance", "hideNoActivity"] as 
 /** 后端把 assistType 作为必填参数，未选类别时不发请求。 */
 const canQuery = (conditions: LedgerConditions) => Boolean(conditions.assistType)
 
-function buildColumns(showCounterAccount: boolean): TableColumnsType<AssistRow> {
+function buildColumns(showCounterAccount: boolean, accountLabel = ""): TableColumnsType<AssistRow> {
     return [
         { title: "日期", dataIndex: "date" },
         { title: "凭证字号", dataIndex: "voucherNo" },
+        // 与柠檬云一致：科目列按分录行重复显示所属科目编码与名称
+        { title: "科目", width: "180px", render: () => accountLabel },
         { title: "摘要", dataIndex: "summary" },
         ...(showCounterAccount ? [{ title: "对方科目", dataIndex: "counterAccount" }] : []),
         { title: "借方", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
@@ -102,7 +104,7 @@ export default function AssistSubsidiaryPage() {
     const lookup = useVoucherLookup(accountSetId, token)
     const [voucherId, setVoucherId] = useState<string | null>(null)
 
-    const showCounterAccount = query.conditions.showCounterAccount ?? true
+    const showCounterAccount = query.conditions.showCounterAccount ?? false
     const columns = useMemo(() => buildColumns(showCounterAccount), [showCounterAccount])
     const accounts = query.data?.accounts ?? []
 
@@ -166,6 +168,8 @@ export default function AssistSubsidiaryPage() {
                                     ...row,
                                     rowKey: `${account.code}-${item.code}-${index}`,
                                 }))
+                                // 柠檬云的「科目」列按分录行重复显示所属科目
+                                const accountLabel = `${account.code} ${account.name}`
                                 return (
                                     <LedgerSection
                                         key={`${account.code}-${item.code}-${itemIndex}`}
@@ -178,7 +182,7 @@ export default function AssistSubsidiaryPage() {
                                         }
                                     >
                                         <LedgerTable
-                                            columns={columns}
+                                            columns={buildColumns(showCounterAccount, accountLabel)}
                                             data={rows}
                                             loading={query.loading}
                                             emptyText="本档案该期间无发生额。"
