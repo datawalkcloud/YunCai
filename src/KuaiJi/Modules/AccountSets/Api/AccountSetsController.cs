@@ -97,6 +97,13 @@ namespace KuaiJi.Modules.AccountSets.Api
             await _accountSetRepository.AddAsync(accountSet, cancellationToken);
             await _accountSetRepository.SaveChangesAsync(cancellationToken);
 
+            // 建账预置：企业会计准则账套按 2007 版科目表生成科目（与柠檬云一致，建完即有整套科目）。
+            if (accountSet.Standard == AccountingStandard.Enterprise)
+            {
+                await Accounting.Application.AccountPresetSeeder.SeedAsync(
+                    accountSet.Id, _accountRepository, cancellationToken);
+            }
+
             return CreatedAtAction(nameof(GetById), new { id = accountSet.Id }, AccountSetDto.FromDomain(accountSet));
         }
 
