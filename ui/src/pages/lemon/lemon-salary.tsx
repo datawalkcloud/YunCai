@@ -1255,7 +1255,6 @@ export function LemonSalaryEmployee() {
     }));
     return (
         <Page title="员工信息" subtitle="在职与离职员工名册维护" icon={TeamOutlined}>
-            <SubTabs tabs={["员工信息"]} />
             <ToolRow
                 left={
                     <WipBtn dropdown title="按部门/状态筛选员工暂未实现">
@@ -1455,7 +1454,6 @@ export function LemonSalarySummary() {
     ];
     return (
         <Page title="工资统计表" subtitle={`按部门汇总 ${rangeText} 的工资数据`} icon={BarChartOutlined}>
-            <SubTabs tabs={["工资统计表"]} />
             <ToolRow
                 left={
                     <PeriodStepper
@@ -1612,7 +1610,6 @@ export function LemonSalaryInsurance() {
     ];
     return (
         <Page title="五险一金设置" subtitle="缴纳项目与公司/个人比例维护" icon={SafetyCertificateOutlined}>
-            <SubTabs tabs={["五险一金设置"]} />
             <ToolRow
                 left={
                     <Btn variant="primary" onClick={() => setEditing("new")}>

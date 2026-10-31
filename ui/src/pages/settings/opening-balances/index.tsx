@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Alert, Button, Spin, Table } from "antd"
+import { Alert, Button, Spin, Table, Tabs } from "antd"
 import type { TableColumnsType } from "antd"
 import {
     CheckCircleOutlined,
@@ -22,6 +22,16 @@ import { NumberField } from "@/components/fields/number-field"
 
 /** 科目层级缩进：每级 1rem，等价原来的 paddingLeft: (level - 1) * 16。 */
 const LEVEL_INDENT = ["", "pl-4", "pl-8", "pl-12", "pl-16", "pl-20", "pl-24", "pl-28", "pl-32", "pl-36"]
+
+/** 科目类别页签：与柠檬云「期初」一致（资产/负债/共同/权益/成本/损益）；共同类在快记无对应枚举，暂列空页签。 */
+const CATEGORY_TABS = [
+    { value: 1, label: "资产" },
+    { value: 2, label: "负债" },
+    { value: -1, label: "共同" },
+    { value: 3, label: "权益" },
+    { value: 4, label: "成本" },
+    { value: 5, label: "损益" },
+]
 function indentFor(level?: number): string {
     return LEVEL_INDENT[Math.max(0, Math.min(LEVEL_INDENT.length - 1, (level ?? 1) - 1))]
 }
@@ -41,6 +51,8 @@ export default function OpeningBalancesPage() {
     const [savedTip, setSavedTip] = useState(false)
     // 本地未保存的修改：accountId -> 期初余额。
     const [edits, setEdits] = useState<Record<string, number>>({})
+    /** 当前科目类别页签（与柠檬云一致） */
+    const [activeCategory, setActiveCategory] = useState(1)
 
     const load = useCallback(async () => {
         if (!accountSetId) return
@@ -236,13 +248,22 @@ export default function OpeningBalancesPage() {
                         <Spin />
                     </div>
                 ) : (
-                    <Table
-                        columns={columns}
-                        dataSource={data?.rows ?? []}
-                        rowKey={(row) => row.accountId ?? row.code ?? ""}
-                        pagination={false}
-                        size="small"
-                    />
+                    <>
+                        {/* 科目类别页签：与柠檬云「期初」一致（资产/负债/共同/权益/成本/损益） */}
+                        <Tabs
+                            size="small"
+                            activeKey={String(activeCategory)}
+                            onChange={(key) => setActiveCategory(Number(key))}
+                            items={CATEGORY_TABS.map((t) => ({ key: String(t.value), label: t.label }))}
+                        />
+                        <Table
+                            columns={columns}
+                            dataSource={(data?.rows ?? []).filter((row) => (row.category ?? 1) === activeCategory)}
+                            rowKey={(row) => row.accountId ?? row.code ?? ""}
+                            pagination={false}
+                            size="small"
+                        />
+                    </>
                 )}
             </SectionCard>
         </div>

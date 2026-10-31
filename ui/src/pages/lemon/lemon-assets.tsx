@@ -1536,7 +1536,6 @@ export function LemonAssetDepreciation() {
     const label = periodLabel(period);
     return (
         <Page title="折旧摊销明细表" subtitle={`${label} 各资产本期与累计折旧明细`} icon={FallOutlined}>
-            <SubTabs tabs={["折旧摊销明细表"]} />
             <ToolRow
                 left={<PeriodStepper text={label} onPrev={() => step(-1)} onNext={() => step(1)} />}
                 right={
@@ -1900,7 +1899,6 @@ export function LemonAssetCategory() {
     );
     return (
         <Page title="资产类别设置" subtitle="类别编码、折旧方法与资产科目默认值" icon={ApartmentOutlined}>
-            <SubTabs tabs={["资产类别设置"]} />
             <ToolRow
                 left={<Btn onClick={() => setEditing("new")}>新增</Btn>}
                 right={
@@ -2000,7 +1998,6 @@ export function LemonAssetCheck() {
     const td = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-600 tabular-nums";
     return (
         <Page title="资产核对总账" subtitle="资产台账与总账科目余额逐行核对" icon={AuditOutlined}>
-            <SubTabs tabs={["资产核对总账"]} />
             <ToolRow
                 left={<PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />}
                 right={
