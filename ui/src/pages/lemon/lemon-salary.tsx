@@ -1018,7 +1018,7 @@ export function LemonSalaryManage() {
                             <CheckBox label="多次发放工资" />
                         </span>
                         <Btn dropdown onClick={() => void buildPayslips()} title="按当期工资单生成工资条 PDF（一页 3 条，带裁切线）">
-                            生成工资条
+                            生成工资表
                         </Btn>
                         <span className="inline-flex items-center gap-1">
                             <WipBtn title="同步个税申报表需对接电子税务局，暂未实现">同步个税申报表</WipBtn>

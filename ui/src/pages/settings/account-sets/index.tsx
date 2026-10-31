@@ -340,7 +340,7 @@ export default function AccountSetsPage() {
                 title={<h3 className="text-[14px] font-semibold text-slate-800">账套列表</h3>}
                 action={
                     <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                        新增账套
+                        新建账套
                     </Button>
                 }
                 bodyClassName="flex flex-col gap-4"
@@ -354,7 +354,7 @@ export default function AccountSetsPage() {
                 ) : sets.length === 0 ? (
                     <Empty
                         image={<BankOutlined className="text-[40px]" style={ICON_STYLE.placeholder} />}
-                        description="暂无账套，点击“新增账套”创建"
+                        description="暂无账套，点击“新建账套”创建"
                     />
                 ) : (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

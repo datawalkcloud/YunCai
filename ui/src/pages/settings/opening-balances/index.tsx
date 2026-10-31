@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Alert, Button, Spin, Table, Tabs } from "antd"
 import type { TableColumnsType } from "antd"
 import {
+    CalculatorOutlined,
     CheckCircleOutlined,
     CloseOutlined,
+    DownloadOutlined,
     MoneyCollectOutlined,
     ReloadOutlined,
     SaveOutlined,
+    UploadOutlined,
     WarningFilled,
 } from "@ant-design/icons"
 
@@ -49,6 +52,11 @@ export default function OpeningBalancesPage() {
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [savedTip, setSavedTip] = useState(false)
+    /** 试算平衡提示文案（点按钮时刷新）。 */
+    const [checkMessage, setCheckMessage] = useState<string | null>(null)
+    /** 期初导入：文件选择框与导入中标记。 */
+    const importInputRef = useRef<HTMLInputElement>(null)
+    const [importing, setImporting] = useState(false)
     // 本地未保存的修改：accountId -> 期初余额。
     const [edits, setEdits] = useState<Record<string, number>>({})
     /** 当前科目类别页签（与柠檬云一致） */
@@ -176,6 +184,50 @@ export default function OpeningBalancesPage() {
         [edits],
     )
 
+                    /** 导出期初模板（后端生成 xlsx，含科目与期初列）。 */
+    const exportTemplate = useCallback(async () => {
+        if (!token || !accountSetId) return
+        const res = await fetch(`/api/accountsets/${accountSetId}/Accounts/opening-balances/template`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const url = URL.createObjectURL(await res.blob())
+        const a = document.createElement("a")
+        a.href = url
+        a.download = "期初余额导入模板.xlsx"
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+    }, [token, accountSetId])
+
+    /** 导入期初余额 xlsx 并刷新。 */
+    const importFile = useCallback(
+        async (file: File | null) => {
+            if (!file || !token || !accountSetId) return
+            setImporting(true)
+            try {
+                const body = new FormData()
+                body.append("file", file)
+                const res = await fetch(`/api/accountsets/${accountSetId}/Accounts/opening-balances/import`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body,
+                })
+                if (!res.ok) {
+                    setError(await apiErrorMessage(res, "导入失败，请检查模板格式。"))
+                } else {
+                    await load()
+                    setSavedTip(true)
+                }
+            } finally {
+                setImporting(false)
+                if (importInputRef.current) importInputRef.current.value = ""
+            }
+        },
+        [token, accountSetId, load],
+    )
+
     return (
         <div className="flex w-full flex-col gap-5">
             <PageHeader
@@ -184,6 +236,36 @@ export default function OpeningBalancesPage() {
                 subtitle="录入账套启用期间的科目期初余额；末级科目按余额方向录入，反方向余额用负数。"
                 actions={
                     <>
+                        {/* 与柠檬云「期初」一致：导出模板 / 导入 / 试算平衡 */}
+                        <Button icon={<DownloadOutlined />} onClick={() => void exportTemplate()} disabled={!accountSetId}>
+                            导出
+                        </Button>
+                        <Button
+                            icon={<UploadOutlined />}
+                            onClick={() => importInputRef.current?.click()}
+                            disabled={!accountSetId || importing}
+                        >
+                            导入
+                        </Button>
+                        <Button
+                            icon={<CalculatorOutlined />}
+                            onClick={() =>
+                                setCheckMessage(
+                                    totals.balanced
+                                        ? `试算平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}。`
+                                        : `试算不平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}，差额 ${fmtAmount(Math.abs(totals.debit - totals.credit))}。`,
+                                )
+                            }
+                        >
+                            试算平衡
+                        </Button>
+                        <input
+                            ref={importInputRef}
+                            type="file"
+                            accept=".xlsx"
+                            className="hidden"
+                            onChange={(e) => void importFile(e.target.files?.[0] ?? null)}
+                        />
                         <Button
                             icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
                             disabled={loading}
@@ -231,7 +313,8 @@ export default function OpeningBalancesPage() {
                             : "border-[#fecaca] bg-[#fef2f2] text-[#ef4444]",
                     )}
                 >
-                    {totals.balanced ? (
+                    {checkMessage && <span className="sr-only">{checkMessage}</span>}
+                {totals.balanced ? (
                         <CheckCircleOutlined className="text-[16px]" />
                     ) : (
                         <WarningFilled className="text-[16px]" />

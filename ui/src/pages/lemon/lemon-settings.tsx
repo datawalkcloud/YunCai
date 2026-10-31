@@ -789,7 +789,7 @@ export function LemonPermission() {
             icon={SafetyCertificateOutlined}
             actions={
                 <>
-                    <Btn variant="primary" onClick={openCreate}>+新增成员</Btn>
+                    <Btn variant="primary" onClick={openCreate}>新增成员</Btn>
                     <RefreshIcon onClick={() => void load()} />
                 </>
             }
@@ -1220,7 +1220,7 @@ export function LemonBackup() {
                                     开始备份
                                 </Btn>
                                 <Btn disabled={busy} title="从此前下载的备份数据包恢复（覆盖现有数据）" onClick={() => fileRef.current?.click()}>
-                                    恢复数据包
+                                    上传本地备份
                                 </Btn>
                                 <input
                                     ref={fileRef}
