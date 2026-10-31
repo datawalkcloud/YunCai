@@ -24,7 +24,7 @@ export interface SaveBillRequest {
      * @type {string}
      * @memberof SaveBillRequest
      */
-    category?: string;
+    category?: string | null;
     /**
      * 
      * @type {Date}
@@ -66,13 +66,61 @@ export interface SaveBillRequest {
      * @type {string}
      * @memberof SaveBillRequest
      */
+    payee?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SaveBillRequest
+     */
     acceptor?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SaveBillRequest
+     */
+    drawerAccountNo?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SaveBillRequest
+     */
+    payeeAccountNo?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SaveBillRequest
+     */
+    acceptorAccountNo?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SaveBillRequest
+     */
+    drawerBank?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SaveBillRequest
+     */
+    payeeBank?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SaveBillRequest
+     */
+    acceptorBank?: string | null;
     /**
      * 
      * @type {boolean}
      * @memberof SaveBillRequest
      */
     transferable?: boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof SaveBillRequest
+     */
+    status?: number | null;
     /**
      * 
      * @type {string}
@@ -105,8 +153,16 @@ export function SaveBillRequestFromJSONTyped(json: any, ignoreDiscriminator: boo
         'kind': json['kind'] == null ? undefined : json['kind'],
         'dueDate': json['dueDate'] == null ? undefined : (new Date(json['dueDate'])),
         'drawer': json['drawer'] == null ? undefined : json['drawer'],
+        'payee': json['payee'] == null ? undefined : json['payee'],
         'acceptor': json['acceptor'] == null ? undefined : json['acceptor'],
+        'drawerAccountNo': json['drawerAccountNo'] == null ? undefined : json['drawerAccountNo'],
+        'payeeAccountNo': json['payeeAccountNo'] == null ? undefined : json['payeeAccountNo'],
+        'acceptorAccountNo': json['acceptorAccountNo'] == null ? undefined : json['acceptorAccountNo'],
+        'drawerBank': json['drawerBank'] == null ? undefined : json['drawerBank'],
+        'payeeBank': json['payeeBank'] == null ? undefined : json['payeeBank'],
+        'acceptorBank': json['acceptorBank'] == null ? undefined : json['acceptorBank'],
         'transferable': json['transferable'] == null ? undefined : json['transferable'],
+        'status': json['status'] == null ? undefined : json['status'],
         'remark': json['remark'] == null ? undefined : json['remark'],
     };
 }
@@ -129,8 +185,16 @@ export function SaveBillRequestToJSONTyped(value?: SaveBillRequest | null, ignor
         'kind': value['kind'],
         'dueDate': value['dueDate'] == null ? value['dueDate'] : value['dueDate'].toISOString().substring(0,10),
         'drawer': value['drawer'],
+        'payee': value['payee'],
         'acceptor': value['acceptor'],
+        'drawerAccountNo': value['drawerAccountNo'],
+        'payeeAccountNo': value['payeeAccountNo'],
+        'acceptorAccountNo': value['acceptorAccountNo'],
+        'drawerBank': value['drawerBank'],
+        'payeeBank': value['payeeBank'],
+        'acceptorBank': value['acceptorBank'],
         'transferable': value['transferable'],
+        'status': value['status'],
         'remark': value['remark'],
     };
 }

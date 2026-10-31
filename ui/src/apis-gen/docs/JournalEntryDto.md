@@ -12,6 +12,8 @@ Name | Type
 `summary` | string
 `category` | string
 `counterparty` | string
+`project` | string
+`department` | string
 `income` | number
 `expense` | number
 `balance` | number
@@ -31,6 +33,8 @@ const example = {
   "summary": null,
   "category": null,
   "counterparty": null,
+  "project": null,
+  "department": null,
   "income": null,
   "expense": null,
   "balance": null,

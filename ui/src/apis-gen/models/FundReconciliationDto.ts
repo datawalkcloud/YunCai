@@ -32,6 +32,12 @@ export interface FundReconciliationDto {
      * @type {Date}
      * @memberof FundReconciliationDto
      */
+    startDate?: Date;
+    /**
+     * 
+     * @type {Date}
+     * @memberof FundReconciliationDto
+     */
     date?: Date;
     /**
      * 
@@ -39,6 +45,12 @@ export interface FundReconciliationDto {
      * @memberof FundReconciliationDto
      */
     allBalanced?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof FundReconciliationDto
+     */
+    hasUnlinkedAccounts?: boolean;
     /**
      * 
      * @type {Array<FundReconciliationRowDto>}
@@ -64,8 +76,10 @@ export function FundReconciliationDtoFromJSONTyped(json: any, ignoreDiscriminato
     }
     return {
         
+        'startDate': json['startDate'] == null ? undefined : (new Date(json['startDate'])),
         'date': json['date'] == null ? undefined : (new Date(json['date'])),
         'allBalanced': json['allBalanced'] == null ? undefined : json['allBalanced'],
+        'hasUnlinkedAccounts': json['hasUnlinkedAccounts'] == null ? undefined : json['hasUnlinkedAccounts'],
         'rows': json['rows'] == null ? undefined : ((json['rows'] as Array<any>).map(FundReconciliationRowDtoFromJSON)),
     };
 }
@@ -81,8 +95,10 @@ export function FundReconciliationDtoToJSONTyped(value?: FundReconciliationDto |
 
     return {
         
+        'startDate': value['startDate'] == null ? value['startDate'] : value['startDate'].toISOString().substring(0,10),
         'date': value['date'] == null ? value['date'] : value['date'].toISOString().substring(0,10),
         'allBalanced': value['allBalanced'],
+        'hasUnlinkedAccounts': value['hasUnlinkedAccounts'],
         'rows': value['rows'] == null ? undefined : ((value['rows'] as Array<any>).map(FundReconciliationRowDtoToJSON)),
     };
 }

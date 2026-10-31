@@ -57,6 +57,18 @@ export interface JournalEntryDto {
     counterparty?: string | null;
     /**
      * 
+     * @type {string}
+     * @memberof JournalEntryDto
+     */
+    project?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryDto
+     */
+    department?: string | null;
+    /**
+     * 
      * @type {number}
      * @memberof JournalEntryDto
      */
@@ -110,6 +122,8 @@ export function JournalEntryDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'summary': json['summary'] == null ? undefined : json['summary'],
         'category': json['category'] == null ? undefined : json['category'],
         'counterparty': json['counterparty'] == null ? undefined : json['counterparty'],
+        'project': json['project'] == null ? undefined : json['project'],
+        'department': json['department'] == null ? undefined : json['department'],
         'income': json['income'] == null ? undefined : json['income'],
         'expense': json['expense'] == null ? undefined : json['expense'],
         'balance': json['balance'] == null ? undefined : json['balance'],
@@ -135,6 +149,8 @@ export function JournalEntryDtoToJSONTyped(value?: JournalEntryDto | null, ignor
         'summary': value['summary'],
         'category': value['category'],
         'counterparty': value['counterparty'],
+        'project': value['project'],
+        'department': value['department'],
         'income': value['income'],
         'expense': value['expense'],
         'balance': value['balance'],

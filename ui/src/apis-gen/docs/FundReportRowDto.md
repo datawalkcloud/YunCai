@@ -14,6 +14,8 @@ Name | Type
 `balance` | number
 `incomeCount` | number
 `expenseCount` | number
+`secondaryCode` | string
+`secondaryName` | string
 
 ## Example
 
@@ -30,6 +32,8 @@ const example = {
   "balance": null,
   "incomeCount": null,
   "expenseCount": null,
+  "secondaryCode": null,
+  "secondaryName": null,
 } satisfies FundReportRowDto
 
 console.log(example)

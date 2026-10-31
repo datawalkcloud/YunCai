@@ -25,16 +25,36 @@ import {
     FundReportDtoToJSON,
 } from '../models/index';
 
+export interface AccountsetsAccountSetIdFundReportsExportGetRequest {
+    accountSetId: string;
+    dimension?: string;
+    startDate?: Date;
+    endDate?: Date;
+    journalId?: string;
+    keyword?: string;
+    secondary?: string;
+}
+
 export interface AccountsetsAccountSetIdFundReportsGetRequest {
     accountSetId: string;
     dimension?: string;
     startDate?: Date;
     endDate?: Date;
+    journalId?: string;
+    keyword?: string;
+    secondary?: string;
+}
+
+export interface AccountsetsAccountSetIdFundReportsReconciliationExportGetRequest {
+    accountSetId: string;
+    date?: Date;
+    journalId?: string;
 }
 
 export interface AccountsetsAccountSetIdFundReportsReconciliationGetRequest {
     accountSetId: string;
     date?: Date;
+    journalId?: string;
 }
 
 /**
@@ -45,11 +65,47 @@ export interface AccountsetsAccountSetIdFundReportsReconciliationGetRequest {
  */
 export interface FundReportsApiInterface {
     /**
+     * Creates request options for accountsetsAccountSetIdFundReportsExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} [dimension] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [journalId] 
+     * @param {string} [keyword] 
+     * @param {string} [secondary] 
+     * @throws {RequiredError}
+     * @memberof FundReportsApiInterface
+     */
+    accountsetsAccountSetIdFundReportsExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} [dimension] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [journalId] 
+     * @param {string} [keyword] 
+     * @param {string} [secondary] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FundReportsApiInterface
+     */
+    accountsetsAccountSetIdFundReportsExportGetRaw(requestParameters: AccountsetsAccountSetIdFundReportsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFundReportsExportGet(requestParameters: AccountsetsAccountSetIdFundReportsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdFundReportsGet without sending the request
      * @param {string} accountSetId 
      * @param {string} [dimension] 
      * @param {Date} [startDate] 
      * @param {Date} [endDate] 
+     * @param {string} [journalId] 
+     * @param {string} [keyword] 
+     * @param {string} [secondary] 
      * @throws {RequiredError}
      * @memberof FundReportsApiInterface
      */
@@ -61,6 +117,9 @@ export interface FundReportsApiInterface {
      * @param {string} [dimension] 
      * @param {Date} [startDate] 
      * @param {Date} [endDate] 
+     * @param {string} [journalId] 
+     * @param {string} [keyword] 
+     * @param {string} [secondary] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof FundReportsApiInterface
@@ -72,9 +131,35 @@ export interface FundReportsApiInterface {
     accountsetsAccountSetIdFundReportsGet(requestParameters: AccountsetsAccountSetIdFundReportsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FundReportDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdFundReportsReconciliationExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {Date} [date] 
+     * @param {string} [journalId] 
+     * @throws {RequiredError}
+     * @memberof FundReportsApiInterface
+     */
+    accountsetsAccountSetIdFundReportsReconciliationExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Date} [date] 
+     * @param {string} [journalId] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FundReportsApiInterface
+     */
+    accountsetsAccountSetIdFundReportsReconciliationExportGetRaw(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFundReportsReconciliationExportGet(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdFundReportsReconciliationGet without sending the request
      * @param {string} accountSetId 
      * @param {Date} [date] 
+     * @param {string} [journalId] 
      * @throws {RequiredError}
      * @memberof FundReportsApiInterface
      */
@@ -84,6 +169,7 @@ export interface FundReportsApiInterface {
      * 
      * @param {string} accountSetId 
      * @param {Date} [date] 
+     * @param {string} [journalId] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof FundReportsApiInterface
@@ -100,6 +186,72 @@ export interface FundReportsApiInterface {
  * 
  */
 export class FundReportsApi extends runtime.BaseAPI implements FundReportsApiInterface {
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFundReportsExportGet without sending the request
+     */
+    async accountsetsAccountSetIdFundReportsExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFundReportsExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['dimension'] != null) {
+            queryParameters['dimension'] = requestParameters['dimension'];
+        }
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['journalId'] != null) {
+            queryParameters['journalId'] = requestParameters['journalId'];
+        }
+
+        if (requestParameters['keyword'] != null) {
+            queryParameters['keyword'] = requestParameters['keyword'];
+        }
+
+        if (requestParameters['secondary'] != null) {
+            queryParameters['secondary'] = requestParameters['secondary'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fund-reports/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFundReportsExportGetRaw(requestParameters: AccountsetsAccountSetIdFundReportsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFundReportsExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFundReportsExportGet(requestParameters: AccountsetsAccountSetIdFundReportsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFundReportsExportGetRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for accountsetsAccountSetIdFundReportsGet without sending the request
@@ -124,6 +276,18 @@ export class FundReportsApi extends runtime.BaseAPI implements FundReportsApiInt
 
         if (requestParameters['endDate'] != null) {
             queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['journalId'] != null) {
+            queryParameters['journalId'] = requestParameters['journalId'];
+        }
+
+        if (requestParameters['keyword'] != null) {
+            queryParameters['keyword'] = requestParameters['keyword'];
+        }
+
+        if (requestParameters['secondary'] != null) {
+            queryParameters['secondary'] = requestParameters['secondary'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -157,6 +321,56 @@ export class FundReportsApi extends runtime.BaseAPI implements FundReportsApiInt
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdFundReportsReconciliationExportGet without sending the request
+     */
+    async accountsetsAccountSetIdFundReportsReconciliationExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFundReportsReconciliationExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['date'] != null) {
+            queryParameters['date'] = (requestParameters['date'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['journalId'] != null) {
+            queryParameters['journalId'] = requestParameters['journalId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fund-reports/reconciliation/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFundReportsReconciliationExportGetRaw(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFundReportsReconciliationExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFundReportsReconciliationExportGet(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFundReportsReconciliationExportGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdFundReportsReconciliationGet without sending the request
      */
     async accountsetsAccountSetIdFundReportsReconciliationGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationGetRequest): Promise<runtime.RequestOpts> {
@@ -171,6 +385,10 @@ export class FundReportsApi extends runtime.BaseAPI implements FundReportsApiInt
 
         if (requestParameters['date'] != null) {
             queryParameters['date'] = (requestParameters['date'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['journalId'] != null) {
+            queryParameters['journalId'] = requestParameters['journalId'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

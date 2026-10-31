@@ -16,32 +16,94 @@
 import * as runtime from '../runtime';
 import type {
   CreateVoucherRequest,
+  ExportVouchersRequest,
+  RenumberVouchersRequest,
   UpdateVoucherRequest,
+  VoucherAttachmentDto,
   VoucherDetailDto,
   VoucherImportResult,
   VoucherListItemDto,
+  VoucherPdfRequest,
 } from '../models/index';
 import {
     CreateVoucherRequestFromJSON,
     CreateVoucherRequestToJSON,
+    ExportVouchersRequestFromJSON,
+    ExportVouchersRequestToJSON,
+    RenumberVouchersRequestFromJSON,
+    RenumberVouchersRequestToJSON,
     UpdateVoucherRequestFromJSON,
     UpdateVoucherRequestToJSON,
+    VoucherAttachmentDtoFromJSON,
+    VoucherAttachmentDtoToJSON,
     VoucherDetailDtoFromJSON,
     VoucherDetailDtoToJSON,
     VoucherImportResultFromJSON,
     VoucherImportResultToJSON,
     VoucherListItemDtoFromJSON,
     VoucherListItemDtoToJSON,
+    VoucherPdfRequestFromJSON,
+    VoucherPdfRequestToJSON,
 } from '../models/index';
 
 export interface AccountsetsAccountSetIdVouchersExportGetRequest {
     accountSetId: string;
 }
 
+export interface AccountsetsAccountSetIdVouchersExportPostRequest {
+    accountSetId: string;
+    exportVouchersRequest: ExportVouchersRequest;
+}
+
 export interface AccountsetsAccountSetIdVouchersGetRequest {
     accountSetId: string;
     startDate?: Date;
     endDate?: Date;
+    word?: string;
+    preparer?: string;
+    reviewed?: boolean;
+    hasAssists?: boolean;
+    summary?: string;
+    remark?: string;
+    accountId?: string;
+    direction?: boolean;
+    amountFrom?: number;
+    amountTo?: number;
+    numberFrom?: number;
+    numberTo?: number;
+    sortBy?: string;
+    sortDesc?: boolean;
+    deleted?: boolean;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequest {
+    accountSetId: string;
+    id: string;
+    attachmentId: string;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequest {
+    accountSetId: string;
+    id: string;
+    attachmentId: string;
+    download?: boolean;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdAttachmentsGetRequest {
+    accountSetId: string;
+    id: string;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdAttachmentsPostRequest {
+    accountSetId: string;
+    id: string;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdCopyPostRequest {
+    accountSetId: string;
+    id: string;
+    date?: Date;
 }
 
 export interface AccountsetsAccountSetIdVouchersIdDeleteRequest {
@@ -54,7 +116,24 @@ export interface AccountsetsAccountSetIdVouchersIdGetRequest {
     id: string;
 }
 
+export interface AccountsetsAccountSetIdVouchersIdPdfGetRequest {
+    accountSetId: string;
+    id: string;
+    paper?: string;
+    orientation?: string;
+    valign?: string;
+    rows?: number;
+    fontSize?: number;
+    mergePrint?: boolean;
+    showAccountCode?: boolean;
+}
+
 export interface AccountsetsAccountSetIdVouchersIdPostPostRequest {
+    accountSetId: string;
+    id: string;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdPurgeDeleteRequest {
     accountSetId: string;
     id: string;
 }
@@ -65,7 +144,23 @@ export interface AccountsetsAccountSetIdVouchersIdPutRequest {
     updateVoucherRequest: UpdateVoucherRequest;
 }
 
+export interface AccountsetsAccountSetIdVouchersIdRestorePostRequest {
+    accountSetId: string;
+    id: string;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdReversePostRequest {
+    accountSetId: string;
+    id: string;
+    date?: Date;
+}
+
 export interface AccountsetsAccountSetIdVouchersIdReviewPostRequest {
+    accountSetId: string;
+    id: string;
+}
+
+export interface AccountsetsAccountSetIdVouchersIdUnpostPostRequest {
     accountSetId: string;
     id: string;
 }
@@ -81,9 +176,28 @@ export interface AccountsetsAccountSetIdVouchersImportPostRequest {
     conflict?: number;
 }
 
+export interface AccountsetsAccountSetIdVouchersPdfPostRequest {
+    accountSetId: string;
+    voucherPdfRequest: VoucherPdfRequest;
+}
+
 export interface AccountsetsAccountSetIdVouchersPostRequest {
     accountSetId: string;
     createVoucherRequest: CreateVoucherRequest;
+}
+
+export interface AccountsetsAccountSetIdVouchersRecycleBinDeleteRequest {
+    accountSetId: string;
+}
+
+export interface AccountsetsAccountSetIdVouchersRenumberPostRequest {
+    accountSetId: string;
+    renumberVouchersRequest: RenumberVouchersRequest;
+}
+
+export interface AccountsetsAccountSetIdVouchersSummariesGetRequest {
+    accountSetId: string;
+    limit?: number;
 }
 
 /**
@@ -115,10 +229,48 @@ export interface VouchersApiInterface {
     accountsetsAccountSetIdVouchersExportGet(requestParameters: AccountsetsAccountSetIdVouchersExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersExportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {ExportVouchersRequest} exportVouchersRequest 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersExportPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersExportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {ExportVouchersRequest} exportVouchersRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersExportPostRaw(requestParameters: AccountsetsAccountSetIdVouchersExportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersExportPost(requestParameters: AccountsetsAccountSetIdVouchersExportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersGet without sending the request
      * @param {string} accountSetId 
      * @param {Date} [startDate] 
      * @param {Date} [endDate] 
+     * @param {string} [word] 
+     * @param {string} [preparer] 
+     * @param {boolean} [reviewed] 
+     * @param {boolean} [hasAssists] 
+     * @param {string} [summary] 
+     * @param {string} [remark] 
+     * @param {string} [accountId] 
+     * @param {boolean} [direction] 
+     * @param {number} [amountFrom] 
+     * @param {number} [amountTo] 
+     * @param {number} [numberFrom] 
+     * @param {number} [numberTo] 
+     * @param {string} [sortBy] 
+     * @param {boolean} [sortDesc] 
+     * @param {boolean} [deleted] 
      * @throws {RequiredError}
      * @memberof VouchersApiInterface
      */
@@ -129,6 +281,21 @@ export interface VouchersApiInterface {
      * @param {string} accountSetId 
      * @param {Date} [startDate] 
      * @param {Date} [endDate] 
+     * @param {string} [word] 
+     * @param {string} [preparer] 
+     * @param {boolean} [reviewed] 
+     * @param {boolean} [hasAssists] 
+     * @param {string} [summary] 
+     * @param {string} [remark] 
+     * @param {string} [accountId] 
+     * @param {boolean} [direction] 
+     * @param {number} [amountFrom] 
+     * @param {number} [amountTo] 
+     * @param {number} [numberFrom] 
+     * @param {number} [numberTo] 
+     * @param {string} [sortBy] 
+     * @param {boolean} [sortDesc] 
+     * @param {boolean} [deleted] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof VouchersApiInterface
@@ -138,6 +305,131 @@ export interface VouchersApiInterface {
     /**
      */
     accountsetsAccountSetIdVouchersGet(requestParameters: AccountsetsAccountSetIdVouchersGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<VoucherListItemDto>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDelete without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} attachmentId 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} attachmentId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRaw(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDelete(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} attachmentId 
+     * @param {boolean} [download] 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} attachmentId 
+     * @param {boolean} [download] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRaw(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGet(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdAttachmentsGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsGetRaw(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<VoucherAttachmentDto>>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsGet(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<VoucherAttachmentDto>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdAttachmentsPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherAttachmentDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdAttachmentsPost(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherAttachmentDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdCopyPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Date} [date] 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdCopyPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdCopyPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Date} [date] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdCopyPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdCopyPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdCopyPost(requestParameters: AccountsetsAccountSetIdVouchersIdCopyPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdVouchersIdDelete without sending the request
@@ -186,6 +478,43 @@ export interface VouchersApiInterface {
     accountsetsAccountSetIdVouchersIdGet(requestParameters: AccountsetsAccountSetIdVouchersIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} [paper] 
+     * @param {string} [orientation] 
+     * @param {string} [valign] 
+     * @param {number} [rows] 
+     * @param {number} [fontSize] 
+     * @param {boolean} [mergePrint] 
+     * @param {boolean} [showAccountCode] 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} [paper] 
+     * @param {string} [orientation] 
+     * @param {string} [valign] 
+     * @param {number} [rows] 
+     * @param {number} [fontSize] 
+     * @param {boolean} [mergePrint] 
+     * @param {boolean} [showAccountCode] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdPdfGetRaw(requestParameters: AccountsetsAccountSetIdVouchersIdPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdPdfGet(requestParameters: AccountsetsAccountSetIdVouchersIdPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersIdPostPost without sending the request
      * @param {string} accountSetId 
      * @param {string} id 
@@ -207,6 +536,29 @@ export interface VouchersApiInterface {
     /**
      */
     accountsetsAccountSetIdVouchersIdPostPost(requestParameters: AccountsetsAccountSetIdVouchersIdPostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdPurgeDelete without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdPurgeDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdPurgeDeleteRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdPurgeDeleteRaw(requestParameters: AccountsetsAccountSetIdVouchersIdPurgeDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdPurgeDelete(requestParameters: AccountsetsAccountSetIdVouchersIdPurgeDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdVouchersIdPut without sending the request
@@ -234,6 +586,54 @@ export interface VouchersApiInterface {
     accountsetsAccountSetIdVouchersIdPut(requestParameters: AccountsetsAccountSetIdVouchersIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdRestorePost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdRestorePostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdRestorePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdRestorePostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdRestorePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdRestorePost(requestParameters: AccountsetsAccountSetIdVouchersIdRestorePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdReversePost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Date} [date] 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdReversePostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdReversePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Date} [date] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdReversePostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdReversePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdReversePost(requestParameters: AccountsetsAccountSetIdVouchersIdReversePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersIdReviewPost without sending the request
      * @param {string} accountSetId 
      * @param {string} id 
@@ -255,6 +655,29 @@ export interface VouchersApiInterface {
     /**
      */
     accountsetsAccountSetIdVouchersIdReviewPost(requestParameters: AccountsetsAccountSetIdVouchersIdReviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdUnpostPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdUnpostPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdUnpostPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersIdUnpostPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdUnpostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersIdUnpostPost(requestParameters: AccountsetsAccountSetIdVouchersIdUnpostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdVouchersIdUnreviewPost without sending the request
@@ -305,6 +728,29 @@ export interface VouchersApiInterface {
     accountsetsAccountSetIdVouchersImportPost(requestParameters: AccountsetsAccountSetIdVouchersImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherImportResult>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersPdfPost without sending the request
+     * @param {string} accountSetId 
+     * @param {VoucherPdfRequest} voucherPdfRequest 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersPdfPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersPdfPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {VoucherPdfRequest} voucherPdfRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersPdfPostRaw(requestParameters: AccountsetsAccountSetIdVouchersPdfPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersPdfPost(requestParameters: AccountsetsAccountSetIdVouchersPdfPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersPost without sending the request
      * @param {string} accountSetId 
      * @param {CreateVoucherRequest} createVoucherRequest 
@@ -326,6 +772,73 @@ export interface VouchersApiInterface {
     /**
      */
     accountsetsAccountSetIdVouchersPost(requestParameters: AccountsetsAccountSetIdVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersRecycleBinDelete without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersRecycleBinDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersRecycleBinDeleteRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersRecycleBinDeleteRaw(requestParameters: AccountsetsAccountSetIdVouchersRecycleBinDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersRecycleBinDelete(requestParameters: AccountsetsAccountSetIdVouchersRecycleBinDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersRenumberPost without sending the request
+     * @param {string} accountSetId 
+     * @param {RenumberVouchersRequest} renumberVouchersRequest 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersRenumberPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersRenumberPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {RenumberVouchersRequest} renumberVouchersRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersRenumberPostRaw(requestParameters: AccountsetsAccountSetIdVouchersRenumberPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersRenumberPost(requestParameters: AccountsetsAccountSetIdVouchersRenumberPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersSummariesGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [limit] 
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersSummariesGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersSummariesGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [limit] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VouchersApiInterface
+     */
+    accountsetsAccountSetIdVouchersSummariesGetRaw(requestParameters: AccountsetsAccountSetIdVouchersSummariesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<string>>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchersSummariesGet(requestParameters: AccountsetsAccountSetIdVouchersSummariesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<string>>;
 
 }
 
@@ -377,6 +890,58 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersExportPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersExportPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersExportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersExportPost().'
+            );
+        }
+
+        if (requestParameters['exportVouchersRequest'] == null) {
+            throw new runtime.RequiredError(
+                'exportVouchersRequest',
+                'Required parameter "exportVouchersRequest" was null or undefined when calling accountsetsAccountSetIdVouchersExportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ExportVouchersRequestToJSON(requestParameters['exportVouchersRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersExportPostRaw(requestParameters: AccountsetsAccountSetIdVouchersExportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersExportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersExportPost(requestParameters: AccountsetsAccountSetIdVouchersExportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchersExportPostRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersGet without sending the request
      */
     async accountsetsAccountSetIdVouchersGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersGetRequest): Promise<runtime.RequestOpts> {
@@ -395,6 +960,66 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
 
         if (requestParameters['endDate'] != null) {
             queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['word'] != null) {
+            queryParameters['word'] = requestParameters['word'];
+        }
+
+        if (requestParameters['preparer'] != null) {
+            queryParameters['preparer'] = requestParameters['preparer'];
+        }
+
+        if (requestParameters['reviewed'] != null) {
+            queryParameters['reviewed'] = requestParameters['reviewed'];
+        }
+
+        if (requestParameters['hasAssists'] != null) {
+            queryParameters['hasAssists'] = requestParameters['hasAssists'];
+        }
+
+        if (requestParameters['summary'] != null) {
+            queryParameters['summary'] = requestParameters['summary'];
+        }
+
+        if (requestParameters['remark'] != null) {
+            queryParameters['remark'] = requestParameters['remark'];
+        }
+
+        if (requestParameters['accountId'] != null) {
+            queryParameters['accountId'] = requestParameters['accountId'];
+        }
+
+        if (requestParameters['direction'] != null) {
+            queryParameters['direction'] = requestParameters['direction'];
+        }
+
+        if (requestParameters['amountFrom'] != null) {
+            queryParameters['amountFrom'] = requestParameters['amountFrom'];
+        }
+
+        if (requestParameters['amountTo'] != null) {
+            queryParameters['amountTo'] = requestParameters['amountTo'];
+        }
+
+        if (requestParameters['numberFrom'] != null) {
+            queryParameters['numberFrom'] = requestParameters['numberFrom'];
+        }
+
+        if (requestParameters['numberTo'] != null) {
+            queryParameters['numberTo'] = requestParameters['numberTo'];
+        }
+
+        if (requestParameters['sortBy'] != null) {
+            queryParameters['sortBy'] = requestParameters['sortBy'];
+        }
+
+        if (requestParameters['sortDesc'] != null) {
+            queryParameters['sortDesc'] = requestParameters['sortDesc'];
+        }
+
+        if (requestParameters['deleted'] != null) {
+            queryParameters['deleted'] = requestParameters['deleted'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -424,6 +1049,304 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
      */
     async accountsetsAccountSetIdVouchersGet(requestParameters: AccountsetsAccountSetIdVouchersGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<VoucherListItemDto>> {
         const response = await this.accountsetsAccountSetIdVouchersGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDelete without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDelete().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDelete().'
+            );
+        }
+
+        if (requestParameters['attachmentId'] == null) {
+            throw new runtime.RequiredError(
+                'attachmentId',
+                'Required parameter "attachmentId" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDelete().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/attachments/{attachmentId}`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"attachmentId"}}`, encodeURIComponent(String(requestParameters['attachmentId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRaw(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDelete(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdDeleteRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGet without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGet().'
+            );
+        }
+
+        if (requestParameters['attachmentId'] == null) {
+            throw new runtime.RequiredError(
+                'attachmentId',
+                'Required parameter "attachmentId" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['download'] != null) {
+            queryParameters['download'] = requestParameters['download'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/attachments/{attachmentId}/file`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"attachmentId"}}`, encodeURIComponent(String(requestParameters['attachmentId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRaw(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGet(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchersIdAttachmentsAttachmentIdFileGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdAttachmentsGet without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/attachments`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsGetRaw(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<VoucherAttachmentDto>>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdAttachmentsGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(VoucherAttachmentDtoFromJSON));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsGet(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<VoucherAttachmentDto>> {
+        const response = await this.accountsetsAccountSetIdVouchersIdAttachmentsGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdAttachmentsPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdAttachmentsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/attachments`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherAttachmentDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdAttachmentsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VoucherAttachmentDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdAttachmentsPost(requestParameters: AccountsetsAccountSetIdVouchersIdAttachmentsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherAttachmentDto> {
+        const response = await this.accountsetsAccountSetIdVouchersIdAttachmentsPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdCopyPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdCopyPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdCopyPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdCopyPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdCopyPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['date'] != null) {
+            queryParameters['date'] = (requestParameters['date'] as any).toISOString().substring(0,10);
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/copy`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdCopyPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdCopyPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdCopyPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VoucherDetailDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdCopyPost(requestParameters: AccountsetsAccountSetIdVouchersIdCopyPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
+        const response = await this.accountsetsAccountSetIdVouchersIdCopyPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -529,6 +1452,84 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdPdfGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['paper'] != null) {
+            queryParameters['paper'] = requestParameters['paper'];
+        }
+
+        if (requestParameters['orientation'] != null) {
+            queryParameters['orientation'] = requestParameters['orientation'];
+        }
+
+        if (requestParameters['valign'] != null) {
+            queryParameters['valign'] = requestParameters['valign'];
+        }
+
+        if (requestParameters['rows'] != null) {
+            queryParameters['rows'] = requestParameters['rows'];
+        }
+
+        if (requestParameters['fontSize'] != null) {
+            queryParameters['fontSize'] = requestParameters['fontSize'];
+        }
+
+        if (requestParameters['mergePrint'] != null) {
+            queryParameters['mergePrint'] = requestParameters['mergePrint'];
+        }
+
+        if (requestParameters['showAccountCode'] != null) {
+            queryParameters['showAccountCode'] = requestParameters['showAccountCode'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdPdfGetRaw(requestParameters: AccountsetsAccountSetIdVouchersIdPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdPdfGet(requestParameters: AccountsetsAccountSetIdVouchersIdPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchersIdPdfGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersIdPostPost without sending the request
      */
     async accountsetsAccountSetIdVouchersIdPostPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdPostPostRequest): Promise<runtime.RequestOpts> {
@@ -577,6 +1578,56 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
     async accountsetsAccountSetIdVouchersIdPostPost(requestParameters: AccountsetsAccountSetIdVouchersIdPostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
         const response = await this.accountsetsAccountSetIdVouchersIdPostPostRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdPurgeDelete without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdPurgeDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdPurgeDeleteRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdPurgeDelete().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdPurgeDelete().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/purge`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdPurgeDeleteRaw(requestParameters: AccountsetsAccountSetIdVouchersIdPurgeDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdPurgeDeleteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdPurgeDelete(requestParameters: AccountsetsAccountSetIdVouchersIdPurgeDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchersIdPurgeDeleteRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -641,6 +1692,112 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdRestorePost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdRestorePostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdRestorePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdRestorePost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdRestorePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/restore`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdRestorePostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdRestorePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdRestorePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VoucherDetailDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdRestorePost(requestParameters: AccountsetsAccountSetIdVouchersIdRestorePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
+        const response = await this.accountsetsAccountSetIdVouchersIdRestorePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdReversePost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdReversePostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdReversePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdReversePost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdReversePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['date'] != null) {
+            queryParameters['date'] = (requestParameters['date'] as any).toISOString().substring(0,10);
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/reverse`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdReversePostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdReversePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdReversePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VoucherDetailDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdReversePost(requestParameters: AccountsetsAccountSetIdVouchersIdReversePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
+        const response = await this.accountsetsAccountSetIdVouchersIdReversePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersIdReviewPost without sending the request
      */
     async accountsetsAccountSetIdVouchersIdReviewPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdReviewPostRequest): Promise<runtime.RequestOpts> {
@@ -688,6 +1845,57 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
      */
     async accountsetsAccountSetIdVouchersIdReviewPost(requestParameters: AccountsetsAccountSetIdVouchersIdReviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
         const response = await this.accountsetsAccountSetIdVouchersIdReviewPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersIdUnpostPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersIdUnpostPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersIdUnpostPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersIdUnpostPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdVouchersIdUnpostPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/{id}/unpost`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdUnpostPostRaw(requestParameters: AccountsetsAccountSetIdVouchersIdUnpostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherDetailDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersIdUnpostPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VoucherDetailDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersIdUnpostPost(requestParameters: AccountsetsAccountSetIdVouchersIdUnpostPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
+        const response = await this.accountsetsAccountSetIdVouchersIdUnpostPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -811,6 +2019,58 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchersPdfPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersPdfPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersPdfPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersPdfPost().'
+            );
+        }
+
+        if (requestParameters['voucherPdfRequest'] == null) {
+            throw new runtime.RequiredError(
+                'voucherPdfRequest',
+                'Required parameter "voucherPdfRequest" was null or undefined when calling accountsetsAccountSetIdVouchersPdfPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: VoucherPdfRequestToJSON(requestParameters['voucherPdfRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersPdfPostRaw(requestParameters: AccountsetsAccountSetIdVouchersPdfPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersPdfPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersPdfPost(requestParameters: AccountsetsAccountSetIdVouchersPdfPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchersPdfPostRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchersPost without sending the request
      */
     async accountsetsAccountSetIdVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersPostRequest): Promise<runtime.RequestOpts> {
@@ -860,6 +2120,147 @@ export class VouchersApi extends runtime.BaseAPI implements VouchersApiInterface
      */
     async accountsetsAccountSetIdVouchersPost(requestParameters: AccountsetsAccountSetIdVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherDetailDto> {
         const response = await this.accountsetsAccountSetIdVouchersPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersRecycleBinDelete without sending the request
+     */
+    async accountsetsAccountSetIdVouchersRecycleBinDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersRecycleBinDeleteRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersRecycleBinDelete().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/recycle-bin`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersRecycleBinDeleteRaw(requestParameters: AccountsetsAccountSetIdVouchersRecycleBinDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersRecycleBinDeleteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersRecycleBinDelete(requestParameters: AccountsetsAccountSetIdVouchersRecycleBinDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchersRecycleBinDeleteRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersRenumberPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchersRenumberPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersRenumberPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersRenumberPost().'
+            );
+        }
+
+        if (requestParameters['renumberVouchersRequest'] == null) {
+            throw new runtime.RequiredError(
+                'renumberVouchersRequest',
+                'Required parameter "renumberVouchersRequest" was null or undefined when calling accountsetsAccountSetIdVouchersRenumberPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/renumber`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RenumberVouchersRequestToJSON(requestParameters['renumberVouchersRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersRenumberPostRaw(requestParameters: AccountsetsAccountSetIdVouchersRenumberPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersRenumberPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersRenumberPost(requestParameters: AccountsetsAccountSetIdVouchersRenumberPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchersRenumberPostRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchersSummariesGet without sending the request
+     */
+    async accountsetsAccountSetIdVouchersSummariesGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchersSummariesGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchersSummariesGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Vouchers/summaries`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersSummariesGetRaw(requestParameters: AccountsetsAccountSetIdVouchersSummariesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<string>>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchersSummariesGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse<any>(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchersSummariesGet(requestParameters: AccountsetsAccountSetIdVouchersSummariesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<string>> {
+        const response = await this.accountsetsAccountSetIdVouchersSummariesGetRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

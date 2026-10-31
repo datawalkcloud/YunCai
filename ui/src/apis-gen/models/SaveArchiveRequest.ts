@@ -85,6 +85,12 @@ export interface SaveArchiveRequest {
      * @memberof SaveArchiveRequest
      */
     source?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SaveArchiveRequest
+     */
+    isPaper?: boolean;
 }
 
 /**
@@ -115,6 +121,7 @@ export function SaveArchiveRequestFromJSONTyped(json: any, ignoreDiscriminator: 
         'checkStatus': json['checkStatus'] == null ? undefined : json['checkStatus'],
         'uploader': json['uploader'] == null ? undefined : json['uploader'],
         'source': json['source'] == null ? undefined : json['source'],
+        'isPaper': json['isPaper'] == null ? undefined : json['isPaper'],
     };
 }
 
@@ -140,6 +147,7 @@ export function SaveArchiveRequestToJSONTyped(value?: SaveArchiveRequest | null,
         'checkStatus': value['checkStatus'],
         'uploader': value['uploader'],
         'source': value['source'],
+        'isPaper': value['isPaper'],
     };
 }
 

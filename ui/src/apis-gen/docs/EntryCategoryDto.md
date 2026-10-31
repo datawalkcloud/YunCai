@@ -9,7 +9,13 @@ Name | Type
 `id` | string
 `type` | number
 `typeText` | string
+`code` | string
 `name` | string
+`parentId` | string
+`parentName` | string
+`cashFlowItemId` | string
+`cashFlowName` | string
+`isEnabled` | boolean
 `smartKeywords` | string
 `voucherSubjectId` | string
 `voucherSubjectCode` | string
@@ -25,7 +31,13 @@ const example = {
   "id": null,
   "type": null,
   "typeText": null,
+  "code": null,
   "name": null,
+  "parentId": null,
+  "parentName": null,
+  "cashFlowItemId": null,
+  "cashFlowName": null,
+  "isEnabled": null,
   "smartKeywords": null,
   "voucherSubjectId": null,
   "voucherSubjectCode": null,

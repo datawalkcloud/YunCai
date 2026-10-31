@@ -6,8 +6,10 @@
 
 Name | Type
 ------------ | -------------
+`startDate` | Date
 `date` | Date
 `allBalanced` | boolean
+`hasUnlinkedAccounts` | boolean
 `rows` | [Array&lt;FundReconciliationRowDto&gt;](FundReconciliationRowDto.md)
 
 ## Example
@@ -17,8 +19,10 @@ import type { FundReconciliationDto } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "startDate": null,
   "date": null,
   "allBalanced": null,
+  "hasUnlinkedAccounts": null,
   "rows": null,
 } satisfies FundReconciliationDto
 

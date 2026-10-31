@@ -8,6 +8,7 @@ Name | Type
 ------------ | -------------
 `date` | Date
 `attachmentCount` | number
+`remark` | string
 `entries` | [Array&lt;CreateVoucherEntryRequest&gt;](CreateVoucherEntryRequest.md)
 
 ## Example
@@ -19,6 +20,7 @@ import type { UpdateVoucherRequest } from ''
 const example = {
   "date": null,
   "attachmentCount": null,
+  "remark": null,
   "entries": null,
 } satisfies UpdateVoucherRequest
 

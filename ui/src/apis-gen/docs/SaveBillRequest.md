@@ -13,8 +13,16 @@ Name | Type
 `kind` | number
 `dueDate` | Date
 `drawer` | string
+`payee` | string
 `acceptor` | string
+`drawerAccountNo` | string
+`payeeAccountNo` | string
+`acceptorAccountNo` | string
+`drawerBank` | string
+`payeeBank` | string
+`acceptorBank` | string
 `transferable` | boolean
+`status` | number
 `remark` | string
 
 ## Example
@@ -31,8 +39,16 @@ const example = {
   "kind": null,
   "dueDate": null,
   "drawer": null,
+  "payee": null,
   "acceptor": null,
+  "drawerAccountNo": null,
+  "payeeAccountNo": null,
+  "acceptorAccountNo": null,
+  "drawerBank": null,
+  "payeeBank": null,
+  "acceptorBank": null,
   "transferable": null,
+  "status": null,
   "remark": null,
 } satisfies SaveBillRequest
 

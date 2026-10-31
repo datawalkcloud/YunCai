@@ -10,6 +10,7 @@ Name | Type
 `number` | number
 `date` | Date
 `attachmentCount` | number
+`remark` | string
 `entries` | [Array&lt;CreateVoucherEntryRequest&gt;](CreateVoucherEntryRequest.md)
 
 ## Example
@@ -23,6 +24,7 @@ const example = {
   "number": null,
   "date": null,
   "attachmentCount": null,
+  "remark": null,
   "entries": null,
 } satisfies CreateVoucherRequest
 

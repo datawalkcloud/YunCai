@@ -53,6 +53,12 @@ export interface CreateVoucherRequest {
     attachmentCount?: number;
     /**
      * 
+     * @type {string}
+     * @memberof CreateVoucherRequest
+     */
+    remark?: string | null;
+    /**
+     * 
      * @type {Array<CreateVoucherEntryRequest>}
      * @memberof CreateVoucherRequest
      */
@@ -80,6 +86,7 @@ export function CreateVoucherRequestFromJSONTyped(json: any, ignoreDiscriminator
         'number': json['number'] == null ? undefined : json['number'],
         'date': json['date'] == null ? undefined : (new Date(json['date'])),
         'attachmentCount': json['attachmentCount'] == null ? undefined : json['attachmentCount'],
+        'remark': json['remark'] == null ? undefined : json['remark'],
         'entries': json['entries'] == null ? undefined : ((json['entries'] as Array<any>).map(CreateVoucherEntryRequestFromJSON)),
     };
 }
@@ -99,6 +106,7 @@ export function CreateVoucherRequestToJSONTyped(value?: CreateVoucherRequest | n
         'number': value['number'],
         'date': value['date'] == null ? value['date'] : value['date'].toISOString().substring(0,10),
         'attachmentCount': value['attachmentCount'],
+        'remark': value['remark'],
         'entries': value['entries'] == null ? undefined : ((value['entries'] as Array<any>).map(CreateVoucherEntryRequestToJSON)),
     };
 }

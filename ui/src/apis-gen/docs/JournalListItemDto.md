@@ -8,6 +8,8 @@ Name | Type
 ------------ | -------------
 `id` | string
 `name` | string
+`code` | string
+`currency` | string
 `type` | number
 `typeText` | string
 `accountId` | string
@@ -31,6 +33,8 @@ import type { JournalListItemDto } from ''
 const example = {
   "id": null,
   "name": null,
+  "code": null,
+  "currency": null,
   "type": null,
   "typeText": null,
   "accountId": null,

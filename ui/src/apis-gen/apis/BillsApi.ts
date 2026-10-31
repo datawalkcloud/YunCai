@@ -15,18 +15,41 @@
 
 import * as runtime from '../runtime';
 import type {
+  BillAttachmentInfo,
   BillDto,
+  BillImportResult,
+  BulkBillRequest,
+  BulkBillVoucherResult,
   ChangeBillStatusRequest,
   SaveBillRequest,
 } from '../models/index';
 import {
+    BillAttachmentInfoFromJSON,
+    BillAttachmentInfoToJSON,
     BillDtoFromJSON,
     BillDtoToJSON,
+    BillImportResultFromJSON,
+    BillImportResultToJSON,
+    BulkBillRequestFromJSON,
+    BulkBillRequestToJSON,
+    BulkBillVoucherResultFromJSON,
+    BulkBillVoucherResultToJSON,
     ChangeBillStatusRequestFromJSON,
     ChangeBillStatusRequestToJSON,
     SaveBillRequestFromJSON,
     SaveBillRequestToJSON,
 } from '../models/index';
+
+export interface AccountsetsAccountSetIdBillsBulkDeletePostRequest {
+    accountSetId: string;
+    bulkBillRequest: BulkBillRequest;
+}
+
+export interface AccountsetsAccountSetIdBillsExportGetRequest {
+    accountSetId: string;
+    startDate?: Date;
+    endDate?: Date;
+}
 
 export interface AccountsetsAccountSetIdBillsGetRequest {
     accountSetId: string;
@@ -34,7 +57,40 @@ export interface AccountsetsAccountSetIdBillsGetRequest {
     endDate?: Date;
 }
 
+export interface AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequest {
+    accountSetId: string;
+    id: string;
+    attachmentId: string;
+}
+
+export interface AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequest {
+    accountSetId: string;
+    id: string;
+    attachmentId: string;
+}
+
+export interface AccountsetsAccountSetIdBillsIdAttachmentsGetRequest {
+    accountSetId: string;
+    id: string;
+}
+
+export interface AccountsetsAccountSetIdBillsIdAttachmentsPostRequest {
+    accountSetId: string;
+    id: string;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdBillsIdCollectPostRequest {
+    accountSetId: string;
+    id: string;
+}
+
 export interface AccountsetsAccountSetIdBillsIdDeleteRequest {
+    accountSetId: string;
+    id: string;
+}
+
+export interface AccountsetsAccountSetIdBillsIdEndorsePostRequest {
     accountSetId: string;
     id: string;
 }
@@ -51,9 +107,23 @@ export interface AccountsetsAccountSetIdBillsIdStatusPostRequest {
     changeBillStatusRequest: ChangeBillStatusRequest;
 }
 
+export interface AccountsetsAccountSetIdBillsImportPostRequest {
+    accountSetId: string;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdBillsImportTemplateGetRequest {
+    accountSetId: string;
+}
+
 export interface AccountsetsAccountSetIdBillsPostRequest {
     accountSetId: string;
     saveBillRequest: SaveBillRequest;
+}
+
+export interface AccountsetsAccountSetIdBillsVouchersPostRequest {
+    accountSetId: string;
+    bulkBillRequest: BulkBillRequest;
 }
 
 /**
@@ -63,6 +133,54 @@ export interface AccountsetsAccountSetIdBillsPostRequest {
  * @interface BillsApiInterface
  */
 export interface BillsApiInterface {
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsBulkDeletePost without sending the request
+     * @param {string} accountSetId 
+     * @param {BulkBillRequest} bulkBillRequest 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsBulkDeletePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {BulkBillRequest} bulkBillRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdBillsBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsBulkDeletePost(requestParameters: AccountsetsAccountSetIdBillsBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdBillsExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsExportGetRaw(requestParameters: AccountsetsAccountSetIdBillsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsExportGet(requestParameters: AccountsetsAccountSetIdBillsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
     /**
      * Creates request options for accountsetsAccountSetIdBillsGet without sending the request
      * @param {string} accountSetId 
@@ -89,6 +207,127 @@ export interface BillsApiInterface {
     accountsetsAccountSetIdBillsGet(requestParameters: AccountsetsAccountSetIdBillsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<BillDto>>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDelete without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} attachmentId 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} attachmentId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRaw(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDelete(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} attachmentId 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} attachmentId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRaw(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGet(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdAttachmentsGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsGetRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsGetRaw(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<BillAttachmentInfo>>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsGet(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<BillAttachmentInfo>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdAttachmentsPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsPostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsPostRaw(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillAttachmentInfo>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsIdAttachmentsPost(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillAttachmentInfo>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdCollectPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdCollectPostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdCollectPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdCollectPostRaw(requestParameters: AccountsetsAccountSetIdBillsIdCollectPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsIdCollectPost(requestParameters: AccountsetsAccountSetIdBillsIdCollectPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillDto>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdBillsIdDelete without sending the request
      * @param {string} accountSetId 
      * @param {string} id 
@@ -110,6 +349,29 @@ export interface BillsApiInterface {
     /**
      */
     accountsetsAccountSetIdBillsIdDelete(requestParameters: AccountsetsAccountSetIdBillsIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdEndorsePost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdEndorsePostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdEndorsePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsIdEndorsePostRaw(requestParameters: AccountsetsAccountSetIdBillsIdEndorsePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsIdEndorsePost(requestParameters: AccountsetsAccountSetIdBillsIdEndorsePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdBillsIdPut without sending the request
@@ -162,6 +424,50 @@ export interface BillsApiInterface {
     accountsetsAccountSetIdBillsIdStatusPost(requestParameters: AccountsetsAccountSetIdBillsIdStatusPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdBillsImportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsImportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsImportPostRaw(requestParameters: AccountsetsAccountSetIdBillsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillImportResult>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsImportPost(requestParameters: AccountsetsAccountSetIdBillsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillImportResult>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsImportTemplateGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdBillsImportTemplateGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdBillsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsImportTemplateGet(requestParameters: AccountsetsAccountSetIdBillsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdBillsPost without sending the request
      * @param {string} accountSetId 
      * @param {SaveBillRequest} saveBillRequest 
@@ -184,12 +490,142 @@ export interface BillsApiInterface {
      */
     accountsetsAccountSetIdBillsPost(requestParameters: AccountsetsAccountSetIdBillsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillDto>;
 
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsVouchersPost without sending the request
+     * @param {string} accountSetId 
+     * @param {BulkBillRequest} bulkBillRequest 
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsVouchersPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {BulkBillRequest} bulkBillRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillsApiInterface
+     */
+    accountsetsAccountSetIdBillsVouchersPostRaw(requestParameters: AccountsetsAccountSetIdBillsVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkBillVoucherResult>>;
+
+    /**
+     */
+    accountsetsAccountSetIdBillsVouchersPost(requestParameters: AccountsetsAccountSetIdBillsVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkBillVoucherResult>;
+
 }
 
 /**
  * 
  */
 export class BillsApi extends runtime.BaseAPI implements BillsApiInterface {
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsBulkDeletePost without sending the request
+     */
+    async accountsetsAccountSetIdBillsBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsBulkDeletePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsBulkDeletePost().'
+            );
+        }
+
+        if (requestParameters['bulkBillRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkBillRequest',
+                'Required parameter "bulkBillRequest" was null or undefined when calling accountsetsAccountSetIdBillsBulkDeletePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/bulk-delete`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkBillRequestToJSON(requestParameters['bulkBillRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdBillsBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsBulkDeletePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<number>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsBulkDeletePost(requestParameters: AccountsetsAccountSetIdBillsBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number> {
+        const response = await this.accountsetsAccountSetIdBillsBulkDeletePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsExportGet without sending the request
+     */
+    async accountsetsAccountSetIdBillsExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdBillsExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsExportGetRaw(requestParameters: AccountsetsAccountSetIdBillsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsExportGet(requestParameters: AccountsetsAccountSetIdBillsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdBillsExportGetRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for accountsetsAccountSetIdBillsGet without sending the request
@@ -243,6 +679,296 @@ export class BillsApi extends runtime.BaseAPI implements BillsApiInterface {
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDelete without sending the request
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDelete().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDelete().'
+            );
+        }
+
+        if (requestParameters['attachmentId'] == null) {
+            throw new runtime.RequiredError(
+                'attachmentId',
+                'Required parameter "attachmentId" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDelete().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/{id}/attachments/{attachmentId}`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"attachmentId"}}`, encodeURIComponent(String(requestParameters['attachmentId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRaw(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDelete(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdDeleteRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGet without sending the request
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGet().'
+            );
+        }
+
+        if (requestParameters['attachmentId'] == null) {
+            throw new runtime.RequiredError(
+                'attachmentId',
+                'Required parameter "attachmentId" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/{id}/attachments/{attachmentId}`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"attachmentId"}}`, encodeURIComponent(String(requestParameters['attachmentId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRaw(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGet(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdBillsIdAttachmentsAttachmentIdGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdAttachmentsGet without sending the request
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsGetRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/{id}/attachments`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsGetRaw(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<BillAttachmentInfo>>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsIdAttachmentsGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(BillAttachmentInfoFromJSON));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsGet(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<BillAttachmentInfo>> {
+        const response = await this.accountsetsAccountSetIdBillsIdAttachmentsGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdAttachmentsPost without sending the request
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsPostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdBillsIdAttachmentsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/{id}/attachments`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsPostRaw(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillAttachmentInfo>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsIdAttachmentsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BillAttachmentInfoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdAttachmentsPost(requestParameters: AccountsetsAccountSetIdBillsIdAttachmentsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillAttachmentInfo> {
+        const response = await this.accountsetsAccountSetIdBillsIdAttachmentsPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdCollectPost without sending the request
+     */
+    async accountsetsAccountSetIdBillsIdCollectPostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdCollectPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsIdCollectPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdBillsIdCollectPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/{id}/collect`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdCollectPostRaw(requestParameters: AccountsetsAccountSetIdBillsIdCollectPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsIdCollectPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BillDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdCollectPost(requestParameters: AccountsetsAccountSetIdBillsIdCollectPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillDto> {
+        const response = await this.accountsetsAccountSetIdBillsIdCollectPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdBillsIdDelete without sending the request
      */
     async accountsetsAccountSetIdBillsIdDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdDeleteRequest): Promise<runtime.RequestOpts> {
@@ -290,6 +1016,57 @@ export class BillsApi extends runtime.BaseAPI implements BillsApiInterface {
      */
     async accountsetsAccountSetIdBillsIdDelete(requestParameters: AccountsetsAccountSetIdBillsIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.accountsetsAccountSetIdBillsIdDeleteRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsIdEndorsePost without sending the request
+     */
+    async accountsetsAccountSetIdBillsIdEndorsePostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsIdEndorsePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsIdEndorsePost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdBillsIdEndorsePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/{id}/endorse`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdEndorsePostRaw(requestParameters: AccountsetsAccountSetIdBillsIdEndorsePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsIdEndorsePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BillDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsIdEndorsePost(requestParameters: AccountsetsAccountSetIdBillsIdEndorsePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillDto> {
+        const response = await this.accountsetsAccountSetIdBillsIdEndorsePostRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**
@@ -415,6 +1192,112 @@ export class BillsApi extends runtime.BaseAPI implements BillsApiInterface {
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdBillsImportPost without sending the request
+     */
+    async accountsetsAccountSetIdBillsImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsImportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/import`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsImportPostRaw(requestParameters: AccountsetsAccountSetIdBillsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillImportResult>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsImportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BillImportResultFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsImportPost(requestParameters: AccountsetsAccountSetIdBillsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillImportResult> {
+        const response = await this.accountsetsAccountSetIdBillsImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsImportTemplateGet without sending the request
+     */
+    async accountsetsAccountSetIdBillsImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdBillsImportTemplateGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsImportTemplateGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/import/template`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdBillsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsImportTemplateGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsImportTemplateGet(requestParameters: AccountsetsAccountSetIdBillsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdBillsImportTemplateGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdBillsPost without sending the request
      */
     async accountsetsAccountSetIdBillsPostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsPostRequest): Promise<runtime.RequestOpts> {
@@ -464,6 +1347,59 @@ export class BillsApi extends runtime.BaseAPI implements BillsApiInterface {
      */
     async accountsetsAccountSetIdBillsPost(requestParameters: AccountsetsAccountSetIdBillsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillDto> {
         const response = await this.accountsetsAccountSetIdBillsPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdBillsVouchersPost without sending the request
+     */
+    async accountsetsAccountSetIdBillsVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdBillsVouchersPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdBillsVouchersPost().'
+            );
+        }
+
+        if (requestParameters['bulkBillRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkBillRequest',
+                'Required parameter "bulkBillRequest" was null or undefined when calling accountsetsAccountSetIdBillsVouchersPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/bills/vouchers`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkBillRequestToJSON(requestParameters['bulkBillRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsVouchersPostRaw(requestParameters: AccountsetsAccountSetIdBillsVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkBillVoucherResult>> {
+        const requestOptions = await this.accountsetsAccountSetIdBillsVouchersPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BulkBillVoucherResultFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdBillsVouchersPost(requestParameters: AccountsetsAccountSetIdBillsVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkBillVoucherResult> {
+        const response = await this.accountsetsAccountSetIdBillsVouchersPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

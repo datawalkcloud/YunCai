@@ -30,7 +30,25 @@ export interface CreateEntryCategoryRequest {
      * @type {string}
      * @memberof CreateEntryCategoryRequest
      */
+    code?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEntryCategoryRequest
+     */
     name?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEntryCategoryRequest
+     */
+    parentId?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateEntryCategoryRequest
+     */
+    cashFlowItemId?: string | null;
     /**
      * 
      * @type {string}
@@ -63,7 +81,10 @@ export function CreateEntryCategoryRequestFromJSONTyped(json: any, ignoreDiscrim
     return {
         
         'type': json['type'] == null ? undefined : json['type'],
+        'code': json['code'] == null ? undefined : json['code'],
         'name': json['name'] == null ? undefined : json['name'],
+        'parentId': json['parentId'] == null ? undefined : json['parentId'],
+        'cashFlowItemId': json['cashFlowItemId'] == null ? undefined : json['cashFlowItemId'],
         'smartKeywords': json['smartKeywords'] == null ? undefined : json['smartKeywords'],
         'voucherSubjectId': json['voucherSubjectId'] == null ? undefined : json['voucherSubjectId'],
     };
@@ -81,7 +102,10 @@ export function CreateEntryCategoryRequestToJSONTyped(value?: CreateEntryCategor
     return {
         
         'type': value['type'],
+        'code': value['code'],
         'name': value['name'],
+        'parentId': value['parentId'],
+        'cashFlowItemId': value['cashFlowItemId'],
         'smartKeywords': value['smartKeywords'],
         'voucherSubjectId': value['voucherSubjectId'],
     };

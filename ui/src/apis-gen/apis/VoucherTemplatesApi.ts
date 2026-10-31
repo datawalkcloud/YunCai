@@ -17,13 +17,20 @@ import * as runtime from '../runtime';
 import type {
   SaveVoucherTemplateRequest,
   VoucherTemplateDto,
+  VoucherTemplateImportResultDto,
 } from '../models/index';
 import {
     SaveVoucherTemplateRequestFromJSON,
     SaveVoucherTemplateRequestToJSON,
     VoucherTemplateDtoFromJSON,
     VoucherTemplateDtoToJSON,
+    VoucherTemplateImportResultDtoFromJSON,
+    VoucherTemplateImportResultDtoToJSON,
 } from '../models/index';
+
+export interface AccountsetsAccountSetIdVouchertemplatesExportGetRequest {
+    accountSetId: string;
+}
 
 export interface AccountsetsAccountSetIdVouchertemplatesGetRequest {
     accountSetId: string;
@@ -40,6 +47,15 @@ export interface AccountsetsAccountSetIdVouchertemplatesIdPutRequest {
     saveVoucherTemplateRequest: SaveVoucherTemplateRequest;
 }
 
+export interface AccountsetsAccountSetIdVouchertemplatesImportPostRequest {
+    accountSetId: string;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdVouchertemplatesImportTemplateGetRequest {
+    accountSetId: string;
+}
+
 export interface AccountsetsAccountSetIdVouchertemplatesPostRequest {
     accountSetId: string;
     saveVoucherTemplateRequest: SaveVoucherTemplateRequest;
@@ -52,6 +68,27 @@ export interface AccountsetsAccountSetIdVouchertemplatesPostRequest {
  * @interface VoucherTemplatesApiInterface
  */
 export interface VoucherTemplatesApiInterface {
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchertemplatesExportGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof VoucherTemplatesApiInterface
+     */
+    accountsetsAccountSetIdVouchertemplatesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchertemplatesExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VoucherTemplatesApiInterface
+     */
+    accountsetsAccountSetIdVouchertemplatesExportGetRaw(requestParameters: AccountsetsAccountSetIdVouchertemplatesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchertemplatesExportGet(requestParameters: AccountsetsAccountSetIdVouchertemplatesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
     /**
      * Creates request options for accountsetsAccountSetIdVouchertemplatesGet without sending the request
      * @param {string} accountSetId 
@@ -122,6 +159,50 @@ export interface VoucherTemplatesApiInterface {
     accountsetsAccountSetIdVouchertemplatesIdPut(requestParameters: AccountsetsAccountSetIdVouchertemplatesIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherTemplateDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdVouchertemplatesImportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof VoucherTemplatesApiInterface
+     */
+    accountsetsAccountSetIdVouchertemplatesImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VoucherTemplatesApiInterface
+     */
+    accountsetsAccountSetIdVouchertemplatesImportPostRaw(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherTemplateImportResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchertemplatesImportPost(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherTemplateImportResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchertemplatesImportTemplateGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof VoucherTemplatesApiInterface
+     */
+    accountsetsAccountSetIdVouchertemplatesImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportTemplateGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VoucherTemplatesApiInterface
+     */
+    accountsetsAccountSetIdVouchertemplatesImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdVouchertemplatesImportTemplateGet(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdVouchertemplatesPost without sending the request
      * @param {string} accountSetId 
      * @param {SaveVoucherTemplateRequest} saveVoucherTemplateRequest 
@@ -150,6 +231,48 @@ export interface VoucherTemplatesApiInterface {
  * 
  */
 export class VoucherTemplatesApi extends runtime.BaseAPI implements VoucherTemplatesApiInterface {
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchertemplatesExportGet without sending the request
+     */
+    async accountsetsAccountSetIdVouchertemplatesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchertemplatesExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchertemplatesExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/vouchertemplates/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchertemplatesExportGetRaw(requestParameters: AccountsetsAccountSetIdVouchertemplatesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchertemplatesExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchertemplatesExportGet(requestParameters: AccountsetsAccountSetIdVouchertemplatesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchertemplatesExportGetRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for accountsetsAccountSetIdVouchertemplatesGet without sending the request
@@ -303,6 +426,112 @@ export class VoucherTemplatesApi extends runtime.BaseAPI implements VoucherTempl
     async accountsetsAccountSetIdVouchertemplatesIdPut(requestParameters: AccountsetsAccountSetIdVouchertemplatesIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherTemplateDto> {
         const response = await this.accountsetsAccountSetIdVouchertemplatesIdPutRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchertemplatesImportPost without sending the request
+     */
+    async accountsetsAccountSetIdVouchertemplatesImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchertemplatesImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/vouchertemplates/import`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchertemplatesImportPostRaw(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VoucherTemplateImportResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchertemplatesImportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VoucherTemplateImportResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchertemplatesImportPost(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VoucherTemplateImportResultDto> {
+        const response = await this.accountsetsAccountSetIdVouchertemplatesImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdVouchertemplatesImportTemplateGet without sending the request
+     */
+    async accountsetsAccountSetIdVouchertemplatesImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportTemplateGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdVouchertemplatesImportTemplateGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/vouchertemplates/import-template`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchertemplatesImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdVouchertemplatesImportTemplateGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdVouchertemplatesImportTemplateGet(requestParameters: AccountsetsAccountSetIdVouchertemplatesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdVouchertemplatesImportTemplateGetRaw(requestParameters, initOverrides);
     }
 
     /**

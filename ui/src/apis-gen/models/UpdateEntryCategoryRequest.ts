@@ -30,6 +30,24 @@ export interface UpdateEntryCategoryRequest {
      * @type {string}
      * @memberof UpdateEntryCategoryRequest
      */
+    code?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateEntryCategoryRequest
+     */
+    parentId?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateEntryCategoryRequest
+     */
+    cashFlowItemId?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateEntryCategoryRequest
+     */
     smartKeywords?: string | null;
     /**
      * 
@@ -57,6 +75,9 @@ export function UpdateEntryCategoryRequestFromJSONTyped(json: any, ignoreDiscrim
     return {
         
         'name': json['name'] == null ? undefined : json['name'],
+        'code': json['code'] == null ? undefined : json['code'],
+        'parentId': json['parentId'] == null ? undefined : json['parentId'],
+        'cashFlowItemId': json['cashFlowItemId'] == null ? undefined : json['cashFlowItemId'],
         'smartKeywords': json['smartKeywords'] == null ? undefined : json['smartKeywords'],
         'voucherSubjectId': json['voucherSubjectId'] == null ? undefined : json['voucherSubjectId'],
     };
@@ -74,6 +95,9 @@ export function UpdateEntryCategoryRequestToJSONTyped(value?: UpdateEntryCategor
     return {
         
         'name': value['name'],
+        'code': value['code'],
+        'parentId': value['parentId'],
+        'cashFlowItemId': value['cashFlowItemId'],
         'smartKeywords': value['smartKeywords'],
         'voucherSubjectId': value['voucherSubjectId'],
     };

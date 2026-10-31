@@ -73,6 +73,18 @@ export interface FixedAssetChangeDto {
      * @memberof FixedAssetChangeDto
      */
     amount?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof FixedAssetChangeDto
+     */
+    voucherId?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof FixedAssetChangeDto
+     */
+    voucherText?: string | null;
 }
 
 /**
@@ -101,6 +113,8 @@ export function FixedAssetChangeDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'after': json['after'] == null ? undefined : json['after'],
         'period': json['period'] == null ? undefined : json['period'],
         'amount': json['amount'] == null ? undefined : json['amount'],
+        'voucherId': json['voucherId'] == null ? undefined : json['voucherId'],
+        'voucherText': json['voucherText'] == null ? undefined : json['voucherText'],
     };
 }
 
@@ -124,6 +138,8 @@ export function FixedAssetChangeDtoToJSONTyped(value?: FixedAssetChangeDto | nul
         'after': value['after'],
         'period': value['period'],
         'amount': value['amount'],
+        'voucherId': value['voucherId'],
+        'voucherText': value['voucherText'],
     };
 }
 

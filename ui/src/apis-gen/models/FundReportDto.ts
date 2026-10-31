@@ -20,6 +20,13 @@ import {
     FundReportRowDtoToJSON,
     FundReportRowDtoToJSONTyped,
 } from './FundReportRowDto';
+import type { FundReportSectionDto } from './FundReportSectionDto';
+import {
+    FundReportSectionDtoFromJSON,
+    FundReportSectionDtoFromJSONTyped,
+    FundReportSectionDtoToJSON,
+    FundReportSectionDtoToJSONTyped,
+} from './FundReportSectionDto';
 
 /**
  * 
@@ -47,16 +54,46 @@ export interface FundReportDto {
     endDate?: Date;
     /**
      * 
-     * @type {Array<FundReportRowDto>}
+     * @type {Array<FundReportSectionDto>}
      * @memberof FundReportDto
      */
-    rows?: Array<FundReportRowDto>;
+    sections?: Array<FundReportSectionDto>;
     /**
      * 
      * @type {FundReportRowDto}
      * @memberof FundReportDto
      */
     total?: FundReportRowDto;
+    /**
+     * 
+     * @type {string}
+     * @memberof FundReportDto
+     */
+    note?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof FundReportDto
+     */
+    currencyNote?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof FundReportDto
+     */
+    supportsAccountFilter?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof FundReportDto
+     */
+    primaryText?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof FundReportDto
+     */
+    secondaryText?: string | null;
 }
 
 /**
@@ -79,8 +116,13 @@ export function FundReportDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'dimension': json['dimension'] == null ? undefined : json['dimension'],
         'startDate': json['startDate'] == null ? undefined : (new Date(json['startDate'])),
         'endDate': json['endDate'] == null ? undefined : (new Date(json['endDate'])),
-        'rows': json['rows'] == null ? undefined : ((json['rows'] as Array<any>).map(FundReportRowDtoFromJSON)),
+        'sections': json['sections'] == null ? undefined : ((json['sections'] as Array<any>).map(FundReportSectionDtoFromJSON)),
         'total': json['total'] == null ? undefined : FundReportRowDtoFromJSON(json['total']),
+        'note': json['note'] == null ? undefined : json['note'],
+        'currencyNote': json['currencyNote'] == null ? undefined : json['currencyNote'],
+        'supportsAccountFilter': json['supportsAccountFilter'] == null ? undefined : json['supportsAccountFilter'],
+        'primaryText': json['primaryText'] == null ? undefined : json['primaryText'],
+        'secondaryText': json['secondaryText'] == null ? undefined : json['secondaryText'],
     };
 }
 
@@ -98,8 +140,13 @@ export function FundReportDtoToJSONTyped(value?: FundReportDto | null, ignoreDis
         'dimension': value['dimension'],
         'startDate': value['startDate'] == null ? value['startDate'] : value['startDate'].toISOString().substring(0,10),
         'endDate': value['endDate'] == null ? value['endDate'] : value['endDate'].toISOString().substring(0,10),
-        'rows': value['rows'] == null ? undefined : ((value['rows'] as Array<any>).map(FundReportRowDtoToJSON)),
+        'sections': value['sections'] == null ? undefined : ((value['sections'] as Array<any>).map(FundReportSectionDtoToJSON)),
         'total': FundReportRowDtoToJSON(value['total']),
+        'note': value['note'],
+        'currencyNote': value['currencyNote'],
+        'supportsAccountFilter': value['supportsAccountFilter'],
+        'primaryText': value['primaryText'],
+        'secondaryText': value['secondaryText'],
     };
 }
 

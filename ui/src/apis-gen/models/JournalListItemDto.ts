@@ -33,6 +33,18 @@ export interface JournalListItemDto {
     name?: string;
     /**
      * 
+     * @type {string}
+     * @memberof JournalListItemDto
+     */
+    code?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalListItemDto
+     */
+    currency?: string;
+    /**
+     * 
      * @type {number}
      * @memberof JournalListItemDto
      */
@@ -130,6 +142,8 @@ export function JournalListItemDtoFromJSONTyped(json: any, ignoreDiscriminator: 
         
         'id': json['id'] == null ? undefined : json['id'],
         'name': json['name'] == null ? undefined : json['name'],
+        'code': json['code'] == null ? undefined : json['code'],
+        'currency': json['currency'] == null ? undefined : json['currency'],
         'type': json['type'] == null ? undefined : json['type'],
         'typeText': json['typeText'] == null ? undefined : json['typeText'],
         'accountId': json['accountId'] == null ? undefined : json['accountId'],
@@ -159,6 +173,8 @@ export function JournalListItemDtoToJSONTyped(value?: JournalListItemDto | null,
         
         'id': value['id'],
         'name': value['name'],
+        'code': value['code'],
+        'currency': value['currency'],
         'type': value['type'],
         'typeText': value['typeText'],
         'accountId': value['accountId'],

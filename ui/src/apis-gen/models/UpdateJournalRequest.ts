@@ -27,6 +27,18 @@ export interface UpdateJournalRequest {
     name?: string;
     /**
      * 
+     * @type {string}
+     * @memberof UpdateJournalRequest
+     */
+    code?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateJournalRequest
+     */
+    currency?: string | null;
+    /**
+     * 
      * @type {number}
      * @memberof UpdateJournalRequest
      */
@@ -69,6 +81,8 @@ export function UpdateJournalRequestFromJSONTyped(json: any, ignoreDiscriminator
     return {
         
         'name': json['name'] == null ? undefined : json['name'],
+        'code': json['code'] == null ? undefined : json['code'],
+        'currency': json['currency'] == null ? undefined : json['currency'],
         'openingBalance': json['openingBalance'] == null ? undefined : json['openingBalance'],
         'isEnabled': json['isEnabled'] == null ? undefined : json['isEnabled'],
         'bankName': json['bankName'] == null ? undefined : json['bankName'],
@@ -88,6 +102,8 @@ export function UpdateJournalRequestToJSONTyped(value?: UpdateJournalRequest | n
     return {
         
         'name': value['name'],
+        'code': value['code'],
+        'currency': value['currency'],
         'openingBalance': value['openingBalance'],
         'isEnabled': value['isEnabled'],
         'bankName': value['bankName'],

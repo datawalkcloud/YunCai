@@ -15,6 +15,8 @@ Name | Type
 `after` | string
 `period` | string
 `amount` | number
+`voucherId` | string
+`voucherText` | string
 
 ## Example
 
@@ -32,6 +34,8 @@ const example = {
   "after": null,
   "period": null,
   "amount": null,
+  "voucherId": null,
+  "voucherText": null,
 } satisfies FixedAssetChangeDto
 
 console.log(example)

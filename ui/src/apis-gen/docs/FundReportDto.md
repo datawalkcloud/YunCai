@@ -9,8 +9,13 @@ Name | Type
 `dimension` | string
 `startDate` | Date
 `endDate` | Date
-`rows` | [Array&lt;FundReportRowDto&gt;](FundReportRowDto.md)
+`sections` | [Array&lt;FundReportSectionDto&gt;](FundReportSectionDto.md)
 `total` | [FundReportRowDto](FundReportRowDto.md)
+`note` | string
+`currencyNote` | string
+`supportsAccountFilter` | boolean
+`primaryText` | string
+`secondaryText` | string
 
 ## Example
 
@@ -22,8 +27,13 @@ const example = {
   "dimension": null,
   "startDate": null,
   "endDate": null,
-  "rows": null,
+  "sections": null,
   "total": null,
+  "note": null,
+  "currencyNote": null,
+  "supportsAccountFilter": null,
+  "primaryText": null,
+  "secondaryText": null,
 } satisfies FundReportDto
 
 console.log(example)

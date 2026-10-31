@@ -65,6 +65,12 @@ export interface VoucherDetailDto {
     attachmentCount?: number;
     /**
      * 
+     * @type {string}
+     * @memberof VoucherDetailDto
+     */
+    remark?: string | null;
+    /**
+     * 
      * @type {number}
      * @memberof VoucherDetailDto
      */
@@ -136,6 +142,7 @@ export function VoucherDetailDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'voucherNo': json['voucherNo'] == null ? undefined : json['voucherNo'],
         'date': json['date'] == null ? undefined : (new Date(json['date'])),
         'attachmentCount': json['attachmentCount'] == null ? undefined : json['attachmentCount'],
+        'remark': json['remark'] == null ? undefined : json['remark'],
         'status': json['status'] == null ? undefined : json['status'],
         'statusText': json['statusText'] == null ? undefined : json['statusText'],
         'preparer': json['preparer'] == null ? undefined : json['preparer'],
@@ -164,6 +171,7 @@ export function VoucherDetailDtoToJSONTyped(value?: VoucherDetailDto | null, ign
         'voucherNo': value['voucherNo'],
         'date': value['date'] == null ? value['date'] : value['date'].toISOString().substring(0,10),
         'attachmentCount': value['attachmentCount'],
+        'remark': value['remark'],
         'status': value['status'],
         'statusText': value['statusText'],
         'preparer': value['preparer'],

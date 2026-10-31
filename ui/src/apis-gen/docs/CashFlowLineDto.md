@@ -12,6 +12,7 @@ Name | Type
 `kind` | number
 `current` | number
 `yearToDate` | number
+`lastYear` | number
 
 ## Example
 
@@ -26,6 +27,7 @@ const example = {
   "kind": null,
   "current": null,
   "yearToDate": null,
+  "lastYear": null,
 } satisfies CashFlowLineDto
 
 console.log(example)

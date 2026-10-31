@@ -11,8 +11,11 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdArchivesIdDelete**](ArchivesApi.md#accountsetsaccountsetidarchivesiddelete) | **DELETE** /accountsets/{accountSetId}/archives/{id} |  |
 | [**accountsetsAccountSetIdArchivesIdDownloadGet**](ArchivesApi.md#accountsetsaccountsetidarchivesiddownloadget) | **GET** /accountsets/{accountSetId}/archives/{id}/download |  |
 | [**accountsetsAccountSetIdArchivesIdPut**](ArchivesApi.md#accountsetsaccountsetidarchivesidput) | **PUT** /accountsets/{accountSetId}/archives/{id} |  |
+| [**accountsetsAccountSetIdArchivesLinkVoucherPost**](ArchivesApi.md#accountsetsaccountsetidarchiveslinkvoucherpost) | **POST** /accountsets/{accountSetId}/archives/link-voucher |  |
+| [**accountsetsAccountSetIdArchivesPaperPost**](ArchivesApi.md#accountsetsaccountsetidarchivespaperpost) | **POST** /accountsets/{accountSetId}/archives/paper |  |
 | [**accountsetsAccountSetIdArchivesPost**](ArchivesApi.md#accountsetsaccountsetidarchivespost) | **POST** /accountsets/{accountSetId}/archives |  |
 | [**accountsetsAccountSetIdArchivesUsageGet**](ArchivesApi.md#accountsetsaccountsetidarchivesusageget) | **GET** /accountsets/{accountSetId}/archives/usage |  |
+| [**accountsetsAccountSetIdArchivesVoucherFromPost**](ArchivesApi.md#accountsetsaccountsetidarchivesvoucherfrompost) | **POST** /accountsets/{accountSetId}/archives/voucher-from |  |
 
 
 
@@ -489,6 +492,142 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## accountsetsAccountSetIdArchivesLinkVoucherPost
+
+> number accountsetsAccountSetIdArchivesLinkVoucherPost(accountSetId, linkVoucherRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ArchivesApi,
+} from '';
+import type { AccountsetsAccountSetIdArchivesLinkVoucherPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ArchivesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // LinkVoucherRequest
+    linkVoucherRequest: ...,
+  } satisfies AccountsetsAccountSetIdArchivesLinkVoucherPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdArchivesLinkVoucherPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **linkVoucherRequest** | [LinkVoucherRequest](LinkVoucherRequest.md) |  | |
+
+### Return type
+
+**number**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdArchivesPaperPost
+
+> number accountsetsAccountSetIdArchivesPaperPost(accountSetId, paperArchiveRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ArchivesApi,
+} from '';
+import type { AccountsetsAccountSetIdArchivesPaperPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ArchivesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // PaperArchiveRequest
+    paperArchiveRequest: ...,
+  } satisfies AccountsetsAccountSetIdArchivesPaperPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdArchivesPaperPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **paperArchiveRequest** | [PaperArchiveRequest](PaperArchiveRequest.md) |  | |
+
+### Return type
+
+**number**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## accountsetsAccountSetIdArchivesPost
 
 > ArchiveItemDto accountsetsAccountSetIdArchivesPost(accountSetId, saveArchiveRequest)
@@ -612,6 +751,74 @@ No authorization required
 
 - **Content-Type**: Not defined
 - **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdArchivesVoucherFromPost
+
+> accountsetsAccountSetIdArchivesVoucherFromPost(accountSetId, generateVoucherFromArchivesRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ArchivesApi,
+} from '';
+import type { AccountsetsAccountSetIdArchivesVoucherFromPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ArchivesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // GenerateVoucherFromArchivesRequest
+    generateVoucherFromArchivesRequest: ...,
+  } satisfies AccountsetsAccountSetIdArchivesVoucherFromPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdArchivesVoucherFromPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **generateVoucherFromArchivesRequest** | [GenerateVoucherFromArchivesRequest](GenerateVoucherFromArchivesRequest.md) |  | |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: Not defined
 
 
 ### HTTP response details

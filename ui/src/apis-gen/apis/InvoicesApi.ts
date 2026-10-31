@@ -16,26 +16,84 @@
 import * as runtime from '../runtime';
 import type {
   AuthenticateInvoiceRequest,
+  BulkAuthenticateRequest,
+  BulkInvoiceIdsRequest,
+  BulkInvoiceResultDto,
+  BulkInvoiceStatusRequest,
   ChangeInvoiceStatusRequest,
+  GenerateInvoiceVoucherRequest,
+  GenerateInvoiceVouchersRequest,
   InvoiceDto,
   InvoiceFundOverviewRowDto,
+  InvoiceImportResult,
   InvoiceSummaryDto,
+  InvoiceVoucherBatchResultDto,
+  InvoiceVoucherResultDto,
   SaveInvoiceRequest,
 } from '../models/index';
 import {
     AuthenticateInvoiceRequestFromJSON,
     AuthenticateInvoiceRequestToJSON,
+    BulkAuthenticateRequestFromJSON,
+    BulkAuthenticateRequestToJSON,
+    BulkInvoiceIdsRequestFromJSON,
+    BulkInvoiceIdsRequestToJSON,
+    BulkInvoiceResultDtoFromJSON,
+    BulkInvoiceResultDtoToJSON,
+    BulkInvoiceStatusRequestFromJSON,
+    BulkInvoiceStatusRequestToJSON,
     ChangeInvoiceStatusRequestFromJSON,
     ChangeInvoiceStatusRequestToJSON,
+    GenerateInvoiceVoucherRequestFromJSON,
+    GenerateInvoiceVoucherRequestToJSON,
+    GenerateInvoiceVouchersRequestFromJSON,
+    GenerateInvoiceVouchersRequestToJSON,
     InvoiceDtoFromJSON,
     InvoiceDtoToJSON,
     InvoiceFundOverviewRowDtoFromJSON,
     InvoiceFundOverviewRowDtoToJSON,
+    InvoiceImportResultFromJSON,
+    InvoiceImportResultToJSON,
     InvoiceSummaryDtoFromJSON,
     InvoiceSummaryDtoToJSON,
+    InvoiceVoucherBatchResultDtoFromJSON,
+    InvoiceVoucherBatchResultDtoToJSON,
+    InvoiceVoucherResultDtoFromJSON,
+    InvoiceVoucherResultDtoToJSON,
     SaveInvoiceRequestFromJSON,
     SaveInvoiceRequestToJSON,
 } from '../models/index';
+
+export interface AccountsetsAccountSetIdInvoicesBulkAuthenticatePostRequest {
+    accountSetId: string;
+    bulkAuthenticateRequest: BulkAuthenticateRequest;
+}
+
+export interface AccountsetsAccountSetIdInvoicesBulkDeletePostRequest {
+    accountSetId: string;
+    bulkInvoiceIdsRequest: BulkInvoiceIdsRequest;
+}
+
+export interface AccountsetsAccountSetIdInvoicesBulkStatusPostRequest {
+    accountSetId: string;
+    bulkInvoiceStatusRequest: BulkInvoiceStatusRequest;
+}
+
+export interface AccountsetsAccountSetIdInvoicesExportGetRequest {
+    accountSetId: string;
+    direction?: number;
+    startDate?: Date;
+    endDate?: Date;
+    status?: number;
+    period?: string;
+}
+
+export interface AccountsetsAccountSetIdInvoicesFundOverviewExportGetRequest {
+    accountSetId: string;
+    startDate?: Date;
+    endDate?: Date;
+    period?: string;
+}
 
 export interface AccountsetsAccountSetIdInvoicesFundOverviewGetRequest {
     accountSetId: string;
@@ -74,6 +132,23 @@ export interface AccountsetsAccountSetIdInvoicesIdStatusPostRequest {
     changeInvoiceStatusRequest: ChangeInvoiceStatusRequest;
 }
 
+export interface AccountsetsAccountSetIdInvoicesIdVoucherPostRequest {
+    accountSetId: string;
+    id: string;
+    generateInvoiceVoucherRequest: GenerateInvoiceVoucherRequest;
+}
+
+export interface AccountsetsAccountSetIdInvoicesImportPostRequest {
+    accountSetId: string;
+    direction?: number;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdInvoicesImportTemplateGetRequest {
+    accountSetId: string;
+    direction?: number;
+}
+
 export interface AccountsetsAccountSetIdInvoicesPostRequest {
     accountSetId: string;
     saveInvoiceRequest: SaveInvoiceRequest;
@@ -88,6 +163,11 @@ export interface AccountsetsAccountSetIdInvoicesSummaryGetRequest {
     status?: number;
 }
 
+export interface AccountsetsAccountSetIdInvoicesVouchersPostRequest {
+    accountSetId: string;
+    generateInvoiceVouchersRequest: GenerateInvoiceVouchersRequest;
+}
+
 /**
  * InvoicesApi - interface
  * 
@@ -95,6 +175,133 @@ export interface AccountsetsAccountSetIdInvoicesSummaryGetRequest {
  * @interface InvoicesApiInterface
  */
 export interface InvoicesApiInterface {
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesBulkAuthenticatePost without sending the request
+     * @param {string} accountSetId 
+     * @param {BulkAuthenticateRequest} bulkAuthenticateRequest 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesBulkAuthenticatePostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesBulkAuthenticatePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {BulkAuthenticateRequest} bulkAuthenticateRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesBulkAuthenticatePostRaw(requestParameters: AccountsetsAccountSetIdInvoicesBulkAuthenticatePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkInvoiceResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesBulkAuthenticatePost(requestParameters: AccountsetsAccountSetIdInvoicesBulkAuthenticatePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkInvoiceResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesBulkDeletePost without sending the request
+     * @param {string} accountSetId 
+     * @param {BulkInvoiceIdsRequest} bulkInvoiceIdsRequest 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesBulkDeletePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {BulkInvoiceIdsRequest} bulkInvoiceIdsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdInvoicesBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkInvoiceResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesBulkDeletePost(requestParameters: AccountsetsAccountSetIdInvoicesBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkInvoiceResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesBulkStatusPost without sending the request
+     * @param {string} accountSetId 
+     * @param {BulkInvoiceStatusRequest} bulkInvoiceStatusRequest 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesBulkStatusPostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesBulkStatusPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {BulkInvoiceStatusRequest} bulkInvoiceStatusRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesBulkStatusPostRaw(requestParameters: AccountsetsAccountSetIdInvoicesBulkStatusPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkInvoiceResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesBulkStatusPost(requestParameters: AccountsetsAccountSetIdInvoicesBulkStatusPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkInvoiceResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [direction] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {number} [status] 
+     * @param {string} [period] 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [direction] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {number} [status] 
+     * @param {string} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesExportGetRaw(requestParameters: AccountsetsAccountSetIdInvoicesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesExportGet(requestParameters: AccountsetsAccountSetIdInvoicesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesFundOverviewExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [period] 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesFundOverviewExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesFundOverviewExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesFundOverviewExportGetRaw(requestParameters: AccountsetsAccountSetIdInvoicesFundOverviewExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesFundOverviewExportGet(requestParameters: AccountsetsAccountSetIdInvoicesFundOverviewExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
     /**
      * Creates request options for accountsetsAccountSetIdInvoicesFundOverviewGet without sending the request
      * @param {string} accountSetId 
@@ -248,6 +455,79 @@ export interface InvoicesApiInterface {
     accountsetsAccountSetIdInvoicesIdStatusPost(requestParameters: AccountsetsAccountSetIdInvoicesIdStatusPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvoiceDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdInvoicesIdVoucherPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {GenerateInvoiceVoucherRequest} generateInvoiceVoucherRequest 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesIdVoucherPostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesIdVoucherPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {GenerateInvoiceVoucherRequest} generateInvoiceVoucherRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesIdVoucherPostRaw(requestParameters: AccountsetsAccountSetIdInvoicesIdVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InvoiceVoucherResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesIdVoucherPost(requestParameters: AccountsetsAccountSetIdInvoicesIdVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvoiceVoucherResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesImportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [direction] 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesImportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [direction] 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesImportPostRaw(requestParameters: AccountsetsAccountSetIdInvoicesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InvoiceImportResult>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesImportPost(requestParameters: AccountsetsAccountSetIdInvoicesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvoiceImportResult>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesImportTemplateGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [direction] 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesImportTemplateGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [direction] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdInvoicesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesImportTemplateGet(requestParameters: AccountsetsAccountSetIdInvoicesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdInvoicesPost without sending the request
      * @param {string} accountSetId 
      * @param {SaveInvoiceRequest} saveInvoiceRequest 
@@ -301,12 +581,310 @@ export interface InvoicesApiInterface {
      */
     accountsetsAccountSetIdInvoicesSummaryGet(requestParameters: AccountsetsAccountSetIdInvoicesSummaryGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvoiceSummaryDto>;
 
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesVouchersPost without sending the request
+     * @param {string} accountSetId 
+     * @param {GenerateInvoiceVouchersRequest} generateInvoiceVouchersRequest 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesVouchersPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {GenerateInvoiceVouchersRequest} generateInvoiceVouchersRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesVouchersPostRaw(requestParameters: AccountsetsAccountSetIdInvoicesVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InvoiceVoucherBatchResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesVouchersPost(requestParameters: AccountsetsAccountSetIdInvoicesVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvoiceVoucherBatchResultDto>;
+
 }
 
 /**
  * 
  */
 export class InvoicesApi extends runtime.BaseAPI implements InvoicesApiInterface {
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesBulkAuthenticatePost without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesBulkAuthenticatePostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesBulkAuthenticatePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesBulkAuthenticatePost().'
+            );
+        }
+
+        if (requestParameters['bulkAuthenticateRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkAuthenticateRequest',
+                'Required parameter "bulkAuthenticateRequest" was null or undefined when calling accountsetsAccountSetIdInvoicesBulkAuthenticatePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/bulk-authenticate`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkAuthenticateRequestToJSON(requestParameters['bulkAuthenticateRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesBulkAuthenticatePostRaw(requestParameters: AccountsetsAccountSetIdInvoicesBulkAuthenticatePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkInvoiceResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesBulkAuthenticatePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BulkInvoiceResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesBulkAuthenticatePost(requestParameters: AccountsetsAccountSetIdInvoicesBulkAuthenticatePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkInvoiceResultDto> {
+        const response = await this.accountsetsAccountSetIdInvoicesBulkAuthenticatePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesBulkDeletePost without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesBulkDeletePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesBulkDeletePost().'
+            );
+        }
+
+        if (requestParameters['bulkInvoiceIdsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkInvoiceIdsRequest',
+                'Required parameter "bulkInvoiceIdsRequest" was null or undefined when calling accountsetsAccountSetIdInvoicesBulkDeletePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/bulk-delete`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkInvoiceIdsRequestToJSON(requestParameters['bulkInvoiceIdsRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdInvoicesBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkInvoiceResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesBulkDeletePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BulkInvoiceResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesBulkDeletePost(requestParameters: AccountsetsAccountSetIdInvoicesBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkInvoiceResultDto> {
+        const response = await this.accountsetsAccountSetIdInvoicesBulkDeletePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesBulkStatusPost without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesBulkStatusPostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesBulkStatusPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesBulkStatusPost().'
+            );
+        }
+
+        if (requestParameters['bulkInvoiceStatusRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkInvoiceStatusRequest',
+                'Required parameter "bulkInvoiceStatusRequest" was null or undefined when calling accountsetsAccountSetIdInvoicesBulkStatusPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/bulk-status`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkInvoiceStatusRequestToJSON(requestParameters['bulkInvoiceStatusRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesBulkStatusPostRaw(requestParameters: AccountsetsAccountSetIdInvoicesBulkStatusPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkInvoiceResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesBulkStatusPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BulkInvoiceResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesBulkStatusPost(requestParameters: AccountsetsAccountSetIdInvoicesBulkStatusPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkInvoiceResultDto> {
+        const response = await this.accountsetsAccountSetIdInvoicesBulkStatusPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesExportGet without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['direction'] != null) {
+            queryParameters['direction'] = requestParameters['direction'];
+        }
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesExportGetRaw(requestParameters: AccountsetsAccountSetIdInvoicesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesExportGet(requestParameters: AccountsetsAccountSetIdInvoicesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdInvoicesExportGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesFundOverviewExportGet without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesFundOverviewExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesFundOverviewExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesFundOverviewExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/fund-overview/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesFundOverviewExportGetRaw(requestParameters: AccountsetsAccountSetIdInvoicesFundOverviewExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesFundOverviewExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesFundOverviewExportGet(requestParameters: AccountsetsAccountSetIdInvoicesFundOverviewExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdInvoicesFundOverviewExportGetRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for accountsetsAccountSetIdInvoicesFundOverviewGet without sending the request
@@ -652,6 +1230,181 @@ export class InvoicesApi extends runtime.BaseAPI implements InvoicesApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdInvoicesIdVoucherPost without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesIdVoucherPostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesIdVoucherPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesIdVoucherPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdInvoicesIdVoucherPost().'
+            );
+        }
+
+        if (requestParameters['generateInvoiceVoucherRequest'] == null) {
+            throw new runtime.RequiredError(
+                'generateInvoiceVoucherRequest',
+                'Required parameter "generateInvoiceVoucherRequest" was null or undefined when calling accountsetsAccountSetIdInvoicesIdVoucherPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/{id}/voucher`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GenerateInvoiceVoucherRequestToJSON(requestParameters['generateInvoiceVoucherRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesIdVoucherPostRaw(requestParameters: AccountsetsAccountSetIdInvoicesIdVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InvoiceVoucherResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesIdVoucherPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => InvoiceVoucherResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesIdVoucherPost(requestParameters: AccountsetsAccountSetIdInvoicesIdVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvoiceVoucherResultDto> {
+        const response = await this.accountsetsAccountSetIdInvoicesIdVoucherPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesImportPost without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesImportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['direction'] != null) {
+            queryParameters['direction'] = requestParameters['direction'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/import`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesImportPostRaw(requestParameters: AccountsetsAccountSetIdInvoicesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InvoiceImportResult>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesImportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => InvoiceImportResultFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesImportPost(requestParameters: AccountsetsAccountSetIdInvoicesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvoiceImportResult> {
+        const response = await this.accountsetsAccountSetIdInvoicesImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesImportTemplateGet without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesImportTemplateGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesImportTemplateGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['direction'] != null) {
+            queryParameters['direction'] = requestParameters['direction'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/import-template`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdInvoicesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesImportTemplateGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesImportTemplateGet(requestParameters: AccountsetsAccountSetIdInvoicesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdInvoicesImportTemplateGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdInvoicesPost without sending the request
      */
     async accountsetsAccountSetIdInvoicesPostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesPostRequest): Promise<runtime.RequestOpts> {
@@ -764,6 +1517,59 @@ export class InvoicesApi extends runtime.BaseAPI implements InvoicesApiInterface
      */
     async accountsetsAccountSetIdInvoicesSummaryGet(requestParameters: AccountsetsAccountSetIdInvoicesSummaryGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvoiceSummaryDto> {
         const response = await this.accountsetsAccountSetIdInvoicesSummaryGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesVouchersPost without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesVouchersPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesVouchersPost().'
+            );
+        }
+
+        if (requestParameters['generateInvoiceVouchersRequest'] == null) {
+            throw new runtime.RequiredError(
+                'generateInvoiceVouchersRequest',
+                'Required parameter "generateInvoiceVouchersRequest" was null or undefined when calling accountsetsAccountSetIdInvoicesVouchersPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/vouchers`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GenerateInvoiceVouchersRequestToJSON(requestParameters['generateInvoiceVouchersRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesVouchersPostRaw(requestParameters: AccountsetsAccountSetIdInvoicesVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InvoiceVoucherBatchResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesVouchersPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => InvoiceVoucherBatchResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesVouchersPost(requestParameters: AccountsetsAccountSetIdInvoicesVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvoiceVoucherBatchResultDto> {
+        const response = await this.accountsetsAccountSetIdInvoicesVouchersPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

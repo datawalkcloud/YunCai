@@ -67,6 +67,18 @@ export interface FundReportRowDto {
      * @memberof FundReportRowDto
      */
     expenseCount?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof FundReportRowDto
+     */
+    secondaryCode?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof FundReportRowDto
+     */
+    secondaryName?: string | null;
 }
 
 /**
@@ -94,6 +106,8 @@ export function FundReportRowDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'balance': json['balance'] == null ? undefined : json['balance'],
         'incomeCount': json['incomeCount'] == null ? undefined : json['incomeCount'],
         'expenseCount': json['expenseCount'] == null ? undefined : json['expenseCount'],
+        'secondaryCode': json['secondaryCode'] == null ? undefined : json['secondaryCode'],
+        'secondaryName': json['secondaryName'] == null ? undefined : json['secondaryName'],
     };
 }
 
@@ -116,6 +130,8 @@ export function FundReportRowDtoToJSONTyped(value?: FundReportRowDto | null, ign
         'balance': value['balance'],
         'incomeCount': value['incomeCount'],
         'expenseCount': value['expenseCount'],
+        'secondaryCode': value['secondaryCode'],
+        'secondaryName': value['secondaryName'],
     };
 }
 

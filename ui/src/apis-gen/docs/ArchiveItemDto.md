@@ -11,6 +11,7 @@ Name | Type
 `category` | string
 `docType` | string
 `uploadedAt` | Date
+`fileSize` | number
 `relatedDoc` | string
 `relatedNo` | string
 `voucherText` | string
@@ -20,6 +21,9 @@ Name | Type
 `uploader` | string
 `source` | string
 `isArchived` | boolean
+`isPaper` | boolean
+`archivedAt` | Date
+`archivedBy` | string
 
 ## Example
 
@@ -33,6 +37,7 @@ const example = {
   "category": null,
   "docType": null,
   "uploadedAt": null,
+  "fileSize": null,
   "relatedDoc": null,
   "relatedNo": null,
   "voucherText": null,
@@ -42,6 +47,9 @@ const example = {
   "uploader": null,
   "source": null,
   "isArchived": null,
+  "isPaper": null,
+  "archivedAt": null,
+  "archivedBy": null,
 } satisfies ArchiveItemDto
 
 console.log(example)

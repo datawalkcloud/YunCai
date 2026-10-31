@@ -12,6 +12,7 @@ Name | Type
 `voucherNo` | string
 `date` | Date
 `attachmentCount` | number
+`remark` | string
 `status` | number
 `statusText` | string
 `preparer` | string
@@ -35,6 +36,7 @@ const example = {
   "voucherNo": null,
   "date": null,
   "attachmentCount": null,
+  "remark": null,
   "status": null,
   "statusText": null,
   "preparer": null,

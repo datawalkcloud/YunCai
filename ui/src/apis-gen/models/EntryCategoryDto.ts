@@ -42,7 +42,43 @@ export interface EntryCategoryDto {
      * @type {string}
      * @memberof EntryCategoryDto
      */
+    code?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof EntryCategoryDto
+     */
     name?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof EntryCategoryDto
+     */
+    parentId?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EntryCategoryDto
+     */
+    parentName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EntryCategoryDto
+     */
+    cashFlowItemId?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EntryCategoryDto
+     */
+    cashFlowName?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EntryCategoryDto
+     */
+    isEnabled?: boolean;
     /**
      * 
      * @type {string}
@@ -89,7 +125,13 @@ export function EntryCategoryDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'id': json['id'] == null ? undefined : json['id'],
         'type': json['type'] == null ? undefined : json['type'],
         'typeText': json['typeText'] == null ? undefined : json['typeText'],
+        'code': json['code'] == null ? undefined : json['code'],
         'name': json['name'] == null ? undefined : json['name'],
+        'parentId': json['parentId'] == null ? undefined : json['parentId'],
+        'parentName': json['parentName'] == null ? undefined : json['parentName'],
+        'cashFlowItemId': json['cashFlowItemId'] == null ? undefined : json['cashFlowItemId'],
+        'cashFlowName': json['cashFlowName'] == null ? undefined : json['cashFlowName'],
+        'isEnabled': json['isEnabled'] == null ? undefined : json['isEnabled'],
         'smartKeywords': json['smartKeywords'] == null ? undefined : json['smartKeywords'],
         'voucherSubjectId': json['voucherSubjectId'] == null ? undefined : json['voucherSubjectId'],
         'voucherSubjectCode': json['voucherSubjectCode'] == null ? undefined : json['voucherSubjectCode'],
@@ -111,7 +153,13 @@ export function EntryCategoryDtoToJSONTyped(value?: EntryCategoryDto | null, ign
         'id': value['id'],
         'type': value['type'],
         'typeText': value['typeText'],
+        'code': value['code'],
         'name': value['name'],
+        'parentId': value['parentId'],
+        'parentName': value['parentName'],
+        'cashFlowItemId': value['cashFlowItemId'],
+        'cashFlowName': value['cashFlowName'],
+        'isEnabled': value['isEnabled'],
         'smartKeywords': value['smartKeywords'],
         'voucherSubjectId': value['voucherSubjectId'],
         'voucherSubjectCode': value['voucherSubjectCode'],

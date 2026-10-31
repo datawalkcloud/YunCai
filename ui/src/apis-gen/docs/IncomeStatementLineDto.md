@@ -9,6 +9,7 @@ Name | Type
 `line` | number
 `current` | number
 `yearToDate` | number
+`lastYear` | number
 
 ## Example
 
@@ -20,6 +21,7 @@ const example = {
   "line": null,
   "current": null,
   "yearToDate": null,
+  "lastYear": null,
 } satisfies IncomeStatementLineDto
 
 console.log(example)

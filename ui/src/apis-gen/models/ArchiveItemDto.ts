@@ -51,6 +51,12 @@ export interface ArchiveItemDto {
     uploadedAt?: Date;
     /**
      * 
+     * @type {number}
+     * @memberof ArchiveItemDto
+     */
+    fileSize?: number;
+    /**
+     * 
      * @type {string}
      * @memberof ArchiveItemDto
      */
@@ -103,6 +109,24 @@ export interface ArchiveItemDto {
      * @memberof ArchiveItemDto
      */
     isArchived?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ArchiveItemDto
+     */
+    isPaper?: boolean;
+    /**
+     * 
+     * @type {Date}
+     * @memberof ArchiveItemDto
+     */
+    archivedAt?: Date | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ArchiveItemDto
+     */
+    archivedBy?: string | null;
 }
 
 /**
@@ -127,6 +151,7 @@ export function ArchiveItemDtoFromJSONTyped(json: any, ignoreDiscriminator: bool
         'category': json['category'] == null ? undefined : json['category'],
         'docType': json['docType'] == null ? undefined : json['docType'],
         'uploadedAt': json['uploadedAt'] == null ? undefined : (new Date(json['uploadedAt'])),
+        'fileSize': json['fileSize'] == null ? undefined : json['fileSize'],
         'relatedDoc': json['relatedDoc'] == null ? undefined : json['relatedDoc'],
         'relatedNo': json['relatedNo'] == null ? undefined : json['relatedNo'],
         'voucherText': json['voucherText'] == null ? undefined : json['voucherText'],
@@ -136,6 +161,9 @@ export function ArchiveItemDtoFromJSONTyped(json: any, ignoreDiscriminator: bool
         'uploader': json['uploader'] == null ? undefined : json['uploader'],
         'source': json['source'] == null ? undefined : json['source'],
         'isArchived': json['isArchived'] == null ? undefined : json['isArchived'],
+        'isPaper': json['isPaper'] == null ? undefined : json['isPaper'],
+        'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
+        'archivedBy': json['archivedBy'] == null ? undefined : json['archivedBy'],
     };
 }
 
@@ -155,6 +183,7 @@ export function ArchiveItemDtoToJSONTyped(value?: ArchiveItemDto | null, ignoreD
         'category': value['category'],
         'docType': value['docType'],
         'uploadedAt': value['uploadedAt'] == null ? value['uploadedAt'] : value['uploadedAt'].toISOString(),
+        'fileSize': value['fileSize'],
         'relatedDoc': value['relatedDoc'],
         'relatedNo': value['relatedNo'],
         'voucherText': value['voucherText'],
@@ -164,6 +193,9 @@ export function ArchiveItemDtoToJSONTyped(value?: ArchiveItemDto | null, ignoreD
         'uploader': value['uploader'],
         'source': value['source'],
         'isArchived': value['isArchived'],
+        'isPaper': value['isPaper'],
+        'archivedAt': value['archivedAt'] == null ? value['archivedAt'] : value['archivedAt'].toISOString(),
+        'archivedBy': value['archivedBy'],
     };
 }
 

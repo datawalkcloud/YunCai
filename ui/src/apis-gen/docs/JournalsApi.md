@@ -4,9 +4,13 @@ All URIs are relative to *http://localhost:5271*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
+| [**accountsetsAccountSetIdJournalsAccountsImportPost**](JournalsApi.md#accountsetsaccountsetidjournalsaccountsimportpost) | **POST** /accountsets/{accountSetId}/Journals/accounts/import |  |
+| [**accountsetsAccountSetIdJournalsAccountsImportTemplateGet**](JournalsApi.md#accountsetsaccountsetidjournalsaccountsimporttemplateget) | **GET** /accountsets/{accountSetId}/Journals/accounts/import-template |  |
+| [**accountsetsAccountSetIdJournalsExportAllGet**](JournalsApi.md#accountsetsaccountsetidjournalsexportallget) | **GET** /accountsets/{accountSetId}/Journals/export/all |  |
 | [**accountsetsAccountSetIdJournalsGet**](JournalsApi.md#accountsetsaccountsetidjournalsget) | **GET** /accountsets/{accountSetId}/Journals |  |
 | [**accountsetsAccountSetIdJournalsIdDelete**](JournalsApi.md#accountsetsaccountsetidjournalsiddelete) | **DELETE** /accountsets/{accountSetId}/Journals/{id} |  |
 | [**accountsetsAccountSetIdJournalsIdEnabledPatch**](JournalsApi.md#accountsetsaccountsetidjournalsidenabledpatch) | **PATCH** /accountsets/{accountSetId}/Journals/{id}/enabled |  |
+| [**accountsetsAccountSetIdJournalsIdEntriesBulkPost**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesbulkpost) | **POST** /accountsets/{accountSetId}/Journals/{id}/entries/bulk |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesEntryIdDelete**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesentryiddelete) | **DELETE** /accountsets/{accountSetId}/Journals/{id}/entries/{entryId} |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesEntryIdPut**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesentryidput) | **PUT** /accountsets/{accountSetId}/Journals/{id}/entries/{entryId} |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesEntryIdVoucherPost**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesentryidvoucherpost) | **POST** /accountsets/{accountSetId}/Journals/{id}/entries/{entryId}/voucher |  |
@@ -19,6 +23,204 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdJournalsImportTemplateGet**](JournalsApi.md#accountsetsaccountsetidjournalsimporttemplateget) | **GET** /accountsets/{accountSetId}/Journals/import/template |  |
 | [**accountsetsAccountSetIdJournalsPost**](JournalsApi.md#accountsetsaccountsetidjournalspost) | **POST** /accountsets/{accountSetId}/Journals |  |
 
+
+
+## accountsetsAccountSetIdJournalsAccountsImportPost
+
+> JournalAccountImportResultDto accountsetsAccountSetIdJournalsAccountsImportPost(accountSetId, file)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  JournalsApi,
+} from '';
+import type { AccountsetsAccountSetIdJournalsAccountsImportPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new JournalsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Blob (optional)
+    file: BINARY_DATA_HERE,
+  } satisfies AccountsetsAccountSetIdJournalsAccountsImportPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdJournalsAccountsImportPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **file** | `Blob` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**JournalAccountImportResultDto**](JournalAccountImportResultDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `multipart/form-data`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdJournalsAccountsImportTemplateGet
+
+> accountsetsAccountSetIdJournalsAccountsImportTemplateGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  JournalsApi,
+} from '';
+import type { AccountsetsAccountSetIdJournalsAccountsImportTemplateGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new JournalsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdJournalsAccountsImportTemplateGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdJournalsAccountsImportTemplateGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdJournalsExportAllGet
+
+> accountsetsAccountSetIdJournalsExportAllGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  JournalsApi,
+} from '';
+import type { AccountsetsAccountSetIdJournalsExportAllGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new JournalsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdJournalsExportAllGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdJournalsExportAllGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
 ## accountsetsAccountSetIdJournalsGet
@@ -206,6 +408,77 @@ example().catch(console.error);
 ### Return type
 
 [**JournalDetailDto**](JournalDetailDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdJournalsIdEntriesBulkPost
+
+> number accountsetsAccountSetIdJournalsIdEntriesBulkPost(accountSetId, id, bulkJournalEntryRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  JournalsApi,
+} from '';
+import type { AccountsetsAccountSetIdJournalsIdEntriesBulkPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new JournalsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // BulkJournalEntryRequest
+    bulkJournalEntryRequest: ...,
+  } satisfies AccountsetsAccountSetIdJournalsIdEntriesBulkPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdJournalsIdEntriesBulkPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **bulkJournalEntryRequest** | [BulkJournalEntryRequest](BulkJournalEntryRequest.md) |  | |
+
+### Return type
+
+**number**
 
 ### Authorization
 

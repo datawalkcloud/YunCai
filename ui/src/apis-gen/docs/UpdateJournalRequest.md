@@ -7,6 +7,8 @@
 Name | Type
 ------------ | -------------
 `name` | string
+`code` | string
+`currency` | string
 `openingBalance` | number
 `isEnabled` | boolean
 `bankName` | string
@@ -20,6 +22,8 @@ import type { UpdateJournalRequest } from ''
 // TODO: Update the object below with actual values
 const example = {
   "name": null,
+  "code": null,
+  "currency": null,
   "openingBalance": null,
   "isEnabled": null,
   "bankName": null,

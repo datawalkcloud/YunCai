@@ -36,6 +36,18 @@ export interface CreateJournalRequest {
      * @type {string}
      * @memberof CreateJournalRequest
      */
+    code?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateJournalRequest
+     */
+    currency?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateJournalRequest
+     */
     accountId?: string | null;
     /**
      * 
@@ -76,6 +88,8 @@ export function CreateJournalRequestFromJSONTyped(json: any, ignoreDiscriminator
         
         'type': json['type'] == null ? undefined : json['type'],
         'name': json['name'] == null ? undefined : json['name'],
+        'code': json['code'] == null ? undefined : json['code'],
+        'currency': json['currency'] == null ? undefined : json['currency'],
         'accountId': json['accountId'] == null ? undefined : json['accountId'],
         'openingBalance': json['openingBalance'] == null ? undefined : json['openingBalance'],
         'bankName': json['bankName'] == null ? undefined : json['bankName'],
@@ -96,6 +110,8 @@ export function CreateJournalRequestToJSONTyped(value?: CreateJournalRequest | n
         
         'type': value['type'],
         'name': value['name'],
+        'code': value['code'],
+        'currency': value['currency'],
         'accountId': value['accountId'],
         'openingBalance': value['openingBalance'],
         'bankName': value['bankName'],

@@ -17,6 +17,7 @@ Name | Type
 `checkStatus` | string
 `uploader` | string
 `source` | string
+`isPaper` | boolean
 
 ## Example
 
@@ -36,6 +37,7 @@ const example = {
   "checkStatus": null,
   "uploader": null,
   "source": null,
+  "isPaper": null,
 } satisfies SaveArchiveRequest
 
 console.log(example)

@@ -15,18 +15,33 @@
 
 import * as runtime from '../runtime';
 import type {
+  BulkTransferRequest,
   GenerateVoucherResultDto,
   SaveTransferRequest,
   TransferDto,
+  TransferImportResult,
 } from '../models/index';
 import {
+    BulkTransferRequestFromJSON,
+    BulkTransferRequestToJSON,
     GenerateVoucherResultDtoFromJSON,
     GenerateVoucherResultDtoToJSON,
     SaveTransferRequestFromJSON,
     SaveTransferRequestToJSON,
     TransferDtoFromJSON,
     TransferDtoToJSON,
+    TransferImportResultFromJSON,
+    TransferImportResultToJSON,
 } from '../models/index';
+
+export interface AccountsetsAccountSetIdTransfersBulkDeletePostRequest {
+    accountSetId: string;
+    bulkTransferRequest: BulkTransferRequest;
+}
+
+export interface AccountsetsAccountSetIdTransfersExportGetRequest {
+    accountSetId: string;
+}
 
 export interface AccountsetsAccountSetIdTransfersGetRequest {
     accountSetId: string;
@@ -48,9 +63,23 @@ export interface AccountsetsAccountSetIdTransfersIdVoucherPostRequest {
     id: string;
 }
 
+export interface AccountsetsAccountSetIdTransfersImportPostRequest {
+    accountSetId: string;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdTransfersImportTemplateGetRequest {
+    accountSetId: string;
+}
+
 export interface AccountsetsAccountSetIdTransfersPostRequest {
     accountSetId: string;
     saveTransferRequest: SaveTransferRequest;
+}
+
+export interface AccountsetsAccountSetIdTransfersVouchersPostRequest {
+    accountSetId: string;
+    bulkTransferRequest: BulkTransferRequest;
 }
 
 /**
@@ -60,6 +89,50 @@ export interface AccountsetsAccountSetIdTransfersPostRequest {
  * @interface TransfersApiInterface
  */
 export interface TransfersApiInterface {
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersBulkDeletePost without sending the request
+     * @param {string} accountSetId 
+     * @param {BulkTransferRequest} bulkTransferRequest 
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersBulkDeletePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {BulkTransferRequest} bulkTransferRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdTransfersBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>>;
+
+    /**
+     */
+    accountsetsAccountSetIdTransfersBulkDeletePost(requestParameters: AccountsetsAccountSetIdTransfersBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersExportGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersExportGetRaw(requestParameters: AccountsetsAccountSetIdTransfersExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdTransfersExportGet(requestParameters: AccountsetsAccountSetIdTransfersExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
     /**
      * Creates request options for accountsetsAccountSetIdTransfersGet without sending the request
      * @param {string} accountSetId 
@@ -153,6 +226,50 @@ export interface TransfersApiInterface {
     accountsetsAccountSetIdTransfersIdVoucherPost(requestParameters: AccountsetsAccountSetIdTransfersIdVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateVoucherResultDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdTransfersImportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersImportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersImportPostRaw(requestParameters: AccountsetsAccountSetIdTransfersImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TransferImportResult>>;
+
+    /**
+     */
+    accountsetsAccountSetIdTransfersImportPost(requestParameters: AccountsetsAccountSetIdTransfersImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TransferImportResult>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersImportTemplateGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersImportTemplateGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdTransfersImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdTransfersImportTemplateGet(requestParameters: AccountsetsAccountSetIdTransfersImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdTransfersPost without sending the request
      * @param {string} accountSetId 
      * @param {SaveTransferRequest} saveTransferRequest 
@@ -175,12 +292,134 @@ export interface TransfersApiInterface {
      */
     accountsetsAccountSetIdTransfersPost(requestParameters: AccountsetsAccountSetIdTransfersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TransferDto>;
 
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersVouchersPost without sending the request
+     * @param {string} accountSetId 
+     * @param {BulkTransferRequest} bulkTransferRequest 
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersVouchersPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {BulkTransferRequest} bulkTransferRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersVouchersPostRaw(requestParameters: AccountsetsAccountSetIdTransfersVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>>;
+
+    /**
+     */
+    accountsetsAccountSetIdTransfersVouchersPost(requestParameters: AccountsetsAccountSetIdTransfersVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number>;
+
 }
 
 /**
  * 
  */
 export class TransfersApi extends runtime.BaseAPI implements TransfersApiInterface {
+
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersBulkDeletePost without sending the request
+     */
+    async accountsetsAccountSetIdTransfersBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersBulkDeletePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdTransfersBulkDeletePost().'
+            );
+        }
+
+        if (requestParameters['bulkTransferRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkTransferRequest',
+                'Required parameter "bulkTransferRequest" was null or undefined when calling accountsetsAccountSetIdTransfersBulkDeletePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/transfers/bulk-delete`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkTransferRequestToJSON(requestParameters['bulkTransferRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdTransfersBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>> {
+        const requestOptions = await this.accountsetsAccountSetIdTransfersBulkDeletePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<number>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersBulkDeletePost(requestParameters: AccountsetsAccountSetIdTransfersBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number> {
+        const response = await this.accountsetsAccountSetIdTransfersBulkDeletePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersExportGet without sending the request
+     */
+    async accountsetsAccountSetIdTransfersExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdTransfersExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/transfers/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersExportGetRaw(requestParameters: AccountsetsAccountSetIdTransfersExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdTransfersExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersExportGet(requestParameters: AccountsetsAccountSetIdTransfersExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdTransfersExportGetRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for accountsetsAccountSetIdTransfersGet without sending the request
@@ -388,6 +627,112 @@ export class TransfersApi extends runtime.BaseAPI implements TransfersApiInterfa
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdTransfersImportPost without sending the request
+     */
+    async accountsetsAccountSetIdTransfersImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersImportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdTransfersImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/transfers/import`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersImportPostRaw(requestParameters: AccountsetsAccountSetIdTransfersImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TransferImportResult>> {
+        const requestOptions = await this.accountsetsAccountSetIdTransfersImportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TransferImportResultFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersImportPost(requestParameters: AccountsetsAccountSetIdTransfersImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TransferImportResult> {
+        const response = await this.accountsetsAccountSetIdTransfersImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersImportTemplateGet without sending the request
+     */
+    async accountsetsAccountSetIdTransfersImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersImportTemplateGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdTransfersImportTemplateGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/transfers/import/template`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdTransfersImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdTransfersImportTemplateGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersImportTemplateGet(requestParameters: AccountsetsAccountSetIdTransfersImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdTransfersImportTemplateGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdTransfersPost without sending the request
      */
     async accountsetsAccountSetIdTransfersPostRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersPostRequest): Promise<runtime.RequestOpts> {
@@ -437,6 +782,63 @@ export class TransfersApi extends runtime.BaseAPI implements TransfersApiInterfa
      */
     async accountsetsAccountSetIdTransfersPost(requestParameters: AccountsetsAccountSetIdTransfersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TransferDto> {
         const response = await this.accountsetsAccountSetIdTransfersPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersVouchersPost without sending the request
+     */
+    async accountsetsAccountSetIdTransfersVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersVouchersPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdTransfersVouchersPost().'
+            );
+        }
+
+        if (requestParameters['bulkTransferRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkTransferRequest',
+                'Required parameter "bulkTransferRequest" was null or undefined when calling accountsetsAccountSetIdTransfersVouchersPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/transfers/vouchers`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkTransferRequestToJSON(requestParameters['bulkTransferRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersVouchersPostRaw(requestParameters: AccountsetsAccountSetIdTransfersVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>> {
+        const requestOptions = await this.accountsetsAccountSetIdTransfersVouchersPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<number>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersVouchersPost(requestParameters: AccountsetsAccountSetIdTransfersVouchersPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number> {
+        const response = await this.accountsetsAccountSetIdTransfersVouchersPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

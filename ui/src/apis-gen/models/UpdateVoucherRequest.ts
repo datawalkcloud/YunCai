@@ -41,6 +41,12 @@ export interface UpdateVoucherRequest {
     attachmentCount?: number;
     /**
      * 
+     * @type {string}
+     * @memberof UpdateVoucherRequest
+     */
+    remark?: string | null;
+    /**
+     * 
      * @type {Array<CreateVoucherEntryRequest>}
      * @memberof UpdateVoucherRequest
      */
@@ -66,6 +72,7 @@ export function UpdateVoucherRequestFromJSONTyped(json: any, ignoreDiscriminator
         
         'date': json['date'] == null ? undefined : (new Date(json['date'])),
         'attachmentCount': json['attachmentCount'] == null ? undefined : json['attachmentCount'],
+        'remark': json['remark'] == null ? undefined : json['remark'],
         'entries': json['entries'] == null ? undefined : ((json['entries'] as Array<any>).map(CreateVoucherEntryRequestFromJSON)),
     };
 }
@@ -83,6 +90,7 @@ export function UpdateVoucherRequestToJSONTyped(value?: UpdateVoucherRequest | n
         
         'date': value['date'] == null ? value['date'] : value['date'].toISOString().substring(0,10),
         'attachmentCount': value['attachmentCount'],
+        'remark': value['remark'],
         'entries': value['entries'] == null ? undefined : ((value['entries'] as Array<any>).map(CreateVoucherEntryRequestToJSON)),
     };
 }

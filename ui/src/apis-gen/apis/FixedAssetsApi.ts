@@ -15,27 +15,50 @@
 
 import * as runtime from '../runtime';
 import type {
+  BulkClearAssetsRequest,
+  ChangeVoucherPreviewDto,
   ClearAssetRequest,
+  CopyFixedAssetRequest,
   DepreciatePeriodRequest,
   DepreciatePeriodResultDto,
   DepreciationLedgerRowDto,
+  DepreciationVoucherInfoDto,
+  FixedAssetBulkIdsRequest,
+  FixedAssetBulkResultDto,
   FixedAssetCategoryDto,
   FixedAssetChangeDto,
   FixedAssetCheckRowDto,
   FixedAssetDto,
+  FixedAssetImportResultDto,
   FixedAssetSummaryRowDto,
+  FixedAssetVoucherSettingDto,
+  GenerateChangeVoucherRequest,
+  GenerateDepreciationVoucherRequest,
   SaveFixedAssetCategoryRequest,
   SaveFixedAssetRequest,
+  SaveFixedAssetVoucherSettingRequest,
 } from '../models/index';
 import {
+    BulkClearAssetsRequestFromJSON,
+    BulkClearAssetsRequestToJSON,
+    ChangeVoucherPreviewDtoFromJSON,
+    ChangeVoucherPreviewDtoToJSON,
     ClearAssetRequestFromJSON,
     ClearAssetRequestToJSON,
+    CopyFixedAssetRequestFromJSON,
+    CopyFixedAssetRequestToJSON,
     DepreciatePeriodRequestFromJSON,
     DepreciatePeriodRequestToJSON,
     DepreciatePeriodResultDtoFromJSON,
     DepreciatePeriodResultDtoToJSON,
     DepreciationLedgerRowDtoFromJSON,
     DepreciationLedgerRowDtoToJSON,
+    DepreciationVoucherInfoDtoFromJSON,
+    DepreciationVoucherInfoDtoToJSON,
+    FixedAssetBulkIdsRequestFromJSON,
+    FixedAssetBulkIdsRequestToJSON,
+    FixedAssetBulkResultDtoFromJSON,
+    FixedAssetBulkResultDtoToJSON,
     FixedAssetCategoryDtoFromJSON,
     FixedAssetCategoryDtoToJSON,
     FixedAssetChangeDtoFromJSON,
@@ -44,13 +67,37 @@ import {
     FixedAssetCheckRowDtoToJSON,
     FixedAssetDtoFromJSON,
     FixedAssetDtoToJSON,
+    FixedAssetImportResultDtoFromJSON,
+    FixedAssetImportResultDtoToJSON,
     FixedAssetSummaryRowDtoFromJSON,
     FixedAssetSummaryRowDtoToJSON,
+    FixedAssetVoucherSettingDtoFromJSON,
+    FixedAssetVoucherSettingDtoToJSON,
+    GenerateChangeVoucherRequestFromJSON,
+    GenerateChangeVoucherRequestToJSON,
+    GenerateDepreciationVoucherRequestFromJSON,
+    GenerateDepreciationVoucherRequestToJSON,
     SaveFixedAssetCategoryRequestFromJSON,
     SaveFixedAssetCategoryRequestToJSON,
     SaveFixedAssetRequestFromJSON,
     SaveFixedAssetRequestToJSON,
+    SaveFixedAssetVoucherSettingRequestFromJSON,
+    SaveFixedAssetVoucherSettingRequestToJSON,
 } from '../models/index';
+
+export interface AccountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequest {
+    accountSetId: string;
+    bulkClearAssetsRequest: BulkClearAssetsRequest;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequest {
+    accountSetId: string;
+    fixedAssetBulkIdsRequest: FixedAssetBulkIdsRequest;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest {
+    accountSetId: string;
+}
 
 export interface AccountsetsAccountSetIdFixedassetsAssetsGetRequest {
     accountSetId: string;
@@ -60,6 +107,12 @@ export interface AccountsetsAccountSetIdFixedassetsAssetsIdClearPostRequest {
     accountSetId: string;
     id: string;
     clearAssetRequest: ClearAssetRequest;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequest {
+    accountSetId: string;
+    id: string;
+    copyFixedAssetRequest: CopyFixedAssetRequest;
 }
 
 export interface AccountsetsAccountSetIdFixedassetsAssetsIdDeleteRequest {
@@ -73,9 +126,22 @@ export interface AccountsetsAccountSetIdFixedassetsAssetsIdPutRequest {
     saveFixedAssetRequest: SaveFixedAssetRequest;
 }
 
+export interface AccountsetsAccountSetIdFixedassetsAssetsImportPostRequest {
+    accountSetId: string;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest {
+    accountSetId: string;
+}
+
 export interface AccountsetsAccountSetIdFixedassetsAssetsPostRequest {
     accountSetId: string;
     saveFixedAssetRequest: SaveFixedAssetRequest;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsCategoriesExportGetRequest {
+    accountSetId: string;
 }
 
 export interface AccountsetsAccountSetIdFixedassetsCategoriesGetRequest {
@@ -103,6 +169,21 @@ export interface AccountsetsAccountSetIdFixedassetsChangesGetRequest {
     assetId?: string;
 }
 
+export interface AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest {
+    accountSetId: string;
+    id: string;
+    generateChangeVoucherRequest: GenerateChangeVoucherRequest;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequest {
+    accountSetId: string;
+    id: string;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsCheckExportGetRequest {
+    accountSetId: string;
+}
+
 export interface AccountsetsAccountSetIdFixedassetsCheckGetRequest {
     accountSetId: string;
 }
@@ -112,9 +193,31 @@ export interface AccountsetsAccountSetIdFixedassetsDepreciatePostRequest {
     depreciatePeriodRequest: DepreciatePeriodRequest;
 }
 
+export interface AccountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequest {
+    accountSetId: string;
+    period?: number;
+}
+
 export interface AccountsetsAccountSetIdFixedassetsDepreciationLedgerGetRequest {
     accountSetId: string;
     period?: number;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest {
+    accountSetId: string;
+    period?: number;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest {
+    accountSetId: string;
+    generateDepreciationVoucherRequest: GenerateDepreciationVoucherRequest;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest {
+    accountSetId: string;
+    startPeriod?: number;
+    endPeriod?: number;
+    byCategory?: boolean;
 }
 
 export interface AccountsetsAccountSetIdFixedassetsSummaryGetRequest {
@@ -124,6 +227,15 @@ export interface AccountsetsAccountSetIdFixedassetsSummaryGetRequest {
     byCategory?: boolean;
 }
 
+export interface AccountsetsAccountSetIdFixedassetsVoucherSettingGetRequest {
+    accountSetId: string;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsVoucherSettingPutRequest {
+    accountSetId: string;
+    saveFixedAssetVoucherSettingRequest: SaveFixedAssetVoucherSettingRequest;
+}
+
 /**
  * FixedAssetsApi - interface
  * 
@@ -131,6 +243,73 @@ export interface AccountsetsAccountSetIdFixedassetsSummaryGetRequest {
  * @interface FixedAssetsApiInterface
  */
 export interface FixedAssetsApiInterface {
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsBulkClearPost without sending the request
+     * @param {string} accountSetId 
+     * @param {BulkClearAssetsRequest} bulkClearAssetsRequest 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {BulkClearAssetsRequest} bulkClearAssetsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsBulkClearPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetBulkResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsAssetsBulkClearPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetBulkResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost without sending the request
+     * @param {string} accountSetId 
+     * @param {FixedAssetBulkIdsRequest} fixedAssetBulkIdsRequest 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {FixedAssetBulkIdsRequest} fixedAssetBulkIdsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetBulkResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetBulkResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsExportGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsAssetsExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsAssetsGet without sending the request
      * @param {string} accountSetId 
@@ -176,6 +355,31 @@ export interface FixedAssetsApiInterface {
     /**
      */
     accountsetsAccountSetIdFixedassetsAssetsIdClearPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsIdClearPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsIdCopyPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {CopyFixedAssetRequest} copyFixedAssetRequest 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {CopyFixedAssetRequest} copyFixedAssetRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsIdCopyPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsAssetsIdCopyPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsAssetsIdDelete without sending the request
@@ -226,6 +430,50 @@ export interface FixedAssetsApiInterface {
     accountsetsAccountSetIdFixedassetsAssetsIdPut(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsImportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsImportPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetImportResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsAssetsImportPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetImportResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsAssetsPost without sending the request
      * @param {string} accountSetId 
      * @param {SaveFixedAssetRequest} saveFixedAssetRequest 
@@ -247,6 +495,27 @@ export interface FixedAssetsApiInterface {
     /**
      */
     accountsetsAccountSetIdFixedassetsAssetsPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsCategoriesExportGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsCategoriesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsCategoriesExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsCategoriesExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsCategoriesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsCategoriesExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsCategoriesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsCategoriesGet without sending the request
@@ -364,6 +633,75 @@ export interface FixedAssetsApiInterface {
     accountsetsAccountSetIdFixedassetsChangesGet(requestParameters: AccountsetsAccountSetIdFixedassetsChangesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FixedAssetChangeDto>>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsChangesIdVoucherPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {GenerateChangeVoucherRequest} generateChangeVoucherRequest 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {GenerateChangeVoucherRequest} generateChangeVoucherRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsChangesIdVoucherPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsChangesIdVoucherPost(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ChangeVoucherPreviewDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ChangeVoucherPreviewDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsCheckExportGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsCheckExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsCheckExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsCheckExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsCheckExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsCheckExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsCheckExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsCheckGet without sending the request
      * @param {string} accountSetId 
      * @throws {RequiredError}
@@ -408,6 +746,29 @@ export interface FixedAssetsApiInterface {
     accountsetsAccountSetIdFixedassetsDepreciatePost(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciatePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DepreciatePeriodResultDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationLedgerGet without sending the request
      * @param {string} accountSetId 
      * @param {number} [period] 
@@ -429,6 +790,79 @@ export interface FixedAssetsApiInterface {
     /**
      */
     accountsetsAccountSetIdFixedassetsDepreciationLedgerGet(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DepreciationLedgerRowDto>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationVoucherGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationVoucherGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DepreciationVoucherInfoDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationVoucherGet(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DepreciationVoucherInfoDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationVoucherPost without sending the request
+     * @param {string} accountSetId 
+     * @param {GenerateDepreciationVoucherRequest} generateDepreciationVoucherRequest 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {GenerateDepreciationVoucherRequest} generateDepreciationVoucherRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationVoucherPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DepreciationVoucherInfoDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationVoucherPost(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DepreciationVoucherInfoDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsSummaryExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
+     * @param {boolean} [byCategory] 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsSummaryExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
+     * @param {boolean} [byCategory] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsSummaryExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsSummaryExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsSummaryGet without sending the request
@@ -457,12 +891,204 @@ export interface FixedAssetsApiInterface {
      */
     accountsetsAccountSetIdFixedassetsSummaryGet(requestParameters: AccountsetsAccountSetIdFixedassetsSummaryGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FixedAssetSummaryRowDto>>;
 
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsVoucherSettingGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsVoucherSettingGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsVoucherSettingGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetVoucherSettingDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsVoucherSettingGet(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetVoucherSettingDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsVoucherSettingPut without sending the request
+     * @param {string} accountSetId 
+     * @param {SaveFixedAssetVoucherSettingRequest} saveFixedAssetVoucherSettingRequest 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsVoucherSettingPutRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingPutRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {SaveFixedAssetVoucherSettingRequest} saveFixedAssetVoucherSettingRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsVoucherSettingPutRaw(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetVoucherSettingDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsVoucherSettingPut(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetVoucherSettingDto>;
+
 }
 
 /**
  * 
  */
 export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInterface {
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsBulkClearPost without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsBulkClearPost().'
+            );
+        }
+
+        if (requestParameters['bulkClearAssetsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkClearAssetsRequest',
+                'Required parameter "bulkClearAssetsRequest" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsBulkClearPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/assets/bulk-clear`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkClearAssetsRequestToJSON(requestParameters['bulkClearAssetsRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsBulkClearPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetBulkResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FixedAssetBulkResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsBulkClearPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetBulkResultDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsAssetsBulkClearPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost().'
+            );
+        }
+
+        if (requestParameters['fixedAssetBulkIdsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'fixedAssetBulkIdsRequest',
+                'Required parameter "fixedAssetBulkIdsRequest" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/assets/bulk-delete`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: FixedAssetBulkIdsRequestToJSON(requestParameters['fixedAssetBulkIdsRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetBulkResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FixedAssetBulkResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetBulkResultDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsExportGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/assets/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsAssetsExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsAssetsExportGetRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsAssetsGet without sending the request
@@ -565,6 +1191,67 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
      */
     async accountsetsAccountSetIdFixedassetsAssetsIdClearPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsIdClearPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetDto> {
         const response = await this.accountsetsAccountSetIdFixedassetsAssetsIdClearPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsIdCopyPost without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsIdCopyPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsIdCopyPost().'
+            );
+        }
+
+        if (requestParameters['copyFixedAssetRequest'] == null) {
+            throw new runtime.RequiredError(
+                'copyFixedAssetRequest',
+                'Required parameter "copyFixedAssetRequest" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsIdCopyPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/assets/{id}/copy`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CopyFixedAssetRequestToJSON(requestParameters['copyFixedAssetRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsIdCopyPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FixedAssetDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsIdCopyPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsAssetsIdCopyPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -680,6 +1367,112 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsImportPost without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/assets/import`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsImportPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetImportResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsAssetsImportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FixedAssetImportResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsImportPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetImportResultDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsAssetsImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/assets/import-template`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsAssetsPost without sending the request
      */
     async accountsetsAccountSetIdFixedassetsAssetsPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPostRequest): Promise<runtime.RequestOpts> {
@@ -730,6 +1523,48 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
     async accountsetsAccountSetIdFixedassetsAssetsPost(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetDto> {
         const response = await this.accountsetsAccountSetIdFixedassetsAssetsPostRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsCategoriesExportGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsCategoriesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsCategoriesExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsCategoriesExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/categories/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsCategoriesExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsCategoriesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsCategoriesExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsCategoriesExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsCategoriesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsCategoriesExportGetRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -987,6 +1822,159 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsChangesIdVoucherPost without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsChangesIdVoucherPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdFixedassetsChangesIdVoucherPost().'
+            );
+        }
+
+        if (requestParameters['generateChangeVoucherRequest'] == null) {
+            throw new runtime.RequiredError(
+                'generateChangeVoucherRequest',
+                'Required parameter "generateChangeVoucherRequest" was null or undefined when calling accountsetsAccountSetIdFixedassetsChangesIdVoucherPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/changes/{id}/voucher`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GenerateChangeVoucherRequestToJSON(requestParameters['generateChangeVoucherRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsChangesIdVoucherPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsChangesIdVoucherPost(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsChangesIdVoucherPostRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/changes/{id}/voucher-preview`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ChangeVoucherPreviewDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ChangeVoucherPreviewDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet(requestParameters: AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ChangeVoucherPreviewDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsCheckExportGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsCheckExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsCheckExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsCheckExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/check/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsCheckExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsCheckExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsCheckExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsCheckExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsCheckExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsCheckExportGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsCheckGet without sending the request
      */
     async accountsetsAccountSetIdFixedassetsCheckGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsCheckGetRequest): Promise<runtime.RequestOpts> {
@@ -1083,6 +2071,52 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/depreciation-ledger/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationLedgerGet without sending the request
      */
     async accountsetsAccountSetIdFixedassetsDepreciationLedgerGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerGetRequest): Promise<runtime.RequestOpts> {
@@ -1127,6 +2161,160 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
     async accountsetsAccountSetIdFixedassetsDepreciationLedgerGet(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DepreciationLedgerRowDto>> {
         const response = await this.accountsetsAccountSetIdFixedassetsDepreciationLedgerGetRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationVoucherGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsDepreciationVoucherGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/depreciation-voucher`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationVoucherGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DepreciationVoucherInfoDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => DepreciationVoucherInfoDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationVoucherGet(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DepreciationVoucherInfoDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsDepreciationVoucherGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationVoucherPost without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsDepreciationVoucherPost().'
+            );
+        }
+
+        if (requestParameters['generateDepreciationVoucherRequest'] == null) {
+            throw new runtime.RequiredError(
+                'generateDepreciationVoucherRequest',
+                'Required parameter "generateDepreciationVoucherRequest" was null or undefined when calling accountsetsAccountSetIdFixedassetsDepreciationVoucherPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/depreciation-voucher`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GenerateDepreciationVoucherRequestToJSON(requestParameters['generateDepreciationVoucherRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationVoucherPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DepreciationVoucherInfoDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => DepreciationVoucherInfoDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationVoucherPost(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DepreciationVoucherInfoDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsDepreciationVoucherPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsSummaryExportGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsSummaryExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsSummaryExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['startPeriod'] != null) {
+            queryParameters['startPeriod'] = requestParameters['startPeriod'];
+        }
+
+        if (requestParameters['endPeriod'] != null) {
+            queryParameters['endPeriod'] = requestParameters['endPeriod'];
+        }
+
+        if (requestParameters['byCategory'] != null) {
+            queryParameters['byCategory'] = requestParameters['byCategory'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/summary/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsSummaryExportGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsSummaryExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsSummaryExportGet(requestParameters: AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsSummaryExportGetRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -1181,6 +2369,102 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
      */
     async accountsetsAccountSetIdFixedassetsSummaryGet(requestParameters: AccountsetsAccountSetIdFixedassetsSummaryGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FixedAssetSummaryRowDto>> {
         const response = await this.accountsetsAccountSetIdFixedassetsSummaryGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsVoucherSettingGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsVoucherSettingGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsVoucherSettingGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/voucher-setting`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsVoucherSettingGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetVoucherSettingDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsVoucherSettingGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FixedAssetVoucherSettingDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsVoucherSettingGet(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetVoucherSettingDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsVoucherSettingGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsVoucherSettingPut without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsVoucherSettingPutRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingPutRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsVoucherSettingPut().'
+            );
+        }
+
+        if (requestParameters['saveFixedAssetVoucherSettingRequest'] == null) {
+            throw new runtime.RequiredError(
+                'saveFixedAssetVoucherSettingRequest',
+                'Required parameter "saveFixedAssetVoucherSettingRequest" was null or undefined when calling accountsetsAccountSetIdFixedassetsVoucherSettingPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/voucher-setting`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveFixedAssetVoucherSettingRequestToJSON(requestParameters['saveFixedAssetVoucherSettingRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsVoucherSettingPutRaw(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetVoucherSettingDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsVoucherSettingPutRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FixedAssetVoucherSettingDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsVoucherSettingPut(requestParameters: AccountsetsAccountSetIdFixedassetsVoucherSettingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetVoucherSettingDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsVoucherSettingPutRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

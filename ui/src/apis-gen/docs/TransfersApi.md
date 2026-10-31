@@ -4,12 +4,150 @@ All URIs are relative to *http://localhost:5271*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
+| [**accountsetsAccountSetIdTransfersBulkDeletePost**](TransfersApi.md#accountsetsaccountsetidtransfersbulkdeletepost) | **POST** /accountsets/{accountSetId}/transfers/bulk-delete |  |
+| [**accountsetsAccountSetIdTransfersExportGet**](TransfersApi.md#accountsetsaccountsetidtransfersexportget) | **GET** /accountsets/{accountSetId}/transfers/export |  |
 | [**accountsetsAccountSetIdTransfersGet**](TransfersApi.md#accountsetsaccountsetidtransfersget) | **GET** /accountsets/{accountSetId}/transfers |  |
 | [**accountsetsAccountSetIdTransfersIdDelete**](TransfersApi.md#accountsetsaccountsetidtransfersiddelete) | **DELETE** /accountsets/{accountSetId}/transfers/{id} |  |
 | [**accountsetsAccountSetIdTransfersIdPut**](TransfersApi.md#accountsetsaccountsetidtransfersidput) | **PUT** /accountsets/{accountSetId}/transfers/{id} |  |
 | [**accountsetsAccountSetIdTransfersIdVoucherPost**](TransfersApi.md#accountsetsaccountsetidtransfersidvoucherpost) | **POST** /accountsets/{accountSetId}/transfers/{id}/voucher |  |
+| [**accountsetsAccountSetIdTransfersImportPost**](TransfersApi.md#accountsetsaccountsetidtransfersimportpost) | **POST** /accountsets/{accountSetId}/transfers/import |  |
+| [**accountsetsAccountSetIdTransfersImportTemplateGet**](TransfersApi.md#accountsetsaccountsetidtransfersimporttemplateget) | **GET** /accountsets/{accountSetId}/transfers/import/template |  |
 | [**accountsetsAccountSetIdTransfersPost**](TransfersApi.md#accountsetsaccountsetidtransferspost) | **POST** /accountsets/{accountSetId}/transfers |  |
+| [**accountsetsAccountSetIdTransfersVouchersPost**](TransfersApi.md#accountsetsaccountsetidtransfersvoucherspost) | **POST** /accountsets/{accountSetId}/transfers/vouchers |  |
 
+
+
+## accountsetsAccountSetIdTransfersBulkDeletePost
+
+> number accountsetsAccountSetIdTransfersBulkDeletePost(accountSetId, bulkTransferRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  TransfersApi,
+} from '';
+import type { AccountsetsAccountSetIdTransfersBulkDeletePostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new TransfersApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // BulkTransferRequest
+    bulkTransferRequest: ...,
+  } satisfies AccountsetsAccountSetIdTransfersBulkDeletePostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdTransfersBulkDeletePost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **bulkTransferRequest** | [BulkTransferRequest](BulkTransferRequest.md) |  | |
+
+### Return type
+
+**number**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdTransfersExportGet
+
+> accountsetsAccountSetIdTransfersExportGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  TransfersApi,
+} from '';
+import type { AccountsetsAccountSetIdTransfersExportGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new TransfersApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdTransfersExportGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdTransfersExportGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
 ## accountsetsAccountSetIdTransfersGet
@@ -284,6 +422,139 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## accountsetsAccountSetIdTransfersImportPost
+
+> TransferImportResult accountsetsAccountSetIdTransfersImportPost(accountSetId, file)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  TransfersApi,
+} from '';
+import type { AccountsetsAccountSetIdTransfersImportPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new TransfersApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Blob (optional)
+    file: BINARY_DATA_HERE,
+  } satisfies AccountsetsAccountSetIdTransfersImportPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdTransfersImportPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **file** | `Blob` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**TransferImportResult**](TransferImportResult.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `multipart/form-data`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdTransfersImportTemplateGet
+
+> accountsetsAccountSetIdTransfersImportTemplateGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  TransfersApi,
+} from '';
+import type { AccountsetsAccountSetIdTransfersImportTemplateGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new TransfersApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdTransfersImportTemplateGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdTransfersImportTemplateGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## accountsetsAccountSetIdTransfersPost
 
 > TransferDto accountsetsAccountSetIdTransfersPost(accountSetId, saveTransferRequest)
@@ -333,6 +604,74 @@ example().catch(console.error);
 ### Return type
 
 [**TransferDto**](TransferDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdTransfersVouchersPost
+
+> number accountsetsAccountSetIdTransfersVouchersPost(accountSetId, bulkTransferRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  TransfersApi,
+} from '';
+import type { AccountsetsAccountSetIdTransfersVouchersPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new TransfersApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // BulkTransferRequest
+    bulkTransferRequest: ...,
+  } satisfies AccountsetsAccountSetIdTransfersVouchersPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdTransfersVouchersPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **bulkTransferRequest** | [BulkTransferRequest](BulkTransferRequest.md) |  | |
+
+### Return type
+
+**number**
 
 ### Authorization
 

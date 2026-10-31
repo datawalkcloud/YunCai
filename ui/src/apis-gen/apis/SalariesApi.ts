@@ -17,20 +17,28 @@ import * as runtime from '../runtime';
 import type {
   AccrueViewDto,
   EmployeeDto,
+  EmployeeImportResultDto,
   GenerateCountDto,
   GenerateSalaryVoucherRequest,
   InsuranceItemDto,
   SalaryBillDto,
+  SalaryBillImportResultDto,
+  SalaryBulkIdsRequest,
+  SalaryBulkResultDto,
   SalarySummaryRowDto,
+  SalaryVoucherSettingDto,
   SaveEmployeeRequest,
   SaveInsuranceRequest,
   SaveSalaryBillRequest,
+  SaveSalaryVoucherSettingRequest,
 } from '../models/index';
 import {
     AccrueViewDtoFromJSON,
     AccrueViewDtoToJSON,
     EmployeeDtoFromJSON,
     EmployeeDtoToJSON,
+    EmployeeImportResultDtoFromJSON,
+    EmployeeImportResultDtoToJSON,
     GenerateCountDtoFromJSON,
     GenerateCountDtoToJSON,
     GenerateSalaryVoucherRequestFromJSON,
@@ -39,17 +47,32 @@ import {
     InsuranceItemDtoToJSON,
     SalaryBillDtoFromJSON,
     SalaryBillDtoToJSON,
+    SalaryBillImportResultDtoFromJSON,
+    SalaryBillImportResultDtoToJSON,
+    SalaryBulkIdsRequestFromJSON,
+    SalaryBulkIdsRequestToJSON,
+    SalaryBulkResultDtoFromJSON,
+    SalaryBulkResultDtoToJSON,
     SalarySummaryRowDtoFromJSON,
     SalarySummaryRowDtoToJSON,
+    SalaryVoucherSettingDtoFromJSON,
+    SalaryVoucherSettingDtoToJSON,
     SaveEmployeeRequestFromJSON,
     SaveEmployeeRequestToJSON,
     SaveInsuranceRequestFromJSON,
     SaveInsuranceRequestToJSON,
     SaveSalaryBillRequestFromJSON,
     SaveSalaryBillRequestToJSON,
+    SaveSalaryVoucherSettingRequestFromJSON,
+    SaveSalaryVoucherSettingRequestToJSON,
 } from '../models/index';
 
 export interface AccountsetsAccountSetIdSalaryAccrueViewGetRequest {
+    accountSetId: string;
+    period?: number;
+}
+
+export interface AccountsetsAccountSetIdSalaryBillsExportGetRequest {
     accountSetId: string;
     period?: number;
 }
@@ -64,9 +87,24 @@ export interface AccountsetsAccountSetIdSalaryBillsIdDeleteRequest {
     id: string;
 }
 
+export interface AccountsetsAccountSetIdSalaryBillsImportPostRequest {
+    accountSetId: string;
+    period?: number;
+    file?: Blob;
+}
+
 export interface AccountsetsAccountSetIdSalaryBillsPostRequest {
     accountSetId: string;
     saveSalaryBillRequest: SaveSalaryBillRequest;
+}
+
+export interface AccountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequest {
+    accountSetId: string;
+    salaryBulkIdsRequest: SalaryBulkIdsRequest;
+}
+
+export interface AccountsetsAccountSetIdSalaryEmployeesExportGetRequest {
+    accountSetId: string;
 }
 
 export interface AccountsetsAccountSetIdSalaryEmployeesGetRequest {
@@ -82,6 +120,15 @@ export interface AccountsetsAccountSetIdSalaryEmployeesIdPutRequest {
     accountSetId: string;
     id: string;
     saveEmployeeRequest: SaveEmployeeRequest;
+}
+
+export interface AccountsetsAccountSetIdSalaryEmployeesImportPostRequest {
+    accountSetId: string;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequest {
+    accountSetId: string;
 }
 
 export interface AccountsetsAccountSetIdSalaryEmployeesPostRequest {
@@ -119,10 +166,30 @@ export interface AccountsetsAccountSetIdSalaryInsurancePostRequest {
     saveInsuranceRequest: SaveInsuranceRequest;
 }
 
+export interface AccountsetsAccountSetIdSalaryPayslipsPdfGetRequest {
+    accountSetId: string;
+    period?: number;
+}
+
+export interface AccountsetsAccountSetIdSalarySummaryExportGetRequest {
+    accountSetId: string;
+    startPeriod?: number;
+    endPeriod?: number;
+}
+
 export interface AccountsetsAccountSetIdSalarySummaryGetRequest {
     accountSetId: string;
     startPeriod?: number;
     endPeriod?: number;
+}
+
+export interface AccountsetsAccountSetIdSalaryVoucherSettingGetRequest {
+    accountSetId: string;
+}
+
+export interface AccountsetsAccountSetIdSalaryVoucherSettingPutRequest {
+    accountSetId: string;
+    saveSalaryVoucherSettingRequest: SaveSalaryVoucherSettingRequest;
 }
 
 /**
@@ -154,6 +221,29 @@ export interface SalariesApiInterface {
     /**
      */
     accountsetsAccountSetIdSalaryAccrueViewGet(requestParameters: AccountsetsAccountSetIdSalaryAccrueViewGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccrueViewDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryBillsExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryBillsExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryBillsExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryBillsExportGetRaw(requestParameters: AccountsetsAccountSetIdSalaryBillsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryBillsExportGet(requestParameters: AccountsetsAccountSetIdSalaryBillsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdSalaryBillsGet without sending the request
@@ -202,6 +292,31 @@ export interface SalariesApiInterface {
     accountsetsAccountSetIdSalaryBillsIdDelete(requestParameters: AccountsetsAccountSetIdSalaryBillsIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdSalaryBillsImportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryBillsImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryBillsImportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryBillsImportPostRaw(requestParameters: AccountsetsAccountSetIdSalaryBillsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SalaryBillImportResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryBillsImportPost(requestParameters: AccountsetsAccountSetIdSalaryBillsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryBillImportResultDto>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdSalaryBillsPost without sending the request
      * @param {string} accountSetId 
      * @param {SaveSalaryBillRequest} saveSalaryBillRequest 
@@ -223,6 +338,50 @@ export interface SalariesApiInterface {
     /**
      */
     accountsetsAccountSetIdSalaryBillsPost(requestParameters: AccountsetsAccountSetIdSalaryBillsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryBillDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesBulkDeletePost without sending the request
+     * @param {string} accountSetId 
+     * @param {SalaryBulkIdsRequest} salaryBulkIdsRequest 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {SalaryBulkIdsRequest} salaryBulkIdsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SalaryBulkResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryEmployeesBulkDeletePost(requestParameters: AccountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryBulkResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesExportGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesExportGetRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryEmployeesExportGet(requestParameters: AccountsetsAccountSetIdSalaryEmployeesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdSalaryEmployeesGet without sending the request
@@ -292,6 +451,50 @@ export interface SalariesApiInterface {
     /**
      */
     accountsetsAccountSetIdSalaryEmployeesIdPut(requestParameters: AccountsetsAccountSetIdSalaryEmployeesIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EmployeeDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesImportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesImportPostRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EmployeeImportResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryEmployeesImportPost(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EmployeeImportResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesImportTemplateGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryEmployeesImportTemplateGet(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdSalaryEmployeesPost without sending the request
@@ -455,6 +658,54 @@ export interface SalariesApiInterface {
     accountsetsAccountSetIdSalaryInsurancePost(requestParameters: AccountsetsAccountSetIdSalaryInsurancePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InsuranceItemDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdSalaryPayslipsPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryPayslipsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryPayslipsPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryPayslipsPdfGetRaw(requestParameters: AccountsetsAccountSetIdSalaryPayslipsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryPayslipsPdfGet(requestParameters: AccountsetsAccountSetIdSalaryPayslipsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalarySummaryExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalarySummaryExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalarySummaryExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalarySummaryExportGetRaw(requestParameters: AccountsetsAccountSetIdSalarySummaryExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalarySummaryExportGet(requestParameters: AccountsetsAccountSetIdSalarySummaryExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdSalarySummaryGet without sending the request
      * @param {string} accountSetId 
      * @param {number} [startPeriod] 
@@ -478,6 +729,50 @@ export interface SalariesApiInterface {
     /**
      */
     accountsetsAccountSetIdSalarySummaryGet(requestParameters: AccountsetsAccountSetIdSalarySummaryGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SalarySummaryRowDto>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryVoucherSettingGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryVoucherSettingGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryVoucherSettingGetRaw(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SalaryVoucherSettingDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryVoucherSettingGet(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryVoucherSettingDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryVoucherSettingPut without sending the request
+     * @param {string} accountSetId 
+     * @param {SaveSalaryVoucherSettingRequest} saveSalaryVoucherSettingRequest 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryVoucherSettingPutRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingPutRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {SaveSalaryVoucherSettingRequest} saveSalaryVoucherSettingRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryVoucherSettingPutRaw(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SalaryVoucherSettingDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryVoucherSettingPut(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryVoucherSettingDto>;
 
 }
 
@@ -531,6 +826,52 @@ export class SalariesApi extends runtime.BaseAPI implements SalariesApiInterface
     async accountsetsAccountSetIdSalaryAccrueViewGet(requestParameters: AccountsetsAccountSetIdSalaryAccrueViewGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccrueViewDto> {
         const response = await this.accountsetsAccountSetIdSalaryAccrueViewGetRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryBillsExportGet without sending the request
+     */
+    async accountsetsAccountSetIdSalaryBillsExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryBillsExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryBillsExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/bills/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryBillsExportGetRaw(requestParameters: AccountsetsAccountSetIdSalaryBillsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryBillsExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryBillsExportGet(requestParameters: AccountsetsAccountSetIdSalaryBillsExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdSalaryBillsExportGetRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -631,6 +972,74 @@ export class SalariesApi extends runtime.BaseAPI implements SalariesApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdSalaryBillsImportPost without sending the request
+     */
+    async accountsetsAccountSetIdSalaryBillsImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryBillsImportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryBillsImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/bills/import`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryBillsImportPostRaw(requestParameters: AccountsetsAccountSetIdSalaryBillsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SalaryBillImportResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryBillsImportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SalaryBillImportResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryBillsImportPost(requestParameters: AccountsetsAccountSetIdSalaryBillsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryBillImportResultDto> {
+        const response = await this.accountsetsAccountSetIdSalaryBillsImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdSalaryBillsPost without sending the request
      */
     async accountsetsAccountSetIdSalaryBillsPostRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryBillsPostRequest): Promise<runtime.RequestOpts> {
@@ -681,6 +1090,101 @@ export class SalariesApi extends runtime.BaseAPI implements SalariesApiInterface
     async accountsetsAccountSetIdSalaryBillsPost(requestParameters: AccountsetsAccountSetIdSalaryBillsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryBillDto> {
         const response = await this.accountsetsAccountSetIdSalaryBillsPostRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesBulkDeletePost without sending the request
+     */
+    async accountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryEmployeesBulkDeletePost().'
+            );
+        }
+
+        if (requestParameters['salaryBulkIdsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'salaryBulkIdsRequest',
+                'Required parameter "salaryBulkIdsRequest" was null or undefined when calling accountsetsAccountSetIdSalaryEmployeesBulkDeletePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/employees/bulk-delete`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SalaryBulkIdsRequestToJSON(requestParameters['salaryBulkIdsRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesBulkDeletePostRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SalaryBulkResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SalaryBulkResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesBulkDeletePost(requestParameters: AccountsetsAccountSetIdSalaryEmployeesBulkDeletePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryBulkResultDto> {
+        const response = await this.accountsetsAccountSetIdSalaryEmployeesBulkDeletePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesExportGet without sending the request
+     */
+    async accountsetsAccountSetIdSalaryEmployeesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryEmployeesExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/employees/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesExportGetRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryEmployeesExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesExportGet(requestParameters: AccountsetsAccountSetIdSalaryEmployeesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdSalaryEmployeesExportGetRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -835,6 +1339,112 @@ export class SalariesApi extends runtime.BaseAPI implements SalariesApiInterface
     async accountsetsAccountSetIdSalaryEmployeesIdPut(requestParameters: AccountsetsAccountSetIdSalaryEmployeesIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EmployeeDto> {
         const response = await this.accountsetsAccountSetIdSalaryEmployeesIdPutRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesImportPost without sending the request
+     */
+    async accountsetsAccountSetIdSalaryEmployeesImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryEmployeesImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/employees/import`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesImportPostRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EmployeeImportResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryEmployeesImportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EmployeeImportResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesImportPost(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EmployeeImportResultDto> {
+        const response = await this.accountsetsAccountSetIdSalaryEmployeesImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesImportTemplateGet without sending the request
+     */
+    async accountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryEmployeesImportTemplateGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/employees/import-template`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesImportTemplateGet(requestParameters: AccountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdSalaryEmployeesImportTemplateGetRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -1204,6 +1814,102 @@ export class SalariesApi extends runtime.BaseAPI implements SalariesApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdSalaryPayslipsPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdSalaryPayslipsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryPayslipsPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryPayslipsPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/payslips/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryPayslipsPdfGetRaw(requestParameters: AccountsetsAccountSetIdSalaryPayslipsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryPayslipsPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryPayslipsPdfGet(requestParameters: AccountsetsAccountSetIdSalaryPayslipsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdSalaryPayslipsPdfGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalarySummaryExportGet without sending the request
+     */
+    async accountsetsAccountSetIdSalarySummaryExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalarySummaryExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalarySummaryExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['startPeriod'] != null) {
+            queryParameters['startPeriod'] = requestParameters['startPeriod'];
+        }
+
+        if (requestParameters['endPeriod'] != null) {
+            queryParameters['endPeriod'] = requestParameters['endPeriod'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/summary/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalarySummaryExportGetRaw(requestParameters: AccountsetsAccountSetIdSalarySummaryExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalarySummaryExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalarySummaryExportGet(requestParameters: AccountsetsAccountSetIdSalarySummaryExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdSalarySummaryExportGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdSalarySummaryGet without sending the request
      */
     async accountsetsAccountSetIdSalarySummaryGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalarySummaryGetRequest): Promise<runtime.RequestOpts> {
@@ -1251,6 +1957,102 @@ export class SalariesApi extends runtime.BaseAPI implements SalariesApiInterface
      */
     async accountsetsAccountSetIdSalarySummaryGet(requestParameters: AccountsetsAccountSetIdSalarySummaryGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SalarySummaryRowDto>> {
         const response = await this.accountsetsAccountSetIdSalarySummaryGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryVoucherSettingGet without sending the request
+     */
+    async accountsetsAccountSetIdSalaryVoucherSettingGetRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryVoucherSettingGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/voucher-setting`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryVoucherSettingGetRaw(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SalaryVoucherSettingDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryVoucherSettingGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SalaryVoucherSettingDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryVoucherSettingGet(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryVoucherSettingDto> {
+        const response = await this.accountsetsAccountSetIdSalaryVoucherSettingGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryVoucherSettingPut without sending the request
+     */
+    async accountsetsAccountSetIdSalaryVoucherSettingPutRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingPutRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryVoucherSettingPut().'
+            );
+        }
+
+        if (requestParameters['saveSalaryVoucherSettingRequest'] == null) {
+            throw new runtime.RequiredError(
+                'saveSalaryVoucherSettingRequest',
+                'Required parameter "saveSalaryVoucherSettingRequest" was null or undefined when calling accountsetsAccountSetIdSalaryVoucherSettingPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/voucher-setting`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveSalaryVoucherSettingRequestToJSON(requestParameters['saveSalaryVoucherSettingRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryVoucherSettingPutRaw(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SalaryVoucherSettingDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryVoucherSettingPutRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SalaryVoucherSettingDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryVoucherSettingPut(requestParameters: AccountsetsAccountSetIdSalaryVoucherSettingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SalaryVoucherSettingDto> {
+        const response = await this.accountsetsAccountSetIdSalaryVoucherSettingPutRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

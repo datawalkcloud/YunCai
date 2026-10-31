@@ -7,6 +7,9 @@
 Name | Type
 ------------ | -------------
 `name` | string
+`code` | string
+`parentId` | string
+`cashFlowItemId` | string
 `smartKeywords` | string
 `voucherSubjectId` | string
 
@@ -18,6 +21,9 @@ import type { UpdateEntryCategoryRequest } from ''
 // TODO: Update the object below with actual values
 const example = {
   "name": null,
+  "code": null,
+  "parentId": null,
+  "cashFlowItemId": null,
   "smartKeywords": null,
   "voucherSubjectId": null,
 } satisfies UpdateEntryCategoryRequest

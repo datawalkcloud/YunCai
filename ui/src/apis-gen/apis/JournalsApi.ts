@@ -15,11 +15,13 @@
 
 import * as runtime from '../runtime';
 import type {
+  BulkJournalEntryRequest,
   CreateJournalRequest,
   GenerateVoucherRequest,
   GenerateVoucherResultDto,
   GenerateVouchersBatchRequest,
   GenerateVouchersBatchResultDto,
+  JournalAccountImportResultDto,
   JournalDetailDto,
   JournalEntryRequest,
   JournalImportResult,
@@ -28,6 +30,8 @@ import type {
   UpdateJournalRequest,
 } from '../models/index';
 import {
+    BulkJournalEntryRequestFromJSON,
+    BulkJournalEntryRequestToJSON,
     CreateJournalRequestFromJSON,
     CreateJournalRequestToJSON,
     GenerateVoucherRequestFromJSON,
@@ -38,6 +42,8 @@ import {
     GenerateVouchersBatchRequestToJSON,
     GenerateVouchersBatchResultDtoFromJSON,
     GenerateVouchersBatchResultDtoToJSON,
+    JournalAccountImportResultDtoFromJSON,
+    JournalAccountImportResultDtoToJSON,
     JournalDetailDtoFromJSON,
     JournalDetailDtoToJSON,
     JournalEntryRequestFromJSON,
@@ -52,6 +58,19 @@ import {
     UpdateJournalRequestToJSON,
 } from '../models/index';
 
+export interface AccountsetsAccountSetIdJournalsAccountsImportPostRequest {
+    accountSetId: string;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdJournalsAccountsImportTemplateGetRequest {
+    accountSetId: string;
+}
+
+export interface AccountsetsAccountSetIdJournalsExportAllGetRequest {
+    accountSetId: string;
+}
+
 export interface AccountsetsAccountSetIdJournalsGetRequest {
     accountSetId: string;
 }
@@ -65,6 +84,12 @@ export interface AccountsetsAccountSetIdJournalsIdEnabledPatchRequest {
     accountSetId: string;
     id: string;
     setJournalEnabledRequest: SetJournalEnabledRequest;
+}
+
+export interface AccountsetsAccountSetIdJournalsIdEntriesBulkPostRequest {
+    accountSetId: string;
+    id: string;
+    bulkJournalEntryRequest: BulkJournalEntryRequest;
 }
 
 export interface AccountsetsAccountSetIdJournalsIdEntriesEntryIdDeleteRequest {
@@ -138,6 +163,71 @@ export interface AccountsetsAccountSetIdJournalsPostRequest {
  */
 export interface JournalsApiInterface {
     /**
+     * Creates request options for accountsetsAccountSetIdJournalsAccountsImportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsAccountsImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsAccountsImportPostRaw(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JournalAccountImportResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdJournalsAccountsImportPost(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalAccountImportResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsAccountsImportTemplateGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsAccountsImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportTemplateGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsAccountsImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdJournalsAccountsImportTemplateGet(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsExportAllGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsExportAllGetRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsExportAllGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsExportAllGetRaw(requestParameters: AccountsetsAccountSetIdJournalsExportAllGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdJournalsExportAllGet(requestParameters: AccountsetsAccountSetIdJournalsExportAllGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdJournalsGet without sending the request
      * @param {string} accountSetId 
      * @throws {RequiredError}
@@ -205,6 +295,31 @@ export interface JournalsApiInterface {
     /**
      */
     accountsetsAccountSetIdJournalsIdEnabledPatch(requestParameters: AccountsetsAccountSetIdJournalsIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalDetailDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdEntriesBulkPost without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {BulkJournalEntryRequest} bulkJournalEntryRequest 
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdEntriesBulkPostRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesBulkPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {BulkJournalEntryRequest} bulkJournalEntryRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdEntriesBulkPostRaw(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesBulkPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>>;
+
+    /**
+     */
+    accountsetsAccountSetIdJournalsIdEntriesBulkPost(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesBulkPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number>;
 
     /**
      * Creates request options for accountsetsAccountSetIdJournalsIdEntriesEntryIdDelete without sending the request
@@ -483,6 +598,154 @@ export interface JournalsApiInterface {
 export class JournalsApi extends runtime.BaseAPI implements JournalsApiInterface {
 
     /**
+     * Creates request options for accountsetsAccountSetIdJournalsAccountsImportPost without sending the request
+     */
+    async accountsetsAccountSetIdJournalsAccountsImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdJournalsAccountsImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/Journals/accounts/import`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsAccountsImportPostRaw(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JournalAccountImportResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdJournalsAccountsImportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => JournalAccountImportResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsAccountsImportPost(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalAccountImportResultDto> {
+        const response = await this.accountsetsAccountSetIdJournalsAccountsImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsAccountsImportTemplateGet without sending the request
+     */
+    async accountsetsAccountSetIdJournalsAccountsImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportTemplateGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdJournalsAccountsImportTemplateGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Journals/accounts/import-template`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsAccountsImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdJournalsAccountsImportTemplateGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsAccountsImportTemplateGet(requestParameters: AccountsetsAccountSetIdJournalsAccountsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdJournalsAccountsImportTemplateGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsExportAllGet without sending the request
+     */
+    async accountsetsAccountSetIdJournalsExportAllGetRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsExportAllGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdJournalsExportAllGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Journals/export/all`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsExportAllGetRaw(requestParameters: AccountsetsAccountSetIdJournalsExportAllGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdJournalsExportAllGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsExportAllGet(requestParameters: AccountsetsAccountSetIdJournalsExportAllGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdJournalsExportAllGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdJournalsGet without sending the request
      */
     async accountsetsAccountSetIdJournalsGetRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsGetRequest): Promise<runtime.RequestOpts> {
@@ -633,6 +896,71 @@ export class JournalsApi extends runtime.BaseAPI implements JournalsApiInterface
      */
     async accountsetsAccountSetIdJournalsIdEnabledPatch(requestParameters: AccountsetsAccountSetIdJournalsIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalDetailDto> {
         const response = await this.accountsetsAccountSetIdJournalsIdEnabledPatchRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdEntriesBulkPost without sending the request
+     */
+    async accountsetsAccountSetIdJournalsIdEntriesBulkPostRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesBulkPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdJournalsIdEntriesBulkPost().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdJournalsIdEntriesBulkPost().'
+            );
+        }
+
+        if (requestParameters['bulkJournalEntryRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkJournalEntryRequest',
+                'Required parameter "bulkJournalEntryRequest" was null or undefined when calling accountsetsAccountSetIdJournalsIdEntriesBulkPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/Journals/{id}/entries/bulk`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkJournalEntryRequestToJSON(requestParameters['bulkJournalEntryRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdEntriesBulkPostRaw(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesBulkPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>> {
+        const requestOptions = await this.accountsetsAccountSetIdJournalsIdEntriesBulkPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<number>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdEntriesBulkPost(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesBulkPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number> {
+        const response = await this.accountsetsAccountSetIdJournalsIdEntriesBulkPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

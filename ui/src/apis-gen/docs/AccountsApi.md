@@ -14,7 +14,9 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdAccountsImportPost**](AccountsApi.md#accountsetsaccountsetidaccountsimportpost) | **POST** /accountsets/{accountSetId}/Accounts/import |  |
 | [**accountsetsAccountSetIdAccountsImportTemplateGet**](AccountsApi.md#accountsetsaccountsetidaccountsimporttemplateget) | **GET** /accountsets/{accountSetId}/Accounts/import/template |  |
 | [**accountsetsAccountSetIdAccountsOpeningBalancesGet**](AccountsApi.md#accountsetsaccountsetidaccountsopeningbalancesget) | **GET** /accountsets/{accountSetId}/Accounts/opening-balances |  |
+| [**accountsetsAccountSetIdAccountsOpeningBalancesImportPost**](AccountsApi.md#accountsetsaccountsetidaccountsopeningbalancesimportpost) | **POST** /accountsets/{accountSetId}/Accounts/opening-balances/import |  |
 | [**accountsetsAccountSetIdAccountsOpeningBalancesPut**](AccountsApi.md#accountsetsaccountsetidaccountsopeningbalancesput) | **PUT** /accountsets/{accountSetId}/Accounts/opening-balances |  |
+| [**accountsetsAccountSetIdAccountsOpeningBalancesTemplateGet**](AccountsApi.md#accountsetsaccountsetidaccountsopeningbalancestemplateget) | **GET** /accountsets/{accountSetId}/Accounts/opening-balances/template |  |
 | [**accountsetsAccountSetIdAccountsPost**](AccountsApi.md#accountsetsaccountsetidaccountspost) | **POST** /accountsets/{accountSetId}/Accounts |  |
 
 
@@ -696,6 +698,74 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## accountsetsAccountSetIdAccountsOpeningBalancesImportPost
+
+> OpeningBalanceImportResultDto accountsetsAccountSetIdAccountsOpeningBalancesImportPost(accountSetId, file)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AccountsApi,
+} from '';
+import type { AccountsetsAccountSetIdAccountsOpeningBalancesImportPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new AccountsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Blob (optional)
+    file: BINARY_DATA_HERE,
+  } satisfies AccountsetsAccountSetIdAccountsOpeningBalancesImportPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdAccountsOpeningBalancesImportPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **file** | `Blob` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**OpeningBalanceImportResultDto**](OpeningBalanceImportResultDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `multipart/form-data`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## accountsetsAccountSetIdAccountsOpeningBalancesPut
 
 > OpeningBalancesDto accountsetsAccountSetIdAccountsOpeningBalancesPut(accountSetId, saveOpeningBalancesRequest)
@@ -754,6 +824,71 @@ No authorization required
 
 - **Content-Type**: `application/json`, `text/json`, `application/*+json`
 - **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdAccountsOpeningBalancesTemplateGet
+
+> accountsetsAccountSetIdAccountsOpeningBalancesTemplateGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AccountsApi,
+} from '';
+import type { AccountsetsAccountSetIdAccountsOpeningBalancesTemplateGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new AccountsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdAccountsOpeningBalancesTemplateGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdAccountsOpeningBalancesTemplateGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 
 ### HTTP response details

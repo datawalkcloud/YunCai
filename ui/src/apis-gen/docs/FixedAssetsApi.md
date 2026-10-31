@@ -4,21 +4,238 @@ All URIs are relative to *http://localhost:5271*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
+| [**accountsetsAccountSetIdFixedassetsAssetsBulkClearPost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsbulkclearpost) | **POST** /accountsets/{accountSetId}/fixedassets/assets/bulk-clear |  |
+| [**accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsbulkdeletepost) | **POST** /accountsets/{accountSetId}/fixedassets/assets/bulk-delete |  |
+| [**accountsetsAccountSetIdFixedassetsAssetsExportGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsexportget) | **GET** /accountsets/{accountSetId}/fixedassets/assets/export |  |
 | [**accountsetsAccountSetIdFixedassetsAssetsGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsget) | **GET** /accountsets/{accountSetId}/fixedassets/assets |  |
 | [**accountsetsAccountSetIdFixedassetsAssetsIdClearPost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsidclearpost) | **POST** /accountsets/{accountSetId}/fixedassets/assets/{id}/clear |  |
+| [**accountsetsAccountSetIdFixedassetsAssetsIdCopyPost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsidcopypost) | **POST** /accountsets/{accountSetId}/fixedassets/assets/{id}/copy |  |
 | [**accountsetsAccountSetIdFixedassetsAssetsIdDelete**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsiddelete) | **DELETE** /accountsets/{accountSetId}/fixedassets/assets/{id} |  |
 | [**accountsetsAccountSetIdFixedassetsAssetsIdPut**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsidput) | **PUT** /accountsets/{accountSetId}/fixedassets/assets/{id} |  |
+| [**accountsetsAccountSetIdFixedassetsAssetsImportPost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsimportpost) | **POST** /accountsets/{accountSetId}/fixedassets/assets/import |  |
+| [**accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetsimporttemplateget) | **GET** /accountsets/{accountSetId}/fixedassets/assets/import-template |  |
 | [**accountsetsAccountSetIdFixedassetsAssetsPost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsassetspost) | **POST** /accountsets/{accountSetId}/fixedassets/assets |  |
+| [**accountsetsAccountSetIdFixedassetsCategoriesExportGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetscategoriesexportget) | **GET** /accountsets/{accountSetId}/fixedassets/categories/export |  |
 | [**accountsetsAccountSetIdFixedassetsCategoriesGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetscategoriesget) | **GET** /accountsets/{accountSetId}/fixedassets/categories |  |
 | [**accountsetsAccountSetIdFixedassetsCategoriesIdDelete**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetscategoriesiddelete) | **DELETE** /accountsets/{accountSetId}/fixedassets/categories/{id} |  |
 | [**accountsetsAccountSetIdFixedassetsCategoriesIdPut**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetscategoriesidput) | **PUT** /accountsets/{accountSetId}/fixedassets/categories/{id} |  |
 | [**accountsetsAccountSetIdFixedassetsCategoriesPost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetscategoriespost) | **POST** /accountsets/{accountSetId}/fixedassets/categories |  |
 | [**accountsetsAccountSetIdFixedassetsChangesGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetschangesget) | **GET** /accountsets/{accountSetId}/fixedassets/changes |  |
+| [**accountsetsAccountSetIdFixedassetsChangesIdVoucherPost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetschangesidvoucherpost) | **POST** /accountsets/{accountSetId}/fixedassets/changes/{id}/voucher |  |
+| [**accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetschangesidvoucherpreviewget) | **GET** /accountsets/{accountSetId}/fixedassets/changes/{id}/voucher-preview |  |
+| [**accountsetsAccountSetIdFixedassetsCheckExportGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetscheckexportget) | **GET** /accountsets/{accountSetId}/fixedassets/check/export |  |
 | [**accountsetsAccountSetIdFixedassetsCheckGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetscheckget) | **GET** /accountsets/{accountSetId}/fixedassets/check |  |
 | [**accountsetsAccountSetIdFixedassetsDepreciatePost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsdepreciatepost) | **POST** /accountsets/{accountSetId}/fixedassets/depreciate |  |
+| [**accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsdepreciationledgerexportget) | **GET** /accountsets/{accountSetId}/fixedassets/depreciation-ledger/export |  |
 | [**accountsetsAccountSetIdFixedassetsDepreciationLedgerGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsdepreciationledgerget) | **GET** /accountsets/{accountSetId}/fixedassets/depreciation-ledger |  |
+| [**accountsetsAccountSetIdFixedassetsDepreciationVoucherGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsdepreciationvoucherget) | **GET** /accountsets/{accountSetId}/fixedassets/depreciation-voucher |  |
+| [**accountsetsAccountSetIdFixedassetsDepreciationVoucherPost**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsdepreciationvoucherpost) | **POST** /accountsets/{accountSetId}/fixedassets/depreciation-voucher |  |
+| [**accountsetsAccountSetIdFixedassetsSummaryExportGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetssummaryexportget) | **GET** /accountsets/{accountSetId}/fixedassets/summary/export |  |
 | [**accountsetsAccountSetIdFixedassetsSummaryGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetssummaryget) | **GET** /accountsets/{accountSetId}/fixedassets/summary |  |
+| [**accountsetsAccountSetIdFixedassetsVoucherSettingGet**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsvouchersettingget) | **GET** /accountsets/{accountSetId}/fixedassets/voucher-setting |  |
+| [**accountsetsAccountSetIdFixedassetsVoucherSettingPut**](FixedAssetsApi.md#accountsetsaccountsetidfixedassetsvouchersettingput) | **PUT** /accountsets/{accountSetId}/fixedassets/voucher-setting |  |
 
+
+
+## accountsetsAccountSetIdFixedassetsAssetsBulkClearPost
+
+> FixedAssetBulkResultDto accountsetsAccountSetIdFixedassetsAssetsBulkClearPost(accountSetId, bulkClearAssetsRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // BulkClearAssetsRequest
+    bulkClearAssetsRequest: ...,
+  } satisfies AccountsetsAccountSetIdFixedassetsAssetsBulkClearPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsAssetsBulkClearPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **bulkClearAssetsRequest** | [BulkClearAssetsRequest](BulkClearAssetsRequest.md) |  | |
+
+### Return type
+
+[**FixedAssetBulkResultDto**](FixedAssetBulkResultDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost
+
+> FixedAssetBulkResultDto accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost(accountSetId, fixedAssetBulkIdsRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // FixedAssetBulkIdsRequest
+    fixedAssetBulkIdsRequest: ...,
+  } satisfies AccountsetsAccountSetIdFixedassetsAssetsBulkDeletePostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **fixedAssetBulkIdsRequest** | [FixedAssetBulkIdsRequest](FixedAssetBulkIdsRequest.md) |  | |
+
+### Return type
+
+[**FixedAssetBulkResultDto**](FixedAssetBulkResultDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsAssetsExportGet
+
+> accountsetsAccountSetIdFixedassetsAssetsExportGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsAssetsExportGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
 ## accountsetsAccountSetIdFixedassetsAssetsGet
@@ -134,6 +351,77 @@ example().catch(console.error);
 | **accountSetId** | `string` |  | [Defaults to `undefined`] |
 | **id** | `string` |  | [Defaults to `undefined`] |
 | **clearAssetRequest** | [ClearAssetRequest](ClearAssetRequest.md) |  | |
+
+### Return type
+
+[**FixedAssetDto**](FixedAssetDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsAssetsIdCopyPost
+
+> FixedAssetDto accountsetsAccountSetIdFixedassetsAssetsIdCopyPost(accountSetId, id, copyFixedAssetRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // CopyFixedAssetRequest
+    copyFixedAssetRequest: ...,
+  } satisfies AccountsetsAccountSetIdFixedassetsAssetsIdCopyPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsAssetsIdCopyPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **copyFixedAssetRequest** | [CopyFixedAssetRequest](CopyFixedAssetRequest.md) |  | |
 
 ### Return type
 
@@ -296,6 +584,139 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## accountsetsAccountSetIdFixedassetsAssetsImportPost
+
+> FixedAssetImportResultDto accountsetsAccountSetIdFixedassetsAssetsImportPost(accountSetId, file)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsAssetsImportPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Blob (optional)
+    file: BINARY_DATA_HERE,
+  } satisfies AccountsetsAccountSetIdFixedassetsAssetsImportPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsAssetsImportPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **file** | `Blob` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**FixedAssetImportResultDto**](FixedAssetImportResultDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `multipart/form-data`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet
+
+> accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## accountsetsAccountSetIdFixedassetsAssetsPost
 
 > FixedAssetDto accountsetsAccountSetIdFixedassetsAssetsPost(accountSetId, saveFixedAssetRequest)
@@ -354,6 +775,71 @@ No authorization required
 
 - **Content-Type**: `application/json`, `text/json`, `application/*+json`
 - **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsCategoriesExportGet
+
+> accountsetsAccountSetIdFixedassetsCategoriesExportGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsCategoriesExportGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdFixedassetsCategoriesExportGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsCategoriesExportGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 
 ### HTTP response details
@@ -704,6 +1190,210 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## accountsetsAccountSetIdFixedassetsChangesIdVoucherPost
+
+> accountsetsAccountSetIdFixedassetsChangesIdVoucherPost(accountSetId, id, generateChangeVoucherRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // GenerateChangeVoucherRequest
+    generateChangeVoucherRequest: ...,
+  } satisfies AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsChangesIdVoucherPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **generateChangeVoucherRequest** | [GenerateChangeVoucherRequest](GenerateChangeVoucherRequest.md) |  | |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet
+
+> ChangeVoucherPreviewDto accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet(accountSetId, id)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ChangeVoucherPreviewDto**](ChangeVoucherPreviewDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsCheckExportGet
+
+> accountsetsAccountSetIdFixedassetsCheckExportGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsCheckExportGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdFixedassetsCheckExportGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsCheckExportGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## accountsetsAccountSetIdFixedassetsCheckGet
 
 > Array&lt;FixedAssetCheckRowDto&gt; accountsetsAccountSetIdFixedassetsCheckGet(accountSetId)
@@ -837,6 +1527,74 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGet
+
+> accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGet(accountSetId, period)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    period: 56,
+  } satisfies AccountsetsAccountSetIdFixedassetsDepreciationLedgerExportGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsDepreciationLedgerExportGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **period** | `number` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## accountsetsAccountSetIdFixedassetsDepreciationLedgerGet
 
 > Array&lt;DepreciationLedgerRowDto&gt; accountsetsAccountSetIdFixedassetsDepreciationLedgerGet(accountSetId, period)
@@ -895,6 +1653,216 @@ No authorization required
 
 - **Content-Type**: Not defined
 - **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsDepreciationVoucherGet
+
+> DepreciationVoucherInfoDto accountsetsAccountSetIdFixedassetsDepreciationVoucherGet(accountSetId, period)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    period: 56,
+  } satisfies AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsDepreciationVoucherGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **period** | `number` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**DepreciationVoucherInfoDto**](DepreciationVoucherInfoDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsDepreciationVoucherPost
+
+> DepreciationVoucherInfoDto accountsetsAccountSetIdFixedassetsDepreciationVoucherPost(accountSetId, generateDepreciationVoucherRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // GenerateDepreciationVoucherRequest
+    generateDepreciationVoucherRequest: ...,
+  } satisfies AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsDepreciationVoucherPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **generateDepreciationVoucherRequest** | [GenerateDepreciationVoucherRequest](GenerateDepreciationVoucherRequest.md) |  | |
+
+### Return type
+
+[**DepreciationVoucherInfoDto**](DepreciationVoucherInfoDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsSummaryExportGet
+
+> accountsetsAccountSetIdFixedassetsSummaryExportGet(accountSetId, startPeriod, endPeriod, byCategory)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    startPeriod: 56,
+    // number (optional)
+    endPeriod: 56,
+    // boolean (optional)
+    byCategory: true,
+  } satisfies AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsSummaryExportGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **startPeriod** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **endPeriod** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **byCategory** | `boolean` |  | [Optional] [Defaults to `false`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 
 ### HTTP response details
@@ -968,6 +1936,139 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsVoucherSettingGet
+
+> FixedAssetVoucherSettingDto accountsetsAccountSetIdFixedassetsVoucherSettingGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsVoucherSettingGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdFixedassetsVoucherSettingGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsVoucherSettingGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**FixedAssetVoucherSettingDto**](FixedAssetVoucherSettingDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdFixedassetsVoucherSettingPut
+
+> FixedAssetVoucherSettingDto accountsetsAccountSetIdFixedassetsVoucherSettingPut(accountSetId, saveFixedAssetVoucherSettingRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  FixedAssetsApi,
+} from '';
+import type { AccountsetsAccountSetIdFixedassetsVoucherSettingPutRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new FixedAssetsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SaveFixedAssetVoucherSettingRequest
+    saveFixedAssetVoucherSettingRequest: ...,
+  } satisfies AccountsetsAccountSetIdFixedassetsVoucherSettingPutRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdFixedassetsVoucherSettingPut(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **saveFixedAssetVoucherSettingRequest** | [SaveFixedAssetVoucherSettingRequest](SaveFixedAssetVoucherSettingRequest.md) |  | |
+
+### Return type
+
+[**FixedAssetVoucherSettingDto**](FixedAssetVoucherSettingDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
 - **Accept**: `text/plain`, `application/json`, `text/json`
 
 

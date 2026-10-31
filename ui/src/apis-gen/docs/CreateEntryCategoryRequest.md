@@ -7,7 +7,10 @@
 Name | Type
 ------------ | -------------
 `type` | number
+`code` | string
 `name` | string
+`parentId` | string
+`cashFlowItemId` | string
 `smartKeywords` | string
 `voucherSubjectId` | string
 
@@ -19,7 +22,10 @@ import type { CreateEntryCategoryRequest } from ''
 // TODO: Update the object below with actual values
 const example = {
   "type": null,
+  "code": null,
   "name": null,
+  "parentId": null,
+  "cashFlowItemId": null,
   "smartKeywords": null,
   "voucherSubjectId": null,
 } satisfies CreateEntryCategoryRequest

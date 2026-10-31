@@ -19,6 +19,9 @@ import type {
   ArchiveItemDto,
   ArchiveUsageDto,
   AuditArchiveRequest,
+  GenerateVoucherFromArchivesRequest,
+  LinkVoucherRequest,
+  PaperArchiveRequest,
   SaveArchiveRequest,
 } from '../models/index';
 import {
@@ -30,6 +33,12 @@ import {
     ArchiveUsageDtoToJSON,
     AuditArchiveRequestFromJSON,
     AuditArchiveRequestToJSON,
+    GenerateVoucherFromArchivesRequestFromJSON,
+    GenerateVoucherFromArchivesRequestToJSON,
+    LinkVoucherRequestFromJSON,
+    LinkVoucherRequestToJSON,
+    PaperArchiveRequestFromJSON,
+    PaperArchiveRequestToJSON,
     SaveArchiveRequestFromJSON,
     SaveArchiveRequestToJSON,
 } from '../models/index';
@@ -68,6 +77,16 @@ export interface AccountsetsAccountSetIdArchivesIdPutRequest {
     saveArchiveRequest: SaveArchiveRequest;
 }
 
+export interface AccountsetsAccountSetIdArchivesLinkVoucherPostRequest {
+    accountSetId: string;
+    linkVoucherRequest: LinkVoucherRequest;
+}
+
+export interface AccountsetsAccountSetIdArchivesPaperPostRequest {
+    accountSetId: string;
+    paperArchiveRequest: PaperArchiveRequest;
+}
+
 export interface AccountsetsAccountSetIdArchivesPostRequest {
     accountSetId: string;
     saveArchiveRequest: SaveArchiveRequest;
@@ -75,6 +94,11 @@ export interface AccountsetsAccountSetIdArchivesPostRequest {
 
 export interface AccountsetsAccountSetIdArchivesUsageGetRequest {
     accountSetId: string;
+}
+
+export interface AccountsetsAccountSetIdArchivesVoucherFromPostRequest {
+    accountSetId: string;
+    generateVoucherFromArchivesRequest: GenerateVoucherFromArchivesRequest;
 }
 
 /**
@@ -244,6 +268,52 @@ export interface ArchivesApiInterface {
     accountsetsAccountSetIdArchivesIdPut(requestParameters: AccountsetsAccountSetIdArchivesIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveItemDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdArchivesLinkVoucherPost without sending the request
+     * @param {string} accountSetId 
+     * @param {LinkVoucherRequest} linkVoucherRequest 
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesLinkVoucherPostRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesLinkVoucherPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {LinkVoucherRequest} linkVoucherRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesLinkVoucherPostRaw(requestParameters: AccountsetsAccountSetIdArchivesLinkVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>>;
+
+    /**
+     */
+    accountsetsAccountSetIdArchivesLinkVoucherPost(requestParameters: AccountsetsAccountSetIdArchivesLinkVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesPaperPost without sending the request
+     * @param {string} accountSetId 
+     * @param {PaperArchiveRequest} paperArchiveRequest 
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesPaperPostRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesPaperPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {PaperArchiveRequest} paperArchiveRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesPaperPostRaw(requestParameters: AccountsetsAccountSetIdArchivesPaperPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>>;
+
+    /**
+     */
+    accountsetsAccountSetIdArchivesPaperPost(requestParameters: AccountsetsAccountSetIdArchivesPaperPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdArchivesPost without sending the request
      * @param {string} accountSetId 
      * @param {SaveArchiveRequest} saveArchiveRequest 
@@ -286,6 +356,29 @@ export interface ArchivesApiInterface {
     /**
      */
     accountsetsAccountSetIdArchivesUsageGet(requestParameters: AccountsetsAccountSetIdArchivesUsageGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveUsageDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesVoucherFromPost without sending the request
+     * @param {string} accountSetId 
+     * @param {GenerateVoucherFromArchivesRequest} generateVoucherFromArchivesRequest 
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesVoucherFromPostRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesVoucherFromPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {GenerateVoucherFromArchivesRequest} generateVoucherFromArchivesRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesVoucherFromPostRaw(requestParameters: AccountsetsAccountSetIdArchivesVoucherFromPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdArchivesVoucherFromPost(requestParameters: AccountsetsAccountSetIdArchivesVoucherFromPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
 }
 
@@ -656,6 +749,120 @@ export class ArchivesApi extends runtime.BaseAPI implements ArchivesApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdArchivesLinkVoucherPost without sending the request
+     */
+    async accountsetsAccountSetIdArchivesLinkVoucherPostRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesLinkVoucherPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdArchivesLinkVoucherPost().'
+            );
+        }
+
+        if (requestParameters['linkVoucherRequest'] == null) {
+            throw new runtime.RequiredError(
+                'linkVoucherRequest',
+                'Required parameter "linkVoucherRequest" was null or undefined when calling accountsetsAccountSetIdArchivesLinkVoucherPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/archives/link-voucher`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: LinkVoucherRequestToJSON(requestParameters['linkVoucherRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesLinkVoucherPostRaw(requestParameters: AccountsetsAccountSetIdArchivesLinkVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>> {
+        const requestOptions = await this.accountsetsAccountSetIdArchivesLinkVoucherPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<number>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesLinkVoucherPost(requestParameters: AccountsetsAccountSetIdArchivesLinkVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number> {
+        const response = await this.accountsetsAccountSetIdArchivesLinkVoucherPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesPaperPost without sending the request
+     */
+    async accountsetsAccountSetIdArchivesPaperPostRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesPaperPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdArchivesPaperPost().'
+            );
+        }
+
+        if (requestParameters['paperArchiveRequest'] == null) {
+            throw new runtime.RequiredError(
+                'paperArchiveRequest',
+                'Required parameter "paperArchiveRequest" was null or undefined when calling accountsetsAccountSetIdArchivesPaperPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/archives/paper`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PaperArchiveRequestToJSON(requestParameters['paperArchiveRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesPaperPostRaw(requestParameters: AccountsetsAccountSetIdArchivesPaperPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>> {
+        const requestOptions = await this.accountsetsAccountSetIdArchivesPaperPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<number>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesPaperPost(requestParameters: AccountsetsAccountSetIdArchivesPaperPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number> {
+        const response = await this.accountsetsAccountSetIdArchivesPaperPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdArchivesPost without sending the request
      */
     async accountsetsAccountSetIdArchivesPostRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesPostRequest): Promise<runtime.RequestOpts> {
@@ -749,6 +956,58 @@ export class ArchivesApi extends runtime.BaseAPI implements ArchivesApiInterface
     async accountsetsAccountSetIdArchivesUsageGet(requestParameters: AccountsetsAccountSetIdArchivesUsageGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveUsageDto> {
         const response = await this.accountsetsAccountSetIdArchivesUsageGetRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesVoucherFromPost without sending the request
+     */
+    async accountsetsAccountSetIdArchivesVoucherFromPostRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesVoucherFromPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdArchivesVoucherFromPost().'
+            );
+        }
+
+        if (requestParameters['generateVoucherFromArchivesRequest'] == null) {
+            throw new runtime.RequiredError(
+                'generateVoucherFromArchivesRequest',
+                'Required parameter "generateVoucherFromArchivesRequest" was null or undefined when calling accountsetsAccountSetIdArchivesVoucherFromPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/archives/voucher-from`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GenerateVoucherFromArchivesRequestToJSON(requestParameters['generateVoucherFromArchivesRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesVoucherFromPostRaw(requestParameters: AccountsetsAccountSetIdArchivesVoucherFromPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdArchivesVoucherFromPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesVoucherFromPost(requestParameters: AccountsetsAccountSetIdArchivesVoucherFromPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdArchivesVoucherFromPostRaw(requestParameters, initOverrides);
     }
 
 }

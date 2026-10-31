@@ -41,6 +41,18 @@ export interface JournalDetailDto {
     name?: string;
     /**
      * 
+     * @type {string}
+     * @memberof JournalDetailDto
+     */
+    code?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalDetailDto
+     */
+    currency?: string;
+    /**
+     * 
      * @type {number}
      * @memberof JournalDetailDto
      */
@@ -138,6 +150,8 @@ export function JournalDetailDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         
         'id': json['id'] == null ? undefined : json['id'],
         'name': json['name'] == null ? undefined : json['name'],
+        'code': json['code'] == null ? undefined : json['code'],
+        'currency': json['currency'] == null ? undefined : json['currency'],
         'type': json['type'] == null ? undefined : json['type'],
         'typeText': json['typeText'] == null ? undefined : json['typeText'],
         'accountId': json['accountId'] == null ? undefined : json['accountId'],
@@ -167,6 +181,8 @@ export function JournalDetailDtoToJSONTyped(value?: JournalDetailDto | null, ign
         
         'id': value['id'],
         'name': value['name'],
+        'code': value['code'],
+        'currency': value['currency'],
         'type': value['type'],
         'typeText': value['typeText'],
         'accountId': value['accountId'],

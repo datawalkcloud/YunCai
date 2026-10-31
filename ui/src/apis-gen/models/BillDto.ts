@@ -51,6 +51,12 @@ export interface BillDto {
     amount?: number;
     /**
      * 
+     * @type {number}
+     * @memberof BillDto
+     */
+    kind?: number;
+    /**
+     * 
      * @type {string}
      * @memberof BillDto
      */
@@ -72,7 +78,55 @@ export interface BillDto {
      * @type {string}
      * @memberof BillDto
      */
+    payee?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillDto
+     */
     acceptor?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillDto
+     */
+    drawerAccountNo?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillDto
+     */
+    payeeAccountNo?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillDto
+     */
+    acceptorAccountNo?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillDto
+     */
+    drawerBank?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillDto
+     */
+    payeeBank?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillDto
+     */
+    acceptorBank?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof BillDto
+     */
+    status?: number;
     /**
      * 
      * @type {string}
@@ -91,6 +145,24 @@ export interface BillDto {
      * @memberof BillDto
      */
     remark?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillDto
+     */
+    voucherId?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillDto
+     */
+    voucherNo?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof BillDto
+     */
+    attachmentCount?: number;
 }
 
 /**
@@ -115,13 +187,25 @@ export function BillDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): B
         'issueDate': json['issueDate'] == null ? undefined : (new Date(json['issueDate'])),
         'billNo': json['billNo'] == null ? undefined : json['billNo'],
         'amount': json['amount'] == null ? undefined : json['amount'],
+        'kind': json['kind'] == null ? undefined : json['kind'],
         'kindText': json['kindText'] == null ? undefined : json['kindText'],
         'dueDate': json['dueDate'] == null ? undefined : (new Date(json['dueDate'])),
         'drawer': json['drawer'] == null ? undefined : json['drawer'],
+        'payee': json['payee'] == null ? undefined : json['payee'],
         'acceptor': json['acceptor'] == null ? undefined : json['acceptor'],
+        'drawerAccountNo': json['drawerAccountNo'] == null ? undefined : json['drawerAccountNo'],
+        'payeeAccountNo': json['payeeAccountNo'] == null ? undefined : json['payeeAccountNo'],
+        'acceptorAccountNo': json['acceptorAccountNo'] == null ? undefined : json['acceptorAccountNo'],
+        'drawerBank': json['drawerBank'] == null ? undefined : json['drawerBank'],
+        'payeeBank': json['payeeBank'] == null ? undefined : json['payeeBank'],
+        'acceptorBank': json['acceptorBank'] == null ? undefined : json['acceptorBank'],
+        'status': json['status'] == null ? undefined : json['status'],
         'statusText': json['statusText'] == null ? undefined : json['statusText'],
         'transferable': json['transferable'] == null ? undefined : json['transferable'],
         'remark': json['remark'] == null ? undefined : json['remark'],
+        'voucherId': json['voucherId'] == null ? undefined : json['voucherId'],
+        'voucherNo': json['voucherNo'] == null ? undefined : json['voucherNo'],
+        'attachmentCount': json['attachmentCount'] == null ? undefined : json['attachmentCount'],
     };
 }
 
@@ -141,13 +225,25 @@ export function BillDtoToJSONTyped(value?: BillDto | null, ignoreDiscriminator: 
         'issueDate': value['issueDate'] == null ? value['issueDate'] : value['issueDate'].toISOString().substring(0,10),
         'billNo': value['billNo'],
         'amount': value['amount'],
+        'kind': value['kind'],
         'kindText': value['kindText'],
         'dueDate': value['dueDate'] == null ? value['dueDate'] : value['dueDate'].toISOString().substring(0,10),
         'drawer': value['drawer'],
+        'payee': value['payee'],
         'acceptor': value['acceptor'],
+        'drawerAccountNo': value['drawerAccountNo'],
+        'payeeAccountNo': value['payeeAccountNo'],
+        'acceptorAccountNo': value['acceptorAccountNo'],
+        'drawerBank': value['drawerBank'],
+        'payeeBank': value['payeeBank'],
+        'acceptorBank': value['acceptorBank'],
+        'status': value['status'],
         'statusText': value['statusText'],
         'transferable': value['transferable'],
         'remark': value['remark'],
+        'voucherId': value['voucherId'],
+        'voucherNo': value['voucherNo'],
+        'attachmentCount': value['attachmentCount'],
     };
 }
 

@@ -17,6 +17,8 @@ import * as runtime from '../runtime';
 import type {
   CreateEntryCategoryRequest,
   EntryCategoryDto,
+  EntryCategoryImportResult,
+  SetEntryCategoryEnabledRequest,
   UpdateEntryCategoryRequest,
 } from '../models/index';
 import {
@@ -24,9 +26,18 @@ import {
     CreateEntryCategoryRequestToJSON,
     EntryCategoryDtoFromJSON,
     EntryCategoryDtoToJSON,
+    EntryCategoryImportResultFromJSON,
+    EntryCategoryImportResultToJSON,
+    SetEntryCategoryEnabledRequestFromJSON,
+    SetEntryCategoryEnabledRequestToJSON,
     UpdateEntryCategoryRequestFromJSON,
     UpdateEntryCategoryRequestToJSON,
 } from '../models/index';
+
+export interface AccountsetsAccountSetIdEntrycategoriesExportGetRequest {
+    accountSetId: string;
+    type?: number;
+}
 
 export interface AccountsetsAccountSetIdEntrycategoriesGetRequest {
     accountSetId: string;
@@ -37,10 +48,25 @@ export interface AccountsetsAccountSetIdEntrycategoriesIdDeleteRequest {
     id: string;
 }
 
+export interface AccountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequest {
+    accountSetId: string;
+    id: string;
+    setEntryCategoryEnabledRequest: SetEntryCategoryEnabledRequest;
+}
+
 export interface AccountsetsAccountSetIdEntrycategoriesIdPutRequest {
     accountSetId: string;
     id: string;
     updateEntryCategoryRequest: UpdateEntryCategoryRequest;
+}
+
+export interface AccountsetsAccountSetIdEntrycategoriesImportPostRequest {
+    accountSetId: string;
+    file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdEntrycategoriesImportTemplateGetRequest {
+    accountSetId: string;
 }
 
 export interface AccountsetsAccountSetIdEntrycategoriesPostRequest {
@@ -55,6 +81,29 @@ export interface AccountsetsAccountSetIdEntrycategoriesPostRequest {
  * @interface EntryCategoriesApiInterface
  */
 export interface EntryCategoriesApiInterface {
+    /**
+     * Creates request options for accountsetsAccountSetIdEntrycategoriesExportGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [type] 
+     * @throws {RequiredError}
+     * @memberof EntryCategoriesApiInterface
+     */
+    accountsetsAccountSetIdEntrycategoriesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdEntrycategoriesExportGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [type] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof EntryCategoriesApiInterface
+     */
+    accountsetsAccountSetIdEntrycategoriesExportGetRaw(requestParameters: AccountsetsAccountSetIdEntrycategoriesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdEntrycategoriesExportGet(requestParameters: AccountsetsAccountSetIdEntrycategoriesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
     /**
      * Creates request options for accountsetsAccountSetIdEntrycategoriesGet without sending the request
      * @param {string} accountSetId 
@@ -100,6 +149,31 @@ export interface EntryCategoriesApiInterface {
     accountsetsAccountSetIdEntrycategoriesIdDelete(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdEntrycategoriesIdEnabledPatch without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {SetEntryCategoryEnabledRequest} setEntryCategoryEnabledRequest 
+     * @throws {RequiredError}
+     * @memberof EntryCategoriesApiInterface
+     */
+    accountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequestOpts(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {SetEntryCategoryEnabledRequest} setEntryCategoryEnabledRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof EntryCategoriesApiInterface
+     */
+    accountsetsAccountSetIdEntrycategoriesIdEnabledPatchRaw(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EntryCategoryDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdEntrycategoriesIdEnabledPatch(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EntryCategoryDto>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdEntrycategoriesIdPut without sending the request
      * @param {string} accountSetId 
      * @param {string} id 
@@ -123,6 +197,50 @@ export interface EntryCategoriesApiInterface {
     /**
      */
     accountsetsAccountSetIdEntrycategoriesIdPut(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EntryCategoryDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdEntrycategoriesImportPost without sending the request
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @throws {RequiredError}
+     * @memberof EntryCategoriesApiInterface
+     */
+    accountsetsAccountSetIdEntrycategoriesImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Blob} [file] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof EntryCategoriesApiInterface
+     */
+    accountsetsAccountSetIdEntrycategoriesImportPostRaw(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EntryCategoryImportResult>>;
+
+    /**
+     */
+    accountsetsAccountSetIdEntrycategoriesImportPost(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EntryCategoryImportResult>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdEntrycategoriesImportTemplateGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof EntryCategoriesApiInterface
+     */
+    accountsetsAccountSetIdEntrycategoriesImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportTemplateGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof EntryCategoriesApiInterface
+     */
+    accountsetsAccountSetIdEntrycategoriesImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdEntrycategoriesImportTemplateGet(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdEntrycategoriesPost without sending the request
@@ -153,6 +271,52 @@ export interface EntryCategoriesApiInterface {
  * 
  */
 export class EntryCategoriesApi extends runtime.BaseAPI implements EntryCategoriesApiInterface {
+
+    /**
+     * Creates request options for accountsetsAccountSetIdEntrycategoriesExportGet without sending the request
+     */
+    async accountsetsAccountSetIdEntrycategoriesExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdEntrycategoriesExportGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdEntrycategoriesExportGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['type'] != null) {
+            queryParameters['type'] = requestParameters['type'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/entrycategories/export`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdEntrycategoriesExportGetRaw(requestParameters: AccountsetsAccountSetIdEntrycategoriesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdEntrycategoriesExportGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdEntrycategoriesExportGet(requestParameters: AccountsetsAccountSetIdEntrycategoriesExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdEntrycategoriesExportGetRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for accountsetsAccountSetIdEntrycategoriesGet without sending the request
@@ -248,6 +412,67 @@ export class EntryCategoriesApi extends runtime.BaseAPI implements EntryCategori
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdEntrycategoriesIdEnabledPatch without sending the request
+     */
+    async accountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequestOpts(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdEntrycategoriesIdEnabledPatch().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdEntrycategoriesIdEnabledPatch().'
+            );
+        }
+
+        if (requestParameters['setEntryCategoryEnabledRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setEntryCategoryEnabledRequest',
+                'Required parameter "setEntryCategoryEnabledRequest" was null or undefined when calling accountsetsAccountSetIdEntrycategoriesIdEnabledPatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/entrycategories/{id}/enabled`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetEntryCategoryEnabledRequestToJSON(requestParameters['setEntryCategoryEnabledRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdEntrycategoriesIdEnabledPatchRaw(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EntryCategoryDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EntryCategoryDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdEntrycategoriesIdEnabledPatch(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdEnabledPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EntryCategoryDto> {
+        const response = await this.accountsetsAccountSetIdEntrycategoriesIdEnabledPatchRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdEntrycategoriesIdPut without sending the request
      */
     async accountsetsAccountSetIdEntrycategoriesIdPutRequestOpts(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdPutRequest): Promise<runtime.RequestOpts> {
@@ -306,6 +531,112 @@ export class EntryCategoriesApi extends runtime.BaseAPI implements EntryCategori
     async accountsetsAccountSetIdEntrycategoriesIdPut(requestParameters: AccountsetsAccountSetIdEntrycategoriesIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EntryCategoryDto> {
         const response = await this.accountsetsAccountSetIdEntrycategoriesIdPutRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdEntrycategoriesImportPost without sending the request
+     */
+    async accountsetsAccountSetIdEntrycategoriesImportPostRequestOpts(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdEntrycategoriesImportPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/accountsets/{accountSetId}/entrycategories/import`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdEntrycategoriesImportPostRaw(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EntryCategoryImportResult>> {
+        const requestOptions = await this.accountsetsAccountSetIdEntrycategoriesImportPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EntryCategoryImportResultFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdEntrycategoriesImportPost(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EntryCategoryImportResult> {
+        const response = await this.accountsetsAccountSetIdEntrycategoriesImportPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdEntrycategoriesImportTemplateGet without sending the request
+     */
+    async accountsetsAccountSetIdEntrycategoriesImportTemplateGetRequestOpts(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportTemplateGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdEntrycategoriesImportTemplateGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/entrycategories/import/template`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdEntrycategoriesImportTemplateGetRaw(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdEntrycategoriesImportTemplateGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdEntrycategoriesImportTemplateGet(requestParameters: AccountsetsAccountSetIdEntrycategoriesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdEntrycategoriesImportTemplateGetRaw(requestParameters, initOverrides);
     }
 
     /**

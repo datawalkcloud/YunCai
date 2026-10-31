@@ -9,9 +9,14 @@ Name | Type
 `journalId` | string
 `journalName` | string
 `journalType` | number
+`projectText` | string
 `accountCode` | string
 `accountName` | string
-`journalBalance` | number
+`currency` | string
+`openingBalance` | number
+`debit` | number
+`credit` | number
+`balance` | number
 `ledgerBalance` | number
 `difference` | number
 `balanced` | boolean
@@ -27,9 +32,14 @@ const example = {
   "journalId": null,
   "journalName": null,
   "journalType": null,
+  "projectText": null,
   "accountCode": null,
   "accountName": null,
-  "journalBalance": null,
+  "currency": null,
+  "openingBalance": null,
+  "debit": null,
+  "credit": null,
+  "balance": null,
   "ledgerBalance": null,
   "difference": null,
   "balanced": null,

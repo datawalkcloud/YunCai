@@ -37,6 +37,12 @@ export interface IncomeStatementLineDto {
      * @memberof IncomeStatementLineDto
      */
     yearToDate?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof IncomeStatementLineDto
+     */
+    lastYear?: number;
 }
 
 /**
@@ -59,6 +65,7 @@ export function IncomeStatementLineDtoFromJSONTyped(json: any, ignoreDiscriminat
         'line': json['line'] == null ? undefined : json['line'],
         'current': json['current'] == null ? undefined : json['current'],
         'yearToDate': json['yearToDate'] == null ? undefined : json['yearToDate'],
+        'lastYear': json['lastYear'] == null ? undefined : json['lastYear'],
     };
 }
 
@@ -76,6 +83,7 @@ export function IncomeStatementLineDtoToJSONTyped(value?: IncomeStatementLineDto
         'line': value['line'],
         'current': value['current'],
         'yearToDate': value['yearToDate'],
+        'lastYear': value['lastYear'],
     };
 }
 

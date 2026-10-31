@@ -8,6 +8,8 @@ Name | Type
 ------------ | -------------
 `type` | number
 `name` | string
+`code` | string
+`currency` | string
 `accountId` | string
 `openingBalance` | number
 `bankName` | string
@@ -22,6 +24,8 @@ import type { CreateJournalRequest } from ''
 const example = {
   "type": null,
   "name": null,
+  "code": null,
+  "currency": null,
   "accountId": null,
   "openingBalance": null,
   "bankName": null,

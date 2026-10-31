@@ -11,13 +11,25 @@ Name | Type
 `issueDate` | Date
 `billNo` | string
 `amount` | number
+`kind` | number
 `kindText` | string
 `dueDate` | Date
 `drawer` | string
+`payee` | string
 `acceptor` | string
+`drawerAccountNo` | string
+`payeeAccountNo` | string
+`acceptorAccountNo` | string
+`drawerBank` | string
+`payeeBank` | string
+`acceptorBank` | string
+`status` | number
 `statusText` | string
 `transferable` | boolean
 `remark` | string
+`voucherId` | string
+`voucherNo` | string
+`attachmentCount` | number
 
 ## Example
 
@@ -31,13 +43,25 @@ const example = {
   "issueDate": null,
   "billNo": null,
   "amount": null,
+  "kind": null,
   "kindText": null,
   "dueDate": null,
   "drawer": null,
+  "payee": null,
   "acceptor": null,
+  "drawerAccountNo": null,
+  "payeeAccountNo": null,
+  "acceptorAccountNo": null,
+  "drawerBank": null,
+  "payeeBank": null,
+  "acceptorBank": null,
+  "status": null,
   "statusText": null,
   "transferable": null,
   "remark": null,
+  "voucherId": null,
+  "voucherNo": null,
+  "attachmentCount": null,
 } satisfies BillDto
 
 console.log(example)

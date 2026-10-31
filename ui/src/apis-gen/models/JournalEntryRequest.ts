@@ -45,6 +45,18 @@ export interface JournalEntryRequest {
     counterparty?: string | null;
     /**
      * 
+     * @type {string}
+     * @memberof JournalEntryRequest
+     */
+    project?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryRequest
+     */
+    department?: string | null;
+    /**
+     * 
      * @type {number}
      * @memberof JournalEntryRequest
      */
@@ -78,6 +90,8 @@ export function JournalEntryRequestFromJSONTyped(json: any, ignoreDiscriminator:
         'summary': json['summary'] == null ? undefined : json['summary'],
         'category': json['category'] == null ? undefined : json['category'],
         'counterparty': json['counterparty'] == null ? undefined : json['counterparty'],
+        'project': json['project'] == null ? undefined : json['project'],
+        'department': json['department'] == null ? undefined : json['department'],
         'income': json['income'] == null ? undefined : json['income'],
         'expense': json['expense'] == null ? undefined : json['expense'],
     };
@@ -98,6 +112,8 @@ export function JournalEntryRequestToJSONTyped(value?: JournalEntryRequest | nul
         'summary': value['summary'],
         'category': value['category'],
         'counterparty': value['counterparty'],
+        'project': value['project'],
+        'department': value['department'],
         'income': value['income'],
         'expense': value['expense'],
     };

@@ -42,6 +42,12 @@ export interface FundReconciliationRowDto {
      * @type {string}
      * @memberof FundReconciliationRowDto
      */
+    projectText?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof FundReconciliationRowDto
+     */
     accountCode?: string;
     /**
      * 
@@ -51,10 +57,34 @@ export interface FundReconciliationRowDto {
     accountName?: string;
     /**
      * 
+     * @type {string}
+     * @memberof FundReconciliationRowDto
+     */
+    currency?: string;
+    /**
+     * 
      * @type {number}
      * @memberof FundReconciliationRowDto
      */
-    journalBalance?: number;
+    openingBalance?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof FundReconciliationRowDto
+     */
+    debit?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof FundReconciliationRowDto
+     */
+    credit?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof FundReconciliationRowDto
+     */
+    balance?: number;
     /**
      * 
      * @type {number}
@@ -101,9 +131,14 @@ export function FundReconciliationRowDtoFromJSONTyped(json: any, ignoreDiscrimin
         'journalId': json['journalId'] == null ? undefined : json['journalId'],
         'journalName': json['journalName'] == null ? undefined : json['journalName'],
         'journalType': json['journalType'] == null ? undefined : json['journalType'],
+        'projectText': json['projectText'] == null ? undefined : json['projectText'],
         'accountCode': json['accountCode'] == null ? undefined : json['accountCode'],
         'accountName': json['accountName'] == null ? undefined : json['accountName'],
-        'journalBalance': json['journalBalance'] == null ? undefined : json['journalBalance'],
+        'currency': json['currency'] == null ? undefined : json['currency'],
+        'openingBalance': json['openingBalance'] == null ? undefined : json['openingBalance'],
+        'debit': json['debit'] == null ? undefined : json['debit'],
+        'credit': json['credit'] == null ? undefined : json['credit'],
+        'balance': json['balance'] == null ? undefined : json['balance'],
         'ledgerBalance': json['ledgerBalance'] == null ? undefined : json['ledgerBalance'],
         'difference': json['difference'] == null ? undefined : json['difference'],
         'balanced': json['balanced'] == null ? undefined : json['balanced'],
@@ -125,9 +160,14 @@ export function FundReconciliationRowDtoToJSONTyped(value?: FundReconciliationRo
         'journalId': value['journalId'],
         'journalName': value['journalName'],
         'journalType': value['journalType'],
+        'projectText': value['projectText'],
         'accountCode': value['accountCode'],
         'accountName': value['accountName'],
-        'journalBalance': value['journalBalance'],
+        'currency': value['currency'],
+        'openingBalance': value['openingBalance'],
+        'debit': value['debit'],
+        'credit': value['credit'],
+        'balance': value['balance'],
         'ledgerBalance': value['ledgerBalance'],
         'difference': value['difference'],
         'balanced': value['balanced'],
