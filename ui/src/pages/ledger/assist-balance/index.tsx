@@ -153,11 +153,21 @@ export default function AssistBalancePage() {
             {!accountSetId ? (
                 <span className="py-4 text-muted-foreground">请先选择账套。</span>
             ) : !assistType ? (
-                <span className="py-4 text-muted-foreground">请先选择辅助核算类别。</span>
+                // 未选类别也渲染表头与页脚（与柠檬云一致）
+                <LedgerTable<BalanceRow>
+                    columns={columns}
+                    data={[]}
+                    emptyText="请先选择辅助核算类别。"
+                    rowKey={(row) => row.rowKey}
+                />
             ) : accounts.length === 0 && !query.loading ? (
-                <span className="py-4 text-muted-foreground">
-                    该期间暂无核算项目余额，请确认凭证已过账。
-                </span>
+                // 空数据也渲染表头与页脚（与柠檬云一致），仅表体提示
+                <LedgerTable<BalanceRow>
+                    columns={columns}
+                    data={[]}
+                    emptyText="该期间暂无核算项目余额，请确认凭证已过账。"
+                    rowKey={(row) => row.rowKey}
+                />
             ) : (
                 accounts.map((account) => {
                     const rows: BalanceRow[] = (account.rows ?? []).map((row, index) => ({

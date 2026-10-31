@@ -145,7 +145,13 @@ function MultiColumnLedger({
             {!accountSetId ? (
                 <span className="py-4 text-muted-foreground">请先选择账套。</span>
             ) : !dto && !query.loading ? (
-                <span className="py-4 text-muted-foreground">请先选择科目。</span>
+                // 未选科目也渲染表头与页脚（与柠檬云一致）
+                <LedgerTable<MultiRow>
+                    columns={buildColumns([])}
+                    data={[]}
+                    emptyText="请先选择科目。"
+                    rowKey={(row) => row.rowKey}
+                />
             ) : dto ? (
                 <LedgerSection
                     heading={

@@ -341,7 +341,7 @@ export default function ReconciliationPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-3 text-[12.5px] text-slate-500">
                         <span>
                             显示 {visibleRows.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, visibleRows.length)}，共{" "}
-                            {visibleRows.length} 条记录
+                            {visibleRows.length} 条
                         </span>
                         <Space size={8}>
                             <Select

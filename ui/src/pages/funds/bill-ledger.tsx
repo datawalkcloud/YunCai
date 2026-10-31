@@ -811,7 +811,7 @@ export function BillLedgerPage() {
                 </Spin>
 
                 <Flex justify="end" align="center" gap={12} className="px-1 pt-3 pb-1 text-[12.5px] text-slate-500">
-                    <span>{`显示 ${filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 ${Math.min(page * pageSize, filtered.length)}，共 ${filtered.length} 条记录`}</span>
+                    <span>{`显示 ${filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 ${Math.min(page * pageSize, filtered.length)}，共 ${filtered.length} 条`}</span>
                     <Pagination
                         size="small"
                         current={page}

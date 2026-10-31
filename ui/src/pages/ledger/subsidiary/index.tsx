@@ -113,9 +113,13 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
             error={query.error}
         >
             {accounts.length === 0 && !query.loading ? (
-                <span className="py-4 text-muted-foreground">
-                    {accountSetId ? "该期间暂无明细账数据，请确认凭证已过账。" : "请先选择账套。"}
-                </span>
+                // 空数据也渲染表头与页脚（与柠檬云一致），仅表体提示
+                <LedgerTable<SubRow>
+                    columns={columns}
+                    data={[]}
+                    emptyText={accountSetId ? "该期间暂无明细账数据，请确认凭证已过账。" : "请先选择账套。"}
+                    rowKey={(row) => row.rowKey}
+                />
             ) : (
                 accounts.map((account) => {
                     const rows: SubRow[] = (account.rows ?? []).map((row, index) => ({

@@ -351,7 +351,7 @@ export function Table({
 
 /* ---------------- 分页页脚 ---------------- */
 
-/** 页脚：左「显示 N 到 M，共 X 条记录」，右页码组（当前为静态展示，后端分页未接入）。 */
+/** 页脚：左「显示 N 到 M，共 X 条」，右页码组（当前为静态展示，后端分页未接入）。 */
 export function Pager({ total = 0, count }: { total?: number; count?: number }) {
     // 兼容两种历史传参（total/count 都传记录数、或 count 固定 1），一律取较大者作为记录总数。
     const records = Math.max(total, count ?? 0);

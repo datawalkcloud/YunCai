@@ -910,7 +910,7 @@ export default function LemonERecord() {
                     )}
                     {(tab === 0 || total > 0) && (
                         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-1 py-3 text-[12.5px] text-slate-500">
-                            <span>显示 {from} 到 {to}，共 {total} 条记录</span>
+                            <span>显示 {from} 到 {to}，共 {total} 条</span>
                             <span className="flex items-center gap-2">
                                 <Select
                                     className="w-[76px]"

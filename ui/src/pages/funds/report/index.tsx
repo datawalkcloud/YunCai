@@ -666,7 +666,7 @@ export default function FundReportPage() {
                             {singleSection && (
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-slate-500">
                                     <span>
-                                        显示 {rowCount === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, rowCount)}，共 {rowCount} 条记录
+                                        显示 {rowCount === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, rowCount)}，共 {rowCount} 条
                                     </span>
                                     <Pagination
                                         size="small"
