@@ -1268,7 +1268,7 @@ export function LemonSalaryEmployee() {
                             <CheckBox label="显示所有信息" />
                         </span>
                         <Btn variant="primary" onClick={() => setAdding(true)}>增加员工</Btn>
-                        <WipBtn title="同步税局人员信息需对接电子税务局，暂未实现">同步税务人员信息</WipBtn>
+                        <WipBtn title="同步税局人员信息需对接电子税务局，暂未实现">同步税局人员信息</WipBtn>
                         <Btn dropdown onClick={() => empFileRef.current?.click()} title="从 .xlsx 导入员工（按编号匹配，存在则更新）">
                             导入
                         </Btn>

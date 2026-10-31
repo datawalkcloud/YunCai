@@ -1529,7 +1529,7 @@ export function LemonInvoiceSummary() {
         { key: "partner", title: "往来单位", width: "200px" },
         { key: "sales", title: "销项发票金额（含税）", align: "right", group: "发票" },
         { key: "received", title: "收款金额", align: "right", group: "资金" },
-        { key: "notInvoiced", title: "未开票金额（含税）", align: "right", group: "差异" },
+        { key: "notInvoiced", title: "未开发票金额（含税）", align: "right", group: "差异" },
         { key: "notReceived", title: "未收款金额", align: "right", group: "差异" },
         { key: "ops", title: "操作", width: "110px" },
     ];

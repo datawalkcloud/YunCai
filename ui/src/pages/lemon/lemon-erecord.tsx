@@ -695,7 +695,7 @@ export default function LemonERecord() {
                 <>
                     {rangePicker}
                     <Btn variant="primary" onClick={() => navigate(`/${accountSetId}/vouchers/spb`)}>
-                        收集车上传
+                        收票宝上传
                     </Btn>
                     <Btn dropdown disabled={busy} onClick={() => setUploadOpen(true)}>
                         电脑上传
@@ -779,7 +779,7 @@ export default function LemonERecord() {
         { key: "relatedDoc", title: "关联单据", width: 110, render: (it) => it.relatedDoc },
         {
             key: "relatedNo",
-            title: "关联单号",
+            title: "关联单据号",
             width: 150,
             render: (it) => <span className="text-[#2f6bff]">{it.relatedNo}</span>,
         },

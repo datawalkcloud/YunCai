@@ -346,7 +346,7 @@ export default function BalanceSheetPage() {
             }
         >
             <Table<SheetRow>
-                columns={[...halfColumns("资产", (r) => r.a), ...halfColumns("负债和所有者权益（或股东权益）", (r) => r.b)]}
+                columns={[...halfColumns("资产", (r) => r.a), ...halfColumns("负债和所有者权益", (r) => r.b)]}
                 dataSource={rows}
                 rowKey="id"
                 pagination={false}

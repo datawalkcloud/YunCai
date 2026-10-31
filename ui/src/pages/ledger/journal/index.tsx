@@ -25,15 +25,15 @@ const SWITCHES = ["showOnlyLeaf"] as const
 
 const columns: TableColumnsType<JournalRow> = [
     { title: "日期", dataIndex: "date" },
-    { title: "凭证字号", dataIndex: "voucherNo" },
+    { title: "凭证号", dataIndex: "voucherNo" },
     { title: "摘要", dataIndex: "summary" },
     { title: "科目编码", dataIndex: "accountCode" },
     { title: "科目名称", dataIndex: "accountName" },
-    { title: "借方", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
-    { title: "贷方", dataIndex: "credit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    { title: "借方金额", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    { title: "贷方金额", dataIndex: "credit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
     { title: "制单人", dataIndex: "preparer" },
     { title: "审核人", dataIndex: "reviewer" },
-    { title: "附件", dataIndex: "attachmentCount", render: (v) => (v ? String(v) : "") },
+    { title: "附件数", dataIndex: "attachmentCount", render: (v) => (v ? String(v) : "") },
 ]
 
 export default function VoucherJournalPage() {

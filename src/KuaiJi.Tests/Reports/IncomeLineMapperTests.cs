@@ -6,10 +6,9 @@ namespace KuaiJi.Tests.Reports;
 
 /// <summary>
 /// 利润表（会企02表）行次归集 <see cref="IncomeLineMapper"/> 的测试。
-/// 利润表、季报、部门/项目利润表、费用明细表共用这套归集（AGENTS.md「报表新口径」），
+/// 行次口径与柠檬云「企业会计准则（2007 年）」版式一致：1-32 行，
+/// 营业利润 11、利润总额 16、净利润 18、其他综合收益 19-28、综合收益总额 29。
 /// 关键口径是：未识别的损益科目按余额方向兜底并入营业收入/营业成本，保证净利润不漏项。
-/// 项目实际使用旧准则编码体系（2001 版《企业会计制度》），新旧两套编码必须都能归集——
-/// 这正是 AGENTS.md「领域须知」点名的兼容陷阱。
 /// </summary>
 public sealed class IncomeLineMapperTests
 {
@@ -21,18 +20,18 @@ public sealed class IncomeLineMapperTests
     [InlineData("6403", 3)]      // 税金及附加
     [InlineData("6601", 4)]      // 销售费用
     [InlineData("6602", 5)]      // 管理费用
-    [InlineData("6604", 6)]      // 研发费用
-    [InlineData("6603", 7)]      // 财务费用
-    [InlineData("6117", 8)]      // 其他收益
+    [InlineData("6604", 5)]      // 研发费用（2019 版单列，2007 版并入管理费用）
+    [InlineData("6603", 6)]      // 财务费用
+    [InlineData("6701", 7)]      // 资产减值损失
+    [InlineData("6702", 7)]      // 信用减值损失（并入资产减值损失）
+    [InlineData("6101", 8)]      // 公允价值变动收益
     [InlineData("6111", 9)]      // 投资收益
-    [InlineData("6101", 11)]     // 公允价值变动收益
-    [InlineData("6702", 12)]     // 信用减值损失
-    [InlineData("6701", 13)]     // 资产减值损失
-    [InlineData("6115", 14)]     // 资产处置收益
-    [InlineData("6116", 14)]
-    [InlineData("6301", 16)]     // 营业外收入
-    [InlineData("6711", 17)]     // 营业外支出
-    [InlineData("6801", 19)]     // 所得税费用
+    [InlineData("6301", 12)]     // 营业外收入
+    [InlineData("6117", 12)]     // 其他收益（并入营业外收入）
+    [InlineData("6115", 12)]     // 资产处置收益（并入营业外收入）
+    [InlineData("6116", 12)]
+    [InlineData("6711", 14)]     // 营业外支出
+    [InlineData("6801", 17)]     // 所得税费用
     public void MapLine_NewStandardCodes_LandOnTheirRow(string code, int expectedLine)
     {
         // 方向传借方也要按编码归集，编码识别优先于方向兜底
@@ -60,16 +59,15 @@ public sealed class IncomeLineMapperTests
     }
 
     [Theory]
-    [InlineData(1, true)]   // 营业收入
-    [InlineData(8, true)]   // 其他收益
-    [InlineData(9, true)]   // 投资收益
-    [InlineData(11, true)]  // 公允价值变动收益
-    [InlineData(14, true)]  // 资产处置收益
-    [InlineData(16, true)]  // 营业外收入
-    [InlineData(2, false)]  // 营业成本
-    [InlineData(3, false)]  // 税金及附加
-    [InlineData(17, false)] // 营业外支出
-    [InlineData(19, false)] // 所得税费用
+    [InlineData(1, true)]    // 营业收入
+    [InlineData(8, true)]    // 公允价值变动收益
+    [InlineData(9, true)]    // 投资收益
+    [InlineData(12, true)]   // 营业外收入
+    [InlineData(2, false)]   // 营业成本
+    [InlineData(3, false)]   // 税金及附加
+    [InlineData(7, false)]   // 资产减值损失
+    [InlineData(14, false)]  // 营业外支出
+    [InlineData(17, false)]  // 所得税费用
     public void IsRevenueLine_OnlyIncomeRowsAreCreditPositive(int line, bool expected)
     {
         Assert.Equal(expected, IncomeLineMapper.IsRevenueLine(line));
@@ -79,15 +77,16 @@ public sealed class IncomeLineMapperTests
     [InlineData(1, "营业收入")]
     [InlineData(2, "营业成本")]
     [InlineData(5, "管理费用")]
-    [InlineData(19, "所得税费用")]
+    [InlineData(14, "营业外支出")]
+    [InlineData(17, "所得税费用")]
     public void LineName_KnownRows_UseStandardNames(int line, string expected)
     {
         Assert.Equal(expected, IncomeLineMapper.LineName(line));
     }
 
     [Theory]
-    [InlineData(10)]       // 经营活动现金流入小计——不属于利润表行
-    [InlineData(15)]       // 空行次
+    [InlineData(10)]       // 投资收益的「其中」行
+    [InlineData(15)]       // 「其中」行
     [InlineData(999)]
     public void LineName_UnknownRow_FallsBackToOtherItem(int line)
     {
