@@ -44,6 +44,17 @@ interface ItemForm {
     remark: string
 }
 
+/** 辅助核算类别中文名（与柠檬云表头一致）。 */
+const ASSIST_TYPE_NAMES: Record<number, string> = {
+    1: "客户",
+    2: "供应商",
+    3: "职员",
+    4: "部门",
+    5: "项目",
+    6: "存货",
+    7: "现金流",
+}
+
 const emptyForm: ItemForm = { code: "", name: "", contact: "", remark: "" }
 
 export default function AssistItemsPage() {
@@ -444,9 +455,10 @@ function AssistItemListPanel({
     const createLevel = (parentItem?.level ?? 0) + 1
     const expectedLength = assistExpectedCodeLength(type, createLevel)
 
+    const typeName = ASSIST_TYPE_NAMES[type] ?? ""
     const columns: TableColumnsType<VisibleRow> = [
         {
-            title: "编码",
+            title: `${typeName}编码`,
             render: (_, { node, depth }) => (
                 <div className={cn("flex items-center gap-1", indentClass(depth))}>
                     {node.children ? (
@@ -480,7 +492,7 @@ function AssistItemListPanel({
             ),
         },
         {
-            title: "名称",
+            title: `${typeName}名称`,
             render: (_, { node }) => (
                 <>
                     <span className={node.children ? "font-medium text-slate-800" : undefined}>
@@ -499,7 +511,7 @@ function AssistItemListPanel({
             render: (_, { node }) => node.remark || "—",
         },
         {
-            title: "状态",
+            title: "启用状态",
             align: "center",
             render: (_, { node }) => (
                 <StatusPill tone={node.isEnabled ? "green" : "gray"}>

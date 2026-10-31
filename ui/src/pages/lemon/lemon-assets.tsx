@@ -1636,7 +1636,8 @@ export function LemonAssetSummary() {
         { title: "资产原值", keys: ["originOpening", "originIncrease", "originDecrease", "originClosing"] },
         { title: "累计折旧", keys: ["depOpening", "depIncrease", "depDecrease", "depClosing"] },
         { title: "减值准备", keys: ["impairOpening", "impairIncrease", "impairDecrease", "impairClosing"] },
-        { title: "资产净值", keys: ["netOpening", "netIncrease", "netDecrease", "netClosing"] },
+        // 「资产净值」与柠檬云一致：不单独成列（原值 - 累计折旧 - 减值准备 即可推得）
+
     ];
     const cols: Col[] = [
         { key: "groupName", title: tab === 0 ? "部门名称" : "资产类别", width: "140px" },
