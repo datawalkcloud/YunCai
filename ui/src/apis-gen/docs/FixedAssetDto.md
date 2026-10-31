@@ -17,6 +17,7 @@ Name | Type
 `startDate` | Date
 `originValue` | number
 `accumulatedDepreciation` | number
+`currentPeriodDepreciation` | number
 `netValue` | number
 `statusText` | string
 `clearedDate` | Date
@@ -39,6 +40,7 @@ const example = {
   "startDate": null,
   "originValue": null,
   "accumulatedDepreciation": null,
+  "currentPeriodDepreciation": null,
   "netValue": null,
   "statusText": null,
   "clearedDate": null,

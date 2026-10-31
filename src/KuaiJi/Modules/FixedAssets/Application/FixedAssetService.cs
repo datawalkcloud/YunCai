@@ -198,6 +198,11 @@ namespace KuaiJi.Modules.FixedAssets.Application
             var assets = await _assetRepository.GetAssetsAsync(accountSetId, cancellationToken);
             var categories = (await _assetRepository.GetCategoriesAsync(accountSetId, cancellationToken))
                 .ToDictionary(c => c.Id, c => c);
+            // 本期折旧取「最近一次计提期间」的折旧额：资产页通常就在当前期间查看。
+            var depreciationChanges = (await _assetRepository.GetChangesAsync(accountSetId, cancellationToken: cancellationToken))
+                .Where(c => c.Kind == FixedAssetChangeKind.Depreciation)
+                .ToList();
+            var latestPeriod = depreciationChanges.Count == 0 ? 0 : depreciationChanges.Max(c => c.Period);
             return assets
                 .OrderBy(a => a.Code)
                 .Select(a =>
@@ -216,6 +221,11 @@ namespace KuaiJi.Modules.FixedAssets.Application
                         StartDate = a.StartDate,
                         OriginValue = a.OriginValue,
                         AccumulatedDepreciation = a.AccumulatedDepreciation,
+                        CurrentPeriodDepreciation = latestPeriod == 0
+                            ? 0m
+                            : depreciationChanges
+                                .Where(c => c.AssetId == a.Id && c.Period == latestPeriod)
+                                .Sum(c => c.Amount),
                         StatusText = a.Status == FixedAssetStatus.InUse ? "使用中" : "已清理",
                         ClearedDate = a.ClearedDate,
                     };

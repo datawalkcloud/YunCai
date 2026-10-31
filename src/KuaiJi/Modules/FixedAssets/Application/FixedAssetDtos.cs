@@ -81,6 +81,9 @@ namespace KuaiJi.Modules.FixedAssets.Application
         /// <summary>累计折旧（含初始化已提）。</summary>
         public decimal AccumulatedDepreciation { get; init; }
 
+        /// <summary>本期折旧（最近一次计提期间的折旧额，与柠檬云「本期折旧」列一致）。</summary>
+        public decimal CurrentPeriodDepreciation { get; init; }
+
         /// <summary>资产净值 = 原值 − 累计折旧。</summary>
         public decimal NetValue => OriginValue - AccumulatedDepreciation;
 

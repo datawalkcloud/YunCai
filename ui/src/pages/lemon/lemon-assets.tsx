@@ -1215,9 +1215,9 @@ export function LemonAssetManage() {
         { key: "model", title: "规格型号", width: "110px" },
         { key: "date", title: "开始使用日期", width: "130px" },
         { key: "origin", title: "资产原值", align: "right" },
-        { key: "dep", title: "累计折旧", align: "right" },
+        // 与柠檬云一致：原值 / 本期折旧 / 资产净值（累计折旧与状态不单列）
+        { key: "dep", title: "本期折旧", align: "right" },
         { key: "net", title: "资产净值", align: "right" },
-        { key: "status", title: "状态", width: "90px" },
         { key: "ops", title: "操作", width: "150px" },
     ];
     return (
@@ -1295,7 +1295,8 @@ export function LemonAssetManage() {
                         model: a.model,
                         date: toDateInput(a.startDate),
                         origin: (a.originValue ?? 0).toFixed(2),
-                        dep: (a.accumulatedDepreciation ?? 0).toFixed(2),
+                        // 本期折旧（后端取最近一次计提期间的折旧额）
+                        dep: (a.currentPeriodDepreciation ?? 0).toFixed(2),
                         net: (a.netValue ?? ((a.originValue ?? 0) - (a.accumulatedDepreciation ?? 0))).toFixed(2),
                         status: a.statusText,
                         ops: (

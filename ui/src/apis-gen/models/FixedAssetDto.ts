@@ -90,6 +90,12 @@ export interface FixedAssetDto {
      * @type {number}
      * @memberof FixedAssetDto
      */
+    currentPeriodDepreciation?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof FixedAssetDto
+     */
     netValue?: number;
     /**
      * 
@@ -133,6 +139,7 @@ export function FixedAssetDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'startDate': json['startDate'] == null ? undefined : (new Date(json['startDate'])),
         'originValue': json['originValue'] == null ? undefined : json['originValue'],
         'accumulatedDepreciation': json['accumulatedDepreciation'] == null ? undefined : json['accumulatedDepreciation'],
+        'currentPeriodDepreciation': json['currentPeriodDepreciation'] == null ? undefined : json['currentPeriodDepreciation'],
         'netValue': json['netValue'] == null ? undefined : json['netValue'],
         'statusText': json['statusText'] == null ? undefined : json['statusText'],
         'clearedDate': json['clearedDate'] == null ? undefined : (new Date(json['clearedDate'])),
@@ -161,6 +168,7 @@ export function FixedAssetDtoToJSONTyped(value?: FixedAssetDto | null, ignoreDis
         'startDate': value['startDate'] == null ? value['startDate'] : value['startDate'].toISOString().substring(0,10),
         'originValue': value['originValue'],
         'accumulatedDepreciation': value['accumulatedDepreciation'],
+        'currentPeriodDepreciation': value['currentPeriodDepreciation'],
         'netValue': value['netValue'],
         'statusText': value['statusText'],
         'clearedDate': value['clearedDate'] == null ? value['clearedDate'] : value['clearedDate'].toISOString().substring(0,10),
