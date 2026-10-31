@@ -23,9 +23,14 @@ const SWITCHES = ["showOnlyLeaf"] as const
 const columns: TableColumnsType<SummaryRow> = [
     { title: "科目编码", dataIndex: "code" },
     { title: "科目名称", dataIndex: "name" },
-    { title: "凭证张数", dataIndex: "voucherCount", render: (v) => (v ? String(v) : ""), ...AMOUNT_COL },
-    { title: "借方发生额", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
-    { title: "贷方发生额", dataIndex: "credit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+    // 与柠檬云一致：金额合计为分组表头，下辖借方/贷方两列
+    {
+        title: "金额合计",
+        children: [
+            { title: "借方", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+            { title: "贷方", dataIndex: "credit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
+        ],
+    },
 ]
 
 export default function VoucherSummaryPage() {

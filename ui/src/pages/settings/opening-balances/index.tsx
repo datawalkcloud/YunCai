@@ -137,7 +137,7 @@ export default function OpeningBalancesPage() {
                 ),
             },
             {
-                title: "期初余额（按方向）",
+                title: "期初余额",
                 dataIndex: "openingBalance",
                 align: "right",
                 render: (_, row) => {
@@ -159,14 +159,14 @@ export default function OpeningBalancesPage() {
                 },
             },
             {
-                title: "借方",
+                title: "借方累计",
                 dataIndex: "debit",
                 align: "right",
                 className: "tabular-nums",
                 render: (v) => fmtAmount(v),
             },
             {
-                title: "贷方",
+                title: "贷方累计",
                 dataIndex: "credit",
                 align: "right",
                 className: "tabular-nums",

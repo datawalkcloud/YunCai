@@ -519,10 +519,12 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
         { key: "amount", title: "合计金额", align: "right", width: "110px" },
         { key: "rate", title: "税率", width: "70px" },
         { key: "tax", title: "合计税额", align: "right", width: "100px" },
+        // 柠檬云进项发票独有：有效抵扣税额（已认证发票按合计税额全额抵扣）
+        ...(kind === "purchase" ? ([{ key: "deductible", title: "有效抵扣税额", align: "right", width: "120px" }] as Col[]) : []),
         { key: "total", title: "价税合计", align: "right", width: "110px" },
         { key: "voucher", title: "关联凭证", width: "110px" },
         { key: "source", title: "发票来源", width: "110px" },
-        { key: "status", title: "状态", width: "80px" },
+        { key: "status", title: "操作", width: "80px" },
     ];
     const tabs = kind === "sales" ? ["销项发票", "商品明细"] : ["进项发票", "商品明细", "暂不入账发票"];
     return (
@@ -613,6 +615,11 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                                     amount: (inv.totalAmount ?? 0).toFixed(2),
                                     rate: fmtRate(inv.lines?.[0]?.taxRate),
                                     tax: (inv.totalTax ?? 0).toFixed(2),
+                                    // 已认证进项按合计税额全额抵扣；未认证/销项不显示
+                                    deductible:
+                                        kind === "purchase" && inv.statusText === "已认证"
+                                            ? (inv.totalTax ?? 0).toFixed(2)
+                                            : "",
                                     total: (inv.totalWithTax ?? 0).toFixed(2),
                                     voucher: inv.voucherText,
                                     source: inv.source,
@@ -1191,17 +1198,17 @@ export function LemonExpenseBill() {
 
     const cols: Col[] = [
         { key: "ck", title: <CheckBox label="" checked={allSelected} onChange={toggleAll} />, width: "36px" },
+        // 列顺序与柠檬云「费用单据」一致
         { key: "date", title: "单据日期", width: "110px" },
-        { key: "no", title: "单据编号", width: "130px" },
-        { key: "type", title: "费用类型", width: "110px" },
         { key: "reason", title: "费用事由" },
-        { key: "settle", title: "结算方式", width: "110px" },
+        { key: "type", title: "费用类型", width: "110px" },
         { key: "payee", title: "收款人", width: "100px" },
+        { key: "settle", title: "结算方式", width: "110px" },
         { key: "deductTax", title: "可抵扣税额", align: "right", width: "120px" },
         { key: "amount", title: "单据金额（含税）", align: "right", width: "120px" },
         { key: "voucher", title: "关联凭证", width: "110px" },
-        { key: "status", title: "状态", width: "90px" },
         { key: "ops", title: "操作", width: "120px" },
+        { key: "no", title: "单据编号", width: "130px" },
     ];
 
     return (
