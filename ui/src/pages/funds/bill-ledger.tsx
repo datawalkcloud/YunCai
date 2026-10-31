@@ -27,6 +27,7 @@ import {
     Table,
     Tooltip,
     Typography,
+    Tabs,
     Upload,
 } from "antd"
 import type { TableColumnsType, UploadFile } from "antd"
@@ -734,9 +735,16 @@ export function BillLedgerPage() {
             <Card
                 styles={{
                     root: { border: "1px solid #f1f5f9", borderRadius: 8 },
-                    body: { padding: "12px 14px 8px" },
+                    body: { padding: "0 14px 8px" },
                 }}
             >
+                {/* 页签：与柠檬云「票据管理 → 票据台账」一致 */}
+                <Tabs
+                    size="small"
+                    activeKey="ledger"
+                    items={[{ key: "ledger", label: "票据台账" }]}
+                    tabBarStyle={{ marginBottom: 8 }}
+                />
                 <Flex justify="space-between" align="center" wrap="wrap" gap={8} className="pb-2">
                     <Space size={12} wrap>
                         <DatePicker.RangePicker

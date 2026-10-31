@@ -166,7 +166,7 @@ export default function AccountsPage() {
     const [accounts, setAccounts] = useState<AccountDto[]>([])
     const [loading, setLoading] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
-    const [filter, setFilter] = useState<number | "全部">("全部")
+    const [filter, setFilter] = useState<number>(1)
     const [keyword, setKeyword] = useState("")
     const [showDisabled, setShowDisabled] = useState(true)
     const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([])
@@ -290,7 +290,7 @@ export default function AccountsPage() {
         const build = (pid: string | null): AccountNode[] => {
             const children = accounts
                 .filter((a) => (a.parentId ?? null) === pid)
-                .filter((a) => pid !== null || filter === "全部" || a.category === filter)
+                .filter((a) => pid !== null || a.category === filter)
                 .filter((a) => showDisabled || a.isEnabled)
                 .sort(byCode)
             const nodes: AccountNode[] = []
@@ -796,7 +796,16 @@ export default function AccountsPage() {
         },
     ]
 
-    const filterOptions = [{ value: "全部", label: "全部" }, ...CATEGORY_OPTIONS.map((c) => ({ value: String(c.value), label: c.label }))]
+    // 科目类别页签：与柠檬云「科目」一致（资产/负债/共同/权益/成本/损益）。
+    // 「共同」类在快记无对应枚举，作为空页签保留位置。
+    const filterOptions = [
+        { value: "1", label: "资产" },
+        { value: "2", label: "负债" },
+        { value: "-1", label: "共同" },
+        { value: "3", label: "权益" },
+        { value: "4", label: "成本" },
+        { value: "5", label: "损益" },
+    ]
 
     const emptyText = !accountSetId
         ? "请先选择账套。"
@@ -818,9 +827,9 @@ export default function AccountsPage() {
                 }}
             >
                 <Tabs
-                    activeKey={filter === "全部" ? "全部" : String(filter)}
+                    activeKey={String(filter)}
                     items={filterOptions.map((option) => ({ key: option.value, label: option.label }))}
-                    onChange={(key) => setFilter(key === "全部" ? "全部" : Number(key))}
+                    onChange={(key) => setFilter(Number(key))}
                     tabBarStyle={{ margin: 0, paddingInline: 16 }}
                 />
 
