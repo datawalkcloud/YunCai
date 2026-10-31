@@ -103,7 +103,7 @@ namespace KuaiJi.Modules.FixedAssets.Application
                 ("08", "长期待摊费用", FixedAssetAttr.LongTermExpense, 36, 0m, longTermAccount?.Id ?? Guid.Empty),
             };
 
-            foreach (var def in defs)
+            foreach (var def in defs.Where(d => d.SubjectId != Guid.Empty))
             {
                 await _assetRepository.AddCategoryAsync(FixedAssetCategory.Create(
                     accountSetId,
