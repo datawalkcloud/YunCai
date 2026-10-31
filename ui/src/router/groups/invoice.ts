@@ -15,3 +15,5 @@ export {
     LemonBankLink,
     LemonTaxLogin,
 } from "@/pages/lemon/lemon-invoice";
+
+export { LemonVatCalc } from "@/pages/lemon/lemon-vat-calc";

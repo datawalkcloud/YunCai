@@ -158,6 +158,7 @@ const router = createBrowserRouter([
                     { path: "invoices/purchase", ...lazyRoute(() => import("./groups/invoice"), "LemonPurchaseInvoice") },
                     { path: "invoices/expense", ...lazyRoute(() => import("./groups/invoice"), "LemonExpenseBill") },
                     { path: "invoices/summary", ...lazyRoute(() => import("./groups/invoice"), "LemonInvoiceSummary") },
+                    { path: "invoices/vat-calc", ...lazyRoute(() => import("./groups/invoice"), "LemonVatCalc") },
                     { path: "invoices/risk", ...lazyRoute(() => import("./groups/invoice"), "LemonInvoiceRisk") },
                     { path: "salary/manage", ...lazyRoute(() => import("./groups/salary"), "LemonSalaryManage") },
                     { path: "salary/employee", ...lazyRoute(() => import("./groups/salary"), "LemonSalaryEmployee") },

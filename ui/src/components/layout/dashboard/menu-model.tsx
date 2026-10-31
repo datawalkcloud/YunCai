@@ -52,6 +52,7 @@ export const menuGroups: MenuGroup[] = [
             { label: "销项发票", to: "invoices/sales" },
             { label: "进项发票", to: "invoices/purchase" },
             { label: "费用单据", to: "invoices/expense" },
+            { label: "增值税测算", to: "invoices/vat-calc" },
             { label: "发票资金一览表", to: "invoices/summary" },
         ],
     },
