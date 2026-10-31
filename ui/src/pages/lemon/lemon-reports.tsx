@@ -953,12 +953,20 @@ export function LemonProjectIncome() {
     );
     const [tipClosed, setTipClosed] = useState(false);
 
-    const rows = (data?.rows ?? []).map((r) => ({
-        item: r.name ?? "",
-        seq: String(r.line ?? ""),
-        cur: nf(r.current),
-        ytd: nf(r.yearToDate),
-    }));
+    // 与「利润表」一致的 32 行模板：接口只返回有金额的行，其余补空，整表列出
+    const rows = useMemo(() => {
+        const byLine = new Map((data?.rows ?? []).map((r) => [Number(r.line), r]));
+        return buildIncomeRows().map((tpl) => {
+            const line = Number(tpl.seq);
+            const hit = byLine.get(line);
+            return {
+                item: hit?.name ?? tpl.item,
+                seq: String(line),
+                cur: nf(hit?.current),
+                ytd: nf(hit?.yearToDate),
+            };
+        });
+    }, [data?.rows]);
     const cols: Col[] = [
         { key: "item", title: "项目" },
         SEQ_COL,
