@@ -43,7 +43,9 @@ namespace KuaiJi.Modules.Funds.Application
             var transfers = await _transferRepository.GetAllAsync(accountSetId, cancellationToken);
             var journalsById = (await _journalRepository.GetAllAsync(accountSetId, cancellationToken))
                 .ToDictionary(j => j.Id);
+            // 只认仍在册的凭证：回收站中的凭证不算有效关联，否则列表会显示已删凭证号。
             var vouchersById = (await _voucherRepository.GetAllAsync(accountSetId, cancellationToken))
+                .Where(v => v.DeletedAt is null)
                 .ToDictionary(v => v.Id);
 
             return transfers
@@ -89,6 +91,8 @@ namespace KuaiJi.Modules.Funds.Application
                 return null;
             }
 
+            await HealStaleVoucherAsync(transfer, cancellationToken);
+
             if (transfer.VoucherId is not null)
             {
                 throw new JournalException("该转账已生成凭证，不能修改；如需调整请删除凭证后重建转账。");
@@ -119,6 +123,7 @@ namespace KuaiJi.Modules.Funds.Application
 
             var journalsById = new Dictionary<Guid, Journal> { [from.Id] = from, [to.Id] = to };
             var vouchersById = (await _voucherRepository.GetAllAsync(accountSetId, cancellationToken))
+                .Where(v => v.DeletedAt is null)
                 .ToDictionary(v => v.Id);
             return ToDto(transfer, journalsById, vouchersById);
         }
@@ -131,6 +136,8 @@ namespace KuaiJi.Modules.Funds.Application
             {
                 return false;
             }
+
+            await HealStaleVoucherAsync(transfer, cancellationToken);
 
             if (transfer.VoucherId is not null)
             {
@@ -150,6 +157,8 @@ namespace KuaiJi.Modules.Funds.Application
         {
             var transfer = await _transferRepository.GetByIdAsync(accountSetId, id, cancellationToken)
                            ?? throw new JournalException("指定的内部转账不存在。");
+
+            await HealStaleVoucherAsync(transfer, cancellationToken);
 
             if (transfer.VoucherId is not null)
             {
@@ -190,16 +199,85 @@ namespace KuaiJi.Modules.Funds.Application
             var toEntry = to.Entries.FirstOrDefault(e => e.Id == transfer.ToEntryId);
             if (fromEntry is not null)
             {
-                from.UpdateEntry(fromEntry.Id, fromEntry.Date, fromEntry.Summary, fromEntry.Income, fromEntry.Expense, fromEntry.Category, fromEntry.Counterparty, voucher.Id);
+                from.UpdateEntry(fromEntry.Id, fromEntry.Date, fromEntry.Summary, fromEntry.Income, fromEntry.Expense, fromEntry.Category, fromEntry.Counterparty, fromEntry.Project, fromEntry.Department, voucher.Id);
             }
 
             if (toEntry is not null)
             {
-                to.UpdateEntry(toEntry.Id, toEntry.Date, toEntry.Summary, toEntry.Income, toEntry.Expense, toEntry.Category, toEntry.Counterparty, voucher.Id);
+                to.UpdateEntry(toEntry.Id, toEntry.Date, toEntry.Summary, toEntry.Income, toEntry.Expense, toEntry.Category, toEntry.Counterparty, toEntry.Project, toEntry.Department, voucher.Id);
             }
 
             await _transferRepository.SaveChangesAsync(cancellationToken);
             return voucher.Id;
+        }
+
+        /// <summary>
+        /// 批量生成转账凭证：逐条出票，已生成凭证的跳过（不报错），
+        /// 单条失败不影响其余。返回成功生成的张数。
+        /// </summary>
+        public async Task<int> GenerateVouchersAsync(Guid accountSetId, IReadOnlyCollection<Guid> ids, string preparer, string? word, CancellationToken cancellationToken = default)
+        {
+            var created = 0;
+            foreach (var id in ids.Distinct())
+            {
+                var transfer = await _transferRepository.GetByIdAsync(accountSetId, id, cancellationToken);
+                if (transfer is null || transfer.VoucherId is not null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await GenerateVoucherAsync(accountSetId, id, preparer, word, cancellationToken);
+                    created++;
+                }
+                catch (JournalException)
+                {
+                    // 单条失败（如科目缺失）不阻断整批。
+                }
+            }
+
+            return created;
+        }
+
+        /// <summary>批量删除内部转账；已生成凭证的跳过。返回实际删除条数。</summary>
+        public async Task<int> DeleteManyAsync(Guid accountSetId, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
+        {
+            var removed = 0;
+            foreach (var id in ids.Distinct())
+            {
+                try
+                {
+                    if (await DeleteAsync(accountSetId, id, cancellationToken))
+                    {
+                        removed++;
+                    }
+                }
+                catch (JournalException)
+                {
+                    // 已生成凭证的转账不允许删除，跳过并继续。
+                }
+            }
+
+            return removed;
+        }
+
+        /// <summary>
+        /// 自愈：清除转账中指向已删除凭证的残留引用。
+        /// 凭证被删除后转账仍保留 VoucherId，会导致该转账既不能修改也不能删除。
+        /// 有变更时落库，使修复一次生效。
+        /// </summary>
+        private async Task HealStaleVoucherAsync(Transfer transfer, CancellationToken cancellationToken)
+        {
+            var existing = (await _voucherRepository.GetAllAsync(transfer.AccountSetId, cancellationToken))
+                .Where(v => v.DeletedAt is null)
+                .Select(v => v.Id)
+                .ToHashSet();
+
+            if (transfer.ClearStaleVoucher(existing))
+            {
+                await _transferRepository.SaveChangesAsync(cancellationToken);
+            }
         }
 
         private async Task EnsureAccountSetExists(Guid accountSetId, CancellationToken cancellationToken)

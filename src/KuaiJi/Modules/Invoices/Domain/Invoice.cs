@@ -251,6 +251,28 @@ namespace KuaiJi.Modules.Invoices.Domain
             VoucherId = voucherId == Guid.Empty ? null : voucherId;
         }
 
+        /// <summary>
+        /// 自愈：清除指向已删除凭证的残留引用。
+        /// 凭证被删除（进回收站或彻底删除）后，发票仍保留 VoucherId 会同时造成两个后果：
+        /// 「关联凭证」列显示空白，且该发票因「已入账」被永久排除、无法再次生成凭证。
+        /// 清引用时一并回退为未入账，使其重新回到入账流程。返回是否发生了变更。
+        /// </summary>
+        public bool ClearStaleVoucher(IReadOnlySet<Guid> existingVoucherIds)
+        {
+            if (VoucherId is not { } id || existingVoucherIds.Contains(id))
+            {
+                return false;
+            }
+
+            VoucherId = null;
+            if (Status == InvoiceStatus.Posted)
+            {
+                Status = InvoiceStatus.Pending;
+            }
+
+            return true;
+        }
+
         private static void GuardText(string value, string field, int maxLength)
         {
             if (string.IsNullOrWhiteSpace(value))

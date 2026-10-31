@@ -44,7 +44,8 @@ namespace KuaiJi.Modules.Reports.Application
 
             var (monthByLine, ytdByLine, monthOpening, yearOpening) = Accumulate(
                 accounts, vouchers, monthStart, monthEnd, yearStart, yearEnd);
-            var lines = BuildLines(monthByLine, ytdByLine, monthOpening, yearOpening);
+            var lastYear = AccumulateLastYear(accounts, vouchers, monthStart, 1);
+            var lines = BuildLines(monthByLine, ytdByLine, monthOpening, yearOpening, lastYear.ByLine, lastYear.Opening);
 
             return new CashFlowDto
             {
@@ -68,7 +69,8 @@ namespace KuaiJi.Modules.Reports.Application
 
             var (quarterByLine, ytdByLine, quarterOpening, yearOpening) = Accumulate(
                 accounts, vouchers, quarterStart, quarterEnd, yearStart, yearEnd);
-            var lines = BuildLines(quarterByLine, ytdByLine, quarterOpening, yearOpening);
+            var lastYear = AccumulateLastYear(accounts, vouchers, quarterStart, 3);
+            var lines = BuildLines(quarterByLine, ytdByLine, quarterOpening, yearOpening, lastYear.ByLine, lastYear.Opening);
 
             return new CashFlowQuarterDto
             {
@@ -76,6 +78,64 @@ namespace KuaiJi.Modules.Reports.Application
                 Quarter = resolvedQuarter,
                 PeriodText = $"{resolvedYear:D4}年第{resolvedQuarter}季度",
                 Lines = lines,
+            };
+        }
+
+        /// <summary>
+        /// 现金流量表底稿：按凭证列示现金收付如何分摊到对手方科目、归入哪一标准行次，
+        /// 用于解释主表数字的来源（与主表共用同一分摊与归类逻辑）。
+        /// </summary>
+        public async Task<CashFlowWorkpaperDto> GetWorkpaperAsync(
+            Guid accountSetId,
+            int? year,
+            int? month,
+            CancellationToken cancellationToken = default)
+        {
+            var (accountSet, accounts, vouchers) = await LoadAsync(accountSetId, cancellationToken);
+            var (resolvedYear, resolvedMonth) = ReportPeriodResolver.Resolve(accountSet, vouchers, year, month);
+            var monthStart = new DateOnly(resolvedYear, resolvedMonth, 1);
+            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+            var accountsById = accounts.ToDictionary(a => a.Id, a => a);
+            var cashAccountIds = CashAccountIds(accounts);
+            var rows = new List<CashFlowWorkpaperRowDto>();
+
+            foreach (var voucher in vouchers
+                         .Where(v => v.Date >= monthStart && v.Date <= monthEnd)
+                         .OrderBy(v => v.Date)
+                         .ThenBy(v => v.Number))
+            {
+                Allocate(voucher, cashAccountIds, (v, counterpart, amount, inflow) =>
+                {
+                    if (!accountsById.TryGetValue(counterpart.AccountId, out var account))
+                    {
+                        return;
+                    }
+
+                    var line = CashFlowClassifier.MapLine(account, inflow);
+                    rows.Add(new CashFlowWorkpaperRowDto
+                    {
+                        Date = v.Date,
+                        VoucherText = $"{v.Word}-{v.Number:D4}",
+                        Summary = counterpart.Summary,
+                        AccountCode = account.Code,
+                        AccountName = account.Name,
+                        Line = line,
+                        LineName = CashFlowStandardRows.ByLine.TryGetValue(line, out var def) ? def.Name : $"行次{line}",
+                        Inflow = inflow,
+                        Amount = Round(amount),
+                    });
+                });
+            }
+
+            return new CashFlowWorkpaperDto
+            {
+                Year = resolvedYear,
+                Month = resolvedMonth,
+                PeriodText = $"{resolvedYear:D4}年{resolvedMonth:D2}月",
+                Rows = rows,
+                InflowTotal = Round(rows.Where(r => r.Inflow).Sum(r => r.Amount)),
+                OutflowTotal = Round(rows.Where(r => !r.Inflow).Sum(r => r.Amount)),
             };
         }
 
@@ -104,45 +164,23 @@ namespace KuaiJi.Modules.Reports.Application
             DateOnly yearEnd)
         {
             var accountsById = accounts.ToDictionary(a => a.Id, a => a);
-            var cashAccountIds = accounts
-                .Where(a => a.Category == AccountCategory.Asset
-                            && CashFlowClassifier.CashAccountPrefixes.Contains(IncomeLineMapper.Prefix(a.Code)))
-                .Select(a => a.Id)
-                .ToHashSet();
+            var cashAccountIds = CashAccountIds(accounts);
 
             var periodByLine = new Dictionary<int, decimal>();
             var ytdByLine = new Dictionary<int, decimal>();
 
             void Accumulate(Voucher voucher, Dictionary<int, decimal> target)
             {
-                var cashNet = voucher.Entries
-                    .Where(e => cashAccountIds.Contains(e.AccountId))
-                    .Sum(e => e.Debit - e.Credit);
-                if (cashNet == 0m)
+                Allocate(voucher, cashAccountIds, (v, counterpart, amount, inflow) =>
                 {
-                    return;
-                }
-
-                // 对手方科目按各自方向分摊现金净收付；对手方合计与现金净额可能不等（多现金行凭证），按比例归一。
-                var counterparts = voucher.Entries.Where(e => !cashAccountIds.Contains(e.AccountId)).ToList();
-                var sideTotal = counterparts.Sum(e => cashNet > 0m ? e.Credit - e.Debit : e.Debit - e.Credit);
-                foreach (var counterpart in counterparts)
-                {
-                    var side = cashNet > 0m ? counterpart.Credit - counterpart.Debit : counterpart.Debit - counterpart.Credit;
-                    if (sideTotal == 0m)
+                    if (!accountsById.TryGetValue(counterpart.AccountId, out var account))
                     {
-                        continue;
+                        return;
                     }
 
-                    var amount = cashNet * side / sideTotal;
-                    if (amount == 0m || !accountsById.TryGetValue(counterpart.AccountId, out var account))
-                    {
-                        continue;
-                    }
-
-                    var line = CashFlowClassifier.MapLine(account, cashNet > 0m);
+                    var line = CashFlowClassifier.MapLine(account, inflow);
                     target[line] = target.GetValueOrDefault(line) + amount;
-                }
+                });
             }
 
             foreach (var voucher in vouchers)
@@ -168,36 +206,154 @@ namespace KuaiJi.Modules.Reports.Application
             return (periodByLine, ytdByLine, CashOpening(periodStart), CashOpening(yearStart));
         }
 
-        /// <summary>由明细行汇总小计、净额、期初期末，输出完整标准行集。</summary>
+        /// <summary>
+        /// 期初/期末现金余额：按现金科目列示期间起点前与截止日的余额（含科目启用期初），
+        /// 合计即主表「期初现金余额」「期末现金余额」两行。
+        /// </summary>
+        public async Task<CashFlowOpeningDto> GetOpeningAsync(
+            Guid accountSetId,
+            int? year,
+            int? month,
+            CancellationToken cancellationToken = default)
+        {
+            var (accountSet, accounts, vouchers) = await LoadAsync(accountSetId, cancellationToken);
+            var (resolvedYear, resolvedMonth) = ReportPeriodResolver.Resolve(accountSet, vouchers, year, month);
+            var monthStart = new DateOnly(resolvedYear, resolvedMonth, 1);
+            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+            var openingNet = AccountNetCalculator.NetByAccountUpTo(accounts, vouchers, monthStart.AddDays(-1));
+            var closingNet = AccountNetCalculator.NetByAccountUpTo(accounts, vouchers, monthEnd);
+
+            // 只列末级明细科目（父科目自身无分录时不重复列示）；父科目若被直接记账则保留，保证合计与主表一致。
+            var codes = accounts.Select(a => a.Code).ToList();
+            var rows = CashAccounts(accounts)
+                .Where(a => openingNet.GetValueOrDefault(a.Id) != 0m
+                            || closingNet.GetValueOrDefault(a.Id) != 0m
+                            || !codes.Any(c => c.Length > a.Code.Length && c.StartsWith(a.Code, StringComparison.Ordinal)))
+                .Select(a => new CashFlowOpeningRowDto
+                {
+                    AccountCode = a.Code,
+                    AccountName = a.Name,
+                    Opening = Round(openingNet.GetValueOrDefault(a.Id)),
+                    Closing = Round(closingNet.GetValueOrDefault(a.Id)),
+                })
+                .ToList();
+
+            return new CashFlowOpeningDto
+            {
+                Year = resolvedYear,
+                Month = resolvedMonth,
+                PeriodText = $"{resolvedYear:D4}年{resolvedMonth:D2}月",
+                Rows = rows,
+                OpeningTotal = Round(rows.Sum(r => r.Opening)),
+                ClosingTotal = Round(rows.Sum(r => r.Closing)),
+            };
+        }
+
+        /// <summary>
+        /// 上年同期累计（上年 1 月 1 日至上年同期末）的标准行次金额与上年年初现金余额，
+        /// 供报表「显示上年累计金额」列使用。
+        /// </summary>
+        private (Dictionary<int, decimal> ByLine, decimal Opening) AccumulateLastYear(
+            IReadOnlyList<Account> accounts,
+            List<Voucher> vouchers,
+            DateOnly periodStart,
+            int months)
+        {
+            var lastYearPeriodStart = periodStart.AddYears(-1);
+            var lastYearPeriodEnd = lastYearPeriodStart.AddMonths(months).AddDays(-1);
+            var lastYearStart = new DateOnly(lastYearPeriodStart.Year, 1, 1);
+            var lastYearEnd = new DateOnly(lastYearPeriodStart.Year, 12, 31);
+
+            var (_, ytdByLine, _, ytdOpening) = Accumulate(
+                accounts, vouchers, lastYearPeriodStart, lastYearPeriodEnd, lastYearStart, lastYearEnd);
+            return (ytdByLine, ytdOpening);
+        }
+
+        /// <summary>报表与底稿共用的现金科目集合（一级编码 1001/1002/1012 的资产科目）。</summary>
+        private static List<Account> CashAccounts(IReadOnlyList<Account> accounts)
+        {
+            return accounts
+                .Where(a => a.Category == AccountCategory.Asset
+                            && CashFlowClassifier.CashAccountPrefixes.Contains(IncomeLineMapper.Prefix(a.Code)))
+                .OrderBy(a => a.Code)
+                .ToList();
+        }
+
+        /// <summary>现金科目 Id 集合（主表分摊用）。</summary>
+        private static HashSet<Guid> CashAccountIds(IReadOnlyList<Account> accounts)
+        {
+            return CashAccounts(accounts).Select(a => a.Id).ToHashSet();
+        }
+
+        /// <summary>
+        /// 把一张凭证的现金净收付按对手方科目分摊（主表汇总与底稿明细共用，保证两边口径一致）。
+        /// amount 已换算成报表方向：流入、流出均为正数，方向由 inflow 区分。
+        /// </summary>
+        private static void Allocate(
+            Voucher voucher,
+            HashSet<Guid> cashAccountIds,
+            Action<Voucher, VoucherEntry, decimal, bool> onAllocated)
+        {
+            var cashNet = voucher.Entries
+                .Where(e => cashAccountIds.Contains(e.AccountId))
+                .Sum(e => e.Debit - e.Credit);
+            if (cashNet == 0m)
+            {
+                return;
+            }
+
+            // 对手方科目按各自方向分摊现金净收付；对手方合计与现金净额可能不等（多现金行凭证），按比例归一。
+            var counterparts = voucher.Entries.Where(e => !cashAccountIds.Contains(e.AccountId)).ToList();
+            var sideTotal = counterparts.Sum(e => cashNet > 0m ? e.Credit - e.Debit : e.Debit - e.Credit);
+            if (sideTotal == 0m)
+            {
+                return;
+            }
+
+            var inflow = cashNet > 0m;
+            foreach (var counterpart in counterparts)
+            {
+                var side = inflow ? counterpart.Credit - counterpart.Debit : counterpart.Debit - counterpart.Credit;
+                var amount = cashNet * side / sideTotal;
+                if (amount != 0m)
+                {
+                    onAllocated(voucher, counterpart, inflow ? amount : -amount, inflow);
+                }
+            }
+        }
+
+        /// <summary>由明细行汇总小计、净额、期初期末，输出完整标准行集；lastYearByLine 为上年同期累计。</summary>
         private List<CashFlowLineDto> BuildLines(
             Dictionary<int, decimal> periodByLine,
             Dictionary<int, decimal> ytdByLine,
             decimal periodOpeningCash,
-            decimal yearOpeningCash)
+            decimal yearOpeningCash,
+            Dictionary<int, decimal>? lastYearByLine = null,
+            decimal lastYearOpeningCash = 0m)
         {
-            void AddSubtotals(Dictionary<int, decimal> byLine, CashFlowSection section)
+            void Fill(Dictionary<int, decimal> byLine, decimal openingCash)
             {
-                var (inflowLine, outflowLine, netLine) = CashFlowStandardRows.SubtotalLines(section);
-                byLine[inflowLine] = CashFlowStandardRows.InflowLines(section).Sum(l => byLine.GetValueOrDefault(l));
-                byLine[outflowLine] = CashFlowStandardRows.OutflowLines(section).Sum(l => byLine.GetValueOrDefault(l));
-                byLine[netLine] = byLine.GetValueOrDefault(inflowLine) - byLine.GetValueOrDefault(outflowLine);
+                foreach (var section in new[] { CashFlowSection.Operating, CashFlowSection.Investing, CashFlowSection.Financing })
+                {
+                    var (inflowLine, outflowLine, netLine) = CashFlowStandardRows.SubtotalLines(section);
+                    byLine[inflowLine] = CashFlowStandardRows.InflowLines(section).Sum(l => byLine.GetValueOrDefault(l));
+                    byLine[outflowLine] = CashFlowStandardRows.OutflowLines(section).Sum(l => byLine.GetValueOrDefault(l));
+                    byLine[netLine] = byLine.GetValueOrDefault(inflowLine) - byLine.GetValueOrDefault(outflowLine);
+                }
+
+                var net = byLine.GetValueOrDefault(10) + byLine.GetValueOrDefault(22) + byLine.GetValueOrDefault(31);
+                byLine[33] = net;
+                byLine[34] = openingCash;
+                byLine[35] = openingCash + net;
             }
 
-            AddSubtotals(periodByLine, CashFlowSection.Operating);
-            AddSubtotals(periodByLine, CashFlowSection.Investing);
-            AddSubtotals(periodByLine, CashFlowSection.Financing);
-            AddSubtotals(ytdByLine, CashFlowSection.Operating);
-            AddSubtotals(ytdByLine, CashFlowSection.Investing);
-            AddSubtotals(ytdByLine, CashFlowSection.Financing);
-
-            var currentNet = periodByLine.GetValueOrDefault(10) + periodByLine.GetValueOrDefault(22) + periodByLine.GetValueOrDefault(31);
-            var ytdNet = ytdByLine.GetValueOrDefault(10) + ytdByLine.GetValueOrDefault(22) + ytdByLine.GetValueOrDefault(31);
-            periodByLine[33] = currentNet;
-            ytdByLine[33] = ytdNet;
-            periodByLine[34] = periodOpeningCash;
-            ytdByLine[34] = yearOpeningCash;
-            periodByLine[35] = periodOpeningCash + currentNet;
-            ytdByLine[35] = yearOpeningCash + ytdNet;
+            Fill(periodByLine, periodOpeningCash);
+            Fill(ytdByLine, yearOpeningCash);
+            if (lastYearByLine != null)
+            {
+                Fill(lastYearByLine, lastYearOpeningCash);
+            }
 
             var lines = new List<CashFlowLineDto>();
             foreach (var def in CashFlowStandardRows.All)
@@ -210,6 +366,7 @@ namespace KuaiJi.Modules.Reports.Application
                     Kind = def.Kind,
                     Current = Round(periodByLine.GetValueOrDefault(def.Line)),
                     YearToDate = Round(ytdByLine.GetValueOrDefault(def.Line)),
+                    LastYear = Round(lastYearByLine?.GetValueOrDefault(def.Line) ?? 0m),
                 });
             }
 

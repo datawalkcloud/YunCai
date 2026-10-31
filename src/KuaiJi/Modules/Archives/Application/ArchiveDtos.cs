@@ -15,6 +15,9 @@ namespace KuaiJi.Modules.Archives.Application
 
         public DateTime UploadedAt { get; init; }
 
+        /// <summary>文件大小（字节）。</summary>
+        public long FileSize { get; init; }
+
         public string? RelatedDoc { get; init; }
 
         public string? RelatedNo { get; init; }
@@ -33,6 +36,15 @@ namespace KuaiJi.Modules.Archives.Application
 
         public bool IsArchived { get; init; }
 
+        /// <summary>是否标记为纸质档案。</summary>
+        public bool IsPaper { get; init; }
+
+        /// <summary>归档时间，可为空（未归档）。</summary>
+        public DateTime? ArchivedAt { get; init; }
+
+        /// <summary>归档人，可为空（未归档）。</summary>
+        public string? ArchivedBy { get; init; }
+
         public static string StatusTextOf(ArchiveFileStatus status)
             => status == ArchiveFileStatus.Audited ? "已审核" : "未审核";
 
@@ -43,6 +55,7 @@ namespace KuaiJi.Modules.Archives.Application
             Category = item.Category,
             DocType = item.DocType,
             UploadedAt = item.UploadedAt,
+            FileSize = item.FileSize,
             RelatedDoc = item.RelatedDoc,
             RelatedNo = item.RelatedNo,
             VoucherText = item.VoucherText,
@@ -52,6 +65,9 @@ namespace KuaiJi.Modules.Archives.Application
             Uploader = item.Uploader,
             Source = item.Source,
             IsArchived = item.IsArchived,
+            IsPaper = item.IsPaper,
+            ArchivedAt = item.ArchivedAt,
+            ArchivedBy = item.ArchivedBy,
         };
     }
 
@@ -90,6 +106,25 @@ namespace KuaiJi.Modules.Archives.Application
         public string Uploader { get; init; } = null!;
 
         public string Source { get; init; } = "财务系统";
+
+        /// <summary>是否标记为纸质档案。</summary>
+        public bool IsPaper { get; init; }
+    }
+
+    /// <summary>批量标记纸质档案请求。</summary>
+    public sealed class PaperArchiveRequest
+    {
+        public IReadOnlyList<Guid> Ids { get; init; } = [];
+
+        public bool IsPaper { get; init; } = true;
+    }
+
+    /// <summary>批量关联凭证请求（VoucherText 为空表示取消关联）。</summary>
+    public sealed class LinkVoucherRequest
+    {
+        public IReadOnlyList<Guid> Ids { get; init; } = [];
+
+        public string? VoucherText { get; init; }
     }
 
     /// <summary>批量归档请求。</summary>
@@ -104,5 +139,25 @@ namespace KuaiJi.Modules.Archives.Application
         public IReadOnlyList<Guid> Ids { get; init; } = [];
 
         public bool Audited { get; init; }
+    }
+
+    /// <summary>由档案生成凭证的请求：选中档案合并为一张「借 A 科目 / 贷 B 科目」凭证。</summary>
+    public sealed class GenerateVoucherFromArchivesRequest
+    {
+        public IReadOnlyList<Guid> Ids { get; init; } = [];
+
+        public DateOnly Date { get; init; }
+
+        /// <summary>凭证字，默认「记」。</summary>
+        public string Word { get; init; } = "记";
+
+        /// <summary>分录摘要；为空时取档案事项 / 文件名。</summary>
+        public string? Summary { get; init; }
+
+        public decimal Amount { get; init; }
+
+        public Guid DebitAccountId { get; init; }
+
+        public Guid CreditAccountId { get; init; }
     }
 }

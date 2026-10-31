@@ -3,7 +3,9 @@ using KuaiJi.Modules.Accounting.Domain;
 using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Funds.Domain;
 using KuaiJi.Modules.Salary.Domain;
+using KuaiJi.Modules.Salary.Infrastructure;
 using KuaiJi.Modules.Vouchers.Domain;
+using System.Globalization;
 
 namespace KuaiJi.Modules.Salary.Application
 {
@@ -30,6 +32,7 @@ namespace KuaiJi.Modules.Salary.Application
         private readonly ISalaryRepository _salaryRepository;
         private readonly IAccountRepository _accountRepository;
         private readonly IJournalRepository _journalRepository;
+        private readonly IVoucherRepository _voucherRepository;
         private readonly VoucherService _voucherService;
 
         public SalaryService(
@@ -37,12 +40,14 @@ namespace KuaiJi.Modules.Salary.Application
             ISalaryRepository salaryRepository,
             IAccountRepository accountRepository,
             IJournalRepository journalRepository,
+            IVoucherRepository voucherRepository,
             VoucherService voucherService)
         {
             _accountSetRepository = accountSetRepository;
             _salaryRepository = salaryRepository;
             _accountRepository = accountRepository;
             _journalRepository = journalRepository;
+            _voucherRepository = voucherRepository;
             _voucherService = voucherService;
         }
 
@@ -99,7 +104,8 @@ namespace KuaiJi.Modules.Salary.Application
         /// <summary>修改员工档案；不存在时返回 null。</summary>
         public async Task<EmployeeDto?> UpdateEmployeeAsync(Guid accountSetId, Guid id, SaveEmployeeRequest request, CancellationToken cancellationToken = default)
         {
-            var employee = await _salaryRepository.GetEmployeeByIdAsync(accountSetId, id, cancellationToken);
+            // 走跟踪查询：Read 用的 GetEmployeeByIdAsync 是 AsNoTracking，改完不会落库。
+            var employee = await _salaryRepository.GetEmployeeForUpdateAsync(accountSetId, id, cancellationToken);
             if (employee is null)
             {
                 return null;
@@ -141,13 +147,19 @@ namespace KuaiJi.Modules.Salary.Application
             return (await GetEmployeesAsync(accountSetId, cancellationToken)).First(e => e.Id == employee.Id);
         }
 
-        /// <summary>删除员工；不存在时返回 false。</summary>
+        /// <summary>删除员工；已生成工资单的员工不允许删除（否则工资表会出现孤儿行）。</summary>
         public async Task<bool> DeleteEmployeeAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
         {
-            var employee = await _salaryRepository.GetEmployeeByIdAsync(accountSetId, id, cancellationToken);
+            var employee = await _salaryRepository.GetEmployeeForUpdateAsync(accountSetId, id, cancellationToken);
             if (employee is null)
             {
                 return false;
+            }
+
+            var bills = await _salaryRepository.CountBillsOfEmployeeAsync(accountSetId, id, cancellationToken);
+            if (bills > 0)
+            {
+                throw new SalaryException($"员工「{employee.Name}」已生成 {bills} 张工资单，请先删除工资单再删除员工。");
             }
 
             _salaryRepository.RemoveEmployee(employee);
@@ -253,9 +265,23 @@ namespace KuaiJi.Modules.Salary.Application
         public async Task<IReadOnlyList<SalaryBillDto>> GetBillsAsync(Guid accountSetId, int period, CancellationToken cancellationToken = default)
         {
             await EnsureAccountSetExistsAsync(accountSetId, cancellationToken);
-            var bills = await _salaryRepository.GetBillsAsync(accountSetId, period, cancellationToken);
+            // 用跟踪实例：若凭证已被删除，需要把工资单上的悬空引用清掉并落库。
+            var bills = await _salaryRepository.GetBillsForUpdateAsync(accountSetId, period, cancellationToken);
             var employees = (await _salaryRepository.GetEmployeesAsync(accountSetId, cancellationToken))
                 .ToDictionary(e => e.Id, e => e);
+            // 凭证字号：只认仍在册（未删除）的凭证，避免删除凭证后工资单还显示「记-12」。
+            var vouchersById = (await _voucherRepository.GetAllAsync(accountSetId, cancellationToken))
+                .Where(v => v.DeletedAt is null)
+                .ToDictionary(v => v.Id, v => v);
+            var existingIds = vouchersById.Keys.ToHashSet();
+            if (bills.Any(b => b.ClearStaleVouchers(existingIds)))
+            {
+                await _salaryRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            string? VoucherText(Guid? id)
+                => id is { } value && vouchersById.TryGetValue(value, out var voucher) ? $"{voucher.Word}-{voucher.Number}" : null;
+
             return bills
                 .OrderBy(b => employees.GetValueOrDefault(b.EmployeeId)?.Code ?? string.Empty)
                 .Select(b =>
@@ -278,8 +304,8 @@ namespace KuaiJi.Modules.Salary.Application
                         Net = b.Net,
                         CompanyPart = b.CompanyPart,
                         Cost = b.Cost,
-                        AccruedVoucherText = null,
-                        PaidVoucherText = null,
+                        AccruedVoucherText = VoucherText(b.AccruedVoucherId),
+                        PaidVoucherText = VoucherText(b.PaidVoucherId),
                     };
                 })
                 .ToList();
@@ -319,9 +345,11 @@ namespace KuaiJi.Modules.Salary.Application
             }
             else
             {
+                // 跟踪实例：FindBillAsync 是 AsNoTracking，直接改它不会落库。
+                var tracked = await _salaryRepository.GetBillForUpdateAsync(accountSetId, existing.Id, cancellationToken) ?? existing;
                 try
                 {
-                    existing.Update(
+                    tracked.Update(
                         request.Gross,
                         request.Deductible,
                         request.PersonalDeduction,
@@ -335,7 +363,7 @@ namespace KuaiJi.Modules.Salary.Application
                     throw new SalaryException(ex.Message);
                 }
 
-                bill = existing;
+                bill = tracked;
             }
 
             await _salaryRepository.SaveChangesAsync(cancellationToken);
@@ -384,15 +412,372 @@ namespace KuaiJi.Modules.Salary.Application
                 .ToList();
         }
 
-        // —— 计提 / 发放 ——
+        // —— 员工导入导出 / 批量 ——
+
+        /// <summary>导出员工名册（列与导入模板一致，可改完原样导回）。</summary>
+        public async Task<byte[]> ExportEmployeesAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        {
+            var employees = await GetEmployeesAsync(accountSetId, cancellationToken);
+            return SalaryExportBuilder.BuildEmployees(employees);
+        }
+
+        /// <summary>员工导入模板（仅表头）。</summary>
+        public byte[] BuildEmployeeTemplate() => SalaryExportBuilder.BuildEmployeeTemplate();
+
+        /// <summary>
+        /// 导入员工：按「编号」匹配，存在则更新、不存在则新增。
+        /// 科目按编码匹配末级科目；编码找不到或非末级时该行失败，不影响其它行。
+        /// </summary>
+        public async Task<EmployeeImportResultDto> ImportEmployeesAsync(
+            Guid accountSetId,
+            IReadOnlyList<EmployeeImportRow> rows,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureAccountSetExistsAsync(accountSetId, cancellationToken);
+            var accounts = await _accountRepository.GetAllAsync(accountSetId, cancellationToken);
+            var byCode = accounts
+                .Where(a => a.IsLeaf)
+                .GroupBy(a => a.Code, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+            var existing = (await _salaryRepository.GetEmployeesAsync(accountSetId, cancellationToken))
+                .ToDictionary(e => e.Code, e => e, StringComparer.Ordinal);
+
+            var failures = new List<SalaryImportFailureDto>();
+            var imported = 0;
+            var updated = 0;
+
+            foreach (var row in rows)
+            {
+                var code = row.Code?.Trim();
+                var name = row.Name?.Trim();
+                if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name))
+                {
+                    failures.Add(new SalaryImportFailureDto { Row = row.Row, Reason = "编号与姓名不能为空。" });
+                    continue;
+                }
+
+                Guid? subjectId = null;
+                var subjectCode = row.SubjectAccountCode?.Trim();
+                if (!string.IsNullOrEmpty(subjectCode))
+                {
+                    if (!byCode.TryGetValue(subjectCode, out var subject))
+                    {
+                        failures.Add(new SalaryImportFailureDto { Row = row.Row, Reason = $"计提工资科目编码「{subjectCode}」不存在或不是末级科目。" });
+                        continue;
+                    }
+
+                    subjectId = subject.Id;
+                }
+
+                var gender = ParseGender(row.GenderText);
+                var idType = ParseIdType(row.IdTypeText);
+                var status = ParseStatus(row.StatusText);
+                var hireDate = ParseDate(row.HireDate);
+
+                try
+                {
+                    if (existing.TryGetValue(code, out var current))
+                    {
+                        var tracked = await _salaryRepository.GetEmployeeForUpdateAsync(accountSetId, current.Id, cancellationToken);
+                        tracked?.Update(
+                            code,
+                            name,
+                            gender,
+                            idType,
+                            row.IdNo,
+                            row.Dept,
+                            row.Phone,
+                            row.Email,
+                            tracked.BirthDate,
+                            hireDate,
+                            tracked.BankName,
+                            tracked.BankAccountNo,
+                            row.Post,
+                            row.Title,
+                            subjectId ?? tracked.SubjectAccountId,
+                            status,
+                            row.Remark);
+                        updated++;
+                    }
+                    else
+                    {
+                        var employee = Employee.Create(
+                            accountSetId,
+                            code,
+                            name,
+                            gender,
+                            idType,
+                            row.IdNo,
+                            row.Dept,
+                            row.Phone,
+                            row.Email,
+                            null,
+                            hireDate,
+                            null,
+                            null,
+                            row.Post,
+                            row.Title,
+                            subjectId,
+                            status,
+                            row.Remark);
+                        await _salaryRepository.AddEmployeeAsync(employee, cancellationToken);
+                        existing[code] = employee;
+                        imported++;
+                    }
+                }
+                catch (ArgumentException ex)
+                {
+                    failures.Add(new SalaryImportFailureDto { Row = row.Row, Reason = ex.Message });
+                }
+            }
+
+            if (imported + updated > 0)
+            {
+                await _salaryRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            return new EmployeeImportResultDto
+            {
+                Imported = imported,
+                Updated = updated,
+                Skipped = failures.Count,
+                Failures = failures,
+            };
+        }
+
+        /// <summary>批量删除员工；有工资单的员工计入跳过并说明原因。</summary>
+        public async Task<SalaryBulkResultDto> DeleteEmployeesAsync(
+            Guid accountSetId,
+            IReadOnlyList<Guid> ids,
+            CancellationToken cancellationToken = default)
+        {
+            var affected = 0;
+            var skipped = 0;
+            var messages = new List<string>();
+
+            foreach (var id in ids.Distinct())
+            {
+                var employee = await _salaryRepository.GetEmployeeForUpdateAsync(accountSetId, id, cancellationToken);
+                if (employee is null)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var bills = await _salaryRepository.CountBillsOfEmployeeAsync(accountSetId, id, cancellationToken);
+                if (bills > 0)
+                {
+                    skipped++;
+                    messages.Add($"「{employee.Name}」有 {bills} 张工资单，已跳过");
+                    continue;
+                }
+
+                _salaryRepository.RemoveEmployee(employee);
+                affected++;
+            }
+
+            if (affected > 0)
+            {
+                await _salaryRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            return new SalaryBulkResultDto { Affected = affected, Skipped = skipped, Messages = messages };
+        }
+
+        // —— 工资表导入导出 / 工资条 ——
+
+        /// <summary>导出工资统计表。</summary>
+        public async Task<byte[]> ExportSummaryAsync(Guid accountSetId, int startPeriod, int endPeriod, CancellationToken cancellationToken = default)
+        {
+            var rows = await GetSummaryAsync(accountSetId, startPeriod, endPeriod, cancellationToken);
+            return SalaryExportBuilder.BuildSummary(rows);
+        }
+
+        /// <summary>导出当期工资表。</summary>
+        public async Task<byte[]> ExportBillsAsync(Guid accountSetId, int period, CancellationToken cancellationToken = default)
+        {
+            var bills = await GetBillsAsync(accountSetId, period, cancellationToken);
+            return SalaryExportBuilder.BuildBills(bills, period);
+        }
+
+        /// <summary>生成当期工资条 PDF（一页 3 条，带裁切线）。</summary>
+        public async Task<byte[]> BuildPayslipsAsync(Guid accountSetId, int period, CancellationToken cancellationToken = default)
+        {
+            var bills = await GetBillsAsync(accountSetId, period, cancellationToken);
+            if (bills.Count == 0)
+            {
+                throw new SalaryException($"{FormatPeriod(period)} 还没有工资单，无法生成工资条。");
+            }
+
+            var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken);
+            return PayslipPdfBuilder.Build(bills, period, accountSet?.CompanyName ?? accountSet?.Name ?? string.Empty);
+        }
+
+        /// <summary>
+        /// 导入工资表：按「编号」匹配员工，同期间存在则更新金额。
+        /// 已生成计提 / 发放凭证的工资单不允许覆盖（否则凭证金额与工资单不一致），计入失败明细。
+        /// </summary>
+        public async Task<SalaryBillImportResultDto> ImportBillsAsync(
+            Guid accountSetId,
+            int period,
+            IReadOnlyList<SalaryBillImportRow> rows,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureAccountSetExistsAsync(accountSetId, cancellationToken);
+            var employees = await _salaryRepository.GetEmployeesAsync(accountSetId, cancellationToken);
+            var byCode = employees.ToDictionary(e => e.Code, e => e, StringComparer.Ordinal);
+            var byName = employees
+                .GroupBy(e => e.Name, StringComparer.Ordinal)
+                .Where(g => g.Count() == 1)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+            var failures = new List<SalaryImportFailureDto>();
+            var imported = 0;
+            var updated = 0;
+
+            foreach (var row in rows)
+            {
+                var code = row.EmployeeCode?.Trim();
+                var name = row.EmployeeName?.Trim();
+                Employee? employee = null;
+                if (!string.IsNullOrEmpty(code) && byCode.TryGetValue(code, out var byCodeHit))
+                {
+                    employee = byCodeHit;
+                }
+                else if (!string.IsNullOrEmpty(name) && byName.TryGetValue(name, out var byNameHit))
+                {
+                    employee = byNameHit;
+                }
+
+                if (employee is null)
+                {
+                    failures.Add(new SalaryImportFailureDto
+                    {
+                        Row = row.Row,
+                        Reason = string.IsNullOrEmpty(code) ? "未填写员工编号，且姓名无法唯一匹配员工。" : $"员工编号「{code}」不存在。",
+                    });
+                    continue;
+                }
+
+                var existing = await _salaryRepository.FindBillAsync(accountSetId, period, employee.Id, cancellationToken);
+                if (existing is { AccruedVoucherId: not null } || existing is { PaidVoucherId: not null })
+                {
+                    failures.Add(new SalaryImportFailureDto { Row = row.Row, Reason = $"员工「{employee.Name}」本期已生成凭证，请先删除凭证再导入。" });
+                    continue;
+                }
+
+                try
+                {
+                    var gross = ParseAmount(row.Gross);
+                    var deductible = ParseAmount(row.Deductible);
+                    var personal = ParseAmount(row.PersonalDeduction);
+                    var threshold = string.IsNullOrWhiteSpace(row.TaxThreshold) ? 5000m : ParseAmount(row.TaxThreshold);
+                    var tax = ParseAmount(row.Tax);
+                    var adjust = ParseAmount(row.Adjust);
+                    var company = ParseAmount(row.CompanyPart);
+
+                    if (existing is null)
+                    {
+                        await _salaryRepository.AddBillAsync(
+                            SalaryBill.Create(accountSetId, period, employee.Id, gross, deductible, personal, threshold, tax, adjust, company),
+                            cancellationToken);
+                        imported++;
+                    }
+                    else
+                    {
+                        var tracked = await _salaryRepository.GetBillForUpdateAsync(accountSetId, existing.Id, cancellationToken);
+                        tracked?.Update(gross, deductible, personal, threshold, tax, adjust, company);
+                        updated++;
+                    }
+                }
+                catch (ArgumentException ex)
+                {
+                    failures.Add(new SalaryImportFailureDto { Row = row.Row, Reason = ex.Message });
+                }
+                catch (FormatException)
+                {
+                    failures.Add(new SalaryImportFailureDto { Row = row.Row, Reason = "金额格式不正确，应填写数字（如 10000.00）。" });
+                }
+            }
+
+            if (imported + updated > 0)
+            {
+                await _salaryRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            return new SalaryBillImportResultDto { Imported = imported, Updated = updated, Failures = failures };
+        }
+
+        // —— 工资凭证科目设置 ——
+
+        /// <summary>读取工资凭证科目映射；未配置项回落到自动推断，并在 DTO 里标出是否命中。</summary>
+        public async Task<SalaryVoucherSettingDto> GetVoucherSettingAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        {
+            await EnsureAccountSetExistsAsync(accountSetId, cancellationToken);
+            var accountsById = await LoadAccountsByIdAsync(accountSetId, cancellationToken);
+            var setting = await _salaryRepository.GetVoucherSettingAsync(accountSetId, cancellationToken);
+
+            var payroll = ResolveAccount(accountsById, setting?.PayrollAccountId, AutoPayroll(accountsById));
+            var tax = ResolveAccount(accountsById, setting?.TaxAccountId, AutoByPrefix(accountsById, "2221", "个人所得税"));
+            var insurance = ResolveAccount(accountsById, setting?.InsuranceAccountId, AutoByPrefix(accountsById, "2241", "个人"));
+            var bankId = setting?.BankAccountId is { } configured && accountsById.ContainsKey(configured)
+                ? configured
+                : await FindFirstBankAccountIdAsync(accountSetId, cancellationToken);
+
+            return new SalaryVoucherSettingDto
+            {
+                PayrollAccountId = setting?.PayrollAccountId,
+                TaxAccountId = setting?.TaxAccountId,
+                InsuranceAccountId = setting?.InsuranceAccountId,
+                BankAccountId = setting?.BankAccountId,
+                PayrollAccountText = Text(accountsById, payroll),
+                TaxAccountText = Text(accountsById, tax),
+                InsuranceAccountText = Text(accountsById, insurance),
+                BankAccountText = Text(accountsById, bankId),
+                PayrollResolved = payroll is not null,
+                BankResolved = bankId is not null,
+            };
+        }
+
+        /// <summary>保存工资凭证科目映射；留空的项回落到自动推断。</summary>
+        public async Task<SalaryVoucherSettingDto> SaveVoucherSettingAsync(
+            Guid accountSetId,
+            SaveSalaryVoucherSettingRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureAccountSetExistsAsync(accountSetId, cancellationToken);
+            var accountsById = await LoadAccountsByIdAsync(accountSetId, cancellationToken);
+
+            ValidateAccount(accountsById, request.PayrollAccountId, "应付职工薪酬科目");
+            ValidateAccount(accountsById, request.TaxAccountId, "个人所得税科目");
+            ValidateAccount(accountsById, request.InsuranceAccountId, "代扣个人款项科目");
+            ValidateAccount(accountsById, request.BankAccountId, "发放账户");
+
+            var setting = await _salaryRepository.GetVoucherSettingAsync(accountSetId, cancellationToken);
+            if (setting is null)
+            {
+                setting = SalaryVoucherSetting.Create(accountSetId);
+                await _salaryRepository.AddVoucherSettingAsync(setting, cancellationToken);
+            }
+
+            setting.Update(
+                request.PayrollAccountId,
+                request.TaxAccountId,
+                request.InsuranceAccountId,
+                request.BankAccountId);
+            await _salaryRepository.SaveChangesAsync(cancellationToken);
+
+            return await GetVoucherSettingAsync(accountSetId, cancellationToken);
+        }
 
         /// <summary>计提指定期间工资：为每张未计提且员工成本大于零的工资单生成计提凭证。
         /// 借 员工计提工资科目（员工成本）/ 贷 应付职工薪酬（员工成本）。</summary>
         public async Task<int> GenerateAccrueVouchersAsync(Guid accountSetId, int period, string preparer, CancellationToken cancellationToken = default)
         {
             var accountsById = await LoadAccountsByIdAsync(accountSetId, cancellationToken);
-            var payrollAccountId = FindPayrollSubject(accountsById);
-            var bills = await _salaryRepository.GetBillsAsync(accountSetId, period, cancellationToken);
+            var setting = await ResolveVoucherAccountsAsync(accountSetId, accountsById, cancellationToken);
+            // 跟踪查询：计提后要回填 AccruedVoucherId，AsNoTracking 的实例改完不落库。
+            var bills = await _salaryRepository.GetBillsForUpdateAsync(accountSetId, period, cancellationToken);
             var employees = (await _salaryRepository.GetEmployeesAsync(accountSetId, cancellationToken))
                 .ToDictionary(e => e.Id, e => e);
             var count = 0;
@@ -423,7 +808,7 @@ namespace KuaiJi.Modules.Salary.Application
                         Entries =
                         [
                             new CreateVoucherEntryRequest { Summary = $"{FormatPeriod(period)} 计提工资", AccountId = subjectAccountId, Debit = bill.Cost, Credit = 0m },
-                            new CreateVoucherEntryRequest { Summary = $"{FormatPeriod(period)} 计提工资", AccountId = payrollAccountId, Debit = 0m, Credit = bill.Cost },
+                            new CreateVoucherEntryRequest { Summary = $"{FormatPeriod(period)} 计提工资", AccountId = setting.PayrollAccountId, Debit = 0m, Credit = bill.Cost },
                         ],
                     },
                     cancellationToken);
@@ -436,20 +821,53 @@ namespace KuaiJi.Modules.Salary.Application
         }
 
         /// <summary>发放指定期间工资：为每张未发放且实发金额大于零的工资单生成发放凭证。
-        /// 借 应付职工薪酬（实发）/ 贷 银行存款（实发）。</summary>
+        /// 借 应付职工薪酬（实发 + 代扣个人款项 + 个税）/ 贷 银行存款（实发）+ 应交个人所得税 + 代扣个人款项科目。
+        /// 只做「借应付、贷银行」两行会把代扣的社保与个税永久挂在应付职工薪酬上，故按实际去向拆行。</summary>
         public async Task<int> GeneratePayVouchersAsync(Guid accountSetId, int period, string preparer, CancellationToken cancellationToken = default)
         {
             var accountsById = await LoadAccountsByIdAsync(accountSetId, cancellationToken);
-            var payrollAccountId = FindPayrollSubject(accountsById);
-            var bankAccountId = await FindFirstBankAccountIdAsync(accountSetId, cancellationToken)
-                                ?? throw new SalaryException("账套还没有启用中的银行存款日记账，无法生成发放工资凭证。");
-            var bills = await _salaryRepository.GetBillsAsync(accountSetId, period, cancellationToken);
+            var setting = await ResolveVoucherAccountsAsync(accountSetId, accountsById, cancellationToken);
+            var bills = await _salaryRepository.GetBillsForUpdateAsync(accountSetId, period, cancellationToken);
+            var employees = (await _salaryRepository.GetEmployeesAsync(accountSetId, cancellationToken))
+                .ToDictionary(e => e.Id, e => e);
             var count = 0;
             foreach (var bill in bills)
             {
                 if (bill.PaidVoucherId is not null || bill.Net <= 0m)
                 {
                     continue;
+                }
+
+                var employee = employees.GetValueOrDefault(bill.EmployeeId);
+                var summary = $"{FormatPeriod(period)} 发放工资";
+                var entries = new List<CreateVoucherEntryRequest>
+                {
+                    new() { Summary = summary, AccountId = setting.PayrollAccountId, Debit = bill.Net + bill.PersonalDeduction + bill.Tax, Credit = 0m },
+                    new() { Summary = summary, AccountId = setting.BankAccountId, Debit = 0m, Credit = bill.Net },
+                };
+
+                if (bill.PersonalDeduction > 0m)
+                {
+                    entries.Add(new CreateVoucherEntryRequest
+                    {
+                        Summary = summary,
+                        AccountId = setting.InsuranceAccountId
+                                   ?? throw new SalaryException($"员工「{employee?.Name ?? string.Empty}」有代扣个人款项，但未配置代扣款项科目，请先在「工资凭证设置」中指定。"),
+                        Debit = 0m,
+                        Credit = bill.PersonalDeduction,
+                    });
+                }
+
+                if (bill.Tax > 0m)
+                {
+                    entries.Add(new CreateVoucherEntryRequest
+                    {
+                        Summary = summary,
+                        AccountId = setting.TaxAccountId
+                                   ?? throw new SalaryException($"员工「{employee?.Name ?? string.Empty}」有应缴个税，但未配置个人所得税科目，请先在「工资凭证设置」中指定。"),
+                        Debit = 0m,
+                        Credit = bill.Tax,
+                    });
                 }
 
                 var voucher = await _voucherService.CreateAsync(
@@ -461,11 +879,7 @@ namespace KuaiJi.Modules.Salary.Application
                         Number = 0,
                         Date = PeriodEndDate(period),
                         AttachmentCount = 0,
-                        Entries =
-                        [
-                            new CreateVoucherEntryRequest { Summary = $"{FormatPeriod(period)} 发放工资", AccountId = payrollAccountId, Debit = bill.Net, Credit = 0m },
-                            new CreateVoucherEntryRequest { Summary = $"{FormatPeriod(period)} 发放工资", AccountId = bankAccountId, Debit = 0m, Credit = bill.Net },
-                        ],
+                        Entries = entries,
                     },
                     cancellationToken);
                 bill.MarkPaid(voucher.Id);
@@ -483,16 +897,125 @@ namespace KuaiJi.Modules.Salary.Application
             return (bills.Sum(b => b.Payable), bills.Sum(b => b.Net));
         }
 
-        private Guid FindPayrollSubject(IReadOnlyDictionary<Guid, Account> accountsById)
+        /// <summary>计提 / 发放凭证要用的科目集合（设置优先，其次自动推断）。</summary>
+        private sealed record VoucherAccounts(
+            Guid PayrollAccountId,
+            Guid? TaxAccountId,
+            Guid? InsuranceAccountId,
+            Guid BankAccountId);
+
+        /// <summary>解析凭证科目：设置里配置的优先；未配置或配置失效时按编码前缀自动推断。</summary>
+        private async Task<VoucherAccounts> ResolveVoucherAccountsAsync(
+            Guid accountSetId,
+            IReadOnlyDictionary<Guid, Account> accountsById,
+            CancellationToken cancellationToken)
         {
-            var subject = accountsById.Values.FirstOrDefault(a =>
-                a.IsLeaf && a.IsEnabled && a.Code.StartsWith(PayrollSubjectPrefix, StringComparison.Ordinal));
-            if (subject is null)
+            var setting = await _salaryRepository.GetVoucherSettingAsync(accountSetId, cancellationToken);
+
+            var payrollId = (setting?.PayrollAccountId is { } configuredPayroll && accountsById.ContainsKey(configuredPayroll)
+                                ? configuredPayroll
+                                : AutoPayroll(accountsById)?.Id)
+                            ?? throw new SalaryException("未找到「应付职工薪酬」科目（2211 开头的末级科目），请先在科目设置中创建，或在「工资凭证设置」中指定。");
+
+            var bankId = (setting?.BankAccountId is { } configuredBank && accountsById.ContainsKey(configuredBank)
+                             ? configuredBank
+                             : await FindFirstBankAccountIdAsync(accountSetId, cancellationToken))
+                         ?? throw new SalaryException("账套还没有启用中的银行存款日记账，无法生成发放工资凭证。");
+
+            Guid? taxId = setting?.TaxAccountId is { } configuredTax && accountsById.ContainsKey(configuredTax)
+                ? configuredTax
+                : AutoByPrefix(accountsById, "2221", "个人所得税")?.Id;
+
+            Guid? insuranceId = setting?.InsuranceAccountId is { } configuredInsurance && accountsById.ContainsKey(configuredInsurance)
+                ? configuredInsurance
+                : AutoByPrefix(accountsById, "2241", "个人")?.Id;
+
+            return new VoucherAccounts(payrollId, taxId, insuranceId, bankId);
+        }
+
+        private static Account? AutoPayroll(IReadOnlyDictionary<Guid, Account> accountsById)
+            => accountsById.Values
+                .Where(a => a.IsLeaf && a.IsEnabled && a.Code.StartsWith(PayrollSubjectPrefix, StringComparison.Ordinal))
+                .OrderBy(a => a.Code, StringComparer.Ordinal)
+                .FirstOrDefault();
+
+        /// <summary>按编码前缀 + 名称关键字自动找科目；名称优先命中，其次取该前缀下第一个末级科目。</summary>
+        private static Account? AutoByPrefix(IReadOnlyDictionary<Guid, Account> accountsById, string prefix, string keyword)
+        {
+            var candidates = accountsById.Values
+                .Where(a => a.IsLeaf && a.IsEnabled && a.Code.StartsWith(prefix, StringComparison.Ordinal))
+                .OrderBy(a => a.Code, StringComparer.Ordinal)
+                .ToList();
+            return candidates.FirstOrDefault(a => a.Name.Contains(keyword, StringComparison.Ordinal)) ?? candidates.FirstOrDefault();
+        }
+
+        private static Guid? ResolveAccount(IReadOnlyDictionary<Guid, Account> accountsById, Guid? configured, Account? fallback)
+            => configured is { } id && accountsById.ContainsKey(id) ? id : fallback?.Id;
+
+        private static string? Text(IReadOnlyDictionary<Guid, Account> accountsById, Guid? id)
+            => id is { } value && accountsById.TryGetValue(value, out var account)
+                ? $"{account.Code} {account.Name}"
+                : null;
+
+        private static void ValidateAccount(IReadOnlyDictionary<Guid, Account> accountsById, Guid? id, string roleName)
+        {
+            if (id is not { } value || value == Guid.Empty)
             {
-                throw new SalaryException("未找到「应付职工薪酬」科目（编码 2211 开头的末级科目），请先在科目设置中创建。");
+                return;
             }
 
-            return subject.Id;
+            if (!accountsById.TryGetValue(value, out var account))
+            {
+                throw new SalaryException($"所选{roleName}不存在。");
+            }
+
+            if (!account.IsLeaf)
+            {
+                throw new SalaryException($"所选{roleName}「{account.Code} {account.Name}」不是末级科目，不能用于记账。");
+            }
+        }
+
+        private static EmployeeGender ParseGender(string? text)
+            => text?.Trim() switch
+            {
+                "女" => EmployeeGender.Female,
+                _ => EmployeeGender.Male,
+            };
+
+        private static EmployeeIdType ParseIdType(string? text)
+            => text?.Trim() switch
+            {
+                "护照" => EmployeeIdType.Passport,
+                "其他" => EmployeeIdType.Other,
+                _ => EmployeeIdType.ResidentIdCard,
+            };
+
+        private static EmployeeStatus ParseStatus(string? text)
+            => string.Equals(text?.Trim(), "离职", StringComparison.Ordinal) ? EmployeeStatus.Resigned : EmployeeStatus.Active;
+
+        private static DateOnly? ParseDate(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return null;
+            }
+
+            return DateOnly.TryParse(text.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var value)
+                ? value
+                : null;
+        }
+
+        private static decimal ParseAmount(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return 0m;
+            }
+
+            var cleaned = text.Trim().Replace(",", string.Empty).Replace("￥", string.Empty).Replace("¥", string.Empty);
+            return decimal.TryParse(cleaned, NumberStyles.Number, CultureInfo.InvariantCulture, out var value)
+                ? value
+                : throw new FormatException();
         }
 
         private async Task<Guid?> FindFirstBankAccountIdAsync(Guid accountSetId, CancellationToken cancellationToken)

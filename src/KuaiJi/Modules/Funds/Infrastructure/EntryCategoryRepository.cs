@@ -22,12 +22,45 @@ namespace KuaiJi.Modules.Funds.Infrastructure
 
         public async Task<IReadOnlyList<EntryCategory>> GetAllAsync(Guid accountSetId, CancellationToken cancellationToken = default)
         {
-            return await _context.EntryCategories
+            var list = await _context.EntryCategories
                 .AsNoTracking()
                 .Where(c => c.AccountSetId == accountSetId)
-                .OrderBy(c => c.Type)
-                .ThenBy(c => c.Name)
                 .ToListAsync(cancellationToken);
+
+            // 编码多为「1、2、…、10」这样的序号，按数值排序才与账面顺序一致；纯数字以外的编码退化为字符串比较。
+            return list
+                .OrderBy(c => c.Type)
+                .ThenBy(c => c.Code, CodeComparer.Instance)
+                .ThenBy(c => c.Name, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        /// <summary>编码比较器：两边都是纯数字时按数值比较，其余按序号比较。</summary>
+        private sealed class CodeComparer : IComparer<string>
+        {
+            public static readonly CodeComparer Instance = new();
+
+            public int Compare(string? x, string? y)
+            {
+                var leftIsNumber = long.TryParse(x, out var left);
+                var rightIsNumber = long.TryParse(y, out var right);
+                if (leftIsNumber && rightIsNumber)
+                {
+                    return left.CompareTo(right);
+                }
+
+                if (leftIsNumber)
+                {
+                    return -1;
+                }
+
+                if (rightIsNumber)
+                {
+                    return 1;
+                }
+
+                return string.CompareOrdinal(x, y);
+            }
         }
 
         public Task<bool> ExistsByNameAsync(Guid accountSetId, EntryCategoryType type, string name, Guid? excludeId = null, CancellationToken cancellationToken = default)
@@ -36,6 +69,15 @@ namespace KuaiJi.Modules.Funds.Infrastructure
                 c => c.AccountSetId == accountSetId
                      && c.Type == type
                      && c.Name == name
+                     && (excludeId == null || c.Id != excludeId),
+                cancellationToken);
+        }
+
+        public Task<bool> ExistsByCodeAsync(Guid accountSetId, string code, Guid? excludeId = null, CancellationToken cancellationToken = default)
+        {
+            return _context.EntryCategories.AnyAsync(
+                c => c.AccountSetId == accountSetId
+                     && c.Code == code
                      && (excludeId == null || c.Id != excludeId),
                 cancellationToken);
         }

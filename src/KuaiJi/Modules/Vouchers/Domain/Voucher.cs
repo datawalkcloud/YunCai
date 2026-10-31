@@ -46,6 +46,9 @@ namespace KuaiJi.Modules.Vouchers.Domain
         /// <summary>所附原始单据张数。</summary>
         public int AttachmentCount { get; private set; }
 
+        /// <summary>凭证备注（凭证头部的说明性文字），可为空。</summary>
+        public string? Remark { get; private set; }
+
         /// <summary>凭证状态。</summary>
         public VoucherStatus Status { get; private set; }
 
@@ -54,6 +57,12 @@ namespace KuaiJi.Modules.Vouchers.Domain
 
         /// <summary>审核人，未审核时为空。</summary>
         public string? Reviewer { get; private set; }
+
+        /// <summary>移入回收站的时间，为空表示未删除（回收站为软删除，可还原）。</summary>
+        public DateTimeOffset? DeletedAt { get; private set; }
+
+        /// <summary>是否已在回收站中。</summary>
+        public bool IsDeleted => DeletedAt.HasValue;
 
         /// <summary>凭证分录集合（按行号顺序）。</summary>
         public IReadOnlyList<VoucherEntry> Entries => _entries;
@@ -68,7 +77,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         public bool IsBalanced => _entries.Count > 0 && TotalDebit == TotalCredit;
 
         /// <summary>制单：创建一张草稿凭证，须归属于某一账套。</summary>
-        public static Voucher Create(Guid accountSetId, string word, int number, DateOnly date, string preparer, int attachmentCount = 0)
+        public static Voucher Create(Guid accountSetId, string word, int number, DateOnly date, string preparer, int attachmentCount = 0, string? remark = null)
         {
             if (accountSetId == Guid.Empty)
             {
@@ -95,7 +104,22 @@ namespace KuaiJi.Modules.Vouchers.Domain
                 throw new ArgumentException("附单据数不能为负数。", nameof(attachmentCount));
             }
 
-            return new Voucher(Guid.NewGuid(), accountSetId, word.Trim(), number, date, preparer.Trim(), attachmentCount);
+            return new Voucher(Guid.NewGuid(), accountSetId, word.Trim(), number, date, preparer.Trim(), attachmentCount)
+            {
+                Remark = NormalizeRemark(remark),
+            };
+        }
+
+        /// <summary>备注归一：去空白、超长截断、空串转 null。</summary>
+        private static string? NormalizeRemark(string? remark)
+        {
+            var value = remark?.Trim();
+            if (string.IsNullOrEmpty(value))
+            {
+                return null;
+            }
+
+            return value.Length > 255 ? value[..255] : value;
         }
 
         /// <summary>
@@ -192,7 +216,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         }
 
         /// <summary>修改凭证头信息（仅草稿状态可用）。</summary>
-        public void UpdateHeader(DateOnly date, int attachmentCount)
+        public void UpdateHeader(DateOnly date, int attachmentCount, string? remark = null)
         {
             EnsureDraft();
             if (attachmentCount < 0)
@@ -202,6 +226,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
 
             Date = date;
             AttachmentCount = attachmentCount;
+            Remark = NormalizeRemark(remark);
         }
 
         /// <summary>审核：草稿 → 已审核。要求借贷平衡且至少一条分录。</summary>
@@ -244,6 +269,90 @@ namespace KuaiJi.Modules.Vouchers.Domain
 
             EnsurePostable();
             Status = VoucherStatus.Posted;
+        }
+
+        /// <summary>
+        /// 反过账：已过账 → 已审核（撤销登记入账，保留审核人）。
+        /// 与过账互为逆操作，用于过账后发现错误时退回可修改状态。
+        /// </summary>
+        public void Unpost()
+        {
+            if (Status != VoucherStatus.Posted)
+            {
+                throw new InvalidOperationException("只有已过账的凭证才能反过账。");
+            }
+
+            Status = VoucherStatus.Reviewed;
+        }
+
+        /// <summary>
+        /// 复制一张凭证：保留分录与辅助核算，生成同凭证字下的新草稿。
+        /// 摘要可整体加前缀（红冲用「冲销202601记-1_」这类前缀），金额可按需取反。
+        /// </summary>
+        public static Voucher Duplicate(
+            Voucher source,
+            int number,
+            DateOnly date,
+            string preparer,
+            string? summaryPrefix = null,
+            bool negateAmounts = false)
+        {
+            var copy = new Voucher(
+                Guid.NewGuid(),
+                source.AccountSetId,
+                source.Word,
+                number,
+                date,
+                preparer,
+                source.AttachmentCount)
+            {
+                Remark = source.Remark,
+            };
+
+            foreach (var entry in source._entries.OrderBy(e => e.LineNumber))
+            {
+                var summary = string.IsNullOrEmpty(summaryPrefix) ? entry.Summary : summaryPrefix + entry.Summary;
+                var debit = negateAmounts ? -entry.Debit : entry.Debit;
+                var credit = negateAmounts ? -entry.Credit : entry.Credit;
+                var cloned = new VoucherEntry(Guid.NewGuid(), copy.Id, summary, entry.AccountId, debit, credit);
+                cloned.SetLineNumber(entry.LineNumber);
+                copy._entries.Add(cloned);
+                if (entry.Assists.Count > 0)
+                {
+                    cloned.SetAssists(entry.Assists.Select(a => new AssistRef(a.Type, a.AssistItemId)).ToList());
+                }
+            }
+
+            copy.Reindex();
+            return copy;
+        }
+
+        /// <summary>调整凭证号（整理凭证 / 凭证号重排时使用）。</summary>
+        public void SetNumber(int number)
+        {
+            if (number <= 0)
+            {
+                throw new ArgumentException("凭证号必须为正整数。", nameof(number));
+            }
+
+            Number = number;
+        }
+
+        /// <summary>移入回收站（软删除，可还原）。</summary>
+        public void SoftDelete(DateTimeOffset at)
+        {
+            if (IsDeleted)
+            {
+                return;
+            }
+
+            DeletedAt = at;
+        }
+
+        /// <summary>从回收站还原。</summary>
+        public void Restore()
+        {
+            DeletedAt = null;
         }
 
         private void EnsureDraft()

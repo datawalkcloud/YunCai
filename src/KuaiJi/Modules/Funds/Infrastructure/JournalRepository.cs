@@ -63,6 +63,37 @@ namespace KuaiJi.Modules.Funds.Infrastructure
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<string> NextCodeAsync(Guid accountSetId, JournalType type, CancellationToken cancellationToken = default)
+        {
+            var codes = await _context.Journals
+                .AsNoTracking()
+                .Where(j => j.AccountSetId == accountSetId && j.Type == type && !string.IsNullOrWhiteSpace(j.Code))
+                .Select(j => j.Code)
+                .ToListAsync(cancellationToken);
+
+            var max = 0;
+            foreach (var code in codes)
+            {
+                if (int.TryParse(code, out var n) && n > max)
+                {
+                    max = n;
+                }
+            }
+
+            return (max + 1).ToString().PadLeft(3, '0');
+        }
+
+        public Task<bool> ExistsByCodeAsync(Guid accountSetId, JournalType type, string code, Guid? excludeId = null, CancellationToken cancellationToken = default)
+        {
+            var normalized = code.Trim();
+            return _context.Journals
+                .AsNoTracking()
+                .AnyAsync(j => j.AccountSetId == accountSetId
+                            && j.Type == type
+                            && j.Code == normalized
+                            && (excludeId == null || j.Id != excludeId), cancellationToken);
+        }
+
         public async Task AddAsync(Journal journal, CancellationToken cancellationToken = default)
         {
             await _context.Journals.AddAsync(journal, cancellationToken);

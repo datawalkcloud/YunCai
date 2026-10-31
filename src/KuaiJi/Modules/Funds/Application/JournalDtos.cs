@@ -11,6 +11,12 @@ namespace KuaiJi.Modules.Funds.Application
 
         public string Name { get; init; } = null!;
 
+        /// <summary>账户编码（同一账套同一类型内唯一，如 001）。</summary>
+        public string Code { get; init; } = null!;
+
+        /// <summary>币别，默认人民币。</summary>
+        public string Currency { get; init; } = null!;
+
         /// <summary>日记账类型（1=现金，2=银行存款）。</summary>
         public int Type { get; init; }
 
@@ -45,6 +51,8 @@ namespace KuaiJi.Modules.Funds.Application
         {
             Id = journal.Id,
             Name = journal.Name,
+            Code = journal.Code,
+            Currency = journal.Currency,
             Type = (int)journal.Type,
             TypeText = TypeTextOf(journal.Type),
             AccountId = journal.AccountId,
@@ -83,6 +91,12 @@ namespace KuaiJi.Modules.Funds.Application
 
         public string? Counterparty { get; init; }
 
+        /// <summary>项目，可空。</summary>
+        public string? Project { get; init; }
+
+        /// <summary>部门，可空。</summary>
+        public string? Department { get; init; }
+
         public decimal Income { get; init; }
 
         public decimal Expense { get; init; }
@@ -102,6 +116,8 @@ namespace KuaiJi.Modules.Funds.Application
             Summary = entry.Summary,
             Category = entry.Category,
             Counterparty = entry.Counterparty,
+            Project = entry.Project,
+            Department = entry.Department,
             Income = entry.Income,
             Expense = entry.Expense,
             Balance = entry.Balance,
@@ -116,6 +132,12 @@ namespace KuaiJi.Modules.Funds.Application
         public Guid Id { get; init; }
 
         public string Name { get; init; } = null!;
+
+        /// <summary>账户编码。</summary>
+        public string Code { get; init; } = null!;
+
+        /// <summary>币别。</summary>
+        public string Currency { get; init; } = null!;
 
         public int Type { get; init; }
 
@@ -150,6 +172,8 @@ namespace KuaiJi.Modules.Funds.Application
         {
             Id = journal.Id,
             Name = journal.Name,
+            Code = journal.Code,
+            Currency = journal.Currency,
             Type = (int)journal.Type,
             TypeText = JournalListItemDto.TypeTextOf(journal.Type),
             AccountId = journal.AccountId,
@@ -182,6 +206,12 @@ namespace KuaiJi.Modules.Funds.Application
 
         public string Name { get; init; } = null!;
 
+        /// <summary>账户编码；省略时由系统按类型自动取下一个可用序号。</summary>
+        public string? Code { get; init; }
+
+        /// <summary>币别；省略时默认人民币。</summary>
+        public string? Currency { get; init; }
+
         /// <summary>对应的货币资金末级科目；省略时由系统自动创建明细科目。</summary>
         public Guid? AccountId { get; init; }
 
@@ -198,6 +228,12 @@ namespace KuaiJi.Modules.Funds.Application
     public sealed class UpdateJournalRequest
     {
         public string Name { get; init; } = null!;
+
+        /// <summary>账户编码；null 表示保持不变。</summary>
+        public string? Code { get; init; }
+
+        /// <summary>币别；null 表示保持不变。</summary>
+        public string? Currency { get; init; }
 
         public decimal OpeningBalance { get; init; }
 
@@ -222,9 +258,47 @@ namespace KuaiJi.Modules.Funds.Application
 
         public string? Counterparty { get; init; }
 
+        /// <summary>项目，可空。</summary>
+        public string? Project { get; init; }
+
+        /// <summary>部门，可空。</summary>
+        public string? Department { get; init; }
+
         public decimal Income { get; init; }
 
         public decimal Expense { get; init; }
+    }
+
+    /// <summary>
+    /// 日记账分录的批量操作请求（对应柠檬云「批量操作」下拉）。
+    /// <see cref="Action"/> 取 delete / summary / category / counterparty / project / department / unlink-voucher；
+    /// 除 delete 外只改传入的字段，因此 <see cref="Summary"/> 等为 null 表示不动。
+    /// </summary>
+    public sealed class BulkJournalEntryRequest
+    {
+        /// <summary>操作类型：delete=批量删除，summary=批量修改摘要，category=指定收支类别，counterparty=指定往来单位，project=指定项目，department=指定部门，unlink-voucher=删除关联凭证。</summary>
+        public string Action { get; init; } = null!;
+
+        /// <summary>目标分录标识集合。</summary>
+        public IReadOnlyList<Guid> EntryIds { get; init; } = [];
+
+        /// <summary>批量修改摘要时的摘要文本。</summary>
+        public string? Summary { get; init; }
+
+        /// <summary>指定收支类别时的类别；传空字符串表示清空。</summary>
+        public string? Category { get; init; }
+
+        /// <summary>指定往来单位时的往来单位；传空字符串表示清空。</summary>
+        public string? Counterparty { get; init; }
+
+        /// <summary>指定项目时的项目；传空字符串表示清空。</summary>
+        public string? Project { get; init; }
+
+        /// <summary>指定部门时的部门；传空字符串表示清空。</summary>
+        public string? Department { get; init; }
+
+        /// <summary>关联凭证时指定的凭证标识（action=link-voucher 时必填）。</summary>
+        public Guid? VoucherId { get; init; }
     }
 
     /// <summary>由日记账分录生成凭证的请求。对方科目由前端选择，不持久化到分录。</summary>

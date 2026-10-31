@@ -11,6 +11,9 @@ namespace KuaiJi.Modules.Reports.Application
 
         /// <summary>本年累计金额（本年 1 月 1 日至选定月末的发生净额）。</summary>
         public decimal YearToDate { get; init; }
+
+        /// <summary>上年同期累计金额（上年 1 月 1 日至上年同月末的发生净额）。</summary>
+        public decimal LastYear { get; init; }
     }
 
     /// <summary>利润表：选定会计期间及各标准行次的本期金额与本年累计金额。</summary>

@@ -40,6 +40,19 @@ namespace KuaiJi.Modules.Salary.Infrastructure
             await _context.Employees.AddAsync(employee, cancellationToken);
         }
 
+        /// <summary>取可修改的员工（跟踪实例）。</summary>
+        public Task<Employee?> GetEmployeeForUpdateAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
+        {
+            return _context.Employees
+                .FirstOrDefaultAsync(e => e.AccountSetId == accountSetId && e.Id == id, cancellationToken);
+        }
+
+        public Task<int> CountBillsOfEmployeeAsync(Guid accountSetId, Guid employeeId, CancellationToken cancellationToken = default)
+        {
+            return _context.SalaryBills
+                .CountAsync(b => b.AccountSetId == accountSetId && b.EmployeeId == employeeId, cancellationToken);
+        }
+
         public void RemoveEmployee(Employee employee)
         {
             _context.Employees.Remove(employee);
@@ -104,6 +117,33 @@ namespace KuaiJi.Modules.Salary.Infrastructure
         public void RemoveBill(SalaryBill bill)
         {
             _context.SalaryBills.Remove(bill);
+        }
+
+        /// <summary>取某期间可修改的工资单（跟踪实例）。</summary>
+        public async Task<IReadOnlyList<SalaryBill>> GetBillsForUpdateAsync(Guid accountSetId, int period, CancellationToken cancellationToken = default)
+        {
+            var list = await _context.SalaryBills
+                .Where(b => b.AccountSetId == accountSetId && b.Period == period)
+                .ToListAsync(cancellationToken);
+            return list;
+        }
+
+        /// <summary>取单张可修改的工资单（跟踪实例）。</summary>
+        public Task<SalaryBill?> GetBillForUpdateAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
+        {
+            return _context.SalaryBills
+                .FirstOrDefaultAsync(b => b.AccountSetId == accountSetId && b.Id == id, cancellationToken);
+        }
+
+        public Task<SalaryVoucherSetting?> GetVoucherSettingAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        {
+            return _context.SalaryVoucherSettings
+                .FirstOrDefaultAsync(s => s.AccountSetId == accountSetId, cancellationToken);
+        }
+
+        public async Task AddVoucherSettingAsync(SalaryVoucherSetting setting, CancellationToken cancellationToken = default)
+        {
+            await _context.SalaryVoucherSettings.AddAsync(setting, cancellationToken);
         }
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

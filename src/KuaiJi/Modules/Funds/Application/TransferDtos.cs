@@ -43,4 +43,11 @@ namespace KuaiJi.Modules.Funds.Application
 
         public string? Remark { get; init; }
     }
+
+    /// <summary>内部转账的批量操作请求（批量删除 / 批量生成凭证）。</summary>
+    public sealed class BulkTransferRequest
+    {
+        /// <summary>目标转账标识集合。</summary>
+        public IReadOnlyList<Guid> Ids { get; init; } = [];
+    }
 }

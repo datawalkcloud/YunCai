@@ -17,12 +17,28 @@ namespace KuaiJi.Modules.Salary.Domain
         Task AddInsuranceAsync(InsuranceItem item, CancellationToken cancellationToken = default);
         void RemoveInsurance(InsuranceItem item);
 
+        /// <summary>取可修改的员工（跟踪实例）；AsNoTracking 的读取实例改后不落库，写路径必须走这里。</summary>
+        Task<Employee?> GetEmployeeForUpdateAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default);
+
+        /// <summary>统计员工已生成的工资单条数（删除员工前的占用检查）。</summary>
+        Task<int> CountBillsOfEmployeeAsync(Guid accountSetId, Guid employeeId, CancellationToken cancellationToken = default);
+
         // —— 月度工资单 ——
         Task<SalaryBill?> GetBillByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<SalaryBill>> GetBillsAsync(Guid accountSetId, int period, CancellationToken cancellationToken = default);
         Task<SalaryBill?> FindBillAsync(Guid accountSetId, int period, Guid employeeId, CancellationToken cancellationToken = default);
         Task AddBillAsync(SalaryBill bill, CancellationToken cancellationToken = default);
         void RemoveBill(SalaryBill bill);
+
+        /// <summary>取某期间可修改的工资单（跟踪实例，用于回填凭证标识）。</summary>
+        Task<IReadOnlyList<SalaryBill>> GetBillsForUpdateAsync(Guid accountSetId, int period, CancellationToken cancellationToken = default);
+
+        /// <summary>取单张可修改的工资单（跟踪实例）。</summary>
+        Task<SalaryBill?> GetBillForUpdateAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default);
+
+        // —— 工资凭证科目设置 ——
+        Task<SalaryVoucherSetting?> GetVoucherSettingAsync(Guid accountSetId, CancellationToken cancellationToken = default);
+        Task AddVoucherSettingAsync(SalaryVoucherSetting setting, CancellationToken cancellationToken = default);
 
         /// <summary>提交工作单元。</summary>
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

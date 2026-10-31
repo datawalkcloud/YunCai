@@ -96,11 +96,42 @@ namespace KuaiJi.Modules.Archives.Api
             return Ok(await _archiveService.SetAuditedAsync(accountSetId, request, cancellationToken));
         }
 
+        /// <summary>批量标记 / 取消标记为纸质档案。</summary>
+        [HttpPost("paper")]
+        public async Task<ActionResult<int>> SetPaper(Guid accountSetId, [FromBody] PaperArchiveRequest request, CancellationToken cancellationToken)
+        {
+            return Ok(await _archiveService.SetPaperAsync(accountSetId, request, cancellationToken));
+        }
+
+        /// <summary>批量关联 / 取消关联凭证。</summary>
+        [HttpPost("link-voucher")]
+        public async Task<ActionResult<int>> LinkVoucher(Guid accountSetId, [FromBody] LinkVoucherRequest request, CancellationToken cancellationToken)
+        {
+            return Ok(await _archiveService.LinkVoucherAsync(accountSetId, request, cancellationToken));
+        }
+
+        /// <summary>由档案生成凭证：选中档案合并为一张借贷凭证，凭证字号回写档案。</summary>
+        [HttpPost("voucher-from")]
+        public async Task<ActionResult<object>> GenerateVoucher(Guid accountSetId, [FromBody] GenerateVoucherFromArchivesRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var preparer = User.FindFirst("displayName")?.Value ?? User.FindFirst("unique_name")?.Value ?? "系统";
+                var voucherText = await _archiveService.GenerateVoucherAsync(accountSetId, request, preparer, cancellationToken);
+                return Ok(new { voucherText });
+            }
+            catch (ArchiveException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>批量归档。</summary>
         [HttpPost("archive")]
         public async Task<ActionResult<int>> Archive(Guid accountSetId, [FromBody] ArchiveIdsRequest request, CancellationToken cancellationToken)
         {
-            return Ok(await _archiveService.ArchiveAsync(accountSetId, request, "会计002", cancellationToken));
+            var operatorName = User.FindFirst("displayName")?.Value ?? User.FindFirst("unique_name")?.Value ?? "未知";
+            return Ok(await _archiveService.ArchiveAsync(accountSetId, request, operatorName, cancellationToken));
         }
 
         /// <summary>下载档案文件。</summary>

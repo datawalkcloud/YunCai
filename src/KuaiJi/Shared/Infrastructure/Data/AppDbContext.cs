@@ -5,6 +5,7 @@ using KuaiJi.Modules.Closing.Domain;
 using KuaiJi.Modules.Funds.Domain;
 using KuaiJi.Modules.Archives.Domain;
 using KuaiJi.Modules.FixedAssets.Domain;
+using KuaiJi.Modules.Expenses.Domain;
 using KuaiJi.Modules.Invoices.Domain;
 using KuaiJi.Modules.Auditing.Domain;
 using KuaiJi.Modules.Reports.Domain;
@@ -38,6 +39,9 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
 
         public DbSet<VoucherEntry> VoucherEntries { get; set; } = null!;
 
+        /// <summary>凭证附件（原始单据影像）。</summary>
+        public DbSet<VoucherAttachment> VoucherAttachments { get; set; } = null!;
+
         public DbSet<VoucherEntryAssist> VoucherEntryAssists { get; set; } = null!;
 
         public DbSet<AssistItem> AssistItems { get; set; } = null!;
@@ -56,11 +60,19 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
 
         public DbSet<Bill> Bills { get; set; } = null!;
 
+        public DbSet<BillAttachment> BillAttachments { get; set; } = null!;
+
         public DbSet<FixedAssetCategory> FixedAssetCategories { get; set; } = null!;
 
         public DbSet<FixedAsset> FixedAssets { get; set; } = null!;
 
         public DbSet<FixedAssetChange> FixedAssetChanges { get; set; } = null!;
+
+        public DbSet<FixedAssetVoucherSetting> FixedAssetVoucherSettings { get; set; } = null!;
+
+        public DbSet<ExpenseBill> ExpenseBills { get; set; } = null!;
+
+        public DbSet<AccountSetMember> AccountSetMembers { get; set; } = null!;
 
         public DbSet<Invoice> Invoices { get; set; } = null!;
 
@@ -71,6 +83,8 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
         public DbSet<InsuranceItem> InsuranceItems { get; set; } = null!;
 
         public DbSet<SalaryBill> SalaryBills { get; set; } = null!;
+
+        public DbSet<SalaryVoucherSetting> SalaryVoucherSettings { get; set; } = null!;
 
         public DbSet<ArchiveItem> ArchiveItems { get; set; } = null!;
 
@@ -187,6 +201,8 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Number).HasColumnName("number").IsRequired();
                 entity.Property(e => e.Date).HasColumnName("date").IsRequired();
                 entity.Property(e => e.AttachmentCount).HasColumnName("attachment_count").IsRequired();
+                entity.Property(e => e.Remark).HasColumnName("remark").HasMaxLength(255);
+                entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
                 entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
                 entity.Property(e => e.Preparer).HasColumnName("preparer").IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Reviewer).HasColumnName("reviewer").HasMaxLength(50);
@@ -210,6 +226,27 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Metadata
                       .FindNavigation(nameof(Voucher.Entries))!
                       .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<VoucherAttachment>(entity =>
+            {
+                entity.ToTable("voucher_attachments");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.VoucherId).HasColumnName("voucher_id").IsRequired();
+                entity.Property(e => e.FileName).HasColumnName("file_name").IsRequired().HasMaxLength(200);
+                entity.Property(e => e.ContentType).HasColumnName("content_type").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.SizeBytes).HasColumnName("size_bytes").IsRequired();
+                entity.Property(e => e.UploadedAt).HasColumnName("uploaded_at").IsRequired();
+                entity.Property(e => e.Content).HasColumnName("content").IsRequired();
+
+                entity.HasIndex(e => e.VoucherId);
+
+                entity.HasOne<Voucher>()
+                      .WithMany()
+                      .HasForeignKey(e => e.VoucherId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<VoucherEntry>(entity =>
@@ -329,6 +366,8 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
                 entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
                 entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(16);
+                entity.Property(e => e.Currency).HasColumnName("currency").IsRequired().HasMaxLength(20).HasDefaultValue("人民币");
                 entity.Property(e => e.AccountId).HasColumnName("account_id").IsRequired();
                 entity.Property(e => e.OpeningBalance).HasColumnName("opening_balance").HasColumnType("numeric(18,2)").IsRequired();
                 entity.Property(e => e.IsEnabled).HasColumnName("is_enabled").IsRequired().HasDefaultValue(true);
@@ -366,6 +405,8 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Summary).HasColumnName("summary").IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Category).HasColumnName("category").HasMaxLength(50);
                 entity.Property(e => e.Counterparty).HasColumnName("counterparty").HasMaxLength(100);
+                entity.Property(e => e.Project).HasColumnName("project").HasMaxLength(100);
+                entity.Property(e => e.Department).HasColumnName("department").HasMaxLength(100);
                 entity.Property(e => e.Income).HasColumnName("income").HasColumnType("numeric(18,2)").IsRequired();
                 entity.Property(e => e.Expense).HasColumnName("expense").HasColumnType("numeric(18,2)").IsRequired();
                 entity.Property(e => e.Balance).HasColumnName("balance").HasColumnType("numeric(18,2)").IsRequired();
@@ -383,12 +424,17 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
                 entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
                 entity.Property(e => e.Type).HasColumnName("type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(EntryCategory.MaxCodeLength);
                 entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(EntryCategory.MaxNameLength);
+                entity.Property(e => e.ParentId).HasColumnName("parent_id");
+                entity.Property(e => e.CashFlowItemId).HasColumnName("cash_flow_item_id");
+                entity.Property(e => e.IsEnabled).HasColumnName("is_enabled").IsRequired();
                 entity.Property(e => e.SmartKeywords).HasColumnName("smart_keywords").HasMaxLength(EntryCategory.MaxKeywordsLength);
                 entity.Property(e => e.VoucherSubjectId).HasColumnName("voucher_subject_id");
 
-                // 同一账套同一类型内类别名称唯一。
+                // 同一账套同一类型内类别名称唯一；同一账套内编码唯一。
                 entity.HasIndex(e => new { e.AccountSetId, e.Type, e.Name }).IsUnique();
+                entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
 
                 // 收支类别归属于账套；账套非空时不可删除（Restrict）。
                 entity.HasOne<AccountSet>()
@@ -541,10 +587,18 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Kind).HasColumnName("kind").HasConversion<int>().IsRequired();
                 entity.Property(e => e.DueDate).HasColumnName("due_date");
                 entity.Property(e => e.Drawer).HasColumnName("drawer").HasMaxLength(100);
+                entity.Property(e => e.Payee).HasColumnName("payee").HasMaxLength(100);
                 entity.Property(e => e.Acceptor).HasColumnName("acceptor").HasMaxLength(100);
+                entity.Property(e => e.DrawerAccountNo).HasColumnName("drawer_account_no").HasMaxLength(50);
+                entity.Property(e => e.PayeeAccountNo).HasColumnName("payee_account_no").HasMaxLength(50);
+                entity.Property(e => e.AcceptorAccountNo).HasColumnName("acceptor_account_no").HasMaxLength(50);
+                entity.Property(e => e.DrawerBank).HasColumnName("drawer_bank").HasMaxLength(100);
+                entity.Property(e => e.PayeeBank).HasColumnName("payee_bank").HasMaxLength(100);
+                entity.Property(e => e.AcceptorBank).HasColumnName("acceptor_bank").HasMaxLength(100);
                 entity.Property(e => e.Transferable).HasColumnName("transferable").IsRequired();
                 entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
                 entity.Property(e => e.Remark).HasColumnName("remark").HasMaxLength(500);
+                entity.Property(e => e.VoucherId).HasColumnName("voucher_id");
 
                 entity.HasIndex(e => new { e.AccountSetId, e.BillNo }).IsUnique();
                 entity.HasIndex(e => new { e.AccountSetId, e.IssueDate });
@@ -553,6 +607,27 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                       .WithMany()
                       .HasForeignKey(e => e.AccountSetId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<BillAttachment>(entity =>
+            {
+                entity.ToTable("bill_attachments");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.BillId).HasColumnName("bill_id").IsRequired();
+                entity.Property(e => e.FileName).HasColumnName("file_name").IsRequired().HasMaxLength(200);
+                entity.Property(e => e.ContentType).HasColumnName("content_type").IsRequired().HasMaxLength(120);
+                entity.Property(e => e.SizeBytes).HasColumnName("size_bytes").IsRequired();
+                entity.Property(e => e.UploadedAt).HasColumnName("uploaded_at").IsRequired();
+                entity.Property(e => e.Content).HasColumnName("content").IsRequired();
+
+                entity.HasIndex(e => e.BillId);
+
+                entity.HasOne<Bill>()
+                      .WithMany()
+                      .HasForeignKey(e => e.BillId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<FixedAssetCategory>(entity =>
@@ -620,9 +695,83 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Period).HasColumnName("period").IsRequired();
                 entity.Property(e => e.Amount).HasColumnName("amount").HasColumnType("numeric(18,2)").IsRequired();
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+                entity.Property(e => e.VoucherId).HasColumnName("voucher_id");
 
                 entity.HasIndex(e => new { e.AccountSetId, e.AssetId });
                 entity.HasIndex(e => new { e.AccountSetId, e.Period });
+            });
+
+            modelBuilder.Entity<FixedAssetVoucherSetting>(entity =>
+            {
+                entity.ToTable("fixed_asset_voucher_settings");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.DepreciationExpenseAccountId).HasColumnName("depreciation_expense_account_id");
+                entity.Property(e => e.DepreciationAccountId).HasColumnName("depreciation_account_id");
+                entity.Property(e => e.AmortizationExpenseAccountId).HasColumnName("amortization_expense_account_id");
+                entity.Property(e => e.AmortizationAccountId).HasColumnName("amortization_account_id");
+                entity.Property(e => e.DisposalAccountId).HasColumnName("disposal_account_id");
+
+                entity.HasIndex(e => e.AccountSetId).IsUnique();
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ExpenseBill>(entity =>
+            {
+                entity.ToTable("expense_bills");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.BillNo).HasColumnName("bill_no").IsRequired().HasMaxLength(ExpenseBill.MaxBillNoLength);
+                entity.Property(e => e.BillDate).HasColumnName("bill_date").IsRequired();
+                entity.Property(e => e.Reason).HasColumnName("reason").IsRequired().HasMaxLength(ExpenseBill.MaxTextLength);
+                entity.Property(e => e.ExpenseType).HasColumnName("expense_type").IsRequired().HasMaxLength(ExpenseBill.MaxTextLength);
+                entity.Property(e => e.Payee).HasColumnName("payee").HasMaxLength(ExpenseBill.MaxTextLength);
+                entity.Property(e => e.SettleMethod).HasColumnName("settle_method").HasMaxLength(50);
+                entity.Property(e => e.Amount).HasColumnName("amount").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.DeductibleTax).HasColumnName("deductible_tax").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+                entity.Property(e => e.VoucherId).HasColumnName("voucher_id");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.BillNo }).IsUnique();
+                entity.HasIndex(e => new { e.AccountSetId, e.BillDate });
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<AccountSetMember>(entity =>
+            {
+                entity.ToTable("account_set_members");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Phone).HasColumnName("phone").IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(100);
+                entity.Property(e => e.Role).HasColumnName("role").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Enabled).HasColumnName("enabled").IsRequired();
+                entity.Property(e => e.IsOwner).HasColumnName("is_owner").IsRequired();
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Phone });
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Invoice>(entity =>
@@ -762,6 +911,26 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                       .OnDelete(DeleteBehavior.Restrict);
             });
 
+            modelBuilder.Entity<SalaryVoucherSetting>(entity =>
+            {
+                entity.ToTable("salary_voucher_settings");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.PayrollAccountId).HasColumnName("payroll_account_id");
+                entity.Property(e => e.TaxAccountId).HasColumnName("tax_account_id");
+                entity.Property(e => e.InsuranceAccountId).HasColumnName("insurance_account_id");
+                entity.Property(e => e.BankAccountId).HasColumnName("bank_account_id");
+
+                entity.HasIndex(e => e.AccountSetId).IsUnique();
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
             modelBuilder.Entity<ArchiveItem>(entity =>
             {
                 entity.ToTable("archive_items");
@@ -784,6 +953,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Source).HasColumnName("source").HasMaxLength(50);
                 entity.Property(e => e.UploadedAt).HasColumnName("uploaded_at").IsRequired();
                 entity.Property(e => e.IsArchived).HasColumnName("is_archived").IsRequired();
+                entity.Property(e => e.IsPaper).HasColumnName("is_paper").IsRequired();
                 entity.Property(e => e.ArchivedAt).HasColumnName("archived_at");
                 entity.Property(e => e.ArchivedBy).HasColumnName("archived_by").HasMaxLength(50);
 

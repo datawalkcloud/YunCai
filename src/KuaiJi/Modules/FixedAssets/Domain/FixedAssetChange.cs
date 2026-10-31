@@ -60,5 +60,23 @@ namespace KuaiJi.Modules.FixedAssets.Domain
 
         /// <summary>记录时间。</summary>
         public DateTime CreatedAt { get; private set; }
+
+        /// <summary>关联凭证标识（生成凭证后回填；凭证被删除后自愈清空）。</summary>
+        public Guid? VoucherId { get; private set; }
+
+        /// <summary>标记本条变动已生成凭证。</summary>
+        public void MarkVoucher(Guid voucherId) => VoucherId = voucherId;
+
+        /// <summary>凭证被删除后清空关联，使该条变动可以重新生成凭证。</summary>
+        internal bool ClearStaleVoucher(IReadOnlySet<Guid> existingVoucherIds)
+        {
+            if (VoucherId is { } id && !existingVoucherIds.Contains(id))
+            {
+                VoucherId = null;
+                return true;
+            }
+
+            return false;
+        }
     }
 }

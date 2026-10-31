@@ -1,5 +1,6 @@
 using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Archives.Domain;
+using KuaiJi.Modules.Vouchers.Application;
 
 namespace KuaiJi.Modules.Archives.Application
 {
@@ -22,10 +23,82 @@ namespace KuaiJi.Modules.Archives.Application
 
         public ArchiveService(
             IAccountSetRepository accountSetRepository,
-            IArchiveRepository archiveRepository)
+            IArchiveRepository archiveRepository,
+            VoucherService voucherService)
         {
             _accountSetRepository = accountSetRepository;
             _archiveRepository = archiveRepository;
+            _voucherService = voucherService;
+        }
+
+        private readonly VoucherService _voucherService;
+
+        /// <summary>
+        /// 由档案生成凭证：选中档案合并为一张「借 A 科目 / 贷 B 科目」凭证，
+        /// 附件数 = 档案数，生成后把凭证字号回写到各档案。
+        /// </summary>
+        public async Task<string> GenerateVoucherAsync(Guid accountSetId, GenerateVoucherFromArchivesRequest request, string preparer, CancellationToken cancellationToken = default)
+        {
+            if (request.Ids.Count == 0)
+            {
+                throw new ArchiveException("请先勾选要生成凭证的档案。");
+            }
+
+            if (request.Amount <= 0m)
+            {
+                throw new ArchiveException("凭证金额需大于 0。");
+            }
+
+            if (request.DebitAccountId == Guid.Empty || request.CreditAccountId == Guid.Empty)
+            {
+                throw new ArchiveException("请选择借方与贷方科目。");
+            }
+
+            if (request.DebitAccountId == request.CreditAccountId)
+            {
+                throw new ArchiveException("借方与贷方科目不能相同。");
+            }
+
+            var archives = new List<ArchiveItem>();
+            foreach (var id in request.Ids)
+            {
+                var item = await _archiveRepository.GetByIdAsync(accountSetId, id, cancellationToken);
+                if (item is not null)
+                {
+                    archives.Add(item);
+                }
+            }
+
+            if (archives.Count == 0)
+            {
+                throw new ArchiveException("选中的档案不存在。");
+            }
+
+            var summary = string.IsNullOrWhiteSpace(request.Summary)
+                ? (archives[0].Matter ?? archives[0].FileName)
+                : request.Summary.Trim();
+
+            var voucher = await _voucherService.CreateAsync(accountSetId, preparer, new CreateVoucherRequest
+            {
+                Word = string.IsNullOrWhiteSpace(request.Word) ? "记" : request.Word.Trim(),
+                Date = request.Date,
+                AttachmentCount = archives.Count,
+                Remark = $"由电子档案生成（{archives.Count} 份）",
+                Entries =
+                [
+                    new CreateVoucherEntryRequest { Summary = summary, AccountId = request.DebitAccountId, Debit = request.Amount, Credit = 0m },
+                    new CreateVoucherEntryRequest { Summary = summary, AccountId = request.CreditAccountId, Debit = 0m, Credit = request.Amount },
+                ],
+            }, cancellationToken);
+
+            var voucherText = voucher.VoucherNo;
+            foreach (var item in archives)
+            {
+                item.SetVoucherText(voucherText);
+            }
+
+            await _archiveRepository.SaveChangesAsync(cancellationToken);
+            return voucherText;
         }
 
         /// <summary>获取未归档档案列表（元数据投影）。</summary>
@@ -78,7 +151,8 @@ namespace KuaiJi.Modules.Archives.Application
                     request.Matter,
                     request.CheckStatus,
                     request.Uploader,
-                    request.Source);
+                    request.Source,
+                    request.IsPaper);
             }
             catch (ArgumentException ex)
             {
@@ -147,6 +221,46 @@ namespace KuaiJi.Modules.Archives.Application
                 }
 
                 item.SetAudited(request.Audited);
+                count++;
+            }
+
+            await _archiveRepository.SaveChangesAsync(cancellationToken);
+            return count;
+        }
+
+        /// <summary>批量标记 / 取消标记为纸质档案。返回实际处理条数。</summary>
+        public async Task<int> SetPaperAsync(Guid accountSetId, PaperArchiveRequest request, CancellationToken cancellationToken = default)
+        {
+            var count = 0;
+            foreach (var id in request.Ids)
+            {
+                var item = await _archiveRepository.GetByIdAsync(accountSetId, id, cancellationToken);
+                if (item is null)
+                {
+                    continue;
+                }
+
+                item.SetPaper(request.IsPaper);
+                count++;
+            }
+
+            await _archiveRepository.SaveChangesAsync(cancellationToken);
+            return count;
+        }
+
+        /// <summary>批量关联 / 取消关联凭证（voucherText 为空即取消关联）。返回实际处理条数。</summary>
+        public async Task<int> LinkVoucherAsync(Guid accountSetId, LinkVoucherRequest request, CancellationToken cancellationToken = default)
+        {
+            var count = 0;
+            foreach (var id in request.Ids)
+            {
+                var item = await _archiveRepository.GetByIdAsync(accountSetId, id, cancellationToken);
+                if (item is null)
+                {
+                    continue;
+                }
+
+                item.SetVoucherText(request.VoucherText);
                 count++;
             }
 

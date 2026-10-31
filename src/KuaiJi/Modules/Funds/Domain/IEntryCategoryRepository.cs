@@ -14,6 +14,9 @@ namespace KuaiJi.Modules.Funds.Domain
         /// <summary>判断同一账套同一类型下是否已存在同名类别（可排除指定标识，供改名校验）。</summary>
         Task<bool> ExistsByNameAsync(Guid accountSetId, EntryCategoryType type, string name, Guid? excludeId = null, CancellationToken cancellationToken = default);
 
+        /// <summary>判断同一账套内是否已存在相同编码的类别（可排除指定标识）。</summary>
+        Task<bool> ExistsByCodeAsync(Guid accountSetId, string code, Guid? excludeId = null, CancellationToken cancellationToken = default);
+
         /// <summary>新增类别。</summary>
         Task AddAsync(EntryCategory category, CancellationToken cancellationToken = default);
 

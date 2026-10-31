@@ -5,6 +5,7 @@ using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Accounting.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MiniExcelLibs;
 
 namespace KuaiJi.Modules.Accounting.Api
 {
@@ -20,15 +21,17 @@ namespace KuaiJi.Modules.Accounting.Api
         private readonly IAccountRepository _accountRepository;
         private readonly IAccountSetRepository _accountSetRepository;
         private readonly OpeningBalanceService _openingBalanceService;
+        private readonly OpeningBalanceImportService _openingBalanceImportService;
         private readonly AssistItemService _assistItemService;
         private readonly ILogger<AccountsController> _logger;
 
-        public AccountsController(AccountImportService importService, IAccountRepository accountRepository, IAccountSetRepository accountSetRepository, OpeningBalanceService openingBalanceService, AssistItemService assistItemService, ILogger<AccountsController> logger)
+        public AccountsController(AccountImportService importService, IAccountRepository accountRepository, IAccountSetRepository accountSetRepository, OpeningBalanceService openingBalanceService, OpeningBalanceImportService openingBalanceImportService, AssistItemService assistItemService, ILogger<AccountsController> logger)
         {
             _importService = importService;
             _accountRepository = accountRepository;
             _accountSetRepository = accountSetRepository;
             _openingBalanceService = openingBalanceService;
+            _openingBalanceImportService = openingBalanceImportService;
             _assistItemService = assistItemService;
             _logger = logger;
         }
@@ -63,6 +66,72 @@ namespace KuaiJi.Modules.Accounting.Api
             catch (OpeningBalanceException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 旧账导入模板：按当前账套末级科目生成「科目编码 / 科目名称 / 余额方向 / 借方余额 / 贷方余额」，
+        /// 填入旧账金额后可直接回传导入。
+        /// </summary>
+        [HttpGet("opening-balances/template")]
+        public async Task<IActionResult> GetOpeningBalanceTemplate(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var balances = await _openingBalanceService.GetAsync(accountSetId, cancellationToken);
+                var rows = balances.Rows
+                    .Where(r => r.IsLeaf)
+                    .Select(r => new Dictionary<string, object?>
+                    {
+                        ["科目编码"] = r.Code,
+                        ["科目名称"] = r.Name,
+                        ["余额方向"] = r.Direction == BalanceDirection.Debit ? "借" : "贷",
+                        ["借方余额"] = r.Debit,
+                        ["贷方余额"] = r.Credit,
+                    })
+                    .ToList();
+
+                using var stream = new MemoryStream();
+                MiniExcel.SaveAs(stream, new Dictionary<string, object> { ["科目余额表"] = rows }, excelType: ExcelType.XLSX);
+                return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "旧账导入_科目余额表.xlsx");
+            }
+            catch (OpeningBalanceException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 旧账导入：上传旧系统「科目余额表」Excel，按科目编码写入本账套期初余额。
+        /// 支持借贷两列、单列余额 + 方向列、单列余额三种表头。
+        /// </summary>
+        [HttpPost("opening-balances/import")]
+        [RequestSizeLimit(MaxUploadBytes)]
+        public async Task<ActionResult<OpeningBalanceImportResultDto>> ImportOpeningBalances(Guid accountSetId, IFormFile? file, CancellationToken cancellationToken)
+        {
+            if (file is null || file.Length == 0)
+            {
+                return BadRequest(new { message = "请选择要导入的 Excel 文件。" });
+            }
+
+            if (file.Length > MaxUploadBytes)
+            {
+                return BadRequest(new { message = "文件过大，请控制在 10MB 以内。" });
+            }
+
+            try
+            {
+                await using var stream = file.OpenReadStream();
+                var result = await _openingBalanceImportService.ImportAsync(accountSetId, stream, cancellationToken);
+                return Ok(result);
+            }
+            catch (OpeningBalanceException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+            {
+                return BadRequest(new { message = "文件解析失败：" + ex.Message });
             }
         }
 

@@ -129,6 +129,60 @@ namespace KuaiJi.Migrations
                     b.ToTable("account_sets", (string)null);
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.AccountSets.Domain.AccountSetMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("email");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<bool>("IsOwner")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_owner");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer")
+                        .HasColumnName("role");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId", "Phone");
+
+                    b.ToTable("account_set_members", (string)null);
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.AccountSets.Domain.Currency", b =>
                 {
                     b.Property<Guid>("Id")
@@ -355,6 +409,10 @@ namespace KuaiJi.Migrations
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean")
                         .HasColumnName("is_archived");
+
+                    b.Property<bool>("IsPaper")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_paper");
 
                     b.Property<string>("Matter")
                         .HasMaxLength(200)
@@ -595,6 +653,78 @@ namespace KuaiJi.Migrations
                     b.ToTable("closing_template_lines", (string)null);
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.Expenses.Domain.ExpenseBill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateOnly>("BillDate")
+                        .HasColumnType("date")
+                        .HasColumnName("bill_date");
+
+                    b.Property<string>("BillNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("bill_no");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("DeductibleTax")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("deductible_tax");
+
+                    b.Property<string>("ExpenseType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("expense_type");
+
+                    b.Property<string>("Payee")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("payee");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("SettleMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("settle_method");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("VoucherId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voucher_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId", "BillDate");
+
+                    b.HasIndex("AccountSetId", "BillNo")
+                        .IsUnique();
+
+                    b.ToTable("expense_bills", (string)null);
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.FixedAssets.Domain.FixedAsset", b =>
                 {
                     b.Property<Guid>("Id")
@@ -757,6 +887,10 @@ namespace KuaiJi.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("period");
 
+                    b.Property<Guid?>("VoucherId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voucher_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AccountSetId", "AssetId");
@@ -764,6 +898,44 @@ namespace KuaiJi.Migrations
                     b.HasIndex("AccountSetId", "Period");
 
                     b.ToTable("fixed_asset_changes", (string)null);
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.FixedAssets.Domain.FixedAssetVoucherSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<Guid?>("AmortizationAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("amortization_account_id");
+
+                    b.Property<Guid?>("AmortizationExpenseAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("amortization_expense_account_id");
+
+                    b.Property<Guid?>("DepreciationAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("depreciation_account_id");
+
+                    b.Property<Guid?>("DepreciationExpenseAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("depreciation_expense_account_id");
+
+                    b.Property<Guid?>("DisposalAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("disposal_account_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId")
+                        .IsUnique();
+
+                    b.ToTable("fixed_asset_voucher_settings", (string)null);
                 });
 
             modelBuilder.Entity("KuaiJi.Modules.Funds.Domain.Bill", b =>
@@ -776,6 +948,16 @@ namespace KuaiJi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("acceptor");
+
+                    b.Property<string>("AcceptorAccountNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("acceptor_account_no");
+
+                    b.Property<string>("AcceptorBank")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("acceptor_bank");
 
                     b.Property<Guid>("AccountSetId")
                         .HasColumnType("uuid")
@@ -802,6 +984,16 @@ namespace KuaiJi.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("drawer");
 
+                    b.Property<string>("DrawerAccountNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("drawer_account_no");
+
+                    b.Property<string>("DrawerBank")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("drawer_bank");
+
                     b.Property<DateOnly?>("DueDate")
                         .HasColumnType("date")
                         .HasColumnName("due_date");
@@ -813,6 +1005,21 @@ namespace KuaiJi.Migrations
                     b.Property<int>("Kind")
                         .HasColumnType("integer")
                         .HasColumnName("kind");
+
+                    b.Property<string>("Payee")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("payee");
+
+                    b.Property<string>("PayeeAccountNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("payee_account_no");
+
+                    b.Property<string>("PayeeBank")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("payee_bank");
 
                     b.Property<string>("Remark")
                         .HasMaxLength(500)
@@ -827,6 +1034,10 @@ namespace KuaiJi.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("transferable");
 
+                    b.Property<Guid?>("VoucherId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voucher_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AccountSetId", "BillNo")
@@ -835,6 +1046,48 @@ namespace KuaiJi.Migrations
                     b.HasIndex("AccountSetId", "IssueDate");
 
                     b.ToTable("bills", (string)null);
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.Funds.Domain.BillAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bill_id");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("content_type");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("file_name");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BillId");
+
+                    b.ToTable("bill_attachments", (string)null);
                 });
 
             modelBuilder.Entity("KuaiJi.Modules.Funds.Domain.EntryCategory", b =>
@@ -847,11 +1100,29 @@ namespace KuaiJi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("account_set_id");
 
+                    b.Property<Guid?>("CashFlowItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cash_flow_item_id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("code");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("name");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
 
                     b.Property<string>("SmartKeywords")
                         .HasMaxLength(200)
@@ -867,6 +1138,9 @@ namespace KuaiJi.Migrations
                         .HasColumnName("voucher_subject_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId", "Code")
+                        .IsUnique();
 
                     b.HasIndex("AccountSetId", "Type", "Name")
                         .IsUnique();
@@ -897,6 +1171,20 @@ namespace KuaiJi.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("bank_name");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("人民币")
+                        .HasColumnName("currency");
 
                     b.Property<bool>("IsEnabled")
                         .ValueGeneratedOnAdd()
@@ -949,6 +1237,11 @@ namespace KuaiJi.Migrations
                         .HasColumnType("date")
                         .HasColumnName("date");
 
+                    b.Property<string>("Department")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("department");
+
                     b.Property<decimal>("Expense")
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("expense");
@@ -960,6 +1253,11 @@ namespace KuaiJi.Migrations
                     b.Property<Guid>("JournalId")
                         .HasColumnType("uuid")
                         .HasColumnName("journal_id");
+
+                    b.Property<string>("Project")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("project");
 
                     b.Property<int>("Sequence")
                         .HasColumnType("integer")
@@ -1447,6 +1745,40 @@ namespace KuaiJi.Migrations
                     b.ToTable("salary_bills", (string)null);
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.Salary.Domain.SalaryVoucherSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<Guid?>("BankAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bank_account_id");
+
+                    b.Property<Guid?>("InsuranceAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("insurance_account_id");
+
+                    b.Property<Guid?>("PayrollAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payroll_account_id");
+
+                    b.Property<Guid?>("TaxAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tax_account_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId")
+                        .IsUnique();
+
+                    b.ToTable("salary_voucher_settings", (string)null);
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.Vouchers.Domain.Voucher", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1465,6 +1797,10 @@ namespace KuaiJi.Migrations
                         .HasColumnType("date")
                         .HasColumnName("date");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
                     b.Property<int>("Number")
                         .HasColumnType("integer")
                         .HasColumnName("number");
@@ -1474,6 +1810,11 @@ namespace KuaiJi.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("preparer");
+
+                    b.Property<string>("Remark")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("remark");
 
                     b.Property<string>("Reviewer")
                         .HasMaxLength(50)
@@ -1495,6 +1836,48 @@ namespace KuaiJi.Migrations
                     b.HasIndex("AccountSetId", "Word", "Number", "Date");
 
                     b.ToTable("vouchers", (string)null);
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.Vouchers.Domain.VoucherAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("file_name");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at");
+
+                    b.Property<Guid>("VoucherId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voucher_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VoucherId");
+
+                    b.ToTable("voucher_attachments", (string)null);
                 });
 
             modelBuilder.Entity("KuaiJi.Modules.Vouchers.Domain.VoucherEntry", b =>
@@ -1637,6 +2020,15 @@ namespace KuaiJi.Migrations
                     b.ToTable("voucher_template_lines", (string)null);
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.AccountSets.Domain.AccountSetMember", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
+                        .WithMany()
+                        .HasForeignKey("AccountSetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.AccountSets.Domain.Currency", b =>
                 {
                     b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
@@ -1723,6 +2115,15 @@ namespace KuaiJi.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.Expenses.Domain.ExpenseBill", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
+                        .WithMany()
+                        .HasForeignKey("AccountSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.FixedAssets.Domain.FixedAsset", b =>
                 {
                     b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
@@ -1741,12 +2142,30 @@ namespace KuaiJi.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.FixedAssets.Domain.FixedAssetVoucherSetting", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
+                        .WithMany()
+                        .HasForeignKey("AccountSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.Funds.Domain.Bill", b =>
                 {
                     b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
                         .WithMany()
                         .HasForeignKey("AccountSetId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.Funds.Domain.BillAttachment", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.Funds.Domain.Bill", null)
+                        .WithMany()
+                        .HasForeignKey("BillId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -1840,12 +2259,30 @@ namespace KuaiJi.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.Salary.Domain.SalaryVoucherSetting", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
+                        .WithMany()
+                        .HasForeignKey("AccountSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.Vouchers.Domain.Voucher", b =>
                 {
                     b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
                         .WithMany()
                         .HasForeignKey("AccountSetId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.Vouchers.Domain.VoucherAttachment", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.Vouchers.Domain.Voucher", null)
+                        .WithMany()
+                        .HasForeignKey("VoucherId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

@@ -286,6 +286,39 @@ namespace KuaiJi.Modules.Closing.Application
                 });
             }
 
+            // 6) 资产检查：资产类末级科目余额方向异常（贷方余额），多为透支、误记或漏记转出。
+            var abnormalAssets = accounts
+                .Where(a => a.IsLeaf && a.IsEnabled && a.Category == AccountCategory.Asset)
+                .Select(a => new KeyValuePair<Account, decimal>(a, balanceById.GetValueOrDefault(a.Id)))
+                .Where(x => x.Value < 0m)
+                .OrderBy(x => x.Value)
+                .ToList();
+            if (abnormalAssets.Count == 0)
+            {
+                items.Add(new ClosingCheckItemDto
+                {
+                    Key = "asset",
+                    Title = "资产检查",
+                    Status = "ok",
+                    Message = "资产类科目期末余额方向正常。",
+                });
+            }
+            else
+            {
+                var listed = abnormalAssets
+                    .Take(5)
+                    .Select(x => $"{x.Key.Code} {x.Key.Name}（{x.Value:0.00}）")
+                    .ToList();
+                var more = abnormalAssets.Count > listed.Count ? $" 等 {abnormalAssets.Count} 个科目" : string.Empty;
+                items.Add(new ClosingCheckItemDto
+                {
+                    Key = "asset",
+                    Title = "资产检查",
+                    Status = "warn",
+                    Message = $"{string.Join("、", listed)}{more}期末为贷方余额，请复核是否存在透支或方向误记。",
+                });
+            }
+
             var blocking = items
                 .Where(i => i.Status == "error" && i.Key is "unposted" or "profit-account" or "period")
                 .Any();

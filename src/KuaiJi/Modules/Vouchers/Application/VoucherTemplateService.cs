@@ -1,6 +1,7 @@
 using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Accounting.Domain;
 using KuaiJi.Modules.Vouchers.Domain;
+using KuaiJi.Modules.Vouchers.Infrastructure;
 
 namespace KuaiJi.Modules.Vouchers.Application
 {
@@ -110,6 +111,112 @@ namespace KuaiJi.Modules.Vouchers.Application
             return true;
         }
 
+        // —— 导入导出 ——
+
+        /// <summary>导出全部凭证模板（xlsx，导回时按模板名称分组）。</summary>
+        public async Task<byte[]> ExportAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        {
+            var templates = await ListAsync(accountSetId, cancellationToken);
+            return VoucherTemplateExportBuilder.BuildTemplates(templates);
+        }
+
+        /// <summary>凭证模板导入模板。</summary>
+        public byte[] BuildImportTemplate() => VoucherTemplateExportBuilder.BuildTemplate();
+
+        /// <summary>
+        /// 导入凭证模板：按模板名称分组；同名模板跳过，科目按编码解析（末级启用）。
+        /// </summary>
+        public async Task<VoucherTemplateImportResultDto> ImportAsync(Guid accountSetId, IReadOnlyList<VoucherTemplateImportRow> rows, CancellationToken cancellationToken = default)
+        {
+            await EnsureAccountSetExistsAsync(accountSetId, cancellationToken);
+            var existing = (await _templateRepository.GetAllAsync(accountSetId, cancellationToken))
+                .Select(t => t.Name)
+                .ToHashSet(StringComparer.Ordinal);
+            var accountsByCode = (await _accountRepository.GetAllAsync(accountSetId, cancellationToken))
+                .Where(a => a.IsLeaf && a.IsEnabled)
+                .GroupBy(a => a.Code)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+            var failures = new List<VoucherTemplateImportFailureDto>();
+            var groups = new List<(string Name, string TypeText, List<VoucherTemplateImportRow> Lines)>();
+            foreach (var row in rows)
+            {
+                var name = row.Name?.Trim() ?? string.Empty;
+                if (name.Length == 0)
+                {
+                    failures.Add(new VoucherTemplateImportFailureDto { Row = row.Row, Reason = "模板名称不能为空。" });
+                    continue;
+                }
+
+                if (groups.Count > 0 && groups[^1].Name == name)
+                {
+                    groups[^1].Lines.Add(row);
+                }
+                else
+                {
+                    groups.Add((name, row.TypeText?.Trim() ?? string.Empty, [row]));
+                }
+            }
+
+            var imported = 0;
+            var skipped = 0;
+            foreach (var group in groups)
+            {
+                if (existing.Contains(group.Name))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var type = group.TypeText switch
+                {
+                    "采购" => VoucherTemplateType.Purchase,
+                    "销售" => VoucherTemplateType.Sales,
+                    "其他" => VoucherTemplateType.Other,
+                    _ => VoucherTemplateType.DailyExpense,
+                };
+
+                var lines = new List<(string Summary, Guid AccountId, bool IsDebit)>();
+                foreach (var line in group.Lines)
+                {
+                    var code = line.AccountCode?.Trim() ?? string.Empty;
+                    if (!accountsByCode.TryGetValue(code, out var account))
+                    {
+                        failures.Add(new VoucherTemplateImportFailureDto { Row = line.Row, Reason = $"模板「{group.Name}」的科目编码「{code}」不存在、非末级或已停用。" });
+                        lines.Clear();
+                        break;
+                    }
+
+                    lines.Add((line.Summary?.Trim() ?? "模板分录", account.Id, !string.Equals(line.Direction?.Trim(), "贷", StringComparison.Ordinal)));
+                }
+
+                if (lines.Count == 0)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var template = VoucherTemplate.Create(accountSetId, group.Name, type);
+                    template.ReplaceLines(lines);
+                    await _templateRepository.AddAsync(template, cancellationToken);
+                    existing.Add(group.Name);
+                    imported++;
+                }
+                catch (ArgumentException ex)
+                {
+                    failures.Add(new VoucherTemplateImportFailureDto { Row = group.Lines[0].Row, Reason = ex.Message });
+                }
+            }
+
+            if (imported > 0)
+            {
+                await _templateRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            return new VoucherTemplateImportResultDto { Imported = imported, Skipped = skipped, Failures = failures };
+        }
+
         private static void ValidateLines(VoucherTemplate template, IReadOnlyDictionary<Guid, Account> accountsById)
         {
             foreach (var line in template.Lines)
@@ -136,7 +243,9 @@ namespace KuaiJi.Modules.Vouchers.Application
             Id = template.Id,
             Name = template.Name,
             TypeText = VoucherTemplateDto.TypeTextOf(template.Type),
+            // 必须按行号排序：EF Include 出来的行顺序不保证，否则模板引入后分录会前后颠倒。
             Lines = template.Lines
+                .OrderBy(l => l.LineNumber)
                 .Select(l =>
                 {
                     var account = accountsById.GetValueOrDefault(l.AccountId);

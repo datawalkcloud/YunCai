@@ -1,5 +1,6 @@
 using KuaiJi.Modules.Funds.Application;
 using KuaiJi.Modules.Funds.Infrastructure;
+using MiniExcelLibs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,12 +16,14 @@ namespace KuaiJi.Modules.Funds.Api
 
         private readonly JournalService _journalService;
         private readonly JournalImportService _importService;
+        private readonly JournalAccountImportService _accountImportService;
         private readonly ILogger<JournalsController> _logger;
 
-        public JournalsController(JournalService journalService, JournalImportService importService, ILogger<JournalsController> logger)
+        public JournalsController(JournalService journalService, JournalImportService importService, JournalAccountImportService accountImportService, ILogger<JournalsController> logger)
         {
             _journalService = journalService;
             _importService = importService;
+            _accountImportService = accountImportService;
             _logger = logger;
         }
 
@@ -125,6 +128,24 @@ namespace KuaiJi.Modules.Funds.Api
             }
         }
 
+        /// <summary>
+        /// 分录批量操作：批量删除 / 批量修改摘要 / 指定收支类别 / 指定往来单位 / 指定项目 / 指定部门 / 删除关联凭证。
+        /// 返回受影响条数。
+        /// </summary>
+        [HttpPost("{id:guid}/entries/bulk")]
+        public async Task<ActionResult<int>> BulkEntries(Guid accountSetId, Guid id, [FromBody] BulkJournalEntryRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var affected = await _journalService.BulkEntriesAsync(accountSetId, id, request, cancellationToken);
+                return affected is null ? NotFound() : Ok(affected.Value);
+            }
+            catch (JournalException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>删除一笔流水，返回最新账簿详情。</summary>
         [HttpDelete("{id:guid}/entries/{entryId:guid}")]
         public async Task<ActionResult<JournalDetailDto>> RemoveEntry(Guid accountSetId, Guid id, Guid entryId, CancellationToken cancellationToken)
@@ -187,6 +208,52 @@ namespace KuaiJi.Modules.Funds.Api
             return File(bytes, JournalImportTemplateBuilder.ContentType, JournalImportTemplateBuilder.FileName);
         }
 
+        /// <summary>下载资金账户批量导入模板（.xlsx）。</summary>
+        [HttpGet("accounts/import-template")]
+        public IActionResult DownloadAccountTemplate()
+        {
+            using var stream = new MemoryStream();
+            MiniExcelLibs.MiniExcel.SaveAs(stream, new Dictionary<string, object>
+            {
+                ["资金账户"] = new List<Dictionary<string, object?>>
+                {
+                    new() { ["账簿名称"] = "库存现金", ["账户类型"] = "现金", ["账户编码"] = "001", ["币别"] = "人民币", ["期初余额"] = 0 },
+                    new() { ["账簿名称"] = "工行基本户", ["账户类型"] = "银行存款", ["账户编码"] = "002", ["币别"] = "人民币", ["期初余额"] = 0, ["开户银行"] = "工商银行", ["银行账号"] = "" },
+                },
+            }, excelType: ExcelType.XLSX);
+            return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "资金账户导入模板.xlsx");
+        }
+
+        /// <summary>资金账户批量导入：同名同类型账户更新，否则新建（现金 / 银行存款日记账）。</summary>
+        [HttpPost("accounts/import")]
+        [RequestSizeLimit(MaxUploadBytes)]
+        public async Task<ActionResult<JournalAccountImportResultDto>> ImportAccounts(Guid accountSetId, IFormFile? file, CancellationToken cancellationToken)
+        {
+            if (file is null || file.Length == 0)
+            {
+                return BadRequest(new { message = "请选择要导入的 Excel 文件。" });
+            }
+
+            if (file.Length > MaxUploadBytes)
+            {
+                return BadRequest(new { message = "文件过大，请控制在 10MB 以内。" });
+            }
+
+            try
+            {
+                await using var stream = file.OpenReadStream();
+                return Ok(await _accountImportService.ImportAsync(accountSetId, stream, cancellationToken));
+            }
+            catch (JournalException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+            {
+                return BadRequest(new { message = "文件解析失败：" + ex.Message });
+            }
+        }
+
         /// <summary>导出一本日记账的全部流水（.xlsx）。导出列与导入模板同构，文件可回传导入。</summary>
         [HttpGet("{id:guid}/export")]
         public async Task<IActionResult> Export(Guid accountSetId, Guid id, CancellationToken cancellationToken)
@@ -199,6 +266,25 @@ namespace KuaiJi.Modules.Funds.Api
 
             var bytes = JournalExportBuilder.Build(journal);
             return File(bytes, JournalExportBuilder.ContentType, JournalExportBuilder.BuildFileName(journal.Name));
+        }
+
+        /// <summary>导出所有账户的全部流水（.xlsx，含「账户」列）。</summary>
+        [HttpGet("export/all")]
+        public async Task<IActionResult> ExportAll(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            var journals = await _journalService.ListAsync(accountSetId, cancellationToken);
+            var details = new List<JournalDetailDto>(journals.Count);
+            foreach (var item in journals)
+            {
+                var detail = await _journalService.GetAsync(accountSetId, item.Id, cancellationToken);
+                if (detail is not null)
+                {
+                    details.Add(detail);
+                }
+            }
+
+            var bytes = JournalExportBuilder.BuildAll(details);
+            return File(bytes, JournalExportBuilder.ContentType, $"日记账全部数据_{DateTime.Now:yyyyMMddHHmmss}.xlsx");
         }
 
         /// <summary>

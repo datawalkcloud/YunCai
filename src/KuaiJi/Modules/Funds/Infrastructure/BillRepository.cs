@@ -54,6 +54,43 @@ namespace KuaiJi.Modules.Funds.Infrastructure
             _context.Bills.Remove(bill);
         }
 
+        public async Task<IReadOnlyList<BillAttachmentInfo>> ListAttachmentsAsync(Guid billId, CancellationToken cancellationToken = default)
+        {
+            return await _context.BillAttachments
+                .AsNoTracking()
+                .Where(a => a.BillId == billId)
+                .OrderBy(a => a.UploadedAt)
+                .Select(a => new BillAttachmentInfo(a.Id, a.FileName, a.ContentType, a.SizeBytes, a.UploadedAt))
+                .ToListAsync(cancellationToken);
+        }
+
+        public Task<BillAttachment?> GetAttachmentAsync(Guid billId, Guid attachmentId, CancellationToken cancellationToken = default)
+        {
+            return _context.BillAttachments
+                .FirstOrDefaultAsync(a => a.BillId == billId && a.Id == attachmentId, cancellationToken);
+        }
+
+        public async Task AddAttachmentAsync(BillAttachment attachment, CancellationToken cancellationToken = default)
+        {
+            await _context.BillAttachments.AddAsync(attachment, cancellationToken);
+        }
+
+        public void RemoveAttachment(BillAttachment attachment)
+        {
+            _context.BillAttachments.Remove(attachment);
+        }
+
+        public async Task<IReadOnlyDictionary<Guid, int>> CountAttachmentsAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        {
+            var rows = await _context.BillAttachments
+                .AsNoTracking()
+                .Where(a => _context.Bills.Any(b => b.Id == a.BillId && b.AccountSetId == accountSetId))
+                .GroupBy(a => a.BillId)
+                .Select(g => new { BillId = g.Key, Count = g.Count() })
+                .ToListAsync(cancellationToken);
+            return rows.ToDictionary(r => r.BillId, r => r.Count);
+        }
+
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             return _context.SaveChangesAsync(cancellationToken);

@@ -165,6 +165,12 @@ namespace KuaiJi.Modules.FixedAssets.Application
 
         public decimal Amount { get; init; }
 
+        /// <summary>已关联的凭证标识（未生成为 null）。</summary>
+        public Guid? VoucherId { get; init; }
+
+        /// <summary>关联凭证字号（形如「记-12」）。</summary>
+        public string? VoucherText { get; init; }
+
         public static string KindTextOf(FixedAssetChangeKind kind) => kind switch
         {
             FixedAssetChangeKind.OriginValueAdjust => "原值调整",
@@ -244,5 +250,207 @@ namespace KuaiJi.Modules.FixedAssets.Application
         public int DepreciatedCount { get; init; }
 
         public IReadOnlyList<string> Skipped { get; init; } = [];
+    }
+
+    /// <summary>资产凭证科目设置 DTO。</summary>
+    public sealed class FixedAssetVoucherSettingDto
+    {
+        public Guid? DepreciationExpenseAccountId { get; init; }
+
+        public Guid? DepreciationAccountId { get; init; }
+
+        public Guid? AmortizationExpenseAccountId { get; init; }
+
+        public Guid? AmortizationAccountId { get; init; }
+
+        public Guid? DisposalAccountId { get; init; }
+
+        /// <summary>折旧费用科目（配置值或自动推断值）。</summary>
+        public string? DepreciationExpenseAccountText { get; init; }
+
+        public string? DepreciationAccountText { get; init; }
+
+        public string? AmortizationExpenseAccountText { get; init; }
+
+        public string? AmortizationAccountText { get; init; }
+
+        public string? DisposalAccountText { get; init; }
+
+        /// <summary>折旧科目是否已解析到（false 表示账套缺科目，需先补科目）。</summary>
+        public bool DepreciationResolved { get; init; }
+
+        public bool AmortizationResolved { get; init; }
+
+        public bool DisposalResolved { get; init; }
+    }
+
+    /// <summary>保存资产凭证科目设置请求（留空回落到自动推断）。</summary>
+    public sealed class SaveFixedAssetVoucherSettingRequest
+    {
+        public Guid? DepreciationExpenseAccountId { get; init; }
+
+        public Guid? DepreciationAccountId { get; init; }
+
+        public Guid? AmortizationExpenseAccountId { get; init; }
+
+        public Guid? AmortizationAccountId { get; init; }
+
+        public Guid? DisposalAccountId { get; init; }
+    }
+
+    /// <summary>折旧凭证生成请求。</summary>
+    public sealed class GenerateDepreciationVoucherRequest
+    {
+        /// <summary>计提期间（yyyyMM）。</summary>
+        public int Period { get; init; }
+
+        /// <summary>凭证字，默认「记」。</summary>
+        public string? Word { get; init; }
+
+        public string Preparer { get; init; } = "系统";
+    }
+
+    /// <summary>某期间的折旧凭证信息（用于界面回显「折旧凭证」列）。</summary>
+    public sealed class DepreciationVoucherInfoDto
+    {
+        public int Period { get; init; }
+
+        /// <summary>本期已计提的变动条数。</summary>
+        public int ChangeCount { get; init; }
+
+        /// <summary>本期计提金额合计。</summary>
+        public decimal TotalAmount { get; init; }
+
+        /// <summary>本期折旧凭证是否已生成。</summary>
+        public bool Generated { get; init; }
+
+        public Guid? VoucherId { get; init; }
+
+        public string? VoucherText { get; init; }
+    }
+
+    /// <summary>变更凭证分录（预览 / 提交共用）。</summary>
+    public sealed class ChangeVoucherEntryDto
+    {
+        public string Summary { get; init; } = string.Empty;
+
+        public Guid AccountId { get; init; }
+
+        public string AccountText { get; init; } = string.Empty;
+
+        public decimal Debit { get; init; }
+
+        public decimal Credit { get; init; }
+    }
+
+    /// <summary>变更记录生成凭证的预览（含建议分录，界面可改科目与金额）。</summary>
+    public sealed class ChangeVoucherPreviewDto
+    {
+        public Guid ChangeId { get; init; }
+
+        public string KindText { get; init; } = null!;
+
+        public string AssetCode { get; init; } = null!;
+
+        public string AssetName { get; init; } = null!;
+
+        public DateOnly Date { get; init; }
+
+        public IReadOnlyList<ChangeVoucherEntryDto> Entries { get; init; } = [];
+
+        /// <summary>无法自动给出分录时的说明（界面仅允许手工录入）。</summary>
+        public string? Hint { get; init; }
+    }
+
+    /// <summary>变更记录生成凭证请求。</summary>
+    public sealed class GenerateChangeVoucherRequest
+    {
+        public IReadOnlyList<ChangeVoucherEntryInput> Entries { get; init; } = [];
+
+        public DateOnly? Date { get; init; }
+
+        public string? Word { get; init; }
+
+        public string Preparer { get; init; } = "系统";
+    }
+
+    /// <summary>变更凭证分录输入。</summary>
+    public sealed class ChangeVoucherEntryInput
+    {
+        public string? Summary { get; init; }
+
+        public Guid AccountId { get; init; }
+
+        public decimal Debit { get; init; }
+
+        public decimal Credit { get; init; }
+    }
+
+    /// <summary>资产批量操作结果。</summary>
+    public sealed class FixedAssetBulkResultDto
+    {
+        public int Affected { get; init; }
+
+        public int Skipped { get; init; }
+
+        public IReadOnlyList<string> Messages { get; init; } = [];
+    }
+
+    /// <summary>资产导入结果。</summary>
+    public sealed class FixedAssetImportResultDto
+    {
+        public int Imported { get; init; }
+
+        public int Updated { get; init; }
+
+        public IReadOnlyList<FixedAssetImportFailureDto> Failures { get; init; } = [];
+    }
+
+    /// <summary>资产导入失败明细。</summary>
+    public sealed class FixedAssetImportFailureDto
+    {
+        public int Row { get; init; }
+
+        public string Reason { get; init; } = null!;
+    }
+
+    /// <summary>资产导入行（由 Excel 解析而来）。</summary>
+    public sealed class FixedAssetImportRow
+    {
+        public int Row { get; init; }
+
+        public string? Code { get; init; }
+
+        public string? CategoryCode { get; init; }
+
+        public string? CategoryName { get; init; }
+
+        public string? Name { get; init; }
+
+        public string? Model { get; init; }
+
+        public string? Dept { get; init; }
+
+        public string? StartDate { get; init; }
+
+        public string? OriginValue { get; init; }
+
+        public string? AccumulatedDepreciation { get; init; }
+    }
+
+    /// <summary>批量操作请求（资产 / 类别通用）。</summary>
+    public sealed class FixedAssetBulkIdsRequest
+    {
+        public IReadOnlyList<Guid> Ids { get; init; } = [];
+    }
+
+    /// <summary>复制资产请求。</summary>
+    public sealed class CopyFixedAssetRequest
+    {
+        /// <summary>新资产编号；留空时自动在原名后追加序号。</summary>
+        public string? Code { get; init; }
+
+        /// <summary>新资产名称；留空时沿用原名称。</summary>
+        public string? Name { get; init; }
     }
 }

@@ -65,6 +65,7 @@ namespace KuaiJi.Modules.Funds.Application
 
             var accountsById = await LoadAccountsById(accountSetId, cancellationToken);
             var vouchersById = await LoadVouchersById(accountSetId, cancellationToken);
+            await HealStaleVoucherLinksAsync(journal, vouchersById, cancellationToken);
             return JournalDetailDto.FromDomain(journal, accountsById.GetValueOrDefault(journal.AccountId), vouchersById);
         }
 
@@ -120,10 +121,29 @@ namespace KuaiJi.Modules.Funds.Application
                 account = await EnsureMoneyAccountAsync(accountSet, type, request.Name.Trim(), cancellationToken);
             }
 
+            // 账户编码：显式传入则校验唯一性，否则按同类型下一个可用序号生成。
+            string code;
+            if (!string.IsNullOrWhiteSpace(request.Code))
+            {
+                code = request.Code.Trim();
+                if (await _journalRepository.ExistsByCodeAsync(accountSetId, type, code, null, cancellationToken))
+                {
+                    throw new JournalException($"账户编码「{code}」已被占用，请换一个。");
+                }
+            }
+            else
+            {
+                code = await _journalRepository.NextCodeAsync(accountSetId, type, cancellationToken);
+            }
+
+            var currency = string.IsNullOrWhiteSpace(request.Currency)
+                ? Journal.DefaultCurrency
+                : request.Currency.Trim();
+
             Journal journal;
             try
             {
-                journal = Journal.Create(accountSetId, type, request.Name, account.Id, request.OpeningBalance);
+                journal = Journal.Create(accountSetId, type, request.Name, account.Id, request.OpeningBalance, code, currency);
                 journal.SetBankInfo(request.BankName, request.BankAccountNo);
             }
             catch (ArgumentException ex)
@@ -218,6 +238,22 @@ namespace KuaiJi.Modules.Funds.Application
             try
             {
                 journal.Rename(request.Name);
+
+                if (request.Code is { } code)
+                {
+                    if (await _journalRepository.ExistsByCodeAsync(accountSetId, journal.Type, code, journal.Id, cancellationToken))
+                    {
+                        throw new JournalException($"账户编码「{code.Trim()}」已被占用，请换一个。");
+                    }
+
+                    journal.ChangeCode(code);
+                }
+
+                if (request.Currency is { } currency)
+                {
+                    journal.ChangeCurrency(currency);
+                }
+
                 journal.ChangeOpeningBalance(request.OpeningBalance);
                 if (request.IsEnabled is { } enabled)
                 {
@@ -286,7 +322,7 @@ namespace KuaiJi.Modules.Funds.Application
 
             try
             {
-                journal.AddEntry(request.Date, request.Summary, request.Income, request.Expense, request.Category, request.Counterparty);
+                journal.AddEntry(request.Date, request.Summary, request.Income, request.Expense, request.Category, request.Counterparty, request.Project, request.Department);
             }
             catch (ArgumentException ex)
             {
@@ -311,7 +347,7 @@ namespace KuaiJi.Modules.Funds.Application
 
             try
             {
-                journal.UpdateEntry(entryId, request.Date, request.Summary, request.Income, request.Expense, request.Category, request.Counterparty, existing.VoucherId);
+                journal.UpdateEntry(entryId, request.Date, request.Summary, request.Income, request.Expense, request.Category, request.Counterparty, request.Project, request.Department, existing.VoucherId);
             }
             catch (ArgumentException ex)
             {
@@ -324,6 +360,70 @@ namespace KuaiJi.Modules.Funds.Application
 
             await _journalRepository.SaveChangesAsync(cancellationToken);
             return await BuildDetail(accountSetId, journal, cancellationToken);
+        }
+
+        /// <summary>
+        /// 分录批量操作：批量删除 / 批量修改摘要 / 指定收支类别 / 指定往来单位 / 指定项目 / 指定部门 / 删除关联凭证。
+        /// 返回受影响条数；日记账不存在时返回 null。
+        /// </summary>
+        public async Task<int?> BulkEntriesAsync(Guid accountSetId, Guid id, BulkJournalEntryRequest request, CancellationToken cancellationToken = default)
+        {
+            var journal = await _journalRepository.GetByIdAsync(accountSetId, id, cancellationToken);
+            if (journal is null)
+            {
+                return null;
+            }
+
+            var action = (request.Action ?? string.Empty).Trim().ToLowerInvariant();
+            var ids = request.EntryIds.Distinct().ToArray();
+            if (ids.Length == 0)
+            {
+                throw new JournalException("请先勾选要操作的流水。");
+            }
+
+            int affected;
+            switch (action)
+            {
+                case "delete":
+                    affected = journal.RemoveEntries(ids);
+                    break;
+                case "summary":
+                    if (string.IsNullOrWhiteSpace(request.Summary))
+                    {
+                        throw new JournalException("摘要不能为空。");
+                    }
+
+                    affected = journal.PatchEntries(ids, summary: request.Summary);
+                    break;
+                case "category":
+                    affected = journal.PatchEntries(ids, category: request.Category ?? string.Empty);
+                    break;
+                case "counterparty":
+                    affected = journal.PatchEntries(ids, counterparty: request.Counterparty ?? string.Empty);
+                    break;
+                case "project":
+                    affected = journal.PatchEntries(ids, project: request.Project ?? string.Empty);
+                    break;
+                case "department":
+                    affected = journal.PatchEntries(ids, department: request.Department ?? string.Empty);
+                    break;
+                case "unlink-voucher":
+                    affected = journal.PatchEntries(ids, clearVoucher: true);
+                    break;
+                case "link-voucher":
+                    if (request.VoucherId is not { } voucherId)
+                    {
+                        throw new JournalException("请选择要关联的凭证。");
+                    }
+
+                    affected = journal.PatchEntries(ids, voucherId: voucherId);
+                    break;
+                default:
+                    throw new JournalException($"不支持的批量操作：{request.Action}。");
+            }
+
+            await _journalRepository.SaveChangesAsync(cancellationToken);
+            return affected;
         }
 
         /// <summary>删除一笔分录；日记账不存在时返回 null。</summary>
@@ -348,6 +448,9 @@ namespace KuaiJi.Modules.Funds.Application
         {
             var journal = await _journalRepository.GetByIdAsync(accountSetId, id, cancellationToken)
                           ?? throw new JournalException("指定的日记账不存在。");
+
+            // 先自愈残留的失效凭证引用，避免「凭证已删除却仍被判为已生成」。
+            await HealStaleVoucherLinksAsync(journal, await LoadVouchersById(accountSetId, cancellationToken), cancellationToken);
 
             var entry = journal.Entries.FirstOrDefault(e => e.Id == entryId)
                         ?? throw new JournalException("日记账分录不存在。");
@@ -409,7 +512,7 @@ namespace KuaiJi.Modules.Funds.Application
             await _voucherRepository.SaveChangesAsync(cancellationToken);
 
             // 回写分录的关联凭证（保留分录其余字段不变）。
-            journal.UpdateEntry(entry.Id, entry.Date, entry.Summary, entry.Income, entry.Expense, entry.Category, entry.Counterparty, voucher.Id);
+            journal.UpdateEntry(entry.Id, entry.Date, entry.Summary, entry.Income, entry.Expense, entry.Category, entry.Counterparty, entry.Project, entry.Department, voucher.Id);
             await _journalRepository.SaveChangesAsync(cancellationToken);
 
             return voucher.Id;
@@ -439,6 +542,9 @@ namespace KuaiJi.Modules.Funds.Application
             {
                 throw new JournalException("合并方式不合法。");
             }
+
+            // 先自愈残留的失效凭证引用，避免「凭证已删除的流水」被永久排除在出票范围外。
+            await HealStaleVoucherLinksAsync(journal, await LoadVouchersById(accountSetId, cancellationToken), cancellationToken);
 
             var selected = new List<JournalEntry>();
             foreach (var entryId in request.EntryIds.Distinct())
@@ -531,7 +637,7 @@ namespace KuaiJi.Modules.Funds.Application
             {
                 foreach (var entry in entries)
                 {
-                    journal.UpdateEntry(entry.Id, entry.Date, entry.Summary, entry.Income, entry.Expense, entry.Category, entry.Counterparty, voucher.Id);
+                    journal.UpdateEntry(entry.Id, entry.Date, entry.Summary, entry.Income, entry.Expense, entry.Category, entry.Counterparty, entry.Project, entry.Department, voucher.Id);
                 }
             }
 
@@ -666,6 +772,7 @@ namespace KuaiJi.Modules.Funds.Application
         {
             var accountsById = await LoadAccountsById(accountSetId, cancellationToken);
             var vouchersById = await LoadVouchersById(accountSetId, cancellationToken);
+            await HealStaleVoucherLinksAsync(journal, vouchersById, cancellationToken);
             return JournalDetailDto.FromDomain(journal, accountsById.GetValueOrDefault(journal.AccountId), vouchersById);
         }
 
@@ -695,7 +802,25 @@ namespace KuaiJi.Modules.Funds.Application
         private async Task<IReadOnlyDictionary<Guid, Voucher>> LoadVouchersById(Guid accountSetId, CancellationToken cancellationToken)
         {
             var vouchers = await _voucherRepository.GetAllAsync(accountSetId, cancellationToken);
-            return vouchers.ToDictionary(v => v.Id, v => v);
+            // 只认仍在册的凭证：回收站中的凭证不算有效关联，否则流水会显示空白凭证号。
+            return vouchers.Where(v => v.DeletedAt is null).ToDictionary(v => v.Id, v => v);
+        }
+
+        /// <summary>
+        /// 自愈：清除流水中指向已删除凭证的残留引用。
+        /// 凭证被删除（进回收站或彻底删除）后，流水仍保留 VoucherId，会导致
+        /// 账页「关联凭证」列空白，且该流水因「已生成凭证」被永久排除、无法再次出票。
+        /// 有变更时落库，使修复一次生效；无变更时为零开销。
+        /// </summary>
+        private async Task HealStaleVoucherLinksAsync(
+            Journal journal,
+            IReadOnlyDictionary<Guid, Voucher> vouchersById,
+            CancellationToken cancellationToken)
+        {
+            if (journal.ClearStaleVouchers(vouchersById.Keys.ToHashSet()) > 0)
+            {
+                await _journalRepository.SaveChangesAsync(cancellationToken);
+            }
         }
     }
 }

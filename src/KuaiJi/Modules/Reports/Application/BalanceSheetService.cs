@@ -130,8 +130,9 @@ namespace KuaiJi.Modules.Reports.Application
         /// 将科目按《企业会计准则》标准编码归集到会企01表行次。损益类（含本期结转前净利润）
         /// 与未识别的权益科目并入「未分配利润」(54)；未识别的资产/负债并入「其他流动资产/负债」。
         /// 备抵科目（累计折旧、坏账准备等）与其对应科目归入同一行，靠净额自动抵减。
+        /// 补充资料（间接法）等报表共用该归集口径。
         /// </summary>
-        private static int MapLine(string code, AccountCategory category)
+        internal static int MapLine(string code, AccountCategory category)
         {
             return category switch
             {

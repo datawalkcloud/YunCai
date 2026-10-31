@@ -18,6 +18,21 @@ namespace KuaiJi.Modules.Funds.Domain
         /// <summary>删除票据。</summary>
         void Remove(Bill bill);
 
+        /// <summary>列出票据的附件摘要（按上传时间升序）。</summary>
+        Task<IReadOnlyList<BillAttachmentInfo>> ListAttachmentsAsync(Guid billId, CancellationToken cancellationToken = default);
+
+        /// <summary>获取附件（含文件内容）。</summary>
+        Task<BillAttachment?> GetAttachmentAsync(Guid billId, Guid attachmentId, CancellationToken cancellationToken = default);
+
+        /// <summary>新增附件。</summary>
+        Task AddAttachmentAsync(BillAttachment attachment, CancellationToken cancellationToken = default);
+
+        /// <summary>删除附件。</summary>
+        void RemoveAttachment(BillAttachment attachment);
+
+        /// <summary>统计账套内各票据的附件数量（列表批量回填用）。</summary>
+        Task<IReadOnlyDictionary<Guid, int>> CountAttachmentsAsync(Guid accountSetId, CancellationToken cancellationToken = default);
+
         /// <summary>提交工作单元。</summary>
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

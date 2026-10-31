@@ -67,6 +67,17 @@ namespace KuaiJi.Modules.Invoices.Infrastructure
             _context.Invoices.Remove(invoice);
         }
 
+        public void Update(Invoice invoice)
+        {
+            var entry = _context.Entry(invoice);
+            if (entry.State == EntityState.Detached)
+            {
+                _context.Invoices.Attach(invoice);
+            }
+
+            entry.State = EntityState.Modified;
+        }
+
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             return _context.SaveChangesAsync(cancellationToken);

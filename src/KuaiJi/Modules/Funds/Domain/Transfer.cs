@@ -128,6 +128,21 @@ namespace KuaiJi.Modules.Funds.Domain
         /// <summary>回填生成的凭证标识。</summary>
         public void AttachVoucher(Guid voucherId) => VoucherId = voucherId;
 
+        /// <summary>
+        /// 清除失效的关联凭证：凭证被删除后转账仍残留 VoucherId，会导致转账无法修改或删除。
+        /// 传入仍存在的凭证标识集合，返回是否发生了变更。
+        /// </summary>
+        public bool ClearStaleVoucher(IReadOnlySet<Guid> existingVoucherIds)
+        {
+            if (VoucherId is not { } vid || existingVoucherIds.Contains(vid))
+            {
+                return false;
+            }
+
+            VoucherId = null;
+            return true;
+        }
+
         /// <summary>修改转账信息（仅在未生成凭证前允许，由应用层校验）。</summary>
         public void Update(DateOnly date, string? summary, decimal amount, string? remark)
         {

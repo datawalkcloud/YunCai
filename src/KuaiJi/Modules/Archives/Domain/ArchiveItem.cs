@@ -39,7 +39,8 @@ namespace KuaiJi.Modules.Archives.Domain
             string? matter,
             string? checkStatus,
             string uploader,
-            string source)
+            string source,
+            bool isPaper)
         {
             Id = id;
             AccountSetId = accountSetId;
@@ -54,6 +55,7 @@ namespace KuaiJi.Modules.Archives.Domain
             Matter = matter;
             CheckStatus = checkStatus;
             Status = ArchiveFileStatus.Unaudited;
+            IsPaper = isPaper;
             Uploader = uploader;
             Source = source;
             UploadedAt = DateTime.UtcNow;
@@ -110,6 +112,9 @@ namespace KuaiJi.Modules.Archives.Domain
         /// <summary>是否已归档。</summary>
         public bool IsArchived { get; private set; }
 
+        /// <summary>是否标记为纸质档案（原件在纸面上，系统只留存影像）。</summary>
+        public bool IsPaper { get; private set; }
+
         /// <summary>归档时间。</summary>
         public DateTime? ArchivedAt { get; private set; }
 
@@ -129,7 +134,8 @@ namespace KuaiJi.Modules.Archives.Domain
             string? matter,
             string? checkStatus,
             string uploader,
-            string source)
+            string source,
+            bool isPaper = false)
         {
             GuardFileName(fileName);
             if (content is { LongLength: > MaxFileBytes })
@@ -155,7 +161,8 @@ namespace KuaiJi.Modules.Archives.Domain
                 Normalize(matter),
                 Normalize(checkStatus),
                 uploader.Trim(),
-                Normalize(source) ?? string.Empty);
+                Normalize(source) ?? string.Empty,
+                isPaper);
         }
 
         /// <summary>修改档案元数据（不更新文件内容）。</summary>
@@ -182,6 +189,12 @@ namespace KuaiJi.Modules.Archives.Domain
 
         /// <summary>审核 / 取消审核。</summary>
         public void SetAudited(bool audited) => Status = audited ? ArchiveFileStatus.Audited : ArchiveFileStatus.Unaudited;
+
+        /// <summary>标记 / 取消标记为纸质档案。</summary>
+        public void SetPaper(bool isPaper) => IsPaper = isPaper;
+
+        /// <summary>关联 / 取消关联凭证（voucherText 为空表示取消关联）。</summary>
+        public void SetVoucherText(string? voucherText) => VoucherText = Normalize(voucherText);
 
         /// <summary>归档（记录归档人与时间）；重复归档忽略。</summary>
         public void Archive(string operatorName)

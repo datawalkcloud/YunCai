@@ -24,6 +24,13 @@ namespace KuaiJi.Modules.Invoices.Domain
         /// <summary>删除发票（明细行级联清除）。</summary>
         void Remove(Invoice invoice);
 
+        /// <summary>
+        /// 标记发票为已修改，使其变更能被提交。
+        /// 列表查询走 AsNoTracking，实体不被上下文跟踪，自愈等非跟踪场景下
+        /// 必须先 Attach 再置为 Modified，否则 SaveChanges 检测不到变更。
+        /// </summary>
+        void Update(Invoice invoice);
+
         /// <summary>提交工作单元。</summary>
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

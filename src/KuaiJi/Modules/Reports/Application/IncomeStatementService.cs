@@ -35,17 +35,8 @@ namespace KuaiJi.Modules.Reports.Application
         {
             var (accountSet, accountsById, vouchers) = await LoadAsync(accountSetId, cancellationToken);
             var (resolvedYear, resolvedMonth) = ReportPeriodResolver.Resolve(accountSet, vouchers, year, month);
-            var lines = AccumulateLineNets(
-                vouchers, accountsById, new DateOnly(resolvedYear, 1, 1),
-                new DateOnly(resolvedYear, resolvedMonth, 1), new DateOnly(resolvedYear, resolvedMonth, 1).AddMonths(1))
-                .Select(kv => new IncomeStatementLineDto
-                {
-                    Line = kv.Key,
-                    Current = kv.Value.current,
-                    YearToDate = kv.Value.ytd,
-                })
-                .OrderBy(l => l.Line)
-                .ToList();
+            var periodStart = new DateOnly(resolvedYear, resolvedMonth, 1);
+            var lines = BuildLines(vouchers, accountsById, resolvedYear, periodStart, periodStart.AddMonths(1));
 
             return new IncomeStatementDto
             {
@@ -65,17 +56,7 @@ namespace KuaiJi.Modules.Reports.Application
             var (accountSet, accountsById, vouchers) = await LoadAsync(accountSetId, cancellationToken);
             var (resolvedYear, resolvedQuarter) = ResolveQuarter(accountSet, vouchers, year, quarter);
             var quarterStart = new DateOnly(resolvedYear, (resolvedQuarter - 1) * 3 + 1, 1);
-            var lines = AccumulateLineNets(
-                vouchers, accountsById, new DateOnly(resolvedYear, 1, 1),
-                quarterStart, quarterStart.AddMonths(3))
-                .Select(kv => new IncomeStatementLineDto
-                {
-                    Line = kv.Key,
-                    Current = kv.Value.current,
-                    YearToDate = kv.Value.ytd,
-                })
-                .OrderBy(l => l.Line)
-                .ToList();
+            var lines = BuildLines(vouchers, accountsById, resolvedYear, quarterStart, quarterStart.AddMonths(3));
 
             return new IncomeStatementQuarterDto
             {
@@ -84,6 +65,41 @@ namespace KuaiJi.Modules.Reports.Application
                 PeriodText = $"{resolvedYear:D4}年第{resolvedQuarter}季度",
                 Lines = lines,
             };
+        }
+
+        /// <summary>
+        /// 组装报表行：本期金额、本年累计金额，以及上年同期累计金额（上年 1 月 1 日至上年同期末）。
+        /// </summary>
+        private static List<IncomeStatementLineDto> BuildLines(
+            IReadOnlyList<Voucher> vouchers,
+            Dictionary<Guid, Account> accountsById,
+            int year,
+            DateOnly periodStart,
+            DateOnly periodEndExclusive)
+        {
+            var current = AccumulateLineNets(
+                vouchers, accountsById, new DateOnly(year, 1, 1), periodStart, periodEndExclusive);
+
+            var months = (periodEndExclusive.Year - periodStart.Year) * 12 + periodEndExclusive.Month - periodStart.Month;
+            var lastYearStart = new DateOnly(year - 1, 1, 1);
+            var lastYear = AccumulateLineNets(
+                vouchers,
+                accountsById,
+                lastYearStart,
+                periodStart.AddYears(-1),
+                periodStart.AddYears(-1).AddMonths(months));
+
+            return current.Keys
+                .Union(lastYear.Keys)
+                .OrderBy(line => line)
+                .Select(line => new IncomeStatementLineDto
+                {
+                    Line = line,
+                    Current = current.TryGetValue(line, out var cur) ? cur.current : 0m,
+                    YearToDate = current.TryGetValue(line, out var ytd) ? ytd.ytd : 0m,
+                    LastYear = lastYear.TryGetValue(line, out var ly) ? ly.ytd : 0m,
+                })
+                .ToList();
         }
 
         /// <summary>加载账套、科目索引与已过账凭证。</summary>
@@ -99,6 +115,24 @@ namespace KuaiJi.Modules.Reports.Application
                 .Where(v => v.Status == VoucherStatus.Posted)
                 .ToList();
             return (accountSet, accountsById, vouchers);
+        }
+
+        /// <summary>
+        /// 净利润（本期 + 本年累计）：与利润表同源，取剔除结转凭证后的损益类发生额，
+        /// 收入方向行次相加、费用方向行次相减。供现金流量表补充资料等间接法报表复用。
+        /// </summary>
+        internal static (decimal Current, decimal YearToDate) NetProfit(
+            IReadOnlyList<Voucher> vouchers,
+            Dictionary<Guid, Account> accountsById,
+            DateOnly yearStart,
+            DateOnly periodStart,
+            DateOnly periodEndExclusive)
+        {
+            var lines = AccumulateLineNets(vouchers, accountsById, yearStart, periodStart, periodEndExclusive);
+            decimal Sum(bool yearToDate) => lines.Sum(kv =>
+                (yearToDate ? kv.Value.ytd : kv.Value.current) * (IncomeLineMapper.IsRevenueLine(kv.Key) ? 1m : -1m));
+
+            return (Sum(false), Sum(true));
         }
 
         /// <summary>

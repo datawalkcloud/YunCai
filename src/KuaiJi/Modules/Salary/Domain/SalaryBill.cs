@@ -107,6 +107,28 @@ namespace KuaiJi.Modules.Salary.Domain
             PaidVoucherId = voucherId;
         }
 
+        /// <summary>
+        /// 清理悬空的凭证引用：凭证被删除后，工资单仍留着它的 Id，
+        /// 界面会显示不存在的字号，且因「已计提 / 已发放」被永久跳过，再也没法重新生成。
+        /// </summary>
+        internal bool ClearStaleVouchers(IReadOnlySet<Guid> existingVoucherIds)
+        {
+            var changed = false;
+            if (AccruedVoucherId is { } accrued && !existingVoucherIds.Contains(accrued))
+            {
+                AccruedVoucherId = null;
+                changed = true;
+            }
+
+            if (PaidVoucherId is { } paid && !existingVoucherIds.Contains(paid))
+            {
+                PaidVoucherId = null;
+                changed = true;
+            }
+
+            return changed;
+        }
+
         /// <summary>新建工资单（同一账套同一期间同一员工唯一，由服务层校验）。</summary>
         public static SalaryBill Create(
             Guid accountSetId,

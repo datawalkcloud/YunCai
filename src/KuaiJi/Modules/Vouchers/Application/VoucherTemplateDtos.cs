@@ -64,4 +64,40 @@ namespace KuaiJi.Modules.Vouchers.Application
         /// <summary>是否借方。</summary>
         public bool IsDebit { get; init; }
     }
+
+    /// <summary>凭证模板导入行。</summary>
+    public sealed class VoucherTemplateImportRow
+    {
+        public int Row { get; init; }
+
+        public string? Name { get; init; }
+
+        public string? TypeText { get; init; }
+
+        public string? Summary { get; init; }
+
+        public string? AccountCode { get; init; }
+
+        public string? Direction { get; init; }
+    }
+
+    /// <summary>凭证模板导入结果。</summary>
+    public sealed class VoucherTemplateImportResultDto
+    {
+        /// <summary>成功导入的模板数。</summary>
+        public int Imported { get; init; }
+
+        /// <summary>因同名跳过的模板数。</summary>
+        public int Skipped { get; init; }
+
+        public IReadOnlyList<VoucherTemplateImportFailureDto> Failures { get; init; } = [];
+    }
+
+    /// <summary>凭证模板导入失败明细。</summary>
+    public sealed class VoucherTemplateImportFailureDto
+    {
+        public int Row { get; init; }
+
+        public string Reason { get; init; } = null!;
+    }
 }

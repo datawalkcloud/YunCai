@@ -14,36 +14,82 @@ namespace KuaiJi.Modules.Funds.Application
     }
 
     /// <summary>
-    /// 资金报表应用服务：按 账户 / 收支类别 / 往来单位 三个维度汇总区间内收付，
-    /// 并提供出纳账与总账的余额核对（核对总账）。
+    /// 资金报表应用服务：按 账户 / 收支类别 / 往来单位 / 项目 / 部门 / 组合 六个维度汇总区间内收付，
+    /// 并按柠檬云「资金报表」的分段结构（现金账户｜银行账户、收入类别｜支出类别 …）输出小计行；
+    /// 同时提供出纳账与总账的余额核对（核对总账）。
     /// 口径说明：日记账为手工登记台账（含未生成凭证的流水，全量参与汇总）；
     /// 核对总账的账面侧仅统计已过账凭证（与账簿一致）。
+    /// 项目 / 部门维度取流水上登记的项目、部门（在「批量操作 - 指定项目/指定部门」中写入），
+    /// 未指定的流水归入「未填写」，与往来单位维度同一口径。
     /// </summary>
     public sealed class FundReportService
     {
+        private const string CurrencyNoteText = "总计金额统计为人民币，外币账户会根据日记账中的本币金额进行计算，可能会存在一定的误差";
+
+        private const string DimCategory = "category";
+        private const string DimCounterparty = "counterparty";
+        private const string DimProject = "project";
+        private const string DimDepartment = "department";
+
+        /// <summary>维度取值：从流水上取哪个字段作为该维度的分组值。</summary>
+        private static readonly IReadOnlyDictionary<string, Func<JournalEntry, string?>> DimFields =
+            new Dictionary<string, Func<JournalEntry, string?>>
+            {
+                [DimCategory] = e => e.Category,
+                [DimCounterparty] = e => e.Counterparty,
+                [DimProject] = e => e.Project,
+                [DimDepartment] = e => e.Department,
+            };
+
+        /// <summary>维度显示名（页头「主类别 / 次类别」与段名用）。</summary>
+        private static readonly IReadOnlyDictionary<string, string> DimLabels =
+            new Dictionary<string, string>
+            {
+                [DimCategory] = "收支类别",
+                [DimCounterparty] = "往来单位",
+                [DimProject] = "项目",
+                [DimDepartment] = "部门",
+            };
+
+        /// <summary>组合维度的主类别固定为收支类别（与柠檬云一致）。</summary>
+        private const string ComboPrimary = DimCategory;
+
+        /// <summary>组合维度可选的次类别。</summary>
+        public static readonly IReadOnlyList<string> ComboSecondaries = [DimProject, DimDepartment, DimCounterparty, DimCategory];
+
         private readonly IAccountSetRepository _accountSetRepository;
         private readonly IJournalRepository _journalRepository;
         private readonly IAccountRepository _accountRepository;
         private readonly IVoucherRepository _voucherRepository;
+        private readonly IEntryCategoryRepository _entryCategoryRepository;
 
         public FundReportService(
             IAccountSetRepository accountSetRepository,
             IJournalRepository journalRepository,
             IAccountRepository accountRepository,
-            IVoucherRepository voucherRepository)
+            IVoucherRepository voucherRepository,
+            IEntryCategoryRepository entryCategoryRepository)
         {
             _accountSetRepository = accountSetRepository;
             _journalRepository = journalRepository;
             _accountRepository = accountRepository;
             _voucherRepository = voucherRepository;
+            _entryCategoryRepository = entryCategoryRepository;
         }
 
         /// <summary>按维度生成资金报表。</summary>
+        /// <param name="dimension">汇总维度：account（默认）/ category / counterparty / project / department / combo。</param>
+        /// <param name="journalId">按账户筛选（仅汇总该日记账的流水）；为空表示全部账户。</param>
+        /// <param name="keyword">维度值名称模糊搜索；为空表示全部。</param>
+        /// <param name="secondary">组合维度的次类别：project（默认）/ department / counterparty / category。</param>
         public async Task<FundReportDto> GetReportAsync(
             Guid accountSetId,
             string? dimension,
             DateOnly? startDate,
             DateOnly? endDate,
+            Guid? journalId = null,
+            string? keyword = null,
+            string? secondary = null,
             CancellationToken cancellationToken = default)
         {
             await EnsureAccountSetExists(accountSetId, cancellationToken);
@@ -51,13 +97,21 @@ namespace KuaiJi.Modules.Funds.Application
             var dim = NormalizeDimension(dimension);
             var (start, end) = ResolveRange(startDate, endDate);
             var journals = await LoadJournalsWithEntriesAsync(accountSetId, cancellationToken);
+            if (journalId is { } id && id != Guid.Empty)
+            {
+                journals = journals.Where(j => j.Id == id).ToList();
+            }
+
             var accountsById = await LoadAccountsById(accountSetId, cancellationToken);
 
-            var rows = dim switch
+            var sections = dim switch
             {
-                FundReportDimensions.Account => BuildAccountRows(journals, accountsById, start, end),
-                FundReportDimensions.Category => BuildGroupRows(journals, start, end, e => e.Category, "未分类"),
-                _ => BuildGroupRows(journals, start, end, e => e.Counterparty, "未填写"),
+                FundReportDimensions.Category => await BuildCategorySectionsAsync(accountSetId, journals, start, end, keyword, cancellationToken),
+                FundReportDimensions.Counterparty => [BuildSingleSection(journals, start, end, keyword, DimFields[DimCounterparty], "往来单位", "往来单位合计")],
+                FundReportDimensions.Project => [BuildSingleSection(journals, start, end, keyword, DimFields[DimProject], "项目", "项目合计")],
+                FundReportDimensions.Department => [BuildSingleSection(journals, start, end, keyword, DimFields[DimDepartment], "部门", "部门合计")],
+                FundReportDimensions.Combo => [BuildComboSection(journals, start, end, keyword, ResolveSecondary(secondary))],
+                _ => BuildAccountSections(journals, accountsById, start, end),
             };
 
             return new FundReportDto
@@ -65,21 +119,37 @@ namespace KuaiJi.Modules.Funds.Application
                 Dimension = dim,
                 StartDate = start,
                 EndDate = end,
-                Rows = rows,
-                Total = BuildTotal(dim, rows),
+                Sections = sections,
+                Total = BuildTotal(sections),
+                Note = NoteOf(dim),
+                CurrencyNote = dim == FundReportDimensions.Account ? CurrencyNoteText : null,
+                SupportsAccountFilter = dim != FundReportDimensions.Account,
+                PrimaryText = dim == FundReportDimensions.Combo ? DimLabels[ComboPrimary] : null,
+                SecondaryText = dim == FundReportDimensions.Combo ? DimLabels[ResolveSecondary(secondary)] : null,
             };
         }
 
-        /// <summary>核对总账：逐账户对照出纳余额与总账科目余额，列出差异。</summary>
+        /// <summary>
+        /// 核对总账：按会计期间（核对日所在月 1 日 ~ 核对日）逐账户列出
+        /// 期初余额 / 借方(收入) / 贷方(支出) / 余额，并与总账科目余额对照给出差异。
+        /// </summary>
+        /// <param name="journalId">只核对指定资金账户；为空表示全部账户。</param>
         public async Task<FundReconciliationDto> GetReconciliationAsync(
             Guid accountSetId,
             DateOnly? date,
+            Guid? journalId = null,
             CancellationToken cancellationToken = default)
         {
             await EnsureAccountSetExists(accountSetId, cancellationToken);
 
             var asOf = date ?? DateOnly.FromDateTime(DateTime.Today);
+            var periodStart = new DateOnly(asOf.Year, asOf.Month, 1);
             var journals = await LoadJournalsWithEntriesAsync(accountSetId, cancellationToken);
+            if (journalId is { } id && id != Guid.Empty)
+            {
+                journals = journals.Where(j => j.Id == id).ToList();
+            }
+
             var accountsById = await LoadAccountsById(accountSetId, cancellationToken);
 
             // 总账侧：各科目截至核对日的累计净额（借 - 贷，仅已过账凭证 + 科目期初）。
@@ -113,11 +183,18 @@ namespace KuaiJi.Modules.Funds.Application
             }
 
             var rows = new List<FundReconciliationRowDto>();
-            foreach (var journal in journals.OrderBy(j => j.Name, StringComparer.Ordinal))
+            foreach (var journal in journals
+                         .OrderBy(j => j.Type)
+                         .ThenBy(j => accountsById.GetValueOrDefault(j.AccountId)?.Code ?? string.Empty, StringComparer.Ordinal)
+                         .ThenBy(j => j.Name, StringComparer.Ordinal))
             {
-                // 出纳余额：期初 + 截至核对日的收入 − 支出（手工台账全量参与）。
-                var journalBalance = journal.OpeningBalance
-                    + journal.Entries.Where(e => e.Date <= asOf).Sum(e => e.Income - e.Expense);
+                // 期初：账户期初 + 期间起始日之前的流水；借/贷：期间内的收入与支出。
+                var opening = journal.OpeningBalance
+                    + journal.Entries.Where(e => e.Date < periodStart).Sum(e => e.Income - e.Expense);
+                var inPeriod = journal.Entries.Where(e => e.Date >= periodStart && e.Date <= asOf).ToList();
+                var debit = inPeriod.Sum(e => e.Income);
+                var credit = inPeriod.Sum(e => e.Expense);
+                var balance = opening + debit - credit;
 
                 string? note = null;
                 var ledgerBalance = 0m;
@@ -127,18 +204,22 @@ namespace KuaiJi.Modules.Funds.Application
                 }
                 else
                 {
-                    note = "绑定科目不存在，请到「账户设置」中重新绑定。";
+                    note = "未关联科目，请到「账户设置」中重新关联。";
                 }
 
-                var difference = journalBalance - ledgerBalance;
+                var difference = balance - ledgerBalance;
                 rows.Add(new FundReconciliationRowDto
                 {
                     JournalId = journal.Id,
                     JournalName = journal.Name,
                     JournalType = (int)journal.Type,
+                    ProjectText = journal.Type == JournalType.Cash ? "现金" : "银行存款",
                     AccountCode = accountsById.GetValueOrDefault(journal.AccountId)?.Code ?? string.Empty,
                     AccountName = accountsById.GetValueOrDefault(journal.AccountId)?.Name ?? string.Empty,
-                    JournalBalance = journalBalance,
+                    OpeningBalance = opening,
+                    Debit = debit,
+                    Credit = credit,
+                    Balance = balance,
                     LedgerBalance = ledgerBalance,
                     Difference = difference,
                     Balanced = note is null && difference == 0m,
@@ -148,71 +229,158 @@ namespace KuaiJi.Modules.Funds.Application
 
             return new FundReconciliationDto
             {
+                StartDate = periodStart,
                 Date = asOf,
                 AllBalanced = rows.All(r => r.Balanced),
+                HasUnlinkedAccounts = rows.Any(r => r.Note is not null),
                 Rows = rows,
             };
         }
 
-        private static List<FundReportRowDto> BuildAccountRows(
+        /* ---------------- 账户维度：现金账户｜银行账户 两段 ---------------- */
+
+        private static List<FundReportSectionDto> BuildAccountSections(
             IReadOnlyList<Journal> journals,
             IReadOnlyDictionary<Guid, Account> accountsById,
             DateOnly start,
             DateOnly end)
         {
-            var rows = new List<FundReportRowDto>();
-            foreach (var journal in journals.OrderBy(j => j.Name, StringComparer.Ordinal))
+            return
+            [
+                BuildAccountSection("现金账户", "人民币合计", JournalType.Cash),
+                BuildAccountSection("银行账户", "人民币合计", JournalType.BankDeposit),
+            ];
+
+            FundReportSectionDto BuildAccountSection(string name, string subtotalLabel, JournalType type)
             {
-                var opening = journal.OpeningBalance
-                    + journal.Entries.Where(e => e.Date < start).Sum(e => e.Income - e.Expense);
-                var inRange = journal.Entries.Where(e => e.Date >= start && e.Date <= end).ToList();
-                var totalIncome = inRange.Sum(e => e.Income);
-                var totalExpense = inRange.Sum(e => e.Expense);
-
-                rows.Add(new FundReportRowDto
+                var rows = new List<FundReportRowDto>();
+                foreach (var journal in journals.Where(j => j.Type == type))
                 {
-                    Name = journal.Name,
-                    Code = accountsById.GetValueOrDefault(journal.AccountId)?.Code,
-                    OpeningBalance = opening,
-                    TotalIncome = totalIncome,
-                    TotalExpense = totalExpense,
-                    Balance = opening + totalIncome - totalExpense,
-                    IncomeCount = inRange.Count(e => e.Income > 0m),
-                    ExpenseCount = inRange.Count(e => e.Expense > 0m),
-                });
-            }
+                    var opening = journal.OpeningBalance
+                        + journal.Entries.Where(e => e.Date < start).Sum(e => e.Income - e.Expense);
+                    var inRange = journal.Entries.Where(e => e.Date >= start && e.Date <= end).ToList();
+                    var totalIncome = inRange.Sum(e => e.Income);
+                    var totalExpense = inRange.Sum(e => e.Expense);
 
-            return rows;
+                    rows.Add(new FundReportRowDto
+                    {
+                        Name = journal.Name,
+                        Code = accountsById.GetValueOrDefault(journal.AccountId)?.Code,
+                        OpeningBalance = opening,
+                        TotalIncome = totalIncome,
+                        TotalExpense = totalExpense,
+                        Balance = opening + totalIncome - totalExpense,
+                        IncomeCount = inRange.Count(e => e.Income > 0m),
+                        ExpenseCount = inRange.Count(e => e.Expense > 0m),
+                    });
+                }
+
+                rows = rows
+                    .OrderBy(r => r.Code ?? string.Empty, StringComparer.Ordinal)
+                    .ThenBy(r => r.Name, StringComparer.Ordinal)
+                    .ToList();
+
+                return new FundReportSectionDto
+                {
+                    Name = name,
+                    SubtotalLabel = subtotalLabel,
+                    Rows = rows,
+                    Subtotal = SumRows(subtotalLabel, rows, withOpening: true),
+                };
+            }
         }
 
-        private static List<FundReportRowDto> BuildGroupRows(
+        /* ---------------- 收支类别维度：收入类别｜支出类别 两段 ---------------- */
+
+        private async Task<List<FundReportSectionDto>> BuildCategorySectionsAsync(
+            Guid accountSetId,
             IReadOnlyList<Journal> journals,
             DateOnly start,
             DateOnly end,
-            Func<JournalEntry, string?> keySelector,
-            string emptyLabel)
+            string? keyword,
+            CancellationToken cancellationToken)
         {
-            var groups = new Dictionary<string, (decimal Income, decimal Expense, int IncomeCount, int ExpenseCount)>();
-            foreach (var journal in journals)
+            var categories = await _entryCategoryRepository.GetAllAsync(accountSetId, cancellationToken);
+            var typeByName = new Dictionary<string, EntryCategoryType>(StringComparer.Ordinal);
+            foreach (var category in categories)
             {
-                foreach (var entry in journal.Entries)
-                {
-                    if (entry.Date < start || entry.Date > end)
-                    {
-                        continue;
-                    }
-
-                    var key = keySelector(entry) ?? emptyLabel;
-                    var current = groups.GetValueOrDefault(key);
-                    groups[key] = (
-                        current.Income + entry.Income,
-                        current.Expense + entry.Expense,
-                        current.IncomeCount + (entry.Income > 0m ? 1 : 0),
-                        current.ExpenseCount + (entry.Expense > 0m ? 1 : 0));
-                }
+                typeByName[category.Name] = category.Type;
             }
 
-            return groups
+            var buckets = SumBy(journals, start, end, e => string.IsNullOrWhiteSpace(e.Category) ? "未分类" : e.Category!);
+
+            var term = keyword?.Trim();
+            var incomeRows = new List<FundReportRowDto>();
+            var expenseRows = new List<FundReportRowDto>();
+            foreach (var (name, value) in buckets
+                         .Where(p => term is null || term.Length == 0 || p.Key.Contains(term, StringComparison.OrdinalIgnoreCase))
+                         .OrderByDescending(p => p.Value.Income + p.Value.Expense)
+                         .ThenBy(p => p.Key, StringComparer.Ordinal))
+            {
+                // 类别归属优先取收支类别档案；档案缺失（如已删除）时按金额方向判定。
+                var isIncome = typeByName.TryGetValue(name, out var type)
+                    ? type == EntryCategoryType.Income
+                    : value.Income >= value.Expense;
+
+                var row = new FundReportRowDto
+                {
+                    Name = name,
+                    TotalIncome = value.Income,
+                    TotalExpense = value.Expense,
+                    Balance = value.Income - value.Expense,
+                    IncomeCount = value.IncomeCount,
+                    ExpenseCount = value.ExpenseCount,
+                };
+
+                (isIncome ? incomeRows : expenseRows).Add(row);
+            }
+
+            return
+            [
+                Section("收入类别", "收入合计", incomeRows),
+                Section("支出类别", "支出合计", expenseRows),
+            ];
+
+            static FundReportSectionDto Section(string name, string subtotalLabel, List<FundReportRowDto> rows)
+            {
+                var numbered = rows
+                    .Select((r, i) => new FundReportRowDto
+                    {
+                        Name = r.Name,
+                        Code = (i + 1).ToString(),
+                        TotalIncome = r.TotalIncome,
+                        TotalExpense = r.TotalExpense,
+                        Balance = r.Balance,
+                        IncomeCount = r.IncomeCount,
+                        ExpenseCount = r.ExpenseCount,
+                    })
+                    .ToList();
+
+                return new FundReportSectionDto
+                {
+                    Name = name,
+                    SubtotalLabel = subtotalLabel,
+                    Rows = numbered,
+                    Subtotal = SumRows(subtotalLabel, numbered, withOpening: false),
+                };
+            }
+        }
+
+        /* ---------------- 单维度（往来单位 / 项目 / 部门）：段名与标签由调用方给定 ---------------- */
+
+        private static FundReportSectionDto BuildSingleSection(
+            IReadOnlyList<Journal> journals,
+            DateOnly start,
+            DateOnly end,
+            string? keyword,
+            Func<JournalEntry, string?> field,
+            string name,
+            string subtotalLabel)
+        {
+            var buckets = SumBy(journals, start, end, e => field(e) ?? "未填写");
+            var term = keyword?.Trim();
+            var rows = buckets
+                .Where(p => term is null || term.Length == 0 || p.Key.Contains(term, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(p => p.Value.Income + p.Value.Expense)
                 .ThenBy(p => p.Key, StringComparer.Ordinal)
                 .Select(p => new FundReportRowDto
@@ -225,16 +393,108 @@ namespace KuaiJi.Modules.Funds.Application
                     ExpenseCount = p.Value.ExpenseCount,
                 })
                 .ToList();
+
+            return new FundReportSectionDto
+            {
+                Name = name,
+                SubtotalLabel = subtotalLabel,
+                Rows = rows,
+                Subtotal = SumRows(subtotalLabel, rows, withOpening: false),
+            };
         }
 
-        private static FundReportRowDto BuildTotal(string dimension, IReadOnlyList<FundReportRowDto> rows)
+        /* ---------------- 组合维度：主类别（收支类别）× 次类别，一一对应分组 ---------------- */
+
+        private FundReportSectionDto BuildComboSection(
+            IReadOnlyList<Journal> journals,
+            DateOnly start,
+            DateOnly end,
+            string? keyword,
+            string secondary)
+        {
+            var primaryField = DimFields[ComboPrimary];
+            var secondaryField = DimFields[secondary];
+            var subtotalLabel = "组合合计";
+
+            var buckets = SumBy(journals, start, end, e => $"{primaryField(e) ?? "未填写"}\u0001{secondaryField(e) ?? "未填写"}");
+            var term = keyword?.Trim();
+            var rows = buckets
+                .Select(p =>
+                {
+                    var parts = p.Key.Split('\u0001');
+                    return (Primary: parts[0], Secondary: parts[1], Value: p.Value);
+                })
+                .Where(p => term is null || term.Length == 0
+                            || p.Primary.Contains(term, StringComparison.OrdinalIgnoreCase)
+                            || p.Secondary.Contains(term, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(p => p.Primary, StringComparer.Ordinal)
+                .ThenByDescending(p => p.Value.Income + p.Value.Expense)
+                .Select(p => new FundReportRowDto
+                {
+                    Name = p.Primary,
+                    SecondaryName = p.Secondary,
+                    TotalIncome = p.Value.Income,
+                    TotalExpense = p.Value.Expense,
+                    Balance = p.Value.Income - p.Value.Expense,
+                    IncomeCount = p.Value.IncomeCount,
+                    ExpenseCount = p.Value.ExpenseCount,
+                })
+                .ToList();
+
+            return new FundReportSectionDto
+            {
+                Name = $"{DimLabels[ComboPrimary]}×{DimLabels[secondary]}",
+                SubtotalLabel = subtotalLabel,
+                Rows = rows,
+                Subtotal = SumRows(subtotalLabel, rows, withOpening: false),
+            };
+        }
+
+        /// <summary>组合次类别归一：非法值回落项目（柠檬云默认）。</summary>
+        private static string ResolveSecondary(string? secondary)
+        {
+            var value = (secondary ?? DimProject).Trim().ToLowerInvariant();
+            return ComboSecondaries.Contains(value) ? value : DimProject;
+        }
+
+        /// <summary>按 <paramref name="keyOf"/> 分组累计区间内的收入 / 支出与笔数。</summary>
+        private static Dictionary<string, (decimal Income, decimal Expense, int IncomeCount, int ExpenseCount)> SumBy(
+            IReadOnlyList<Journal> journals,
+            DateOnly start,
+            DateOnly end,
+            Func<JournalEntry, string> keyOf)
+        {
+            var buckets = new Dictionary<string, (decimal Income, decimal Expense, int IncomeCount, int ExpenseCount)>(StringComparer.Ordinal);
+            foreach (var journal in journals)
+            {
+                foreach (var entry in journal.Entries)
+                {
+                    if (entry.Date < start || entry.Date > end)
+                    {
+                        continue;
+                    }
+
+                    var key = keyOf(entry);
+                    var current = buckets.GetValueOrDefault(key);
+                    buckets[key] = (
+                        current.Income + entry.Income,
+                        current.Expense + entry.Expense,
+                        current.IncomeCount + (entry.Income > 0m ? 1 : 0),
+                        current.ExpenseCount + (entry.Expense > 0m ? 1 : 0));
+                }
+            }
+
+            return buckets;
+        }
+
+        /* ---------------- 合计与工具 ---------------- */
+
+        private static FundReportRowDto SumRows(string label, IReadOnlyList<FundReportRowDto> rows, bool withOpening)
         {
             return new FundReportRowDto
             {
-                Name = "总计",
-                OpeningBalance = dimension == FundReportDimensions.Account
-                    ? rows.Sum(r => r.OpeningBalance ?? 0m)
-                    : null,
+                Name = label,
+                OpeningBalance = withOpening ? rows.Sum(r => r.OpeningBalance ?? 0m) : null,
                 TotalIncome = rows.Sum(r => r.TotalIncome),
                 TotalExpense = rows.Sum(r => r.TotalExpense),
                 Balance = rows.Sum(r => r.Balance),
@@ -243,15 +503,27 @@ namespace KuaiJi.Modules.Funds.Application
             };
         }
 
+        private static FundReportRowDto BuildTotal(IReadOnlyList<FundReportSectionDto> sections)
+        {
+            var all = sections.SelectMany(s => s.Rows).ToList();
+            var withOpening = sections.Count > 0 && sections[0].Subtotal.OpeningBalance is not null;
+            return SumRows("合计", all, withOpening);
+        }
+
+        private static string? NoteOf(string dimension) => dimension switch
+        {
+            FundReportDimensions.Category => "内部转账，不计入收支",
+            FundReportDimensions.Counterparty => "内部转账，不计入往来",
+            FundReportDimensions.Project => "内部转账，不计入项目",
+            FundReportDimensions.Department => "内部转账，不计入部门",
+            FundReportDimensions.Combo => "内部转账，不计入往来",
+            _ => null,
+        };
+
         private static string NormalizeDimension(string? dimension)
         {
             var value = (dimension ?? FundReportDimensions.Account).Trim().ToLowerInvariant();
-            return value switch
-            {
-                FundReportDimensions.Category => FundReportDimensions.Category,
-                FundReportDimensions.Counterparty => FundReportDimensions.Counterparty,
-                _ => FundReportDimensions.Account,
-            };
+            return FundReportDimensions.All.Contains(value) ? value : FundReportDimensions.Account;
         }
 
         private static (DateOnly Start, DateOnly End) ResolveRange(DateOnly? startDate, DateOnly? endDate)

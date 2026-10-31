@@ -20,6 +20,7 @@ namespace KuaiJi.Modules.Reports.Api
         private readonly CashJournalService _cashJournalService;
         private readonly IncomeStatementService _incomeStatementService;
         private readonly CashFlowService _cashFlowService;
+        private readonly CashFlowSupplementService _cashFlowSupplementService;
         private readonly AssistIncomeService _assistIncomeService;
         private readonly ExpenseDetailService _expenseDetailService;
         private readonly EquityChangeService _equityChangeService;
@@ -33,6 +34,7 @@ namespace KuaiJi.Modules.Reports.Api
             CashJournalService cashJournalService,
             IncomeStatementService incomeStatementService,
             CashFlowService cashFlowService,
+            CashFlowSupplementService cashFlowSupplementService,
             AssistIncomeService assistIncomeService,
             ExpenseDetailService expenseDetailService,
             EquityChangeService equityChangeService,
@@ -45,6 +47,7 @@ namespace KuaiJi.Modules.Reports.Api
             _cashJournalService = cashJournalService;
             _incomeStatementService = incomeStatementService;
             _cashFlowService = cashFlowService;
+            _cashFlowSupplementService = cashFlowSupplementService;
             _assistIncomeService = assistIncomeService;
             _expenseDetailService = expenseDetailService;
             _equityChangeService = equityChangeService;
@@ -231,6 +234,74 @@ namespace KuaiJi.Modules.Reports.Api
             try
             {
                 var result = await _cashFlowService.GetQuarterAsync(accountSetId, year, quarter, cancellationToken);
+                return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 现金流量表补充资料（间接法）：把净利润按调节项还原为经营活动现金流量净额，
+        /// 并核对现金及现金等价物净增加额；同时返回与主表直接法净额的勾稽差异。
+        /// 可选 year/month，省略时取最近有凭证的月份（与主表同一解析规则）。
+        /// </summary>
+        [HttpGet("cash-flow-supplement")]
+        public async Task<ActionResult<CashFlowSupplementDto>> GetCashFlowSupplement(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _cashFlowSupplementService.GetPeriodAsync(accountSetId, year, month, cancellationToken);
+                return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 现金流量表底稿（直接法）：逐张凭证列出现金收支按对手方科目分摊的结果，
+        /// 并标注归入的标准行次与方向，用于核对主表行次金额的来源。
+        /// 可选 year/month，省略时取最近有凭证的月份（与主表同一解析规则）。
+        /// </summary>
+        [HttpGet("cash-flow-workpaper")]
+        public async Task<ActionResult<CashFlowWorkpaperDto>> GetCashFlowWorkpaper(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _cashFlowService.GetWorkpaperAsync(accountSetId, year, month, cancellationToken);
+                return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 期初现金余额：按现金科目列示期间起点前与截止日的余额（含科目启用期初），
+        /// 合计与主表「期初现金余额」「期末现金余额」一致。可选 year/month，省略时取最近有凭证的月份。
+        /// </summary>
+        [HttpGet("cash-flow-opening")]
+        public async Task<ActionResult<CashFlowOpeningDto>> GetCashFlowOpening(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _cashFlowService.GetOpeningAsync(accountSetId, year, month, cancellationToken);
                 return Ok(result);
             }
             catch (ReportException ex)

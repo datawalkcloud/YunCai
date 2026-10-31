@@ -14,6 +14,12 @@ namespace KuaiJi.Modules.Funds.Domain
         /// <summary>获取指定账套的全部日记账（不含分录，用于列表）。</summary>
         Task<IReadOnlyList<Journal>> GetAllAsync(Guid accountSetId, CancellationToken cancellationToken = default);
 
+        /// <summary>生成指定账套、指定类型的下一个可用账户编码（纯数字序号，长度对齐 <see cref="Journal.MaxCodeLength"/>）。</summary>
+        Task<string> NextCodeAsync(Guid accountSetId, JournalType type, CancellationToken cancellationToken = default);
+
+        /// <summary>判断同账套同类型下指定编码是否已被占用（<paramref name="excludeId"/> 非空时排除该账户自身）。</summary>
+        Task<bool> ExistsByCodeAsync(Guid accountSetId, JournalType type, string code, Guid? excludeId = null, CancellationToken cancellationToken = default);
+
         /// <summary>获取资金类（现金 + 银行存款）日记账在日期区间内的分录（含所属账簿名与科目），按日期升序。</summary>
         Task<IReadOnlyList<(Journal Journal, JournalEntry Entry)>> GetFundEntriesRangeAsync(
             Guid accountSetId,

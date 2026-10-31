@@ -20,6 +20,9 @@ namespace KuaiJi.Modules.Vouchers.Application
 
         public int AttachmentCount { get; init; }
 
+        /// <summary>凭证备注。</summary>
+        public string? Remark { get; init; }
+
         public int Status { get; init; }
 
         public string StatusText { get; init; } = null!;
@@ -46,6 +49,7 @@ namespace KuaiJi.Modules.Vouchers.Application
             VoucherNo = $"{voucher.Word}-{voucher.Number}",
             Date = voucher.Date,
             AttachmentCount = voucher.AttachmentCount,
+            Remark = voucher.Remark,
             Status = (int)voucher.Status,
             StatusText = StatusTextOf(voucher.Status),
             Preparer = voucher.Preparer,
@@ -167,6 +171,9 @@ namespace KuaiJi.Modules.Vouchers.Application
 
         public int AttachmentCount { get; init; }
 
+        /// <summary>凭证备注。</summary>
+        public string? Remark { get; init; }
+
         public int Status { get; init; }
 
         public string StatusText { get; init; } = null!;
@@ -191,6 +198,7 @@ namespace KuaiJi.Modules.Vouchers.Application
             VoucherNo = $"{voucher.Word}-{voucher.Number}",
             Date = voucher.Date,
             AttachmentCount = voucher.AttachmentCount,
+            Remark = voucher.Remark,
             Status = (int)voucher.Status,
             StatusText = VoucherListItemDto.StatusTextOf(voucher.Status),
             Preparer = voucher.Preparer,
@@ -231,7 +239,71 @@ namespace KuaiJi.Modules.Vouchers.Application
 
         public int AttachmentCount { get; init; }
 
+        /// <summary>凭证备注，可省略。</summary>
+        public string? Remark { get; init; }
+
         public IReadOnlyList<CreateVoucherEntryRequest> Entries { get; init; } = [];
+    }
+
+    /// <summary>导出凭证请求：给 ids 则只导出选中凭证，否则按 Query 的条件导出。</summary>
+    public sealed class ExportVouchersRequest
+    {
+        /// <summary>选中的凭证明细标识；为空表示按条件导出。</summary>
+        public IReadOnlyList<Guid>? Ids { get; init; }
+
+        /// <summary>导出范围条件，省略时导出全部未删除凭证。</summary>
+        public VoucherQuery? Query { get; init; }
+    }
+
+    /// <summary>凭证 PDF 打印请求：选中凭证 + 打印版式选项。</summary>
+    public sealed class VoucherPdfRequest
+    {
+        /// <summary>选中的凭证标识；为空表示按条件打印。</summary>
+        public IReadOnlyList<Guid>? Ids { get; init; }
+
+        /// <summary>打印范围条件，省略时打印全部未删除凭证。</summary>
+        public VoucherQuery? Query { get; init; }
+
+        /* —— 版式选项，与前端「凭证打印」设置同构 —— */
+        public string Paper { get; init; } = "A4x2";
+        public string Orientation { get; init; } = "portrait";
+        public string Valign { get; init; } = "top";
+        public int Rows { get; init; } = 5;
+        public int FontSize { get; init; } = 10;
+        public int MarginLeft { get; init; } = 25;
+        public int MarginRight { get; init; } = 10;
+        public int MarginTop { get; init; } = 14;
+        public int MarginBottom { get; init; } = 15;
+        public bool SignPreparer { get; init; } = true;
+        public string? PreparerText { get; init; }
+        public bool SignReviewer { get; init; } = true;
+        public string? ReviewerText { get; init; }
+        public bool SignManager { get; init; }
+        public string? ManagerText { get; init; }
+        public bool SignBookkeeper { get; init; }
+        public string? BookkeeperText { get; init; }
+        public bool SignCashier { get; init; }
+        public string? CashierText { get; init; }
+        public bool SignTime { get; init; }
+        public bool ShowAccountCode { get; init; } = true;
+        public bool ZeroAttachment { get; init; }
+        public bool MergePrint { get; init; }
+    }
+
+    /// <summary>整理凭证请求：期间 + 凭证字 + 重排依据。</summary>
+    public sealed class RenumberVouchersRequest
+    {
+        /// <summary>凭证字；为空表示全部凭证字。</summary>
+        public string? Word { get; init; }
+
+        /// <summary>整理期间起（含）；为空表示不限。</summary>
+        public DateOnly? PeriodStart { get; init; }
+
+        /// <summary>整理期间止（含）；为空表示不限。</summary>
+        public DateOnly? PeriodEnd { get; init; }
+
+        /// <summary>true 按凭证日期重排，false 按凭证号重排。</summary>
+        public bool ByDate { get; init; }
     }
 
     /// <summary>编辑凭证请求。凭证字与号不可更改，仅可修改日期、附单据数与全部分录（整体替换）。</summary>
@@ -240,6 +312,9 @@ namespace KuaiJi.Modules.Vouchers.Application
         public DateOnly Date { get; init; }
 
         public int AttachmentCount { get; init; }
+
+        /// <summary>凭证备注，可省略。</summary>
+        public string? Remark { get; init; }
 
         public IReadOnlyList<CreateVoucherEntryRequest> Entries { get; init; } = [];
     }

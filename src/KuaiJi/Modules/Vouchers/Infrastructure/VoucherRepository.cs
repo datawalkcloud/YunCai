@@ -37,13 +37,13 @@ namespace KuaiJi.Modules.Vouchers.Infrastructure
 
         public Task<bool> ExistsByWordAndNumberAsync(Guid accountSetId, string word, int number, CancellationToken cancellationToken = default)
         {
-            return _context.Vouchers.AnyAsync(v => v.AccountSetId == accountSetId && v.Word == word && v.Number == number, cancellationToken);
+            return _context.Vouchers.AnyAsync(v => v.AccountSetId == accountSetId && v.Word == word && v.Number == number && v.DeletedAt == null, cancellationToken);
         }
 
         public Task<bool> ExistsByWordNumberDateAsync(Guid accountSetId, string word, int number, DateOnly date, CancellationToken cancellationToken = default)
         {
             return _context.Vouchers.AnyAsync(
-                v => v.AccountSetId == accountSetId && v.Word == word && v.Number == number && v.Date == date,
+                v => v.AccountSetId == accountSetId && v.Word == word && v.Number == number && v.Date == date && v.DeletedAt == null,
                 cancellationToken);
         }
 
@@ -52,13 +52,13 @@ namespace KuaiJi.Modules.Vouchers.Infrastructure
             return _context.Vouchers
                 .Include(v => v.Entries)
                 .FirstOrDefaultAsync(
-                    v => v.AccountSetId == accountSetId && v.Word == word && v.Number == number && v.Date == date,
+                    v => v.AccountSetId == accountSetId && v.Word == word && v.Number == number && v.Date == date && v.DeletedAt == null,
                     cancellationToken);
         }
 
         public async Task<int> GetMaxNumberAsync(Guid accountSetId, string word, CancellationToken cancellationToken = default)
         {
-            var query = _context.Vouchers.Where(v => v.AccountSetId == accountSetId && v.Word == word);
+            var query = _context.Vouchers.Where(v => v.AccountSetId == accountSetId && v.Word == word && v.DeletedAt == null);
             return await query.AnyAsync(cancellationToken)
                 ? await query.MaxAsync(v => v.Number, cancellationToken)
                 : 0;

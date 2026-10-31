@@ -57,6 +57,59 @@ namespace KuaiJi.Modules.Funds.Infrastructure
             return stream.ToArray();
         }
 
+        /// <summary>
+        /// 生成「所有账户全部数据」导出：把多本日记账的分录合到一张表，首列补「账户」。
+        /// 与单本导出共用列定义，因此同样可回传导入（账户列在导入时被忽略）。
+        /// </summary>
+        public static byte[] BuildAll(IReadOnlyList<JournalDetailDto> journals)
+        {
+            var rows = new List<Dictionary<string, object?>>();
+            foreach (var journal in journals)
+            {
+                var accountLabel = string.IsNullOrWhiteSpace(journal.AccountCode)
+                    ? journal.Name
+                    : $"{journal.AccountCode} {journal.AccountName}";
+
+                foreach (var entry in journal.Entries.OrderBy(e => e.Date).ThenBy(e => e.Sequence))
+                {
+                    rows.Add(new Dictionary<string, object?>
+                    {
+                        ["账户"] = accountLabel,
+                        ["序号"] = entry.Sequence,
+                        ["日期"] = entry.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        ["摘要"] = entry.Summary,
+                        ["类别"] = entry.Category ?? string.Empty,
+                        ["往来"] = entry.Counterparty ?? string.Empty,
+                        ["收入"] = entry.Income,
+                        ["支出"] = entry.Expense,
+                        ["余额"] = entry.Balance,
+                        ["关联凭证号"] = entry.VoucherNo ?? string.Empty,
+                    });
+                }
+            }
+
+            if (rows.Count == 0)
+            {
+                rows.Add(new Dictionary<string, object?>
+                {
+                    ["账户"] = string.Empty,
+                    ["序号"] = string.Empty,
+                    ["日期"] = string.Empty,
+                    ["摘要"] = string.Empty,
+                    ["类别"] = string.Empty,
+                    ["往来"] = string.Empty,
+                    ["收入"] = string.Empty,
+                    ["支出"] = string.Empty,
+                    ["余额"] = string.Empty,
+                    ["关联凭证号"] = string.Empty,
+                });
+            }
+
+            using var stream = new MemoryStream();
+            MiniExcel.SaveAs(stream, new Dictionary<string, object> { ["日记账"] = rows }, excelType: ExcelType.XLSX);
+            return stream.ToArray();
+        }
+
         /// <summary>生成含账簿名的导出文件名。</summary>
         public static string BuildFileName(string journalName)
         {
