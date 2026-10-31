@@ -327,53 +327,54 @@ function buildIncomeRows(
     const ly = (line: number): string => nf(byLine.get(line)?.lastYear);
     const sum = (keys: number[], key: keyof IncomeLineValues): number => keys.reduce((acc, n) => acc + v(n, key), 0);
 
-    const revenueLines = [1, 8, 9, 11, 14];
-    const expenseLines = [2, 3, 4, 5, 6, 7, 12, 13];
-    const rows: StmtRow[] = [
-        item("一、营业收入", "1", s(1, "yearToDate"), s(1, "current"), {}, ly(1)),
-        item("减：营业成本", "2", s(2, "yearToDate"), s(2, "current"), { indent: true }, ly(2)),
-        item("税金及附加", "3", s(3, "yearToDate"), s(3, "current"), { check: true, indent: true }, ly(3)),
-        item("销售费用", "11", s(4, "yearToDate"), s(4, "current"), { check: true, indent: true }, ly(4)),
-        item("管理费用", "14", s(5, "yearToDate"), s(5, "current"), { check: true, indent: true }, ly(5)),
-        item("财务费用", "18", s(6, "yearToDate"), s(6, "current"), { check: true, indent: true }, ly(6)),
-        item("加：投资收益（亏损以“-”号填列）", "20", s(9, "yearToDate"), s(9, "current"), { indent: true }, ly(9)),
-    ];
+    // 行次与「利润表」一致：企业会计准则（2007）1-32 行
+    const revenueLines = [1, 8, 9];
+    const expenseLines = [2, 3, 4, 5, 6, 7];
+    const mk = (label: string, seq: string, line: number, style: { check?: boolean; indent?: boolean } = { indent: true }) =>
+        item(label, seq, s(line, "yearToDate"), s(line, "current"), style, ly(line));
+    const total = (label: string, seq: string, ytd: number, cur: number, lyv: number) =>
+        item(label, seq, nf(ytd), nf(cur), {}, nf(lyv));
+
     const netOf = (key: keyof IncomeLineValues) => sum(revenueLines, key) - sum(expenseLines, key);
-    rows.push(
-        item(
-            "二、营业利润（亏损以“-”号填列）",
-            "21",
-            nf(netOf("yearToDate")),
-            nf(netOf("current")),
-            {},
-            nf(netOf("lastYear")),
-        ),
-    );
-    rows.push(item("加：营业外收入", "22", s(16, "yearToDate"), s(16, "current"), { check: true, indent: true }, ly(16)));
-    rows.push(item("减：营业外支出", "24", s(17, "yearToDate"), s(17, "current"), { check: true, indent: true }, ly(17)));
-    const totalOf = (key: keyof IncomeLineValues) => netOf(key) + v(16, key) - v(17, key);
-    rows.push(
-        item(
-            "三、利润总额（亏损总额以“-”号填列）",
-            "30",
-            nf(totalOf("yearToDate")),
-            nf(totalOf("current")),
-            {},
-            nf(totalOf("lastYear")),
-        ),
-    );
-    rows.push(item("减：所得税费用", "31", s(19, "yearToDate"), s(19, "current"), { indent: true }, ly(19)));
-    rows.push(
-        item(
-            "四、净利润（净亏损以“-”号填列）",
-            "32",
-            nf(totalOf("yearToDate") - v(19, "yearToDate")),
-            nf(totalOf("current") - v(19, "current")),
-            {},
-            nf(totalOf("lastYear") - v(19, "lastYear")),
-        ),
-    );
-    return rows;
+    const totalOf = (key: keyof IncomeLineValues) => netOf(key) + v(12, key) - v(14, key);
+    const netProfitOf = (key: keyof IncomeLineValues) => totalOf(key) - v(17, key);
+
+    const zero = (label: string, seq: string) => item(label, seq, "", "", { indent: seq !== "19" && seq !== "30" });
+
+    return [
+        item("一、营业收入", "1", s(1, "yearToDate"), s(1, "current"), {}, ly(1)),
+        mk("减：营业成本", "2", 2),
+        mk("税金及附加", "3", 3, { check: true, indent: true }),
+        mk("销售费用", "4", 4, { check: true, indent: true }),
+        mk("管理费用", "5", 5, { check: true, indent: true }),
+        mk("财务费用", "6", 6, { check: true, indent: true }),
+        mk("资产减值损失", "7", 7, { check: true, indent: true }),
+        mk("加：公允价值变动收益（损失以“－”号填列）", "8", 8),
+        mk("投资收益（损失以“－”号填列）", "9", 9),
+        mk("其中：对联营企业和合营企业的投资收益", "10", 10, { indent: true }),
+        total("二、营业利润（亏损以“－”号填列）", "11", netOf("yearToDate"), netOf("current"), netOf("lastYear")),
+        mk("加：营业外收入", "12", 12, { check: true, indent: true }),
+        mk("其中：非流动资产处置利得", "13", 13, { indent: true }),
+        mk("减：营业外支出", "14", 14, { check: true, indent: true }),
+        mk("其中：非流动资产处置损失", "15", 15, { indent: true }),
+        total("三、利润总额（亏损总额以“－”号填列）", "16", totalOf("yearToDate"), totalOf("current"), totalOf("lastYear")),
+        mk("减：所得税费用", "17", 17),
+        total("四、净利润（净亏损以“－”号填列）", "18", netProfitOf("yearToDate"), netProfitOf("current"), netProfitOf("lastYear")),
+        zero("五、其他综合收益的税后净额", "19"),
+        zero("(一)以后不能重分类进损益的其他综合收益", "20"),
+        zero("1.重新计量设定受益计划净负债或净资产的变动", "21"),
+        zero("2.权益法下在被投资单位不能重分类进损益的其他综合收益中享有的份额", "22"),
+        zero("(二)以后将重分类进损益的其他综合收益", "23"),
+        zero("1.权益法下在被投资单位以后将重分类进损益的其他综合收益中享有的份额", "24"),
+        zero("2.可供出售金融资产公允价值变动损益", "25"),
+        zero("3.持有至到期投资重分类可供出售金融资产损益", "26"),
+        zero("4.现金流量套期损益的有效部分", "27"),
+        zero("5.外币财务报表折算差额", "28"),
+        total("六、综合收益总额", "29", netProfitOf("yearToDate"), netProfitOf("current"), netProfitOf("lastYear")),
+        item("七、每股收益：", "30", "", "", {}, ""),
+        zero("(一) 基本每股收益", "31"),
+        zero("(二) 稀释每股收益", "32"),
+    ];
 }
 
 export function LemonIncomeQuarter() {
@@ -1618,11 +1619,12 @@ export function LemonTaxReport() {
     );
 
     const accounts = data?.rows ?? [];
+    /** 税种分组（与柠檬云一致：固定六组、每组「应交 / 已交」两行，共 18 行） */
     const groups: Array<[string, (name: string) => boolean]> = [
-        ["(一) 增值税：", (n) => n.includes("增值税")],
-        ["(二) 所得税：", (n) => n.includes("所得税")],
-        ["(三) 消费税：", (n) => n.includes("消费税")],
-        ["(四) 城建税：", (n) => n.includes("城建税") || n.includes("城市维护建设税")],
+        ["（一）增值税：", (n) => n.includes("增值税")],
+        ["（二）所得税：", (n) => n.includes("所得税")],
+        ["（三）消费税：", (n) => n.includes("消费税")],
+        ["（四）城建税：", (n) => n.includes("城建税") || n.includes("城市维护建设税")],
     ];
     const used = new Set<number>();
     const rows: Row[] = [];
@@ -1631,60 +1633,69 @@ export function LemonTaxReport() {
     let totalYtd = 0;
     let totalCurPaid = 0;
     let totalYtdPaid = 0;
+
+    const pushPair = (label: string, amountYtd: number, amountCur: number, paidYtd: number, paidCur: number) => {
+        seq += 1;
+        rows.push(item(`应交${label}`, String(seq), nf(amountYtd), nf(amountCur), { indent: true }));
+        seq += 1;
+        rows.push({ ...item(`已交${label}`, String(seq), nf(paidYtd), nf(paidCur), { indent: true }), ytdYoy: "", curYoy: "" });
+    };
+
     for (const [sec, match] of groups) {
         rows.push({ item: sec, seq: "" });
+        let amountCur = 0;
+        let amountYtd = 0;
+        let paidCur = 0;
+        let paidYtd = 0;
+        let label = sec.replace(/^（[一二三四五六]）/, "").replace("：", "");
         for (let i = 0; i < accounts.length; i++) {
             const a = accounts[i]!;
             if (!match(a.name ?? "")) {
                 continue;
             }
             used.add(i);
-            totalCur += a.currentAmount ?? 0;
-            totalYtd += a.yearToDateAmount ?? 0;
-            totalCurPaid += a.currentPaidAmount ?? 0;
-            totalYtdPaid += a.yearToDatePaidAmount ?? 0;
-            seq += 1;
-            rows.push(item(`应交${a.name ?? ""}`, String(seq), nf(a.yearToDateAmount), nf(a.currentAmount), { indent: true }));
-            rows[rows.length - 1] = {
-                ...rows[rows.length - 1]!,
-                ytdYoy: pct(a.yearToDateYoyPercent),
-                curYoy: pct(a.currentYoyPercent),
-            };
-            seq += 1;
-            rows.push({
-                ...item(`已交${a.name ?? ""}`, String(seq), nf(a.yearToDatePaidAmount), nf(a.currentPaidAmount), { indent: true }),
-                ytdYoy: "",
-                curYoy: "",
-            });
+            amountCur += a.currentAmount ?? 0;
+            amountYtd += a.yearToDateAmount ?? 0;
+            paidCur += a.currentPaidAmount ?? 0;
+            paidYtd += a.yearToDatePaidAmount ?? 0;
+            label = a.name ?? label;
         }
+        totalCur += amountCur;
+        totalYtd += amountYtd;
+        totalCurPaid += paidCur;
+        totalYtdPaid += paidYtd;
+        pushPair(label, amountYtd, amountCur, paidYtd, paidCur);
     }
-    rows.push({ item: "(五) 其他税费：", seq: "" });
-    for (let i = 0; i < accounts.length; i++) {
-        const a = accounts[i]!;
-        if (used.has(i)) {
-            continue;
+
+    // （五）其他税费：未落入前四组的税种
+    rows.push({ item: "（五）其他税费：", seq: "" });
+    {
+        let amountCur = 0;
+        let amountYtd = 0;
+        let paidCur = 0;
+        let paidYtd = 0;
+        for (let i = 0; i < accounts.length; i++) {
+            if (used.has(i)) {
+                continue;
+            }
+            const a = accounts[i]!;
+            amountCur += a.currentAmount ?? 0;
+            amountYtd += a.yearToDateAmount ?? 0;
+            paidCur += a.currentPaidAmount ?? 0;
+            paidYtd += a.yearToDatePaidAmount ?? 0;
         }
-        totalCur += a.currentAmount ?? 0;
-        totalYtd += a.yearToDateAmount ?? 0;
-        totalCurPaid += a.currentPaidAmount ?? 0;
-        totalYtdPaid += a.yearToDatePaidAmount ?? 0;
-        seq += 1;
-        rows.push(item(`应交${a.name ?? ""}`, String(seq), nf(a.yearToDateAmount), nf(a.currentAmount), { indent: true }));
-        rows[rows.length - 1] = {
-            ...rows[rows.length - 1]!,
-            ytdYoy: pct(a.yearToDateYoyPercent),
-            curYoy: pct(a.currentYoyPercent),
-        };
-        seq += 1;
-        rows.push({
-            ...item(`已交${a.name ?? ""}`, String(seq), nf(a.yearToDatePaidAmount), nf(a.currentPaidAmount), { indent: true }),
-            ytdYoy: "",
-            curYoy: "",
-        });
+        totalCur += amountCur;
+        totalYtd += amountYtd;
+        totalCurPaid += paidCur;
+        totalYtdPaid += paidYtd;
+        pushPair("其他税费", amountYtd, amountCur, paidYtd, paidCur);
     }
-    rows.push({ item: "(六) 合计：", seq: "" });
-    rows.push({ ...item("应交税费合计", String(seq + 1), nf(totalYtd), nf(totalCur), { indent: true }), ytdYoy: "", curYoy: "" });
-    rows.push({ ...item("已交税费合计", String(seq + 2), nf(totalYtdPaid), nf(totalCurPaid), { indent: true }), ytdYoy: "", curYoy: "" });
+
+    rows.push({ item: "（六）合计：", seq: "" });
+    seq += 1;
+    rows.push({ ...item("应交税费合计", String(seq), nf(totalYtd), nf(totalCur), { indent: true }), ytdYoy: "", curYoy: "" });
+    seq += 1;
+    rows.push({ ...item("已交税费合计", String(seq), nf(totalYtdPaid), nf(totalCurPaid), { indent: true }), ytdYoy: "", curYoy: "" });
 
     const cols: Col[] = [
         { key: "item", title: "项目" },
