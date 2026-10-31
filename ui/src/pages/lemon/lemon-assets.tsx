@@ -1,15 +1,16 @@
 /**
  * 复刻区资产模块（对应柠檬云 /FixedAssets/*）：
- * 资产管理（初始化/列表/变更记录/计提折旧四页签 + 期初确认弹窗）、
- * 折旧摊销明细表、资产汇总表（部门/类别双页签）、资产类别设置、资产核对总账。
- * 视觉遵循全站云财蓝：主色 #2f6bff、圆角 rounded-lg/2xl、白卡 + slate 灰阶文字。
+ * 资产管理（初始化/列表/变更记录/计提折旧四页签 + 期初确认弹窗 + 折旧凭证设置）、
+ * 折旧摊销明细表、资产汇总表（部门/类别双页签）、资产类别设置、资产核对总账，
+ * 以及折旧凭证 / 变更凭证生成、资产导入导出与批量操作。
+ * 视觉遵循全站云财蓝：主色 #2f6bff、直角卡片、白卡 + slate 灰阶文字。
  */
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Dropdown } from "antd";
 import {
     ApartmentOutlined,
     AuditOutlined,
     BankOutlined,
-    CalendarOutlined,
     DownOutlined,
     FallOutlined,
     PieChartOutlined,
@@ -24,18 +25,18 @@ import {
     DateInput,
     Dialog,
     EmptyTip,
+    HintBox,
     Page,
     Pager,
     PeriodStepper,
     RefreshIcon,
     Select,
+    StateBar,
     SubTabs,
     Table,
     TextInput,
     Toast,
     ToolRow,
-    WipBtn,
-    WipNotice,
 } from "./components/ui";
 import type { Col, Row } from "./components/ui";
 import { useAuth } from "@/auth/AuthContext";
@@ -50,10 +51,14 @@ import {
     AccountsApi,
     FixedAssetsApi,
     type AccountDto,
+    type ChangeVoucherPreviewDto,
+    type DepreciationVoucherInfoDto,
     type FixedAssetCategoryDto,
     type FixedAssetChangeDto,
     type FixedAssetCheckRowDto,
     type FixedAssetDto,
+    type FixedAssetImportResultDto,
+    type FixedAssetVoucherSettingDto,
     type DepreciationLedgerRowDto,
     type FixedAssetSummaryRowDto,
 } from "@/apis-gen";
@@ -73,15 +78,42 @@ function toDateInput(d: Date | string | null | undefined): string {
 /** 资产属性展示文本 → 枚举。 */
 const attrOf = (t?: string | null) => (t === "无形资产" ? 2 : t === "长期待摊费用" ? 3 : 1);
 
-/** 页面顶部错误/加载条。 */
-function StateBar({ loading, error }: { loading?: boolean; error?: string | null }) {
-    if (error) {
-        return <div className="px-4 pb-2 text-[13px] text-[#ef4444]">{error}</div>;
+/** 资产模块接口前缀。 */
+const assetBase = (accountSetId: string) => `/api/accountsets/${accountSetId}/fixedassets`;
+
+/** 二进制下载（xlsx）：fetch + blob + a[download]，返回错误文案（成功返回 null）。 */
+async function downloadBlob(url: string, token: string, fallbackName: string): Promise<string | null> {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body && typeof body === "object" && "message" in body ? String((body as { message?: unknown }).message ?? "") : "";
+        return message || `下载失败（HTTP ${res.status}）`;
     }
-    if (loading) {
-        return <div className="px-4 pb-2 text-[13px] text-slate-400">加载中…</div>;
-    }
+
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const star = /filename\*=UTF-8''([^;\n]+)/i.exec(disposition);
+    const plain = /filename="?([^";\n]+)"?/i.exec(disposition);
+    const name = star ? decodeURIComponent(star[1]) : plain?.[1] ?? fallbackName;
+    const href = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(href);
     return null;
+}
+
+/** 上传 .xlsx 到导入端点，返回解析后的结果或错误文案。 */
+async function uploadFile<T>(url: string, token: string, file: File): Promise<{ data?: T; error?: string }> {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+        const message = body && typeof body === "object" && "message" in body ? String((body as { message?: unknown }).message ?? "") : "";
+        return { error: message || `导入失败（HTTP ${res.status}）` };
+    }
+    return { data: body as T };
 }
 
 /** 确认对话框（删除/清理）。 */
@@ -113,7 +145,59 @@ function ConfirmDialog({
                 </div>
             }
         >
-            <div className="text-center text-sm leading-6 text-slate-700">{text}</div>
+            <div className="text-center text-[13px] leading-6 text-slate-700">{text}</div>
+        </Dialog>
+    );
+}
+
+/** 导入结果弹窗：成功条数 + 失败明细。 */
+function ImportResultDialog({
+    result,
+    onClose,
+}: {
+    result: FixedAssetImportResultDto;
+    onClose: () => void;
+}) {
+    const failures = result.failures ?? [];
+    return (
+        <Dialog
+            title="导入结果"
+            onClose={onClose}
+            footer={
+                <div className="flex justify-center">
+                    <Btn variant="primary" className="w-[96px]" onClick={onClose}>
+                        知道了
+                    </Btn>
+                </div>
+            }
+        >
+            <div className="px-1 text-[13px] leading-6 text-slate-700">
+                <div>
+                    新增 <b className="text-[#2f6bff]">{result.imported ?? 0}</b> 条，更新{" "}
+                    <b className="text-[#2f6bff]">{result.updated ?? 0}</b> 条，失败{" "}
+                    <b className={failures.length ? "text-[#ef4444]" : ""}>{failures.length}</b> 条。
+                </div>
+                {failures.length > 0 && (
+                    <div className="mt-2 max-h-[240px] overflow-auto rounded-lg border border-slate-200">
+                        <table className="w-full border-collapse text-[12.5px]">
+                            <thead>
+                                <tr className="bg-[#f8fafc] text-slate-500">
+                                    <th className="w-[70px] border-b border-slate-200 px-3 py-2 text-left font-medium">行号</th>
+                                    <th className="border-b border-slate-200 px-3 py-2 text-left font-medium">失败原因</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {failures.map((f, i) => (
+                                    <tr key={i}>
+                                        <td className="border-b border-slate-100 px-3 py-1.5 text-slate-600">{f.row}</td>
+                                        <td className="border-b border-slate-100 px-3 py-1.5 text-slate-600">{f.reason}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </Dialog>
     );
 }
@@ -174,6 +258,375 @@ function useAssetPeriod() {
     return { period, setOverride, step: (d: number) => setOverride(shiftPeriod(period, d)) };
 }
 
+/** 末级会计科目（凭证科目下拉共用）。 */
+function useLeafAccounts() {
+    const { token, accountSetId } = useAccountContext();
+    const [accounts, setAccounts] = useState<AccountDto[]>([]);
+    useEffect(() => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        new AccountsApi(apiConfig(token))
+            .accountsetsAccountSetIdAccountsGet({ accountSetId, leafOnly: true })
+            .then((list) => setAccounts(list ?? []))
+            .catch(() => setAccounts([]));
+    }, [token, accountSetId]);
+    return accounts;
+}
+
+/* ---------- 折旧 / 摊销凭证科目设置 ---------- */
+
+function AssetVoucherSettingDialog({ onClose }: { onClose: () => void }) {
+    const { token, accountSetId } = useAccountContext();
+    const accounts = useLeafAccounts();
+    const [setting, setSetting] = useState<FixedAssetVoucherSettingDto | null>(null);
+    const [form, setForm] = useState({
+        depreciationExpenseAccountId: "",
+        depreciationAccountId: "",
+        amortizationExpenseAccountId: "",
+        amortizationAccountId: "",
+        disposalAccountId: "",
+    });
+    const [toast, setToast] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        new FixedAssetsApi(apiConfig(token))
+            .accountsetsAccountSetIdFixedassetsVoucherSettingGet({ accountSetId })
+            .then((dto) => {
+                setSetting(dto);
+                setForm({
+                    depreciationExpenseAccountId: dto.depreciationExpenseAccountId ?? "",
+                    depreciationAccountId: dto.depreciationAccountId ?? "",
+                    amortizationExpenseAccountId: dto.amortizationExpenseAccountId ?? "",
+                    amortizationAccountId: dto.amortizationAccountId ?? "",
+                    disposalAccountId: dto.disposalAccountId ?? "",
+                });
+            })
+            .catch(async (e) => setToast(await apiErrorMessage(e, "加载凭证设置失败")));
+    }, [token, accountSetId]);
+
+    const save = async () => {
+        if (!token || !accountSetId || busy) {
+            return;
+        }
+        setBusy(true);
+        try {
+            await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsVoucherSettingPut({
+                accountSetId,
+                saveFixedAssetVoucherSettingRequest: {
+                    depreciationExpenseAccountId: form.depreciationExpenseAccountId || null,
+                    depreciationAccountId: form.depreciationAccountId || null,
+                    amortizationExpenseAccountId: form.amortizationExpenseAccountId || null,
+                    amortizationAccountId: form.amortizationAccountId || null,
+                    disposalAccountId: form.disposalAccountId || null,
+                },
+            });
+            onClose();
+        } catch (e) {
+            setToast(await apiErrorMessage(e, "保存失败"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const accountOptions = [
+        { value: "", label: "（留空自动识别）" },
+        ...accounts.map((a) => ({ value: a.id ?? "", label: `${a.code ?? ""} ${a.name ?? ""}` })),
+    ];
+    const rows: Array<[string, keyof typeof form, string?]> = [
+        ["折旧费用科目：", "depreciationExpenseAccountId", setting?.depreciationExpenseAccountText ?? undefined],
+        ["累计折旧科目：", "depreciationAccountId", setting?.depreciationAccountText ?? undefined],
+        ["摊销费用科目：", "amortizationExpenseAccountId", setting?.amortizationExpenseAccountText ?? undefined],
+        ["累计摊销科目：", "amortizationAccountId", setting?.amortizationAccountText ?? undefined],
+        ["固定资产清理科目：", "disposalAccountId", setting?.disposalAccountText ?? undefined],
+    ];
+    return (
+        <Dialog
+            title="折旧 / 摊销凭证设置"
+            width={560}
+            onClose={onClose}
+            footer={
+                <div className="flex justify-center gap-3">
+                    <Btn variant={busy ? "disabled" : "primary"} onClick={() => void save()}>
+                        保存
+                    </Btn>
+                    <Btn onClick={onClose}>取消</Btn>
+                </div>
+            }
+        >
+            <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+                <div className="rounded-lg bg-[#eef4ff] px-3 py-2 text-[12.5px] leading-5 text-[#2f6bff]">
+                    留空的项由系统按科目编码自动识别（1602 累计折旧 / 1702 累计摊销 / 6602 折旧摊销费用 / 1606 固定资产清理）。
+                </div>
+                {rows.map(([label, key, autoText]) => (
+                    <label key={String(key)} className="flex flex-col gap-1">
+                        <span className="flex items-center gap-3">
+                            <span className="w-[130px] shrink-0 text-right">{label}</span>
+                            <Select
+                                className="w-[260px]"
+                                value={form[key]}
+                                onChange={(v) => setForm({ ...form, [key]: v })}
+                                options={accountOptions}
+                            />
+                        </span>
+                        {!form[key] && autoText && (
+                            <span className="pl-[142px] text-[12.5px] text-slate-400">自动：{autoText}</span>
+                        )}
+                    </label>
+                ))}
+            </div>
+            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
+        </Dialog>
+    );
+}
+
+/* ---------- 变更记录生成凭证 ---------- */
+
+interface ChangeEntryRow {
+    summary: string;
+    accountId: string;
+    debit: string;
+    credit: string;
+}
+
+function ChangeVoucherDialog({
+    change,
+    onClose,
+    onSaved,
+}: {
+    change: FixedAssetChangeDto;
+    onClose: () => void;
+    onSaved: () => void;
+}) {
+    const { token, accountSetId } = useAccountContext();
+    const accounts = useLeafAccounts();
+    const [preview, setPreview] = useState<ChangeVoucherPreviewDto | null>(null);
+    const [rows, setRows] = useState<ChangeEntryRow[]>([]);
+    const [toast, setToast] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        if (!token || !accountSetId || !change.id) {
+            return;
+        }
+        new FixedAssetsApi(apiConfig(token))
+            .accountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGet({ accountSetId, id: change.id })
+            .then((dto) => {
+                setPreview(dto);
+                setRows(
+                    (dto.entries ?? []).map((e) => ({
+                        summary: e.summary ?? `${change.kindText ?? ""}`,
+                        accountId: e.accountId ?? "",
+                        debit: e.debit ? String(e.debit) : "",
+                        credit: e.credit ? String(e.credit) : "",
+                    })),
+                );
+            })
+            .catch(async (e) => setToast(await apiErrorMessage(e, "加载建议分录失败")));
+    }, [token, accountSetId, change.id, change.kindText]);
+
+    const accountOptions = [
+        { value: "", label: "（请选择科目）" },
+        ...accounts.map((a) => ({ value: a.id ?? "", label: `${a.code ?? ""} ${a.name ?? ""}` })),
+    ];
+    const debitTotal = rows.reduce((s, r) => s + (Number(r.debit) || 0), 0);
+    const creditTotal = rows.reduce((s, r) => s + (Number(r.credit) || 0), 0);
+
+    const submit = async () => {
+        if (!token || !accountSetId || !change.id || busy) {
+            return;
+        }
+        if (rows.some((r) => !r.accountId)) {
+            setToast("请为每一条分录选择会计科目");
+            return;
+        }
+        if (Math.abs(debitTotal - creditTotal) > 0.005) {
+            setToast("借贷不平衡，请检查金额");
+            return;
+        }
+        setBusy(true);
+        try {
+            await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsChangesIdVoucherPost({
+                accountSetId,
+                id: change.id,
+                generateChangeVoucherRequest: {
+                    entries: rows.map((r) => ({
+                        summary: r.summary,
+                        accountId: r.accountId,
+                        debit: Number(r.debit) || 0,
+                        credit: Number(r.credit) || 0,
+                    })),
+                },
+            });
+            onSaved();
+            onClose();
+        } catch (e) {
+            setToast(await apiErrorMessage(e, "生成凭证失败"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const setRow = (i: number, patch: Partial<ChangeEntryRow>) =>
+        setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+
+    return (
+        <Dialog
+            title={`生成凭证 · ${change.kindText ?? ""} · ${change.assetCode ?? ""} ${change.assetName ?? ""}`}
+            width={720}
+            onClose={onClose}
+            footer={
+                <div className="flex justify-center gap-3">
+                    <Btn variant={busy ? "disabled" : "primary"} onClick={() => void submit()}>
+                        生成凭证
+                    </Btn>
+                    <Btn onClick={onClose}>取消</Btn>
+                </div>
+            }
+        >
+            <div className="flex flex-col gap-2 px-1 text-[13px] text-slate-700">
+                {preview?.hint && <HintBox>{preview.hint}</HintBox>}
+                <table className="w-full border-collapse text-[12.5px]">
+                    <thead>
+                        <tr className="bg-[#f8fafc] text-slate-500">
+                            <th className="px-2 py-2 text-left font-medium">摘要</th>
+                            <th className="px-2 py-2 text-left font-medium">会计科目</th>
+                            <th className="w-[100px] px-2 py-2 text-right font-medium">借方金额</th>
+                            <th className="w-[100px] px-2 py-2 text-right font-medium">贷方金额</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((r, i) => (
+                            <tr key={i} className="border-b border-slate-100">
+                                <td className="px-2 py-1.5">
+                                    <TextInput value={r.summary} onChange={(v) => setRow(i, { summary: v })} />
+                                </td>
+                                <td className="px-2 py-1.5">
+                                    <Select
+                                        className="w-full"
+                                        value={r.accountId}
+                                        onChange={(v) => setRow(i, { accountId: v })}
+                                        options={accountOptions}
+                                    />
+                                </td>
+                                <td className="px-2 py-1.5">
+                                    <TextInput
+                                        className="text-right"
+                                        value={r.debit}
+                                        onChange={(v) => setRow(i, { debit: v.replace(/[^\d.]/g, ""), credit: "" })}
+                                    />
+                                </td>
+                                <td className="px-2 py-1.5">
+                                    <TextInput
+                                        className="text-right"
+                                        value={r.credit}
+                                        onChange={(v) => setRow(i, { credit: v.replace(/[^\d.]/g, ""), debit: "" })}
+                                    />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <div className="flex justify-end gap-6 pr-1 text-[12.5px] text-slate-500">
+                    <span>借方合计：{debitTotal.toFixed(2)}</span>
+                    <span>贷方合计：{creditTotal.toFixed(2)}</span>
+                </div>
+            </div>
+            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
+        </Dialog>
+    );
+}
+
+/* ---------- 复制资产 ---------- */
+
+function CopyAssetDialog({
+    assets,
+    preset,
+    onClose,
+    onSaved,
+}: {
+    assets: FixedAssetDto[];
+    preset: FixedAssetDto | null;
+    onClose: () => void;
+    onSaved: () => void;
+}) {
+    const { token, accountSetId } = useAccountContext();
+    const [sourceId, setSourceId] = useState(preset?.id ?? assets[0]?.id ?? "");
+    const [form, setForm] = useState({ code: "", name: "" });
+    const [toast, setToast] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+    const source = assets.find((a) => a.id === sourceId);
+
+    useEffect(() => {
+        setForm({ code: "", name: source?.name ?? "" });
+    }, [sourceId, source?.name]);
+
+    const submit = async () => {
+        if (!token || !accountSetId || !sourceId || busy) {
+            return;
+        }
+        setBusy(true);
+        try {
+            await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsAssetsIdCopyPost({
+                accountSetId,
+                id: sourceId,
+                copyFixedAssetRequest: { code: form.code.trim() || null, name: form.name.trim() || null },
+            });
+            onSaved();
+            onClose();
+        } catch (e) {
+            setToast(await apiErrorMessage(e, "复制资产失败"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <Dialog
+            title="复制资产"
+            onClose={onClose}
+            footer={
+                <div className="flex justify-center gap-3">
+                    <Btn variant={busy ? "disabled" : "primary"} onClick={() => void submit()}>
+                        保存
+                    </Btn>
+                    <Btn onClick={onClose}>取消</Btn>
+                </div>
+            }
+        >
+            <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+                <label className="flex items-center gap-3">
+                    <span className="w-[110px] text-right">原资产：</span>
+                    <Select
+                        className="w-[260px]"
+                        value={sourceId}
+                        onChange={setSourceId}
+                        options={assets.map((a) => ({ value: a.id ?? "", label: `${a.code ?? ""} ${a.name ?? ""}` }))}
+                    />
+                </label>
+                <label className="flex items-center gap-3">
+                    <span className="w-[110px] text-right">新资产编号：</span>
+                    <TextInput
+                        className="w-[260px]"
+                        value={form.code}
+                        onChange={(v) => setForm({ ...form, code: v })}
+                        placeholder="留空自动追加序号"
+                    />
+                </label>
+                <label className="flex items-center gap-3">
+                    <span className="w-[110px] text-right">新资产名称：</span>
+                    <TextInput className="w-[260px]" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+                </label>
+            </div>
+            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
+        </Dialog>
+    );
+}
+
 /* ---------- 资产管理（四页签） ---------- */
 
 const ASSET_TABS = ["资产初始化", "资产列表", "变更记录及生成凭证", "计提折旧及生成凭证"];
@@ -187,7 +640,7 @@ const CHANGE_COLS: Col[] = [
     { key: "after", title: "变动后内容", width: "140px" },
     { key: "period", title: "变动期间", width: "120px" },
     { key: "amount", title: "金额", align: "right", width: "120px" },
-    { key: "ops", title: "关联凭证", width: "120px" },
+    { key: "ops", title: "关联凭证", width: "150px" },
 ];
 
 export function LemonAssetManage() {
@@ -195,12 +648,46 @@ export function LemonAssetManage() {
     const { period, step } = useAssetPeriod();
     const data = useFixedAssetData();
     const { token, accountSetId } = useAccountContext();
+    const fileRef = useRef<HTMLInputElement>(null);
 
     const [initDialog, setInitDialog] = useState(false);
     const [showAdd, setShowAdd] = useState(false);
     const [addForm, setAddForm] = useState({ categoryId: "", name: "", model: "", dept: "", startDate: "", originValue: "", initialAccumulatedDepreciation: "" });
     const [toast, setToast] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+
+    // 勾选 / 批量 / 导入导出 / 复制 / 凭证设置
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [importResult, setImportResult] = useState<FixedAssetImportResultDto | null>(null);
+    const [copyOpen, setCopyOpen] = useState<{ preset: FixedAssetDto | null } | null>(null);
+    const [voucherSettingOpen, setVoucherSettingOpen] = useState(false);
+    const [bulkClearOpen, setBulkClearOpen] = useState(false);
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [changeVoucher, setChangeVoucher] = useState<FixedAssetChangeDto | null>(null);
+
+    // 折旧凭证状态（tab3）。
+    const [depVoucher, setDepVoucher] = useState<DepreciationVoucherInfoDto | null>(null);
+    const loadDepVoucher = useCallback(async () => {
+        if (!accountSetId) {
+            return;
+        }
+        try {
+            setDepVoucher(
+                await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsDepreciationVoucherGet({
+                    accountSetId,
+                    period: period.period,
+                }),
+            );
+        } catch {
+            setDepVoucher(null);
+        }
+    }, [accountSetId, token, period.period]);
+
+    useEffect(() => {
+        if (tab === 3) {
+            void loadDepVoucher();
+        }
+    }, [tab, loadDepVoucher]);
 
     // 变更记录（tab2）按需拉取。
     const [changes, setChanges] = useState<FixedAssetChangeDto[]>([]);
@@ -241,13 +728,14 @@ export function LemonAssetManage() {
             await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsAssetsPost({
                 accountSetId,
                 saveFixedAssetRequest: {
-                    categoryId: addForm.categoryId,
                     name: addForm.name.trim(),
+                    categoryId: addForm.categoryId,
                     model: addForm.model.trim() || null,
                     dept: addForm.dept.trim() || null,
                     startDate: new Date(addForm.startDate),
                     originValue: Number(addForm.originValue) || 0,
                     initialAccumulatedDepreciation: Number(addForm.initialAccumulatedDepreciation) || 0,
+                    code: "",
                 },
             });
             setShowAdd(false);
@@ -317,6 +805,7 @@ export function LemonAssetManage() {
                     (skipped.length ? `，${skipped.length} 项跳过：${skipped[0]}` : ""),
             );
             await data.reload();
+            await loadDepVoucher();
         } catch (e) {
             setToast(await apiErrorMessage(e, "计提折旧失败"));
         } finally {
@@ -324,8 +813,167 @@ export function LemonAssetManage() {
         }
     };
 
+    const generateDepVoucher = async () => {
+        if (!token || !accountSetId || busy) {
+            return;
+        }
+        setBusy(true);
+        try {
+            const api = new FixedAssetsApi(apiConfig(token));
+            const result = await api.accountsetsAccountSetIdFixedassetsDepreciationVoucherPost({
+                accountSetId,
+                generateDepreciationVoucherRequest: { period: period.period },
+            });
+            setDepVoucher(result);
+            setToast(`已生成折旧凭证 ${result.voucherText ?? ""}，合计 ${(result.totalAmount ?? 0).toFixed(2)} 元`);
+            await loadChanges();
+        } catch (e) {
+            setToast(await apiErrorMessage(e, "生成折旧凭证失败"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const exportAssets = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(`${assetBase(accountSetId)}/assets/export`, token, "资产清单.xlsx");
+        if (err) {
+            setToast(err);
+        }
+    };
+
+    const downloadTemplate = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(`${assetBase(accountSetId)}/assets/import-template`, token, "资产导入模板.xlsx");
+        if (err) {
+            setToast(err);
+        }
+    };
+
+    const importAssets = async (file: File) => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        setBusy(true);
+        try {
+            const { data: result, error } = await uploadFile<FixedAssetImportResultDto>(
+                `${assetBase(accountSetId)}/assets/import`,
+                token,
+                file,
+            );
+            if (error || !result) {
+                setToast(error ?? "导入失败");
+                return;
+            }
+            setImportResult(result);
+            await data.reload();
+        } finally {
+            setBusy(false);
+            if (fileRef.current) {
+                fileRef.current.value = "";
+            }
+        }
+    };
+
+    const bulkDelete = async () => {
+        if (!token || !accountSetId || selected.size === 0 || busy) {
+            return;
+        }
+        setBusy(true);
+        try {
+            const r = await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsAssetsBulkDeletePost({
+                accountSetId,
+                fixedAssetBulkIdsRequest: { ids: [...selected] },
+            });
+            setToast(
+                `已删除 ${r.affected ?? 0} 项` +
+                    (r.skipped ? `，跳过 ${r.skipped} 项${r.messages?.length ? `：${r.messages[0]}` : ""}` : ""),
+            );
+            setSelected(new Set());
+            setBulkDeleteOpen(false);
+            await data.reload();
+        } catch (e) {
+            setToast(await apiErrorMessage(e, "批量删除失败"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const bulkClear = async () => {
+        if (!token || !accountSetId || selected.size === 0 || busy) {
+            return;
+        }
+        setBusy(true);
+        try {
+            const r = await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsAssetsBulkClearPost({
+                accountSetId,
+                bulkClearAssetsRequest: { ids: [...selected], clearedDate: new Date(period.endDate) },
+            });
+            setToast(
+                `已清理 ${r.affected ?? 0} 项` +
+                    (r.skipped ? `，跳过 ${r.skipped} 项${r.messages?.length ? `：${r.messages[0]}` : ""}` : ""),
+            );
+            setSelected(new Set());
+            setBulkClearOpen(false);
+            await data.reload();
+        } catch (e) {
+            setToast(await apiErrorMessage(e, "批量清理失败"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const toggleAll = (checked: boolean) =>
+        setSelected(checked ? new Set(data.assets.map((a) => a.id ?? "").filter(Boolean)) : new Set());
+
     const addAssetBtn = (
         <Btn onClick={() => setShowAdd(true)}>增加资产</Btn>
+    );
+
+    const importExportBtns = (
+        <>
+            <Btn onClick={() => setCopyOpen({ preset: null })} title="以现有卡片为模板新建一张资产">
+                复制资产
+            </Btn>
+            <Btn onClick={() => fileRef.current?.click()} title="从 .xlsx 导入资产（按资产编号匹配）">
+                导入
+            </Btn>
+            <Dropdown
+                trigger={["click"]}
+                menu={{
+                    items: [
+                        { key: "export", label: "导出资产" },
+                        { key: "template", label: "下载导入模板" },
+                    ],
+                    onClick: ({ key }) => void (key === "export" ? exportAssets() : downloadTemplate()),
+                }}
+            >
+                <span>
+                    <Btn dropdown title="导出资产 / 下载导入模板">
+                        导出
+                    </Btn>
+                </span>
+            </Dropdown>
+        </>
+    );
+
+    const hiddenInput = (
+        <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx"
+            className="hidden"
+            onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                    void importAssets(file);
+                }
+            }}
+        />
     );
 
     /* tab === 0 资产初始化 */
@@ -342,11 +990,11 @@ export function LemonAssetManage() {
                             </Btn>
                             <CheckBox label="显示所有信息" />
                             {addAssetBtn}
-                            <WipBtn>复制资产</WipBtn>
-                            <WipBtn title="导入资产尚未接入后端">导入</WipBtn>
-                            <WipBtn dropdown title="导出资产尚未接入后端">导出</WipBtn>
+                            {importExportBtns}
                             <Btn dropdown onClick={() => window.print()}>打印</Btn>
-                            <WipBtn dropdown title="更多操作尚未接入后端">更多</WipBtn>
+                            <Btn dropdown onClick={() => setVoucherSettingOpen(true)} title="配置折旧 / 摊销 / 清理凭证科目">
+                                折旧凭证设置
+                            </Btn>
                             <span className="cursor-pointer" onClick={() => void data.reload()} title="刷新">
                                 <RefreshIcon />
                             </span>
@@ -378,8 +1026,10 @@ export function LemonAssetManage() {
                         empty={<EmptyTip text="还没有期初资产，点击上方「增加资产」录入期初卡片。" />}
                     />
                 </div>
-                <div className="px-4 pb-3 text-[13px] text-[#ef4444]">亲，资产初始化数据要与期初的资产数据一致哦！</div>
-                <Pager total={data.assets.length} count={data.assets.length} />
+                <div className="px-4 pb-3">
+                    <HintBox>亲，资产初始化数据要与期初的资产数据一致哦！</HintBox>
+                </div>
+                <Pager total={data.assets.length} />
                 {initDialog && (
                     <InitDialog
                         onClose={() => setInitDialog(false)}
@@ -390,6 +1040,17 @@ export function LemonAssetManage() {
                     />
                 )}
                 {showAdd && renderAddDialog()}
+                {copyOpen && (
+                    <CopyAssetDialog
+                        assets={data.assets}
+                        preset={copyOpen.preset}
+                        onClose={() => setCopyOpen(null)}
+                        onSaved={() => void data.reload()}
+                    />
+                )}
+                {voucherSettingOpen && <AssetVoucherSettingDialog onClose={() => setVoucherSettingOpen(false)} />}
+                {importResult && <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />}
+                {hiddenInput}
                 {toast && <Toast text={toast} onClose={() => setToast(null)} />}
             </Page>
         );
@@ -402,9 +1063,14 @@ export function LemonAssetManage() {
                 <ToolRow
                     left={<PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />}
                     right={
-                        <span className="cursor-pointer" onClick={() => void loadChanges()} title="刷新">
-                            <RefreshIcon />
-                        </span>
+                        <>
+                            <Btn onClick={() => setVoucherSettingOpen(true)} title="配置折旧 / 摊销 / 清理凭证科目">
+                                折旧凭证设置
+                            </Btn>
+                            <span className="cursor-pointer" onClick={() => void loadChanges()} title="刷新">
+                                <RefreshIcon />
+                            </span>
+                        </>
                     }
                 />
                 <StateBar loading={changesLoading} />
@@ -419,12 +1085,29 @@ export function LemonAssetManage() {
                             after: c.after,
                             period: c.period,
                             amount: c.amount != null ? c.amount.toFixed(2) : "",
-                            ops: <WipBtn title="变更记录生成凭证尚未接入后端">生成凭证</WipBtn>,
+                            ops: c.voucherText ? (
+                                <span className="text-[#2f6bff]">{c.voucherText}</span>
+                            ) : c.kindText === "每月计提" ? (
+                                <span className="text-slate-400">按期计提，在计提页生成</span>
+                            ) : (
+                                <Btn onClick={() => setChangeVoucher(c)}>生成凭证</Btn>
+                            ),
                         }))}
                         empty={<EmptyTip />}
                     />
                 </div>
-                <Pager total={changes.length} count={changes.length} />
+                <Pager total={changes.length} />
+                {changeVoucher && (
+                    <ChangeVoucherDialog
+                        change={changeVoucher}
+                        onClose={() => setChangeVoucher(null)}
+                        onSaved={() => {
+                            setToast("凭证已生成");
+                            void loadChanges();
+                        }}
+                    />
+                )}
+                {voucherSettingOpen && <AssetVoucherSettingDialog onClose={() => setVoucherSettingOpen(false)} />}
                 {toast && <Toast text={toast} onClose={() => setToast(null)} />}
             </Page>
         );
@@ -434,9 +1117,9 @@ export function LemonAssetManage() {
         return (
             <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
                 <SubTabs tabs={ASSET_TABS} active={3} onChange={setTab} />
-                <WipNotice text="计提折旧会按当前会计期间为在用资产登记折旧变更；折旧凭证生成功能尚未接入后端。" />
-                <div className="mx-4 mt-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-4 py-2.5 text-[13px] leading-5 text-[#92640b]">
-                    亲，点击“计提折旧”即可生成折旧摊销明细，灰色按钮表示尚未接入后端；如有疑问，请将鼠标移至灰字上面查看提示。
+                <div className="mx-4 mt-2 rounded-lg bg-[#eef4ff] px-4 py-2.5 text-[13px] leading-5 text-[#2f6bff]">
+                    亲，点击“计提折旧”即可生成当期折旧摊销明细；再点击“生成凭证”按资产属性汇总生成一张折旧 / 摊销凭证。
+                    科目可在“折旧凭证设置”中调整。
                 </div>
                 <div className="flex-1 px-4 pt-3">
                     <Table
@@ -456,9 +1139,25 @@ export function LemonAssetManage() {
                             {
                                 key: "dep",
                                 title: "计提折旧",
-                                render: () => <span className="text-slate-400">{busy ? "计提中…" : "待计提"}</span>,
+                                render: () =>
+                                    depVoucher && depVoucher.changeCount ? (
+                                        <span className="text-slate-600">
+                                            已计提 {depVoucher.changeCount} 项，合计 {(depVoucher.totalAmount ?? 0).toFixed(2)} 元
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-400">{busy ? "计提中…" : "待计提"}</span>
+                                    ),
                             },
-                            { key: "voucher", title: "折旧凭证" },
+                            {
+                                key: "voucher",
+                                title: "折旧凭证",
+                                render: () =>
+                                    depVoucher?.voucherText ? (
+                                        <span className="text-[#2f6bff]">{depVoucher.voucherText}</span>
+                                    ) : (
+                                        <span className="text-slate-400">未生成</span>
+                                    ),
+                            },
                             {
                                 key: "ops",
                                 title: "操作",
@@ -467,9 +1166,28 @@ export function LemonAssetManage() {
                                         <Btn variant={busy ? "disabled" : "primary"} onClick={() => void depreciate()}>
                                             计提折旧
                                         </Btn>
-                                        <WipBtn title="折旧凭证生成尚未接入后端">
-                                            生成凭证 <QuestionCircleOutlined className="text-[12px]" />
-                                        </WipBtn>
+                                        <Btn
+                                            variant={busy || !depVoucher?.changeCount || depVoucher?.generated ? "disabled" : "primary"}
+                                            onClick={() => void generateDepVoucher()}
+                                            title={
+                                                depVoucher?.generated
+                                                    ? "本期折旧凭证已生成"
+                                                    : "按当期计提记录生成折旧 / 摊销凭证"
+                                            }
+                                        >
+                                            生成凭证
+                                        </Btn>
+                                        <span
+                                            className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
+                                            onClick={() => setVoucherSettingOpen(true)}
+                                        >
+                                            凭证设置
+                                        </span>
+                                        <QuestionCircleOutlined
+                                            className="text-[12px]"
+                                            style={ICON_STYLE.muted}
+                                            title="折旧凭证按资产属性汇总：固定资产走折旧费用与累计折旧，无形资产走摊销费用与累计摊销。"
+                                        />
                                     </span>
                                 ),
                             },
@@ -477,13 +1195,19 @@ export function LemonAssetManage() {
                         rows={[{}]}
                     />
                 </div>
+                {voucherSettingOpen && <AssetVoucherSettingDialog onClose={() => setVoucherSettingOpen(false)} />}
                 {toast && <Toast text={toast} onClose={() => setToast(null)} />}
             </Page>
         );
 
     /* tab === 1 资产列表 */
+    const allChecked = data.assets.length > 0 && data.assets.every((a) => selected.has(a.id ?? ""));
     const cols: Col[] = [
-        { key: "ck", title: <CheckBox label="" />, width: "36px" },
+        {
+            key: "ck",
+            title: <CheckBox label="" checked={allChecked} onChange={toggleAll} />,
+            width: "36px",
+        },
         { key: "no", title: "资产编号", width: "120px" },
         { key: "type", title: "资产类别", width: "130px" },
         { key: "attr", title: "资产属性", width: "110px" },
@@ -493,7 +1217,8 @@ export function LemonAssetManage() {
         { key: "origin", title: "资产原值", align: "right" },
         { key: "dep", title: "累计折旧", align: "right" },
         { key: "net", title: "资产净值", align: "right" },
-        { key: "ops", title: "操作", width: "110px" },
+        { key: "status", title: "状态", width: "90px" },
+        { key: "ops", title: "操作", width: "150px" },
     ];
     return (
         <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
@@ -508,11 +1233,33 @@ export function LemonAssetManage() {
                 right={
                     <>
                         {addAssetBtn}
-                        <WipBtn>复制资产</WipBtn>
-                        <WipBtn title="导入资产尚未接入后端">导入</WipBtn>
-                        <WipBtn dropdown title="导出资产尚未接入后端">导出</WipBtn>
+                        {importExportBtns}
                         <Btn dropdown onClick={() => window.print()}>打印</Btn>
-                        <WipBtn dropdown title="批量操作尚未接入后端">批量操作</WipBtn>
+                        <Dropdown
+                            trigger={["click"]}
+                            menu={{
+                                items: [
+                                    { key: "clear", label: `批量清理（已选 ${selected.size} 项）`, disabled: selected.size === 0 },
+                                    { key: "delete", label: `批量删除（已选 ${selected.size} 项）`, disabled: selected.size === 0 },
+                                    { key: "setting", label: "折旧凭证设置" },
+                                ],
+                                onClick: ({ key }) => {
+                                    if (key === "clear") {
+                                        setBulkClearOpen(true);
+                                    } else if (key === "delete") {
+                                        setBulkDeleteOpen(true);
+                                    } else {
+                                        setVoucherSettingOpen(true);
+                                    }
+                                },
+                            }}
+                        >
+                            <span>
+                                <Btn dropdown title="批量清理 / 批量删除 / 凭证设置">
+                                    批量操作
+                                </Btn>
+                            </span>
+                        </Dropdown>
                         <span className="cursor-pointer" onClick={() => void data.reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -524,7 +1271,23 @@ export function LemonAssetManage() {
                 <Table
                     cols={cols}
                     rows={data.assets.map((a) => ({
-                        __asset: a,
+                        ck: (
+                            <CheckBox
+                                label=""
+                                checked={selected.has(a.id ?? "")}
+                                onChange={(c) =>
+                                    setSelected((prev) => {
+                                        const next = new Set(prev);
+                                        if (c) {
+                                            next.add(a.id ?? "");
+                                        } else {
+                                            next.delete(a.id ?? "");
+                                        }
+                                        return next;
+                                    })
+                                }
+                            />
+                        ),
                         no: a.code,
                         type: a.categoryName,
                         attr: a.attrText,
@@ -534,8 +1297,15 @@ export function LemonAssetManage() {
                         origin: (a.originValue ?? 0).toFixed(2),
                         dep: (a.accumulatedDepreciation ?? 0).toFixed(2),
                         net: (a.netValue ?? ((a.originValue ?? 0) - (a.accumulatedDepreciation ?? 0))).toFixed(2),
+                        status: a.statusText,
                         ops: (
                             <span className="flex gap-2">
+                                <span
+                                    className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
+                                    onClick={() => setCopyOpen({ preset: a })}
+                                >
+                                    复制
+                                </span>
                                 <span
                                     className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
                                     onClick={() => setClearing(a)}
@@ -554,8 +1324,16 @@ export function LemonAssetManage() {
                     empty={<EmptyTip />}
                 />
             </div>
-            <Pager total={data.assets.length} count={data.assets.length} />
+            <Pager total={data.assets.length} />
             {showAdd && renderAddDialog()}
+            {copyOpen && (
+                <CopyAssetDialog
+                    assets={data.assets}
+                    preset={copyOpen.preset}
+                    onClose={() => setCopyOpen(null)}
+                    onSaved={() => void data.reload()}
+                />
+            )}
             {clearing && (
                 <ConfirmDialog
                     title="资产清理"
@@ -569,12 +1347,34 @@ export function LemonAssetManage() {
             {deleting && (
                 <ConfirmDialog
                     title="删除资产"
-                    text={`确定删除资产「${deleting.name ?? ""}」吗？此操作不可恢复。`}
+                    text={`确定删除资产「${deleting.name ?? ""}」吗？该资产的变更记录会一并删除，此操作不可恢复。`}
                     busy={busy}
                     onClose={() => setDeleting(null)}
                     onConfirm={() => void doDelete()}
                 />
             )}
+            {bulkClearOpen && (
+                <ConfirmDialog
+                    title="批量清理资产"
+                    text={`确定按 ${periodLabel(period)} 清理已选的 ${selected.size} 项资产吗？`}
+                    confirmText="清理"
+                    busy={busy}
+                    onClose={() => setBulkClearOpen(false)}
+                    onConfirm={() => void bulkClear()}
+                />
+            )}
+            {bulkDeleteOpen && (
+                <ConfirmDialog
+                    title="批量删除资产"
+                    text={`确定删除已选的 ${selected.size} 项资产吗？已生成凭证的资产会被跳过。`}
+                    busy={busy}
+                    onClose={() => setBulkDeleteOpen(false)}
+                    onConfirm={() => void bulkDelete()}
+                />
+            )}
+            {voucherSettingOpen && <AssetVoucherSettingDialog onClose={() => setVoucherSettingOpen(false)} />}
+            {importResult && <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />}
+            {hiddenInput}
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Page>
     );
@@ -636,6 +1436,7 @@ export function LemonAssetManage() {
                             )}
                         </label>
                     ))}
+                    <div className="pl-[122px] text-[12.5px] text-slate-400">资产编号由系统按类别自动生成，可导入后统一调整。</div>
                 </div>
             </Dialog>
         );
@@ -659,7 +1460,7 @@ function InitDialog({ onClose, onConfirm }: { onClose: () => void; onConfirm: ()
                 </div>
             }
         >
-            <div className="text-center text-sm leading-6 text-slate-700">
+            <div className="text-center text-[13px] leading-6 text-slate-700">
                 请确定是否存在资产的期初数据？如有期初，请点击「去录入」
                 <br />
                 前往录入期初资产卡片，否则请关闭~
@@ -676,6 +1477,7 @@ export function LemonAssetDepreciation() {
     const [ledger, setLedger] = useState<DepreciationLedgerRowDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [toast, setToast] = useState<string | null>(null);
 
     const reload = useCallback(async () => {
         if (!accountSetId) {
@@ -702,6 +1504,20 @@ export function LemonAssetDepreciation() {
         void reload();
     }, [reload]);
 
+    const exportLedger = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(
+            `${assetBase(accountSetId)}/depreciation-ledger/export?period=${period.period}`,
+            token,
+            `折旧摊销明细表_${period.period}.xlsx`,
+        );
+        if (err) {
+            setToast(err);
+        }
+    };
+
     const cols: Col[] = [
         { key: "period", title: "会计期间", width: "100px" },
         { key: "no", title: "资产编号", width: "110px" },
@@ -725,7 +1541,9 @@ export function LemonAssetDepreciation() {
                 left={<PeriodStepper text={label} onPrev={() => step(-1)} onNext={() => step(1)} />}
                 right={
                     <>
-                        <WipBtn title="导出折旧明细尚未接入后端">导出</WipBtn>
+                        <Btn onClick={() => void exportLedger()} title="导出当期折旧摊销明细为 .xlsx">
+                            导出
+                        </Btn>
                         <Btn onClick={() => window.print()}>打印</Btn>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />
@@ -755,7 +1573,8 @@ export function LemonAssetDepreciation() {
                     empty={<EmptyTip />}
                 />
             </div>
-            <Pager total={ledger.length} count={ledger.length} />
+            <Pager total={ledger.length} />
+            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Page>
     );
 }
@@ -769,6 +1588,7 @@ export function LemonAssetSummary() {
     const [rows, setRows] = useState<FixedAssetSummaryRowDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [toast, setToast] = useState<string | null>(null);
 
     const reload = useCallback(async () => {
         if (!accountSetId) {
@@ -796,6 +1616,20 @@ export function LemonAssetSummary() {
     useEffect(() => {
         void reload();
     }, [reload]);
+
+    const exportSummary = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(
+            `${assetBase(accountSetId)}/summary/export?startPeriod=${period.period}&endPeriod=${period.period}&byCategory=${tab === 1}`,
+            token,
+            `资产汇总表_${period.period}.xlsx`,
+        );
+        if (err) {
+            setToast(err);
+        }
+    };
 
     const fmt = (v: number | null | undefined) => Number(v ?? 0).toFixed(2);
     const sub = ["期初数", "本期增加", "本期减少", "期末数"];
@@ -832,19 +1666,14 @@ export function LemonAssetSummary() {
                 left={
                     <>
                         <span className="text-[13px] text-slate-500">会计期间:</span>
-                        <span className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700">
-                            {label} <CalendarOutlined className="text-[14px]" style={ICON_STYLE.muted} />
-                        </span>
-                        <span className="text-slate-400">至</span>
-                        <span className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700">
-                            {label} <CalendarOutlined className="text-[14px]" style={ICON_STYLE.muted} />
-                        </span>
                         <PeriodStepper text={label} onPrev={() => step(-1)} onNext={() => step(1)} />
                     </>
                 }
                 right={
                     <>
-                        <WipBtn title="导出汇总表尚未接入后端">导出</WipBtn>
+                        <Btn onClick={() => void exportSummary()} title="导出当前分组的资产汇总表为 .xlsx">
+                            导出
+                        </Btn>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -855,7 +1684,8 @@ export function LemonAssetSummary() {
             <div className="flex-1 px-4">
                 <Table cols={cols} rows={tableRows} empty={<EmptyTip />} />
             </div>
-            <Pager total={rows.length} count={rows.length} />
+            <Pager total={rows.length} />
+            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Page>
     );
 }
@@ -881,8 +1711,7 @@ function CategoryEditDialog({
     onClose: () => void;
     onSaved: () => void;
 }) {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
+    const { token, accountSetId } = useAccountContext();
     const [form, setForm] = useState(() => ({
         code: category?.code ?? "",
         name: category?.name ?? "",
@@ -1024,6 +1853,16 @@ export function LemonAssetCategory() {
         }
     };
 
+    const exportCategories = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(`${assetBase(accountSetId)}/categories/export`, token, "资产类别.xlsx");
+        if (err) {
+            setToast(err);
+        }
+    };
+
     const cols: Col[] = [
         { key: "code", title: "资产类别编码", width: "130px" },
         { key: "name", title: "资产类别名称", width: "180px" },
@@ -1067,7 +1906,9 @@ export function LemonAssetCategory() {
                 right={
                     <>
                         <TextInput className="w-[220px]" value={keyword} onChange={setKeyword} placeholder="输入编码或名称" />
-                        <WipBtn title="导出类别尚未接入后端">导出</WipBtn>
+                        <Btn onClick={() => void exportCategories()} title="导出资产类别为 .xlsx">
+                            导出
+                        </Btn>
                         <span className="cursor-pointer" onClick={() => void data.reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -1091,7 +1932,7 @@ export function LemonAssetCategory() {
                     empty={<EmptyTip />}
                 />
             </div>
-            <Pager total={filtered.length} count={filtered.length} />
+            <Pager total={filtered.length} />
             {editing && (
                 <CategoryEditDialog
                     category={editing === "new" ? null : editing}
@@ -1122,6 +1963,7 @@ export function LemonAssetCheck() {
     const [check, setCheck] = useState<FixedAssetCheckRowDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [toast, setToast] = useState<string | null>(null);
 
     // 后端核对接口不按期间过滤，切换期间仍重新取数以保持一致口径。
     const reload = useCallback(async () => {
@@ -1144,7 +1986,17 @@ export function LemonAssetCheck() {
         void reload();
     }, [reload, period.period]);
 
-    const th = "border-b border-slate-200 bg-muted px-3 py-2.5 text-[12.5px] font-medium text-slate-500";
+    const exportCheck = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(`${assetBase(accountSetId)}/check/export`, token, "资产核对总账.xlsx");
+        if (err) {
+            setToast(err);
+        }
+    };
+
+    const th = "border-b border-slate-200 bg-[#f8fafc] px-3 py-2.5 text-[12.5px] font-medium text-slate-500";
     const td = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-600 tabular-nums";
     return (
         <Page title="资产核对总账" subtitle="资产台账与总账科目余额逐行核对" icon={AuditOutlined}>
@@ -1154,7 +2006,9 @@ export function LemonAssetCheck() {
                 right={
                     <>
                         <Btn onClick={() => window.print()}>打印</Btn>
-                        <WipBtn title="导出核对表尚未接入后端">导出</WipBtn>
+                        <Btn onClick={() => void exportCheck()} title="导出资产核对总账为 .xlsx">
+                            导出
+                        </Btn>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -1162,8 +2016,8 @@ export function LemonAssetCheck() {
                 }
             />
             <StateBar loading={loading} error={error} />
-            <div className="flex-1 px-4">
-                <table className="w-full border-collapse text-sm">
+            <div className="flex-1 overflow-x-auto px-4">
+                <table className="w-full min-w-[640px] border-collapse text-[13px]">
                     <thead>
                         <tr>
                             <th className={`${th} w-[140px] text-left`}>项目</th>
@@ -1217,6 +2071,7 @@ export function LemonAssetCheck() {
                     </tbody>
                 </table>
             </div>
+            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Page>
     );
 }

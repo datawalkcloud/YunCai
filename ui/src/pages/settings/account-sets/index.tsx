@@ -368,7 +368,7 @@ export default function AccountSetsPage() {
                             >
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="flex min-w-0 items-center gap-2">
-                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#eef4ff] text-[20px] text-[#2f6bff]">
+                                        <div className="flex size-9 shrink-0 items-center justify-center bg-[#eef4ff] text-[20px] text-[#2f6bff]">
                                             <BankOutlined />
                                         </div>
                                         <div className="flex min-w-0 flex-col">

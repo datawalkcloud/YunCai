@@ -1,153 +1,169 @@
+/**
+ * 收支类别（对应柠檬云「资金 → 收支类别」）。
+ *
+ * 布局对齐柠檬云：收入 / 支出 两个页签 → 输入编码或名称 + 查询｜导入 / 导出 / 新增 / 刷新；
+ * 表格列 编码 / 名称 / 智能匹配关键字 / 关联现金流 / 启用状态（开关）/ 操作（新增·编辑·删除）；
+ * 新增与编辑弹窗按柠檬云字段：编码（默认下一个序号）、名称、上级类别、关联现金流、智能匹配关键字。
+ */
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Alert, Button, Input, Modal, Radio, Segmented, Select, Table } from "antd"
-import type { TableColumnsType } from "antd"
+import type { ReactNode } from "react"
 import {
-    DeleteOutlined,
-    EditOutlined,
-    PlusOutlined,
-    ReloadOutlined,
-    TagsOutlined,
-} from "@ant-design/icons"
+    App,
+    Button,
+    Card,
+    Input,
+    Modal,
+    Pagination,
+    Select,
+    Space,
+    Switch,
+    Table,
+    Tabs,
+    Tooltip,
+    Typography,
+    Upload,
+} from "antd"
+import type { TableColumnsType, UploadFile } from "antd"
+import { ReloadOutlined, SearchOutlined } from "@ant-design/icons"
 
-import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
-import { AccountsApi, EntryCategoriesApi, type AccountDto, type EntryCategoryDto } from "@/apis-gen"
+import {
+    AssistItemsApi,
+    EntryCategoriesApi,
+    type AssistItemDto,
+    type EntryCategoryDto,
+    type EntryCategoryImportResult,
+} from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-import { useConfirm } from "@/hooks/useConfirm"
-import { PageHeader, SectionCard } from "@/components/page/section"
-import { FormField } from "@/components/page/form-field"
-import { StatusPill } from "@/components/page/status-pill"
-import { ICON_STYLE } from "@/components/page/styles"
 
-/** 新建/编辑类别表单值。 */
-interface CategoryFormValues {
-    type: 1 | 2
+const PAGE_SIZE_OPTIONS = [20, 50, 100, 200]
+
+/** 类型页签：1=收入，2=支出。 */
+type CategoryType = 1 | 2
+
+/** 表单模型（与柠檬云新增弹窗字段一致）。 */
+interface CategoryForm {
+    code: string
     name: string
-    /** 智能匹配关键字（逗号分隔）；空串表示不设置 / 清除。 */
+    parentId: string
+    cashFlowItemId: string
     smartKeywords: string
-    /** 默认对方科目；空串表示不指定（更新时按后端三态协议解释为空 GUID 清除）。 */
-    voucherSubjectId: string
 }
 
-/** 更新请求中「清除默认对方科目」的哨兵值（后端约定 Guid.Empty 表示清除）。 */
-const CLEAR_SUBJECT_GUID = "00000000-0000-0000-0000-000000000000"
-
-/** 类型筛选值：全部 / 收入 / 支出（替代原表头 filters）。 */
-type TypeFilter = "all" | "1" | "2"
-
-const TYPE_FILTER_OPTIONS = [
-    { value: "all", label: "全部" },
-    { value: "1", label: "收入" },
-    { value: "2", label: "支出" },
-]
-
-const emptyForm: CategoryFormValues = { type: 1, name: "", smartKeywords: "", voucherSubjectId: "" }
-
-/** 表单校验，提示文案与原 antd rules 逐条一致。 */
-function validate(values: CategoryFormValues): Partial<Record<keyof CategoryFormValues, string>> {
-    const errors: Partial<Record<keyof CategoryFormValues, string>> = {}
-    // 类型是单选，state 里必有值，等价于原 required 规则
-    // required + whitespace：全是空格也算未填
-    if (!values.name.trim()) errors.name = "请填写类别名称，如「销售收入」「办公费」。"
-    return errors
-}
+const emptyForm: CategoryForm = { code: "", name: "", parentId: "", cashFlowItemId: "", smartKeywords: "" }
 
 export default function EntryCategoriesPage() {
+    const { message } = App.useApp()
     const { token } = useAuth()
-    const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const currentSet = accountSets.find((s) => s.id === accountSetId)
-    const { confirm, confirmDialog } = useConfirm()
 
-    const [categories, setCategories] = useState<EntryCategoryDto[]>([])
+    const [type, setType] = useState<CategoryType>(1)
+    const [all, setAll] = useState<EntryCategoryDto[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    // 类型筛选：原 antd 列头 filters 改成显式筛选控件，过滤在传给表格之前完成。
-    const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
-    // 默认对方科目可选项（末级科目），打开对话框时惰性加载。
-    const [subjectAccounts, setSubjectAccounts] = useState<AccountDto[]>([])
+    const [keyword, setKeyword] = useState("")
+    const [applied, setApplied] = useState("")
+    const [page, setPage] = useState(1)
+    const [pageSize, setPageSize] = useState(20)
 
-    // ── 类别新建/编辑 ──
-    const [modalOpen, setModalOpen] = useState(false)
+    const [cashFlows, setCashFlows] = useState<AssistItemDto[]>([])
+
+    const [formOpen, setFormOpen] = useState(false)
     const [editing, setEditing] = useState<EntryCategoryDto | null>(null)
+    const [form, setForm] = useState<CategoryForm>(emptyForm)
     const [saving, setSaving] = useState(false)
-    const [formValues, setFormValues] = useState<CategoryFormValues>(emptyForm)
-    const [formErrors, setFormErrors] = useState<Partial<Record<keyof CategoryFormValues, string>>>({})
 
-    /** 加载当前账套的全部收支类别。 */
-    const loadCategories = useCallback(async () => {
+    const [importOpen, setImportOpen] = useState(false)
+    const [importFile, setImportFile] = useState<UploadFile | null>(null)
+    const [importing, setImporting] = useState(false)
+    const [importResult, setImportResult] = useState<EntryCategoryImportResult | null>(null)
+
+    const load = useCallback(async () => {
         if (!accountSetId) return
         setLoading(true)
         setError(null)
         try {
             const list = await new EntryCategoriesApi(apiConfig(token)).accountsetsAccountSetIdEntrycategoriesGet({ accountSetId })
-            setCategories(list)
+            setAll(list ?? [])
         } catch (err) {
             setError(await apiErrorMessage(err, "加载收支类别失败，请重试。"))
-            setCategories([])
+            setAll([])
         } finally {
             setLoading(false)
         }
     }, [accountSetId, token])
 
     useEffect(() => {
-        void loadCategories()
-    }, [loadCategories])
+        void load()
+    }, [load])
 
-    /** 改单个字段：对应原控件 onChange，已有错误时即时重算。 */
-    function setFormValue<K extends keyof CategoryFormValues>(key: K, value: CategoryFormValues[K]) {
-        const next: CategoryFormValues = { ...formValues, [key]: value }
-        setFormValues(next)
-        if (Object.keys(formErrors).length > 0) setFormErrors(validate(next))
-    }
+    /** 关联现金流可选项（辅助核算「现金流」类别的档案）。 */
+    useEffect(() => {
+        if (!accountSetId) return
+        void (async () => {
+            try {
+                const items = await new AssistItemsApi(apiConfig(token)).accountsetsAccountSetIdAssistItemsGet({
+                    accountSetId,
+                    type: 7,
+                })
+                setCashFlows(items ?? [])
+            } catch {
+                // 未启用现金流核算时忽略
+            }
+        })()
+    }, [accountSetId, token])
 
-    /** 提交前校验，对应原 validateFields。 */
-    function checkForm() {
-        const next = validate(formValues)
-        setFormErrors(next)
-        return Object.keys(next).length === 0
-    }
+    /* ---------------- 列表过滤与分页 ---------------- */
 
-    /** 惰性加载末级科目列表，作为「默认对方科目」可选项。 */
-    async function ensureSubjectAccounts() {
-        if (subjectAccounts.length > 0) return
-        try {
-            const accs = await new AccountsApi(apiConfig(token)).accountsetsAccountSetIdAccountsGet({
-                accountSetId,
-                leafOnly: true,
-            })
-            setSubjectAccounts(accs)
-        } catch (err) {
-            setError(await apiErrorMessage(err, "加载科目列表失败，请重试。"))
-        }
-    }
+    const typeRows = useMemo(() => all.filter((c) => c.type === type), [all, type])
 
-    function openCreate() {
+    const filtered = useMemo(() => {
+        const term = applied.trim()
+        if (!term) return typeRows
+        return typeRows.filter((c) => (c.code ?? "").includes(term) || (c.name ?? "").includes(term))
+    }, [typeRows, applied])
+
+    const paged = filtered.slice((page - 1) * pageSize, page * pageSize)
+
+    /** 下一个编码：现有纯数字编码的最大值 + 1。 */
+    const nextCode = useMemo(() => {
+        const max = all.reduce((acc, c) => {
+            const n = Number.parseInt(c.code ?? "", 10)
+            return Number.isFinite(n) && n > acc ? n : acc
+        }, 0)
+        return String(max + 1)
+    }, [all])
+
+    /* ---------------- 表单 ---------------- */
+
+    const openCreate = (presetType: CategoryType = type) => {
+        setType(presetType)
         setEditing(null)
-        setFormValues(emptyForm)
-        setFormErrors({})
-        setModalOpen(true)
-        void ensureSubjectAccounts()
+        setForm({ ...emptyForm, code: nextCode })
+        setFormOpen(true)
     }
 
-    function openEdit(c: EntryCategoryDto) {
-        setEditing(c)
-        setFormValues({
-            type: (c.type as 1 | 2) ?? 1,
-            name: c.name ?? "",
-            smartKeywords: c.smartKeywords ?? "",
-            voucherSubjectId: c.voucherSubjectId ?? "",
+    const openEdit = (row: EntryCategoryDto) => {
+        setEditing(row)
+        setForm({
+            code: row.code ?? "",
+            name: row.name ?? "",
+            parentId: row.parentId ?? "",
+            cashFlowItemId: row.cashFlowItemId ?? "",
+            smartKeywords: row.smartKeywords ?? "",
         })
-        setFormErrors({})
-        setModalOpen(true)
-        void ensureSubjectAccounts()
+        setFormOpen(true)
     }
 
-    async function handleSubmit() {
-        if (!checkForm()) return
-        const values = formValues
+    const submitForm = async () => {
+        if (!accountSetId) return
+        if (!form.name.trim()) {
+            message.warning("请输入类别名称。")
+            return
+        }
+
         setSaving(true)
-        setError(null)
         try {
             const api = new EntryCategoriesApi(apiConfig(token))
             if (editing?.id) {
@@ -155,234 +171,457 @@ export default function EntryCategoriesPage() {
                     accountSetId,
                     id: editing.id,
                     updateEntryCategoryRequest: {
-                        name: values.name,
-                        // 关键字：整值提交（空串 = 清除）；科目：空 = 空 GUID（清除），否则为所选科目。
-                        smartKeywords: values.smartKeywords,
-                        voucherSubjectId: values.voucherSubjectId || CLEAR_SUBJECT_GUID,
+                        name: form.name.trim(),
+                        code: form.code.trim() || undefined,
+                        parentId: form.parentId || "00000000-0000-0000-0000-000000000000",
+                        cashFlowItemId: form.cashFlowItemId || "00000000-0000-0000-0000-000000000000",
+                        smartKeywords: form.smartKeywords,
                     },
                 })
+                message.success("类别已保存")
             } else {
                 await api.accountsetsAccountSetIdEntrycategoriesPost({
                     accountSetId,
                     createEntryCategoryRequest: {
-                        type: values.type,
-                        name: values.name,
-                        smartKeywords: values.smartKeywords || undefined,
-                        voucherSubjectId: values.voucherSubjectId || undefined,
+                        type,
+                        code: form.code.trim() || undefined,
+                        name: form.name.trim(),
+                        parentId: form.parentId || undefined,
+                        cashFlowItemId: form.cashFlowItemId || undefined,
+                        smartKeywords: form.smartKeywords || undefined,
                     },
                 })
+                message.success("类别已新增")
             }
-            setModalOpen(false)
-            await loadCategories()
+            setFormOpen(false)
+            await load()
         } catch (err) {
-            setError(await apiErrorMessage(err, editing ? "保存类别失败，请重试。" : "新建类别失败，请重试。"))
+            message.error(await apiErrorMessage(err, "保存类别失败，请重试。"))
         } finally {
             setSaving(false)
         }
     }
 
-    async function handleDelete(c: EntryCategoryDto) {
-        if (!c.id) return
-        if (!(await confirm(`确定删除${c.typeText}类别「${c.name}」吗？既有流水中已登记的类别不受影响。`))) return
-        setError(null)
+    const removeCategory = (row: EntryCategoryDto) => {
+        if (!row.id) return
+        Modal.confirm({
+            title: "删除确认",
+            content: `确定删除类别「${row.name}」吗？既有流水中已登记的类别文本不受影响。`,
+            okText: "确定",
+            cancelText: "取消",
+            onOk: async () => {
+                try {
+                    await new EntryCategoriesApi(apiConfig(token)).accountsetsAccountSetIdEntrycategoriesIdDelete({
+                        accountSetId,
+                        id: row.id!,
+                    })
+                    message.success("类别已删除")
+                    await load()
+                } catch (err) {
+                    message.error(await apiErrorMessage(err, "删除类别失败，请重试。"))
+                }
+            },
+        })
+    }
+
+    const toggleEnabled = async (row: EntryCategoryDto, enabled: boolean) => {
+        if (!row.id) return
         try {
-            await new EntryCategoriesApi(apiConfig(token)).accountsetsAccountSetIdEntrycategoriesIdDelete({ accountSetId, id: c.id })
-            await loadCategories()
+            await new EntryCategoriesApi(apiConfig(token)).accountsetsAccountSetIdEntrycategoriesIdEnabledPatch({
+                accountSetId,
+                id: row.id,
+                setEntryCategoryEnabledRequest: { enabled },
+            })
+            setAll((prev) => prev.map((c) => (c.id === row.id ? { ...c, isEnabled: enabled } : c)))
+            message.success(enabled ? "已启用" : "已停用")
         } catch (err) {
-            setError(await apiErrorMessage(err, "删除类别失败，请重试。"))
+            message.error(await apiErrorMessage(err, "切换启用状态失败，请重试。"))
         }
     }
 
-    // 客户端过滤：等价原列头 filters + onFilter。
-    const visibleCategories = useMemo(
-        () => (typeFilter === "all" ? categories : categories.filter((c) => c.type === Number(typeFilter))),
-        [categories, typeFilter],
-    )
+    /* ---------------- 导入 / 导出 ---------------- */
+
+    const exportCategories = async () => {
+        if (!accountSetId) return
+        try {
+            const res = await fetch(`/api/accountsets/${accountSetId}/entrycategories/export?type=${type}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            if (!res.ok) throw new Error(await apiErrorMessage(await res.json().catch(() => null), "导出失败，请重试。"))
+            const blob = await res.blob()
+            const url = URL.createObjectURL(blob)
+            const anchor = document.createElement("a")
+            anchor.href = url
+            const disposition = res.headers.get("Content-Disposition") ?? ""
+            const star = /filename\*=UTF-8''([^;\n]+)/i.exec(disposition)
+            const plain = /filename="?([^";\n]+)"?/i.exec(disposition)
+            anchor.download = star ? decodeURIComponent(star[1]) : plain ? plain[1] : "收支类别.xlsx"
+            document.body.appendChild(anchor)
+            anchor.click()
+            anchor.remove()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            message.error(err instanceof Error ? err.message : "导出失败，请重试。")
+        }
+    }
+
+    const downloadTemplate = async () => {
+        if (!accountSetId) return
+        const res = await fetch(`/api/accountsets/${accountSetId}/entrycategories/import/template`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+            message.error("模板下载失败，请重试。")
+            return
+        }
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const anchor = document.createElement("a")
+        anchor.href = url
+        anchor.download = "收支类别导入模板.xlsx"
+        document.body.appendChild(anchor)
+        anchor.click()
+        anchor.remove()
+        URL.revokeObjectURL(url)
+    }
+
+    const submitImport = async () => {
+        if (!accountSetId || !importFile?.originFileObj) {
+            message.warning("请选择要导入的文件。")
+            return
+        }
+        setImporting(true)
+        try {
+            const body = new FormData()
+            body.append("file", importFile.originFileObj as File)
+            const res = await fetch(`/api/accountsets/${accountSetId}/entrycategories/import`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body,
+            })
+            if (!res.ok) throw new Error(await apiErrorMessage(await res.json().catch(() => null), "导入失败，请重试。"))
+            const result = (await res.json()) as EntryCategoryImportResult
+            setImportResult(result)
+            setImportFile(null)
+            setImportOpen(false)
+            await load()
+        } catch (err) {
+            message.error(err instanceof Error ? err.message : "导入失败，请重试。")
+        } finally {
+            setImporting(false)
+        }
+    }
+
+    /* ---------------- 表格 ---------------- */
 
     const columns: TableColumnsType<EntryCategoryDto> = [
         {
-            title: "类型",
-            render: (_, c) => (
-                <StatusPill tone={c.type === 1 ? "green" : "red"}>{c.type === 1 ? "收入" : "支出"}</StatusPill>
+            title: "编码",
+            dataIndex: "code",
+            width: 120,
+            render: (_, r) => <span className="text-slate-500">{r.code}</span>,
+        },
+        {
+            title: "名称",
+            dataIndex: "name",
+            render: (_, r) => (
+                <span className="flex items-center gap-2">
+                    <span className="font-medium text-slate-700">{r.name}</span>
+                    {r.parentName && <span className="text-[11.5px] text-slate-400">（上级：{r.parentName}）</span>}
+                </span>
             ),
         },
-        { title: "类别名称", render: (_, c) => <div className="truncate">{c.name}</div> },
         {
-            title: "智能匹配关键字",
-            render: (_, c) =>
-                c.smartKeywords
-                    ? <div className="truncate text-slate-600">{c.smartKeywords}</div>
-                    : <span className="text-slate-300">—</span>,
+            title: (
+                <Tooltip title="导入流水时，摘要包含任一关键字即可自动归入该类别；不同关键字用逗号隔开。">
+                    <span className="border-b border-dashed border-slate-300">智能匹配关键字</span>
+                </Tooltip>
+            ),
+            dataIndex: "smartKeywords",
+            render: (_, r) => r.smartKeywords || <span className="text-slate-300">—</span>,
         },
         {
-            title: "默认对方科目",
-            render: (_, c) =>
-                c.voucherSubjectId
-                    ? (
-                        <span className="whitespace-nowrap text-slate-600">
-                            {c.voucherSubjectCode} {c.voucherSubjectName}
-                        </span>
-                    )
-                    : <span className="text-slate-300">—</span>,
+            title: "关联现金流",
+            dataIndex: "cashFlowName",
+            width: 160,
+            render: (_, r) => r.cashFlowName || <span className="text-slate-300">—</span>,
+        },
+        {
+            title: "启用状态",
+            dataIndex: "isEnabled",
+            width: 110,
+            align: "center",
+            render: (_, r) => <Switch size="small" checked={r.isEnabled} onChange={(v) => void toggleEnabled(r, v)} />,
         },
         {
             title: "操作",
-            align: "right",
-            render: (_, c) => (
-                <div className="flex items-center justify-end gap-0">
-                    <Button type="text" size="small" title="编辑类别" icon={<EditOutlined />} onClick={() => openEdit(c)} />
-                    <Button
-                        type="text"
-                        size="small"
-                        danger
-                        title="删除类别"
-                        icon={<DeleteOutlined />}
-                        onClick={() => void handleDelete(c)}
-                    />
-                </div>
+            width: 190,
+            render: (_, r) => (
+                <Space size={10}>
+                    <Typography.Link className="text-[13px]" onClick={() => openCreate((r.type as CategoryType) ?? type)}>
+                        新增
+                    </Typography.Link>
+                    <Typography.Link className="text-[13px]" onClick={() => openEdit(r)}>
+                        编辑
+                    </Typography.Link>
+                    <Typography.Link className="text-[13px] text-[#ef4444]" onClick={() => removeCategory(r)}>
+                        删除
+                    </Typography.Link>
+                </Space>
             ),
         },
     ]
 
+    const parentOptions = useMemo(
+        () => [
+            { value: "", label: "全部类别" },
+            ...all
+                .filter((c) => c.type === type && c.id !== editing?.id)
+                .map((c) => ({ value: c.id ?? "", label: `${c.code} ${c.name}` })),
+        ],
+        [all, type, editing],
+    )
+
+    const currentName = type === 1 ? "收入类别" : "支出类别"
+
     return (
-        <div className="flex w-full flex-col gap-5">
-            <PageHeader
-                icon={TagsOutlined}
-                title="收支类别"
-                subtitle={
-                    <>
-                        账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                        。维护记账时可选择的收入 / 支出类别，日记账登记流水时按类别归类统计。
-                    </>
-                }
-                actions={
-                    <>
+        <div className="flex flex-col gap-3">
+            {error && <div className="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
+
+            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 }, body: { padding: 0 } }}>
+                <Tabs
+                    className="lemon-sub-tabs"
+                    activeKey={String(type)}
+                    onChange={(key) => {
+                        setType(Number(key) as CategoryType)
+                        setPage(1)
+                    }}
+                    items={[
+                        { key: "1", label: "收入" },
+                        { key: "2", label: "支出" },
+                    ]}
+                    tabBarStyle={{ margin: 0, paddingInline: 16 }}
+                />
+
+                {/* 工具行 */}
+                <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
+                    <Space size={8} wrap>
+                        <span className="text-[13px] text-slate-600">输入编码或名称：</span>
+                        <Input
+                            size="small"
+                            allowClear
+                            className="w-[220px]"
+                            value={keyword}
+                            prefix={<SearchOutlined className="text-slate-400" />}
+                            onChange={(e) => setKeyword(e.target.value)}
+                            onPressEnter={() => {
+                                setApplied(keyword)
+                                setPage(1)
+                            }}
+                        />
                         <Button
-                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
-                            disabled={!accountSetId || loading}
-                            onClick={() => void loadCategories()}
+                            type="primary"
+                            size="small"
+                            autoInsertSpace={false}
+                            onClick={() => {
+                                setApplied(keyword)
+                                setPage(1)
+                            }}
                         >
-                            刷新
+                            查询
                         </Button>
-                        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!accountSetId}>
-                            新建类别
+                    </Space>
+
+                    <Space size={8} wrap>
+                        <Button size="small" autoInsertSpace={false} onClick={() => setImportOpen(true)}>
+                            导入
                         </Button>
-                    </>
-                }
-            />
+                        <Button size="small" autoInsertSpace={false} onClick={() => void exportCategories()}>
+                            导出
+                        </Button>
+                        <Button type="primary" size="small" autoInsertSpace={false} onClick={() => openCreate()}>
+                            新增
+                        </Button>
+                        <Tooltip title="刷新">
+                            <Button size="small" icon={<ReloadOutlined spin={loading} />} onClick={() => void load()} />
+                        </Tooltip>
+                    </Space>
+                </div>
 
-            {error && <Alert type="error" showIcon closable title={error} onClose={() => setError(null)} />}
-
-            {categories.length === 0 && !loading ? (
-                <SectionCard bodyClassName="p-0">
-                    <div className="flex flex-col items-center gap-3 py-12">
-                        <TagsOutlined className="text-[34px]" style={ICON_STYLE.placeholder} />
-                        <p className="text-[13px] text-slate-400">
-                            {accountSetId ? "还没有收支类别。点击「新建类别」添加，如「销售收入」「办公费」。" : "请先选择账套。"}
-                        </p>
-                        {accountSetId && (
-                            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                                新建类别
-                            </Button>
-                        )}
-                    </div>
-                </SectionCard>
-            ) : (
-                <SectionCard
-                    title={<h3 className="text-[14px] font-semibold text-slate-800">类别列表</h3>}
-                    action={
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[12px] text-slate-400">类型筛选</span>
-                            <Segmented
-                                size="small"
-                                options={TYPE_FILTER_OPTIONS}
-                                value={typeFilter}
-                                onChange={(v) => setTypeFilter(v as TypeFilter)}
-                            />
-                        </div>
-                    }
-                    bodyClassName="p-0"
-                >
-                    <Table<EntryCategoryDto>
+                {/* 表格 */}
+                <div className="p-3">
+                    <Table
                         columns={columns}
-                        dataSource={visibleCategories}
-                        rowKey={(c) => c.id ?? c.name ?? ""}
+                        dataSource={paged}
+                        rowKey={(r) => r.id ?? ""}
                         pagination={false}
                         size="small"
-                        loading={loading && visibleCategories.length === 0}
-                        locale={{ emptyText: "暂无数据" }}
+                        bordered
+                        loading={loading}
+                        locale={{ emptyText: <div className="py-10 text-[13px] text-slate-400">暂无数据</div> }}
                     />
-                </SectionCard>
-            )}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 text-[12.5px] text-slate-500">
+                        <span>
+                            显示 {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, filtered.length)}，共{" "}
+                            {filtered.length} 条记录
+                        </span>
+                        <Pagination
+                            size="small"
+                            current={page}
+                            pageSize={pageSize}
+                            total={filtered.length}
+                            pageSizeOptions={PAGE_SIZE_OPTIONS}
+                            showSizeChanger
+                            onChange={(next, size) => {
+                                if (size !== pageSize) {
+                                    setPageSize(size)
+                                    setPage(1)
+                                    return
+                                }
+                                setPage(next)
+                            }}
+                        />
+                    </div>
+                </div>
+            </Card>
 
-            {/* 新建/编辑类别 */}
+            {/* 新增 / 编辑类别 */}
             <Modal
-                open={modalOpen}
-                title={editing ? "编辑类别" : "新建类别"}
-                onCancel={() => setModalOpen(false)}
-                onOk={() => void handleSubmit()}
-                okText={editing ? "保存" : "创建"}
-                cancelText="取消"
-                confirmLoading={saving}
+                open={formOpen}
+                title={editing ? `编辑${currentName}` : `新增${currentName}`}
+                width={520}
+                onCancel={() => setFormOpen(false)}
+                footer={
+                    <Space>
+                        <Button autoInsertSpace={false} onClick={() => setFormOpen(false)}>
+                            取消
+                        </Button>
+                        <Button type="primary" autoInsertSpace={false} loading={saving} onClick={() => void submitForm()}>
+                            保存
+                        </Button>
+                    </Space>
+                }
             >
-                <div className="flex flex-col gap-4 py-2">
-                    <FormField label="类型" required>
-                        <Radio.Group
-                            disabled={!!editing}
-                            value={formValues.type}
-                            onChange={(e) => setFormValue("type", e.target.value as 1 | 2)}
-                            options={[
-                                { value: 1, label: "收入" },
-                                { value: 2, label: "支出" },
-                            ]}
-                        />
-                    </FormField>
-                    <FormField label="类别名称" htmlFor="entry-category-name" required error={formErrors.name}>
-                        <Input
-                            id="entry-category-name"
-                            value={formValues.name}
-                            onChange={(e) => setFormValue("name", e.target.value)}
-                            placeholder="如：销售收入、办公费、差旅费"
-                            maxLength={50}
-                            status={formErrors.name ? "error" : undefined}
-                        />
-                    </FormField>
-                    <FormField
-                        label="智能匹配关键字（选填）"
-                        htmlFor="entry-category-keywords"
-                        description="导入流水时，摘要包含任一关键字将自动归入该类别（同类命中取关键字最长者）。"
-                    >
-                        <Input
-                            id="entry-category-keywords"
-                            value={formValues.smartKeywords}
-                            onChange={(e) => setFormValue("smartKeywords", e.target.value)}
-                            placeholder="逗号分隔，如：货款,销售"
-                            maxLength={200}
-                        />
-                    </FormField>
-                    <FormField
-                        label="默认对方科目（选填）"
-                        htmlFor="entry-category-subject"
-                        description="由流水生成凭证时，该类别默认使用的对方科目（仅末级科目）。"
-                    >
+                <div className="flex flex-col gap-3 py-2">
+                    <FieldRow label="编码" required>
+                        <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} maxLength={32} />
+                    </FieldRow>
+                    <FieldRow label="名称" required>
+                        <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={50} />
+                    </FieldRow>
+                    <FieldRow label="上级类别">
                         <Select
-                            id="entry-category-subject"
+                            className="w-full"
+                            value={form.parentId}
+                            options={parentOptions}
+                            onChange={(v) => setForm({ ...form, parentId: v })}
+                        />
+                    </FieldRow>
+                    <FieldRow label="关联现金流">
+                        <Select
                             className="w-full"
                             allowClear
-                            placeholder="不指定"
-                            value={formValues.voucherSubjectId || undefined}
-                            onChange={(v) => setFormValue("voucherSubjectId", v ?? "")}
-                            options={subjectAccounts.map((a) => ({
-                                value: a.id ?? "",
-                                label: `${a.code} ${a.name}`,
-                            }))}
+                            placeholder="不关联"
+                            value={form.cashFlowItemId || undefined}
+                            options={cashFlows.map((c) => ({ value: c.id ?? "", label: `${c.code} ${c.name}` }))}
+                            onChange={(v) => setForm({ ...form, cashFlowItemId: v ?? "" })}
                         />
-                    </FormField>
-                    {editing && <p className="text-sm text-slate-400">改名不影响既有流水中已登记的类别文本。</p>}
+                    </FieldRow>
+                    <FieldRow label="智能匹配关键字">
+                        <Input.TextArea
+                            rows={3}
+                            value={form.smartKeywords}
+                            maxLength={200}
+                            onChange={(e) => setForm({ ...form, smartKeywords: e.target.value })}
+                        />
+                    </FieldRow>
+                    <ul className="pl-5 text-[12px] leading-6 text-[#b45309]">
+                        <li>当日记账的摘要中有对应关键字时，可以自动匹配出收支类别</li>
+                        <li>不同关键字之间用逗号隔开</li>
+                    </ul>
                 </div>
             </Modal>
 
-            {confirmDialog}
+            {/* 导入 */}
+            <Modal
+                open={importOpen}
+                title="导入收支类别"
+                width={520}
+                onCancel={() => setImportOpen(false)}
+                footer={
+                    <Space>
+                        <Button autoInsertSpace={false} onClick={() => setImportOpen(false)}>
+                            取消
+                        </Button>
+                        <Button type="primary" autoInsertSpace={false} loading={importing} onClick={() => void submitImport()}>
+                            导入
+                        </Button>
+                    </Space>
+                }
+            >
+                <div className="flex flex-col gap-3 py-2 text-[13px] leading-6 text-slate-600">
+                    <p>1.请选择下面任意一种方式导入收支类别</p>
+                    <p className="pl-4">
+                        (1)在收支类别列表导出所需数据，确认后直接导入
+                        <br />
+                        (2)点击
+                        <Typography.Link className="mx-1 text-[13px]" onClick={() => void downloadTemplate()}>
+                            下载模板
+                        </Typography.Link>
+                        ，按照模板格式进行数据整理再导入
+                    </p>
+                    <p>2.选择文件导入</p>
+                    <Upload
+                        accept=".xlsx"
+                        maxCount={1}
+                        fileList={importFile ? [importFile] : []}
+                        beforeUpload={() => false}
+                        onChange={({ fileList }) => setImportFile(fileList[0] ?? null)}
+                        onRemove={() => setImportFile(null)}
+                    >
+                        <Button size="small">选择文件</Button>
+                    </Upload>
+                </div>
+            </Modal>
+
+            {/* 导入结果 */}
+            {importResult && (
+                <Modal
+                    open
+                    title="导入结果"
+                    width={520}
+                    onCancel={() => setImportResult(null)}
+                    footer={
+                        <Button type="primary" autoInsertSpace={false} onClick={() => setImportResult(null)}>
+                            知道了
+                        </Button>
+                    }
+                >
+                    <p className="text-[13px] text-slate-600">
+                        共 {importResult.totalRows} 行，成功导入 {importResult.imported} 条，跳过 {importResult.skipped} 条。
+                    </p>
+                    {(importResult.warnings ?? []).length > 0 && (
+                        <ul className="mt-2 max-h-[240px] overflow-y-auto pl-5 text-[12.5px] leading-6 text-[#b45309]">
+                            {(importResult.warnings ?? []).map((w, i) => (
+                                <li key={i}>{w}</li>
+                            ))}
+                        </ul>
+                    )}
+                </Modal>
+            )}
+        </div>
+    )
+}
+
+/** 弹窗里的一行「标签 + 控件」。 */
+function FieldRow({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
+    return (
+        <div className="flex items-start gap-3">
+            <span className="w-[92px] shrink-0 pt-1.5 text-right text-[13px] text-slate-600">
+                {required && <span className="mr-1 text-[#ef4444]">*</span>}
+                {label}
+            </span>
+            <div className="min-w-0 flex-1">{children}</div>
         </div>
     )
 }

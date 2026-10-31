@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { App as AntdApp, ConfigProvider } from 'antd'
+import { App as AntdApp, ConfigProvider, theme } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
@@ -14,9 +14,15 @@ import { RouterProvider } from "react-router/dom";
 
 dayjs.locale('zh-cn')
 
-/** antd 主题：沿用项目既有设计 token，避免换库后视觉推倒重来。 */
+/**
+ * antd 主题：沿用项目既有设计 token，直角 + 紧凑密度统一由全局主题控制。
+ * compactAlgorithm 把控件高度收到 28、间距收到 8/12、正文 12px；fontSizeSM 抬到 11 以免辅助文字过小。
+ * motion: false 把动效时长统一归零，弹层/折叠/切换都即时呈现，操作反馈更快。
+ */
 const antdTheme = {
+  algorithm: theme.compactAlgorithm,
   token: {
+    motion: false,
     colorPrimary: '#2f6bff',
     colorLink: '#2f6bff',
     colorBgLayout: '#f4f6fb',
@@ -27,7 +33,8 @@ const antdTheme = {
     colorSuccess: '#10b981',
     colorWarning: '#f59e0b',
     colorError: '#ef4444',
-    borderRadius: 8,
+    borderRadius: 0,
+    fontSizeSM: 11,
     fontFamily: "'Inter Variable', sans-serif",
   },
   components: {
@@ -41,10 +48,10 @@ const antdTheme = {
       itemSelectedBg: '#2f6bff',
       itemSelectedColor: '#ffffff',
     },
-    // 侧边栏菜单：无描边、无左侧高亮条，选中态用浅蓝胶囊，字号与旧版菜单一致。
+    // 侧边栏菜单：无描边、无左侧高亮条，选中态用浅蓝实底，字号与旧版菜单一致。
     Menu: {
       fontSize: 13,
-      itemHeight: 36,
+      itemHeight: 32,
       itemBg: '#ffffff',
       subMenuItemBg: '#ffffff',
       itemColor: '#475569',
@@ -52,11 +59,11 @@ const antdTheme = {
       itemHoverColor: '#1e293b',
       itemSelectedBg: '#e7f0ff',
       itemSelectedColor: '#2f6bff',
-      itemBorderRadius: 10,
+      itemBorderRadius: 0,
       itemMarginInline: 8,
       itemMarginBlock: 2,
       activeBarBorderWidth: 0,
-      iconMarginInlineEnd: 10,
+      iconMarginInlineEnd: 8,
     },
   },
 }
@@ -66,7 +73,8 @@ installUnauthorizedFetchGuard()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConfigProvider locale={zhCN} theme={antdTheme}>
+    {/* wave 关掉点击水波纹，避免整站按钮都被一圈扩散动画拖慢手感 */}
+    <ConfigProvider locale={zhCN} theme={antdTheme} wave={{ disabled: true }}>
       {/* antd 的 message/notification/modal 静态方法需要挂在 App 上下文里 */}
       <AntdApp>
         <ThemeProvider>

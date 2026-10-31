@@ -1,271 +1,187 @@
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router"
 
 import {
     AccountBookOutlined,
-    BarChartOutlined,
-    BankOutlined,
-    BookOutlined,
-    CalendarOutlined,
+    ArrowRightOutlined,
     CheckCircleFilled,
     CloseCircleOutlined,
-    DollarOutlined,
-    FileAddOutlined,
     FileTextOutlined,
+    InfoCircleFilled,
+    LeftOutlined,
+    PlusOutlined,
     ProfileOutlined,
     ReloadOutlined,
     RightOutlined,
-    RiseOutlined,
-    FallOutlined,
     UnorderedListOutlined,
-    WalletOutlined,
+    UploadOutlined,
     WarningFilled,
 } from "@ant-design/icons"
 import { Button, Skeleton } from "antd"
 
 import { fmtAmount } from "@/components/ledger/format"
-import { useCurrentAccountSet, useDefaultAccountingPeriod } from "@/accountSets/useCurrentAccountSet"
+import {
+    makePeriod,
+    shiftPeriod,
+    useCurrentAccountSet,
+    useDefaultAccountingPeriod,
+    type AccountingPeriod,
+} from "@/accountSets/useCurrentAccountSet"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import type { FinancialSummaryRowDto } from "@/apis-gen"
 import { countByStatus, findRow, useDashboardData, type DashboardData } from "./useDashboardData"
 
 /* ------------------------------------------------------------------ */
-/*  金额 / 比率展示（统一走账簿 fmtAmount，不重复造轮子）                 */
+/*  数值展示                                                            */
+/*  首页卡片面积小，金额统一折成「万元」两列小数；完整元数放 title 上。      */
 /* ------------------------------------------------------------------ */
 
-/** 金额：无数据（null/undefined）显示「--」，0 正常显示「0.00」。 */
-function money(value: number | null | undefined): string {
+/** 元 → 万元文本；null 显示「--」，0 显示「0.00」。 */
+function wan(value: number | null | undefined): string {
     if (value == null) return "--"
-    return "¥ " + fmtAmount(value, true)
+    return (value / 10000).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-/** 百分比指标（如资产负债率）。 */
-function percent(value: number | null | undefined): string {
+/** 百分比指标（资产负债率）。 */
+function pct(value: number | null | undefined): string {
     if (value == null) return "--"
     return fmtAmount(value, true) + "%"
 }
 
-/** 环比标签：null 显示「--」，正为绿、负为红。 */
-function DeltaTag({ pct }: { pct?: number | null }) {
-    if (pct == null) {
-        return <span className="text-[12px] text-slate-400">环比 --</span>
+/* ------------------------------------------------------------------ */
+/*  顶部提示条：按「未过账 → 未结转 → 未结账 → 已就绪」给出最该做的一件事    */
+/* ------------------------------------------------------------------ */
+
+type Notice = {
+    tone: "warn" | "info" | "ok"
+    text: string
+    cta: string
+    to: string
+}
+
+const NOTICE_STYLE: Record<Notice["tone"], { wrap: string; icon: React.ComponentType<{ className?: string }> }> = {
+    warn: { wrap: "bg-[#fff8e6] text-[#b45309] border-[#fde8b4]", icon: WarningFilled },
+    info: { wrap: "bg-[#eef4ff] text-[#2f6bff] border-[#d9e6ff]", icon: InfoCircleFilled },
+    ok: { wrap: "bg-[#e9f9f1] text-[#0f9d63] border-[#c8efdd]", icon: CheckCircleFilled },
+}
+
+function buildNotice(data: DashboardData, counts: ReturnType<typeof countByStatus>, base: string): Notice {
+    if (counts.unposted > 0) {
+        return {
+            tone: "warn",
+            text: `账簿与报表只统计已过账凭证，当前还有 ${counts.unposted} 张凭证未过账，首页指标可能偏低。`,
+            cta: "去审核过账",
+            to: `${base}/vouchers/manage`,
+        }
     }
-    const up = pct >= 0
+    if (!data.closing?.carriedPeriod) {
+        return { tone: "info", text: "本期损益尚未结转，结转后利润表与资产负债表口径才一致。", cta: "去结转损益", to: `${base}/closing` }
+    }
+    if (!data.closing?.closedPeriod) {
+        return { tone: "info", text: "本期尚未结账，结账后该期间将锁定，不再允许录入或修改凭证。", cta: "去结账", to: `${base}/closing` }
+    }
+    return {
+        tone: "ok",
+        text: `本期已完成结转与结账（结转至 ${data.closing.carriedPeriod}，结账至 ${data.closing.closedPeriod}）。`,
+        cta: "查看财务概要",
+        to: `${base}/reports/financial-summary`,
+    }
+}
+
+function NoticeStrip({ data, counts }: { data: DashboardData; counts: ReturnType<typeof countByStatus> }) {
+    const navigate = useNavigate()
+    const accountSetId = useCurrentAccountSetId() ?? ""
+    const notice = buildNotice(data, counts, `/${accountSetId}`)
+    const style = NOTICE_STYLE[notice.tone]
+    const Icon = style.icon
+
     return (
-        <span className={"flex items-center gap-0.5 text-[12px] font-medium " + (up ? "text-[#10b981]" : "text-[#ef4444]")}>
-            {up ? <RiseOutlined className="text-[14px]" /> : <FallOutlined className="text-[14px]" />}
-            {Math.abs(pct).toFixed(1)}%
-            <span className="font-normal text-slate-400">环比</span>
-        </span>
+        <div className={"flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-[12.5px] " + style.wrap}>
+            <Icon className="shrink-0 text-[15px]" />
+            <span className="min-w-0 flex-1 leading-5">{notice.text}</span>
+            <button
+                type="button"
+                onClick={() => navigate(notice.to)}
+                className="flex shrink-0 items-center gap-1 font-medium transition-opacity hover:opacity-70"
+            >
+                {notice.cta}
+                <RightOutlined className="text-[10px]" />
+            </button>
+        </div>
     )
 }
 
 /* ------------------------------------------------------------------ */
-/*  顶部：账套 / 会计期间 / 结账结转状态                                 */
+/*  快捷入口卡（四张一排，卡底左侧留一条色条区分入口）                     */
 /* ------------------------------------------------------------------ */
 
-function AccountStatusBar({ data }: { data: DashboardData }) {
-    const accountSet = useCurrentAccountSet()
-    const period = useDefaultAccountingPeriod()
-    const periodText = data.summary?.periodText ?? period.label
+type EntrySpec = { label: string; to: string; accent: string; hint?: (c: ReturnType<typeof countByStatus>) => string }
 
-    const carried = data.closing?.carriedPeriod
-    const closed = data.closing?.closedPeriod
-
-    return (
-        <section className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                <div className="min-w-0">
-                    <h1 className="truncate text-[18px] font-bold text-slate-800">
-                        {accountSet?.companyName || accountSet?.name || "工作台"}
-                    </h1>
-                    <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-slate-500">
-                        <CalendarOutlined className="text-[14px] text-slate-400" />
-                        当前会计期间
-                        <span className="font-medium text-slate-700">{periodText}</span>
-                        <span className="text-slate-400">（{accountSet?.name ?? "—"} · {accountSet?.baseCurrency ?? "人民币"}）</span>
-                    </div>
-                </div>
-                <div className="ml-auto flex flex-wrap items-center gap-2">
-                    <StatusBadge
-                        done={!!closed}
-                        label={closed ? `已结账至 ${closed}` : "本月尚未结账"}
-                    />
-                    <StatusBadge
-                        done={!!carried}
-                        label={carried ? `已结转至 ${carried}` : "损益尚未结转"}
-                    />
-                </div>
-            </div>
-        </section>
-    )
-}
-
-function StatusBadge({ done, label }: { done: boolean; label: string }) {
-    return (
-        <span
-            className={
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium " +
-                (done ? "bg-[#d1fae5] text-[#0f9d63]" : "bg-[#fef3c7] text-[#b45309]")
-            }
-        >
-            {done ? <CheckCircleFilled className="text-[14px]" /> : <WarningFilled className="text-[14px]" />}
-            {label}
-        </span>
-    )
-}
-
-/* ------------------------------------------------------------------ */
-/*  指标卡（财务概要聚合）                                               */
-/* ------------------------------------------------------------------ */
-
-type CardSpec = {
-    item: string
-    label: string
-    icon: React.ComponentType<{ className?: string }>
-    accent: string
-    cardBg: string
-}
-
-const CARDS: CardSpec[] = [
-    { item: "营业收入", label: "本月营业收入", icon: BarChartOutlined, accent: "#2f6bff", cardBg: "#eef4ff" },
-    { item: "净利润", label: "本月净利润", icon: DollarOutlined, accent: "#8b5cf6", cardBg: "#f1eaff" },
-    { item: "资金收支", label: "本月资金净收付", icon: WalletOutlined, accent: "#10b981", cardBg: "#e6f8f0" },
-    { item: "资产总额", label: "期末资产总额", icon: BankOutlined, accent: "#f59e0b", cardBg: "#fff4e0" },
+const ENTRIES: EntrySpec[] = [
+    { label: "查看凭证", to: "vouchers/manage", accent: "#2f6bff", hint: (c) => `${c.total} 张 · ${c.unposted} 张待过账` },
+    { label: "科目余额表", to: "ledger/trial-balance", accent: "#10b981" },
+    { label: "资产负债表", to: "reports/balance-sheet", accent: "#f59e0b" },
+    { label: "利润表", to: "reports/income-statement", accent: "#8b5cf6" },
 ]
 
-function StatCards({ data }: { data: DashboardData }) {
+function EntryCards({ counts }: { counts: ReturnType<typeof countByStatus> }) {
+    const navigate = useNavigate()
+    const accountSetId = useCurrentAccountSetId() ?? ""
+
     return (
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {CARDS.map((c) => {
-                const row = findRow(data.summary, c.item)
-                const Icon = c.icon
-                return (
-                    <div key={c.item} className="rounded-2xl p-5" style={{ background: c.cardBg }}>
-                        <div className="flex items-center gap-2.5">
-                            <span
-                                className="flex size-9 items-center justify-center rounded-xl text-white shadow-sm"
-                                style={{ background: c.accent }}
-                            >
-                                <Icon className="text-[20px]" />
-                            </span>
-                            <span className="text-[13px] font-medium" style={{ color: c.accent }}>
-                                {c.label}
-                            </span>
-                        </div>
-                        <div className="mt-4 text-[22px] font-bold tracking-tight text-slate-800 tabular-nums">
-                            {money(row?.currentAmount)}
-                        </div>
-                        <div className="mt-2">
-                            <DeltaTag pct={row?.currentMomPercent} />
-                        </div>
-                    </div>
-                )
-            })}
-        </section>
-    )
-}
-
-/* ------------------------------------------------------------------ */
-/*  财务概览明细                                                        */
-/* ------------------------------------------------------------------ */
-
-const OVERVIEW_GROUPS: { title: string; items: { item: string; label: string; kind: "money" | "percent" }[] }[] = [
-    {
-        title: "盈利状况",
-        items: [
-            { item: "营业收入", label: "营业收入", kind: "money" },
-            { item: "营业成本", label: "营业成本", kind: "money" },
-            { item: "利润总额", label: "利润总额", kind: "money" },
-            { item: "净利润", label: "净利润", kind: "money" },
-        ],
-    },
-    {
-        title: "三项费用",
-        items: [
-            { item: "管理费用", label: "管理费用", kind: "money" },
-            { item: "销售费用", label: "销售费用", kind: "money" },
-            { item: "财务费用", label: "财务费用", kind: "money" },
-        ],
-    },
-    {
-        title: "应收应付与税金",
-        items: [
-            { item: "应收款", label: "应收款", kind: "money" },
-            { item: "应付款", label: "应付款", kind: "money" },
-            { item: "应交税费", label: "应交税费", kind: "money" },
-        ],
-    },
-    {
-        title: "存量与比率",
-        items: [
-            { item: "资产总额", label: "资产总额", kind: "money" },
-            { item: "负债总额", label: "负债总额", kind: "money" },
-            { item: "所有者权益", label: "所有者权益", kind: "money" },
-            { item: "资产负债率(%)", label: "资产负债率", kind: "percent" },
-        ],
-    },
-]
-
-function FinanceOverview({ data }: { data: DashboardData }) {
-    return (
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {OVERVIEW_GROUPS.map((g) => (
-                <div key={g.title} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                    <h3 className="mb-3 text-[14px] font-semibold text-slate-800">{g.title}</h3>
-                    <ul className="divide-y divide-slate-50">
-                        {g.items.map((it) => {
-                            const row: FinancialSummaryRowDto | null = findRow(data.summary, it.item)
-                            const value = it.kind === "percent" ? percent(row?.currentAmount) : money(row?.currentAmount)
-                            return (
-                                <li key={it.item} className="flex items-center justify-between py-2 text-[13px]">
-                                    <span className="text-slate-500">{it.label}</span>
-                                    <span className="font-medium tabular-nums text-slate-800">{value}</span>
-                                </li>
-                            )
-                        })}
-                    </ul>
-                </div>
+        <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            {ENTRIES.map((e) => (
+                <button
+                    key={e.label}
+                    type="button"
+                    onClick={() => navigate(`/${accountSetId}/${e.to}`)}
+                    className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white px-5 py-4 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
+                >
+                    <span className="block truncate text-[14px] font-medium text-slate-700">{e.label}</span>
+                    <span className="mt-1 block h-4 truncate text-[11.5px] text-slate-400">{e.hint?.(counts) ?? ""}</span>
+                    <span
+                        className="absolute bottom-0 left-0 h-[3px] w-16 rounded-tr-full transition-all group-hover:w-24"
+                        style={{ background: e.accent }}
+                    />
+                </button>
             ))}
         </section>
     )
 }
 
 /* ------------------------------------------------------------------ */
-/*  待办：真实、可点的检查项                                             */
+/*  左侧：新增凭证大按钮 + 待办清单                                      */
 /* ------------------------------------------------------------------ */
 
-function TodoCard({ data }: { data: DashboardData }) {
+function CreateVoucherCard({ data }: { data: DashboardData }) {
     const navigate = useNavigate()
     const accountSetId = useCurrentAccountSetId() ?? ""
+    const accountSet = useCurrentAccountSet()
     const counts = useMemo(() => countByStatus(data.vouchers), [data.vouchers])
     const carried = data.closing?.carriedPeriod
     const closed = data.closing?.closedPeriod
 
-    type Todo = { label: string; value: string; done?: boolean; danger?: boolean; to: string; icon: React.ComponentType<{ className?: string }> }
+    type Todo = { label: string; value: string; done: boolean; to: string; icon: React.ComponentType<{ className?: string }> }
 
     const todos: Todo[] = [
         {
             label: "未过账凭证",
             value: counts.unposted > 0 ? `${counts.unposted} 张` : "全部已过账",
             done: counts.unposted === 0,
-            danger: counts.unposted > 0,
             to: `/${accountSetId}/vouchers/manage`,
             icon: FileTextOutlined,
         },
         {
-            label: "待审核凭证（草稿）",
-            value: counts.draft > 0 ? `${counts.draft} 张` : "无草稿",
+            label: "草稿凭证",
+            value: counts.draft > 0 ? `${counts.draft} 张待完善` : "无草稿",
             done: counts.draft === 0,
-            danger: counts.draft > 0,
             to: `/${accountSetId}/vouchers/manage`,
             icon: ProfileOutlined,
         },
         {
-            label: "期末结转损益",
+            label: "结转损益",
             value: carried ? `已结转至 ${carried}` : "尚未结转",
             done: !!carried,
-            danger: !carried,
             to: `/${accountSetId}/closing`,
             icon: AccountBookOutlined,
         },
@@ -273,125 +189,239 @@ function TodoCard({ data }: { data: DashboardData }) {
             label: "期末结账",
             value: closed ? `已结账至 ${closed}` : "尚未结账",
             done: !!closed,
-            danger: !closed,
             to: `/${accountSetId}/closing`,
             icon: UnorderedListOutlined,
         },
     ]
 
     return (
-        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <h3 className="mb-2 text-[14px] font-semibold text-slate-800">待办事项</h3>
-            <ul className="flex flex-col">
+        <section className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <div className="flex flex-col items-center justify-center py-8">
+                <button
+                    type="button"
+                    onClick={() => navigate(`/${accountSetId}/vouchers/new`)}
+                    className="group flex flex-col items-center gap-3"
+                >
+                    <span className="flex size-[74px] items-center justify-center rounded-2xl border border-[#d9e6ff] bg-[#eef4ff] text-[#2f6bff] transition-all group-hover:border-[#2f6bff] group-hover:bg-[#2f6bff] group-hover:text-white">
+                        <PlusOutlined className="text-[30px]" />
+                    </span>
+                    <span className="text-[14px] font-medium text-slate-700 group-hover:text-[#2f6bff]">新增凭证</span>
+                </button>
+            </div>
+
+            <div className="border-t border-slate-100 pt-2">
                 {todos.map((t) => {
                     const Icon = t.icon
                     return (
-                        <li key={t.label} className="border-b border-slate-50 last:border-0">
-                            <button
-                                type="button"
-                                onClick={() => navigate(t.to)}
-                                className="flex w-full items-center gap-3 py-2.5 text-left transition-colors hover:bg-slate-50"
-                            >
-                                <span
-                                    className={
-                                        "flex size-8 shrink-0 items-center justify-center rounded-lg " +
-                                        (t.done ? "bg-[#e6f8f0] text-[#10b981]" : "bg-[#fef2f2] text-[#ef4444]")
-                                    }
-                                >
-                                    {t.done ? <CheckCircleFilled className="text-[16px]" /> : <Icon className="text-[16px]" />}
-                                </span>
-                                <span className="flex-1 truncate text-[13px] text-slate-600">{t.label}</span>
-                                <span
-                                    className={
-                                        "text-[13px] font-medium tabular-nums " +
-                                        (t.danger ? "text-[#ef4444]" : "text-slate-500")
-                                    }
-                                >
-                                    {t.value}
-                                </span>
-                                <RightOutlined className="text-[14px] text-slate-300" />
-                            </button>
-                        </li>
-                    )
-                })}
-            </ul>
-        </section>
-    )
-}
-
-/* ------------------------------------------------------------------ */
-/*  快捷入口（真实路由）                                                 */
-/* ------------------------------------------------------------------ */
-
-function QuickActions() {
-    const navigate = useNavigate()
-    const accountSetId = useCurrentAccountSetId() ?? ""
-
-    const actions = [
-        { label: "新增凭证", to: `/${accountSetId}/vouchers/new`, icon: FileAddOutlined },
-        { label: "查看凭证", to: `/${accountSetId}/vouchers/manage`, icon: FileTextOutlined },
-        { label: "科目余额表", to: `/${accountSetId}/ledger/trial-balance`, icon: BookOutlined },
-        { label: "资产负债表", to: `/${accountSetId}/reports/balance-sheet`, icon: AccountBookOutlined },
-        { label: "利润表", to: `/${accountSetId}/reports/income-statement`, icon: BarChartOutlined },
-    ]
-
-    return (
-        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <h3 className="mb-4 text-[14px] font-semibold text-slate-800">快捷入口</h3>
-            <div className="grid grid-cols-3 gap-y-4 sm:grid-cols-5">
-                {actions.map((a) => {
-                    const Icon = a.icon
-                    return (
                         <button
-                            key={a.label}
+                            key={t.label}
                             type="button"
-                            onClick={() => navigate(a.to)}
-                            className="flex flex-col items-center gap-1.5"
+                            onClick={() => navigate(t.to)}
+                            className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-slate-50"
                         >
-                            <span className="flex size-[52px] items-center justify-center rounded-2xl bg-[#eef4ff] text-[#2f6bff] transition-colors hover:bg-[#dbe8ff]">
-                                <Icon className="text-[24px]" />
+                            <span
+                                className={
+                                    "flex size-6 shrink-0 items-center justify-center rounded-md " +
+                                    (t.done ? "bg-[#e9f9f1] text-[#0f9d63]" : "bg-[#fef2f2] text-[#ef4444]")
+                                }
+                            >
+                                {t.done ? <CheckCircleFilled className="text-[13px]" /> : <Icon className="text-[13px]" />}
                             </span>
-                            <span className="text-[12px] text-slate-600">{a.label}</span>
+                            <span className="flex-1 truncate text-[12.5px] text-slate-600">{t.label}</span>
+                            <span className={"text-[12.5px] tabular-nums " + (t.done ? "text-slate-400" : "font-medium text-[#ef4444]")}>
+                                {t.value}
+                            </span>
+                            <RightOutlined className="text-[10px] text-slate-300 group-hover:text-slate-400" />
                         </button>
                     )
                 })}
             </div>
+
+            <p className="mt-auto truncate pt-3 text-center text-[11.5px] text-slate-400">
+                欢迎使用「{accountSet?.companyName || accountSet?.name || "当前账套"}」，数据实时取自已过账凭证
+            </p>
         </section>
     )
 }
 
 /* ------------------------------------------------------------------ */
-/*  空账套 / 未过账提示                                                  */
+/*  右侧：财务指标（两行 × 五列，可切月度 / 年度，可前后翻期间）           */
+/* ------------------------------------------------------------------ */
+
+type Metric = { item: string; label: string; kind?: "amount" | "percent" }
+
+const METRICS: Metric[][] = [
+    [
+        { item: "资产总额", label: "资产总额" },
+        { item: "负债总额", label: "负债总额" },
+        { item: "所有者权益", label: "所有者权益" },
+        { item: "应收款", label: "应收账款" },
+        { item: "应付款", label: "应付账款" },
+    ],
+    [
+        { item: "营业收入", label: "营业收入" },
+        { item: "营业成本", label: "营业成本" },
+        { item: "期间费用", label: "期间费用" },
+        { item: "净利润", label: "净利润" },
+        { item: "资产负债率(%)", label: "资产负债率", kind: "percent" },
+    ],
+]
+
+type MetricMode = "month" | "year"
+
+function metricValue(row: FinancialSummaryRowDto | null, mode: MetricMode, kind: Metric["kind"]): string {
+    const raw = mode === "month" ? row?.currentAmount : row?.yearToDateAmount
+    if (kind === "percent") return pct(raw)
+    return wan(raw)
+}
+
+function MetricsCard({
+    data,
+    period,
+    mode,
+    onModeChange,
+    onStepPeriod,
+}: {
+    data: DashboardData
+    period: AccountingPeriod
+    mode: MetricMode
+    onModeChange: (mode: MetricMode) => void
+    onStepPeriod: (delta: number) => void
+}) {
+    return (
+        <section className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <header className="flex items-center justify-between gap-3">
+                <h3 className="text-[14px] font-semibold text-slate-800">
+                    {period.year}年{period.month}月财务指标
+                </h3>
+                <div className="flex items-center gap-1">
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<LeftOutlined className="text-[11px]" />}
+                        title="上一月"
+                        onClick={() => onStepPeriod(-1)}
+                    />
+                    <span className="min-w-[86px] text-center text-[12.5px] tabular-nums text-slate-600">
+                        {period.year}年{period.month}月
+                    </span>
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<RightOutlined className="text-[11px]" />}
+                        title="下一月"
+                        onClick={() => onStepPeriod(1)}
+                    />
+                </div>
+            </header>
+            <div className="mt-1 text-right text-[11.5px] text-slate-400">单位：万元</div>
+
+            <div className="mt-2 flex flex-1 flex-col justify-center divide-y divide-slate-100">
+                {METRICS.map((row, ri) => (
+                    <div key={ri} className="grid flex-1 grid-cols-5 items-center gap-2 py-3">
+                        {row.map((m) => {
+                            const r = findRow(data.summary, m.item)
+                            const raw = mode === "month" ? r?.currentAmount : r?.yearToDateAmount
+                            return (
+                                <div key={m.item} className="min-w-0 text-center">
+                                    <div
+                                        className="truncate text-[16px] font-semibold tabular-nums text-slate-800"
+                                        title={m.kind === "percent" ? undefined : raw == null ? undefined : `¥ ${fmtAmount(raw, true)}`}
+                                    >
+                                        {metricValue(r, mode, m.kind)}
+                                    </div>
+                                    <div className="mt-1 truncate text-[11.5px] text-slate-400">{m.label}</div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                ))}
+            </div>
+
+            <footer className="mt-2 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                <span className="truncate text-[11.5px] text-slate-400">口径：财务概要 · 仅统计已过账凭证</span>
+                <div className="flex shrink-0 items-center gap-0.5 bg-slate-100 p-0.5">
+                    {(
+                        [
+                            { key: "month", label: "月度指标" },
+                            { key: "year", label: "年度指标" },
+                        ] as { key: MetricMode; label: string }[]
+                    ).map((o) => (
+                        <button
+                            key={o.key}
+                            type="button"
+                            onClick={() => onModeChange(o.key)}
+                            className={
+                                "px-3 py-1 text-[12px] transition-colors " +
+                                (mode === o.key ? "bg-white font-medium text-[#2f6bff] shadow-sm" : "text-slate-500 hover:text-slate-700")
+                            }
+                        >
+                            {o.label}
+                        </button>
+                    ))}
+                </div>
+            </footer>
+        </section>
+    )
+}
+
+/* ------------------------------------------------------------------ */
+/*  底部横幅：推广「凭证批量导入」                                        */
+/* ------------------------------------------------------------------ */
+
+function ImportBanner() {
+    const navigate = useNavigate()
+    const accountSetId = useCurrentAccountSetId() ?? ""
+
+    return (
+        <section className="flex flex-wrap items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-[#eaf2ff] via-[#f3f8ff] to-[#eefaf3] px-6 py-5">
+            <div className="flex items-center gap-4">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-[#2f6bff] shadow-[0_2px_8px_rgba(47,107,255,0.16)]">
+                    <UploadOutlined className="text-[22px]" />
+                </span>
+                <div className="min-w-0">
+                    <h3 className="text-[15px] font-semibold text-slate-800">凭证一张张敲太慢？</h3>
+                    <p className="mt-0.5 text-[12.5px] leading-5 text-slate-500">
+                        支持从其他平台导出的 .xls / .xlsx 凭证文件批量导入，自动补建缺失科目，导入后统一审核过账。
+                    </p>
+                </div>
+            </div>
+            <Button
+                type="primary"
+                className="ml-auto"
+                onClick={() => navigate(`/${accountSetId}/vouchers/manage`)}
+            >
+                去导入凭证
+                <ArrowRightOutlined className="ml-1 text-[12px]" />
+            </Button>
+        </section>
+    )
+}
+
+/* ------------------------------------------------------------------ */
+/*  空账套提示                                                          */
 /* ------------------------------------------------------------------ */
 
 function EmptyNotice() {
     const navigate = useNavigate()
     const accountSetId = useCurrentAccountSetId() ?? ""
     return (
-        <section className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-[#eef4ff] text-[#2f6bff]">
-                <BookOutlined className="text-[24px]" />
+        <section className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+            <span className="flex size-11 items-center justify-center bg-[#eef4ff] text-[#2f6bff]">
+                <AccountBookOutlined className="text-[22px]" />
             </span>
             <h3 className="text-[15px] font-semibold text-slate-800">这个账套还没有数据</h3>
-            <p className="max-w-md text-[13px] leading-relaxed text-slate-500">
-                报表与首页指标只统计<b className="text-slate-700">已过账</b>的凭证。请先录入凭证，再到凭证页<b className="text-slate-700">审核并过账</b>，
-                随后回到首页即可看到真实的财务数字。
+            <p className="max-w-lg text-[13px] leading-relaxed text-slate-500">
+                报表与首页指标只统计<b className="text-slate-700">已过账</b>的凭证。先在
+                <b className="text-slate-700">设置 · 期初</b>录入期初余额，再录入凭证并审核过账，首页指标就会实时更新。
             </p>
-            <Button icon={<FileAddOutlined />} className="mt-1" onClick={() => navigate(`/${accountSetId}/vouchers/new`)}>
-                去新增凭证
-            </Button>
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+                <Button onClick={() => navigate(`/${accountSetId}/settings/opening-balances`)}>录入期初</Button>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(`/${accountSetId}/vouchers/new`)}>
+                    新增凭证
+                </Button>
+            </div>
         </section>
-    )
-}
-
-/** 有过账凭证以外的未过账凭证时，提示报表口径。 */
-function PostHint({ unposted }: { unposted: number }) {
-    if (unposted <= 0) return null
-    return (
-        <div className="flex items-center gap-2 rounded-xl bg-[#fef3c7] px-4 py-2.5 text-[12.5px] text-[#b45309]">
-            <WarningFilled className="shrink-0 text-[16px]" />
-            账簿与报表仅统计已过账凭证；当前有 {unposted} 张凭证未过账，相关指标可能偏低，请先到凭证页审核并过账。
-        </div>
     )
 }
 
@@ -399,24 +429,24 @@ function PostHint({ unposted }: { unposted: number }) {
 /*  加载 / 失败状态                                                     */
 /* ------------------------------------------------------------------ */
 
-/** 加载占位块：antd 骨架屏闪烁 + 原有的圆角与高度节奏。 */
 function SkeletonBlock({ height }: { height: number }) {
-    return <Skeleton.Button active block style={{ height, borderRadius: 16 }} />
+    return <Skeleton.Button active block style={{ height }} />
 }
 
 function LoadingView() {
     return (
         <div className="flex flex-col gap-5">
-            <SkeletonBlock height={72} />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <SkeletonBlock height={44} />
+            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
                 {[0, 1, 2, 3].map((i) => (
-                    <SkeletonBlock key={i} height={124} />
+                    <SkeletonBlock key={i} height={80} />
                 ))}
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <SkeletonBlock height={200} />
-                <SkeletonBlock height={200} />
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <SkeletonBlock height={300} />
+                <SkeletonBlock height={300} />
             </div>
+            <SkeletonBlock height={92} />
         </div>
     )
 }
@@ -424,7 +454,7 @@ function LoadingView() {
 function ErrorView({ message, onRetry }: { message: string; onRetry: () => void }) {
     return (
         <section className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-white p-10 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-[#fef2f2] text-[#ef4444]">
+            <span className="flex size-12 items-center justify-center bg-[#fef2f2] text-[#ef4444]">
                 <CloseCircleOutlined className="text-[24px]" />
             </span>
             <h3 className="text-[15px] font-semibold text-slate-800">首页数据加载失败</h3>
@@ -441,40 +471,52 @@ function ErrorView({ message, onRetry }: { message: string; onRetry: () => void 
 /* ------------------------------------------------------------------ */
 
 export default function DashboardHome() {
-    const data = useDashboardData()
+    const accountSetId = useCurrentAccountSetId() ?? ""
+    const defaultPeriod = useDefaultAccountingPeriod()
+    /** 期间步进器改过的月份；null 表示跟随账套默认期间。 */
+    const [override, setOverride] = useState<{ year: number; month: number } | null>(null)
+    /** 月度 / 年度口径放在页面级：切换期间会重新取数，不能跟着卡片重挂被重置。 */
+    const [mode, setMode] = useState<MetricMode>("month")
+    const period = useMemo(
+        () => (override ? makePeriod(override.year, override.month) : defaultPeriod),
+        [override, defaultPeriod],
+    )
+
+    // 换账套时回到该账套的默认期间，避免把上一个账套的浏览位置带过来。
+    useEffect(() => {
+        setOverride(null)
+    }, [accountSetId])
+
+    const data = useDashboardData(period)
     const counts = useMemo(() => countByStatus(data.vouchers), [data.vouchers])
 
-    if (data.loading) return <LoadingView />
+    // 首次取数才铺整屏骨架；之后切期间只做轻微变暗，避免版面跳动、状态被重置。
+    const firstLoad = data.loading && data.summary == null && data.error == null
+    if (firstLoad) return <LoadingView />
     if (data.error) return <ErrorView message={data.error} onRetry={data.reload} />
 
     const hasData =
         data.vouchers.length > 0 ||
         (data.summary?.rows?.some((r) => (r.currentAmount ?? 0) !== 0 || (r.yearToDateAmount ?? 0) !== 0) ?? false)
 
-    return (
-        <div className="flex flex-col gap-5">
-            <AccountStatusBar data={data} />
+    function stepPeriod(delta: number) {
+        const next = shiftPeriod(period, delta)
+        setOverride({ year: next.year, month: next.month })
+    }
 
-            {!hasData ? (
-                <>
-                    <QuickActions />
-                    <EmptyNotice />
-                </>
-            ) : (
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-                    {/* 左侧主列 */}
-                    <div className="flex min-w-0 flex-col gap-5">
-                        <PostHint unposted={counts.unposted} />
-                        <StatCards data={data} />
-                        <FinanceOverview data={data} />
-                    </div>
-                    {/* 右侧副列 */}
-                    <div className="flex flex-col gap-5">
-                        <QuickActions />
-                        <TodoCard data={data} />
-                    </div>
-                </div>
-            )}
+    return (
+        <div className={"flex flex-col gap-5 transition-opacity " + (data.loading ? "pointer-events-none opacity-60" : "")}>
+            <NoticeStrip data={data} counts={counts} />
+            <EntryCards counts={counts} />
+
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <CreateVoucherCard data={data} />
+                <MetricsCard data={data} period={period} mode={mode} onModeChange={setMode} onStepPeriod={stepPeriod} />
+            </div>
+
+            {!hasData && <EmptyNotice />}
+
+            <ImportBanner />
         </div>
     )
 }

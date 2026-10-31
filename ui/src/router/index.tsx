@@ -1,9 +1,8 @@
 import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router";
-import { createElement, lazy, Suspense } from "react";
 import type { ComponentType, ReactNode } from "react";
 
-import Login from "@/pages/login/Login";
 import Landing from "@/pages/landing";
+import { PrivacyPage, TermsPage } from "@/pages/legal";
 import DashboardLayout from "@/components/layout/dashboard/DashboardLayout";
 import { ErrorBoundary, RouteErrorElement } from "@/components/error/ErrorBoundary";
 import { useAuth } from "@/auth/AuthContext";
@@ -70,18 +69,16 @@ function DefaultAccountSetRedirect() {
 }
 
 /**
- * 懒加载叶子路由：element 为「功能域 chunk + Suspense 占位」（占位沿用 AuthLoading 观感，
- * 侧边栏不跟着闪烁），errorElement 兜住该页的渲染异常与 chunk 拉取失败，
- * 出错时只替换内容区、绝不白屏。
+ * 懒加载叶子路由：交给 react-router 的 route.lazy——导航会等模块加载完再提交，
+ * 加载期间旧页面原样留在屏幕上，不会先闪一块「正在加载…」再出内容。
+ * errorElement 兜住该页的渲染异常与 chunk 拉取失败，出错时只替换内容区、绝不白屏。
  */
 function lazyRoute<M extends { [K in keyof M]: ComponentType }, K extends keyof M>(
     loader: () => Promise<M>,
     key: K,
-): { element: ReactNode; errorElement: ReactNode } {
-    // 变量名保持小写并配 createElement：写成 PascalCase 组件形式会多出一条 fast-refresh 警告。
-    const view = lazy<ComponentType>(() => loader().then((m) => ({ default: m[key] })));
+): { lazy: () => Promise<{ Component: ComponentType }>; errorElement: ReactNode } {
     return {
-        element: <Suspense fallback={<AuthLoading />}>{createElement(view)}</Suspense>,
+        lazy: async () => ({ Component: (await loader())[key] }),
         errorElement: <RouteErrorElement />,
     };
 }
@@ -91,6 +88,15 @@ const router = createBrowserRouter([
     {
         path: "/",
         element: <Landing />,
+    },
+    // 登录弹窗底部的协议链接指向这里，避免出现死链。
+    {
+        path: "/terms",
+        element: <TermsPage />,
+    },
+    {
+        path: "/privacy",
+        element: <PrivacyPage />,
     },
     // 受保护的应用区：登录后可访问，统一挂载账套上下文。
     // 外层 ErrorBoundary 是这一块的最后一道防线（路由级兜底之上的渲染异常）。
@@ -191,10 +197,12 @@ const router = createBrowserRouter([
         ],
     },
     {
+        // 登录不再是独立页面：/login 直接落在官网上并自动打开登录弹窗，
+        // 保护区回跳时带上的 state.from 由弹窗在登录成功后消费。
         path: "/login",
         element: (
             <RedirectIfAuthed>
-                <Login />
+                <Landing autoOpenLogin />
             </RedirectIfAuthed>
         ),
     },

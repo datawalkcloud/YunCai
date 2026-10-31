@@ -30,10 +30,10 @@ export function Tile({
     className?: string
 }) {
     return (
-        <div className={cn("rounded-2xl p-4", className)} style={{ background: bg }}>
+        <div className={cn("p-4", className)} style={{ background: bg }}>
             <div className="flex items-center gap-2.5">
                 <span
-                    className="flex size-8 shrink-0 items-center justify-center rounded-[10px] text-white shadow-sm"
+                    className="flex size-8 shrink-0 items-center justify-center text-white shadow-sm"
                     style={{ background: color }}
                 >
                     <Icon className="size-4" />

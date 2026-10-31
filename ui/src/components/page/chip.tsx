@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
 
-/** 浅灰信息胶囊：小标签 + 取值，用于账页页头与凭证详情。 */
+/** 浅灰信息标签：小标签 + 取值，用于账页页头与凭证详情。 */
 export function Chip({
     label,
     value,
@@ -15,7 +15,7 @@ export function Chip({
     return (
         <span
             className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1 text-[12px]",
+                "inline-flex items-center gap-1.5 bg-muted px-2.5 py-1 text-[12px]",
                 className,
             )}
         >

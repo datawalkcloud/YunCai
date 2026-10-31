@@ -21,16 +21,16 @@ export function PageHeader({
     return (
         <section
             className={cn(
-                "rounded-2xl bg-gradient-to-r from-[#e7f0ff] via-[#eef4ff] to-[#f6f9ff] px-6 py-5",
+                "bg-gradient-to-r from-[#e7f0ff] via-[#eef4ff] to-[#f6f9ff] px-5 py-4",
                 className,
             )}
         >
-            <div className="flex flex-wrap items-center gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#5b9bff] to-[#2f6bff] text-white shadow-[0_6px_16px_rgba(47,107,255,0.28)] [&_.anticon]:text-[20px]">
+            <div className="flex flex-wrap items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center bg-gradient-to-br from-[#5b9bff] to-[#2f6bff] text-white shadow-[0_6px_16px_rgba(47,107,255,0.28)] [&_.anticon]:text-[20px]">
                     <Icon className="size-5" />
                 </span>
                 <div className="min-w-0">
-                    <h1 className="text-[20px] font-bold text-slate-800">{title}</h1>
+                    <h1 className="text-[18px] font-bold text-slate-800">{title}</h1>
                     {subtitle && <p className="mt-0.5 text-[12.5px] text-slate-500">{subtitle}</p>}
                 </div>
                 {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
@@ -49,7 +49,7 @@ export interface SectionCardProps {
     bodyClassName?: string
 }
 
-/** 白色圆角内容卡：小标题 + 右上角操作 + 正文。 */
+/** 白色内容卡：小标题 + 右上角操作 + 正文；圆角由 antd 全局主题统一控制。 */
 export function SectionCard({ title, action, children, className, bodyClassName }: SectionCardProps) {
     const hasHeader = title != null || action != null
     return (
@@ -62,12 +62,11 @@ export function SectionCard({ title, action, children, className, bodyClassName 
             styles={{
                 // antd 的 .ant-card .ant-card-* 是两级类名、压过 Tailwind，故描边/阴影/留白只能内联覆盖；正文 padding 归零后交给 bodyClassName。
                 root: {
-                    borderRadius: 16,
                     border: "1px solid #f1f5f9",
                     boxShadow: "0 1px 2px rgba(16,24,40,0.04)",
                 },
                 header: {
-                    padding: "20px 20px 0",
+                    padding: "16px 16px 0",
                     borderBottom: "none",
                     marginBottom: 0,
                     minHeight: 0,
@@ -77,7 +76,7 @@ export function SectionCard({ title, action, children, className, bodyClassName 
                 body: { padding: 0 },
             }}
         >
-            <div className={cn(hasHeader ? "px-5 pb-5 pt-4" : "p-5", bodyClassName)}>{children}</div>
+            <div className={cn(hasHeader ? "px-4 pb-4 pt-3" : "p-4", bodyClassName)}>{children}</div>
         </Card>
     )
 }

@@ -1,9 +1,10 @@
 /**
  * 复刻区工资模块（对应柠檬云 /Salary/*）：
  * 工资管理、员工信息、工资统计表、五险一金设置。
- * 视觉遵循全站云财蓝：主色 #2f6bff、圆角 rounded-lg/2xl、白卡 + slate 灰阶文字。
+ * 视觉遵循全站云财蓝：主色 #2f6bff、直角卡片、白卡 + slate 灰阶文字。
  */
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Dropdown, Radio, Segmented } from "antd";
 import {
     BarChartOutlined,
     PayCircleOutlined,
@@ -31,11 +32,15 @@ import {
     CheckBox,
     DateInput,
     Dialog,
+    EmptyTip,
+    HintBox,
+    LinkAction,
     Page,
     Pager,
     PeriodStepper,
     RefreshIcon,
     Select,
+    StateBar,
     SubTabs,
     Table,
     TextInput,
@@ -50,9 +55,12 @@ import {
     type AccrueViewDto,
     type AccountDto,
     type EmployeeDto,
+    type EmployeeImportResultDto,
     type InsuranceItemDto,
     type SalaryBillDto,
+    type SalaryBillImportResultDto,
     type SalarySummaryRowDto,
+    type SalaryVoucherSettingDto,
 } from "@/apis-gen";
 
 /* ---------- 公共小工具 ---------- */
@@ -87,15 +95,39 @@ const genderOf = (t?: string | null) => (t === "女" ? 2 : 1);
 const idTypeOf = (t?: string | null) => (t === "护照" ? 2 : t === "其他" ? 3 : 1);
 const statusOf = (t?: string | null) => (t === "离职" ? 2 : 1);
 
-/** 页面顶部错误/加载条。 */
-function StateBar({ loading, error }: { loading?: boolean; error?: string | null }) {
-    if (error) {
-        return <div className="px-4 pb-2 text-[13px] text-[#ef4444]">{error}</div>;
+/** 二进制下载（xlsx / pdf）：fetch + blob + a[download]，返回错误文案（成功返回 null）。 */
+async function downloadBlob(url: string, token: string, fallbackName: string): Promise<string | null> {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body && typeof body === "object" && "message" in body ? String((body as { message?: unknown }).message ?? "") : "";
+        return message || `下载失败（HTTP ${res.status}）`;
     }
-    if (loading) {
-        return <div className="px-4 pb-2 text-[13px] text-slate-400">加载中…</div>;
-    }
+
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const star = /filename\*=UTF-8''([^;\n]+)/i.exec(disposition);
+    const plain = /filename="?([^";\n]+)"?/i.exec(disposition);
+    const name = star ? decodeURIComponent(star[1]) : plain?.[1] ?? fallbackName;
+    const href = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(href);
     return null;
+}
+
+/** 上传 .xlsx 到导入端点，返回解析后的结果或错误文案。 */
+async function uploadFile<T>(url: string, token: string, file: File): Promise<{ data?: T; error?: string }> {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+        const message = body && typeof body === "object" && "message" in body ? String((body as { message?: unknown }).message ?? "") : "";
+        return { error: message || `导入失败（HTTP ${res.status}）` };
+    }
+    return { data: body as T };
 }
 
 /** 编辑/新增对话框里的「标签 + 控件」行。 */
@@ -210,8 +242,8 @@ function EmployeeEditDialog({
             width={620}
             onClose={onClose}
             footer={
-                <div className="flex justify-center gap-3">
-                    <Btn variant={busy ? "disabled" : "primary"} onClick={() => void save()}>
+                <div className="flex justify-end gap-3">
+                    <Btn variant="primary" disabled={busy} onClick={() => void save()}>
                         保存
                     </Btn>
                     <Btn onClick={onClose}>取消</Btn>
@@ -289,9 +321,9 @@ function EmployeeEditDialog({
                     <TextInput className="w-full" value={form.remark} onChange={(v) => set({ remark: v })} />
                 </Field>
             </div>
-            <div className="mt-4 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[12px] leading-5 text-[#92640b]">
+            <HintBox className="mt-4">
                 出生日期、银行信息与岗位/职称暂不支持在此编辑（后端员工列表未返回这些字段）。
-            </div>
+            </HintBox>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Dialog>
     );
@@ -318,15 +350,15 @@ function ConfirmDialog({
             title={title}
             onClose={onClose}
             footer={
-                <div className="flex justify-center gap-3">
-                    <Btn variant={busy ? "disabled" : "primary"} onClick={onConfirm}>
+                <div className="flex justify-end gap-3">
+                    <Btn variant="primary" disabled={busy} onClick={onConfirm}>
                         {confirmText}
                     </Btn>
                     <Btn onClick={onClose}>取消</Btn>
                 </div>
             }
         >
-            <div className="text-center text-sm leading-6 text-slate-700">{text}</div>
+            <div className="text-center text-[13px] leading-6 text-slate-700">{text}</div>
         </Dialog>
     );
 }
@@ -400,6 +432,7 @@ function SalaryAccrueView() {
     const [toast, setToast] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [settingOpen, setSettingOpen] = useState(false);
 
     const reload = useCallback(async () => {
         if (!token || !accountSetId) {
@@ -468,7 +501,9 @@ function SalaryAccrueView() {
                 left={<PeriodStepper text={periodLabel(period)} onPrev={() => setOverride(shiftPeriod(period, -1))} onNext={() => setOverride(shiftPeriod(period, 1))} />}
                 right={
                     <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
-                        <WipBtn title="工资凭证科目配置尚未接入后端">⚙ 工资凭证设置</WipBtn>
+                        <Btn onClick={() => setSettingOpen(true)} title="配置计提 / 发放凭证使用的科目与发放账户">
+                            ⚙ 工资凭证设置
+                        </Btn>
                     </span>
                 }
             />
@@ -478,7 +513,8 @@ function SalaryAccrueView() {
                     <div key={c.kind} className="flex flex-col items-center gap-4">
                         <Tile className="w-full" label={c.title} value={c.amount} tone={c.tone} icon={c.icon} />
                         <Btn
-                            variant={busy ? "disabled" : "primary"}
+                            variant="primary"
+                            disabled={busy}
                             className="!px-6"
                             onClick={() => void generate(c.kind)}
                         >
@@ -488,7 +524,119 @@ function SalaryAccrueView() {
                 ))}
             </div>
             {toast && !loading && <Toast text={toast} onClose={() => setToast(null)} />}
+            {settingOpen && (
+                <SalaryVoucherSettingDialog
+                    onClose={() => setSettingOpen(false)}
+                    onSaved={(text) => {
+                        setSettingOpen(false);
+                        setToast(text);
+                    }}
+                />
+            )}
         </>
+    );
+}
+
+/** 工资凭证科目设置：把应付职工薪酬 / 个税 / 代扣款项 / 发放账户显式定下来，留空则继续自动推断。 */
+function SalaryVoucherSettingDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (text: string) => void }) {
+    const { token } = useAuth();
+    const accountSetId = useCurrentAccountSetId() ?? "";
+    const accounts = useLeafAccounts();
+    const [form, setForm] = useState({ payrollAccountId: "", taxAccountId: "", insuranceAccountId: "", bankAccountId: "" });
+    const [resolved, setResolved] = useState<SalaryVoucherSettingDto | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        setLoading(true);
+        new SalariesApi(apiConfig(token))
+            .accountsetsAccountSetIdSalaryVoucherSettingGet({ accountSetId })
+            .then((dto) => {
+                setResolved(dto);
+                setForm({
+                    payrollAccountId: dto.payrollAccountId ?? "",
+                    taxAccountId: dto.taxAccountId ?? "",
+                    insuranceAccountId: dto.insuranceAccountId ?? "",
+                    bankAccountId: dto.bankAccountId ?? "",
+                });
+                setError(null);
+            })
+            .catch(async (e) => setError(await apiErrorMessage(e, "加载工资凭证设置失败")))
+            .finally(() => setLoading(false));
+    }, [token, accountSetId]);
+
+    const save = async () => {
+        if (!token || !accountSetId || busy) {
+            return;
+        }
+        setBusy(true);
+        try {
+            const dto = await new SalariesApi(apiConfig(token)).accountsetsAccountSetIdSalaryVoucherSettingPut({
+                accountSetId,
+                saveSalaryVoucherSettingRequest: {
+                    payrollAccountId: form.payrollAccountId || undefined,
+                    taxAccountId: form.taxAccountId || undefined,
+                    insuranceAccountId: form.insuranceAccountId || undefined,
+                    bankAccountId: form.bankAccountId || undefined,
+                },
+            });
+            onSaved(
+                `已保存：应付职工薪酬 ${dto.payrollAccountText ?? "未设置"}，发放账户 ${dto.bankAccountText ?? "未设置"}`,
+            );
+        } catch (e) {
+            setError(await apiErrorMessage(e, "保存失败"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const options = accounts.map((a) => ({ value: a.id ?? "", label: `${a.code} ${a.name}` }));
+    const rows: Array<{ key: keyof typeof form; label: string; hint: string; auto: string | null | undefined }> = [
+        { key: "payrollAccountId", label: "应付职工薪酬科目", hint: "计提凭证贷方 / 发放凭证借方", auto: resolved?.payrollAccountText },
+        { key: "bankAccountId", label: "发放账户", hint: "发放凭证贷方「银行存款」", auto: resolved?.bankAccountText },
+        { key: "taxAccountId", label: "个人所得税科目", hint: "发放时贷方记应缴个税", auto: resolved?.taxAccountText },
+        { key: "insuranceAccountId", label: "代扣个人款项科目", hint: "发放时贷方记代扣社保等", auto: resolved?.insuranceAccountText },
+    ];
+
+    return (
+        <Dialog
+            title="工资凭证设置"
+            width={560}
+            onClose={onClose}
+            footer={
+                <div className="flex justify-end gap-2">
+                    <Btn onClick={onClose}>取消</Btn>
+                    <Btn variant="primary" onClick={() => void save()}>
+                        {busy ? "保存中…" : "保存"}
+                    </Btn>
+                </div>
+            }
+        >
+            <div className="flex flex-col gap-3 py-2">
+                <div className="text-[12.5px] text-slate-500">
+                    留空的项沿用自动推断（按科目编码找应付职工薪酬 2211、个人所得税、其他应付款，发放账户取首个启用的银行日记账）。
+                </div>
+                {loading && <div className="text-[13px] text-slate-400">加载中…</div>}
+                {rows.map((r) => (
+                    <Field key={r.key} label={r.label}>
+                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                            <Select
+                                className="min-w-0 flex-1"
+                                value={form[r.key]}
+                                onChange={(v) => setForm((prev) => ({ ...prev, [r.key]: v }))}
+                                options={[{ value: "", label: `自动：${r.auto ?? "未找到"}` }, ...options]}
+                            />
+                            <span className="pl-0.5 text-[12.5px] text-slate-400">{r.hint}</span>
+                        </span>
+                    </Field>
+                ))}
+                {error && <div className="text-[13px] text-[#ef4444]">{error}</div>}
+            </div>
+        </Dialog>
     );
 }
 
@@ -568,13 +716,13 @@ function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => 
 
     const rows: Array<Array<[string, ReactNode] | null>> = [
         [
-            ["*编号", <TextInput key="code" className="w-[220px]" value={form.code} onChange={(v) => set({ code: v })} />],
-            ["*姓名", <TextInput key="name" className="w-[220px]" value={form.name} onChange={(v) => set({ name: v })} />],
+            ["*编号", <TextInput key="code" className="min-w-0 flex-1" value={form.code} onChange={(v) => set({ code: v })} />],
+            ["*姓名", <TextInput key="name" className="min-w-0 flex-1" value={form.name} onChange={(v) => set({ name: v })} />],
             [
                 "*证件类型",
                 <Select
                     key="idType"
-                    className="w-[220px]"
+                    className="min-w-0 flex-1"
                     value={String(form.idType)}
                     onChange={(v) => set({ idType: Number(v) })}
                     options={[
@@ -586,12 +734,12 @@ function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => 
             ],
         ],
         [
-            ["*证件号码", <TextInput key="idNo" className="w-[220px]" value={form.idNo} onChange={(v) => set({ idNo: v })} />],
+            ["*证件号码", <TextInput key="idNo" className="min-w-0 flex-1" value={form.idNo} onChange={(v) => set({ idNo: v })} />],
             [
                 "*性别",
                 <Select
                     key="gender"
-                    className="w-[220px]"
+                    className="min-w-0 flex-1"
                     value={String(form.gender)}
                     onChange={(v) => set({ gender: Number(v) })}
                     options={[
@@ -600,30 +748,30 @@ function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => 
                     ]}
                 />,
             ],
-            ["*出生日期", <DateInput key="birth" className="w-[220px]" value={form.birthDate} onChange={(v) => set({ birthDate: v })} />],
+            ["*出生日期", <DateInput key="birth" className="min-w-0 flex-1" value={form.birthDate} onChange={(v) => set({ birthDate: v })} />],
         ],
         [
-            ["手机", <TextInput key="phone" className="w-[220px]" value={form.phone} onChange={(v) => set({ phone: v })} />],
-            ["邮箱", <TextInput key="email" className="w-[220px]" value={form.email} onChange={(v) => set({ email: v })} />],
+            ["手机", <TextInput key="phone" className="min-w-0 flex-1" value={form.phone} onChange={(v) => set({ phone: v })} />],
+            ["邮箱", <TextInput key="email" className="min-w-0 flex-1" value={form.email} onChange={(v) => set({ email: v })} />],
             null,
         ],
         [
-            ["银行名称", <TextInput key="bank" className="w-[220px]" value={form.bankName} onChange={(v) => set({ bankName: v })} />],
-            ["银行账号", <TextInput key="acct" className="w-[220px]" value={form.bankAccountNo} onChange={(v) => set({ bankAccountNo: v })} />],
-            ["*入职日期", <DateInput key="hire" className="w-[220px]" value={form.hireDate} onChange={(v) => set({ hireDate: v })} />],
+            ["银行名称", <TextInput key="bank" className="min-w-0 flex-1" value={form.bankName} onChange={(v) => set({ bankName: v })} />],
+            ["银行账号", <TextInput key="acct" className="min-w-0 flex-1" value={form.bankAccountNo} onChange={(v) => set({ bankAccountNo: v })} />],
+            ["*入职日期", <DateInput key="hire" className="min-w-0 flex-1" value={form.hireDate} onChange={(v) => set({ hireDate: v })} />],
         ],
         [
-            ["*部门", <TextInput key="dept" className="w-[220px]" value={form.dept} onChange={(v) => set({ dept: v })} />],
-            ["岗位", <TextInput key="post" className="w-[220px]" value={form.post} onChange={(v) => set({ post: v })} />],
+            ["*部门", <TextInput key="dept" className="min-w-0 flex-1" value={form.dept} onChange={(v) => set({ dept: v })} />],
+            ["岗位", <TextInput key="post" className="min-w-0 flex-1" value={form.post} onChange={(v) => set({ post: v })} />],
             null,
         ],
         [
-            ["职称", <TextInput key="title" className="w-[220px]" value={form.title} onChange={(v) => set({ title: v })} />],
+            ["职称", <TextInput key="title" className="min-w-0 flex-1" value={form.title} onChange={(v) => set({ title: v })} />],
             [
                 "*计提工资科目",
                 <Select
                     key="subject"
-                    className="w-[220px]"
+                    className="min-w-0 flex-1"
                     value={form.subjectAccountId}
                     onChange={(v) => set({ subjectAccountId: v })}
                     options={[
@@ -632,14 +780,14 @@ function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => 
                     ]}
                 />,
             ],
-            ["备注", <TextInput key="remark" className="w-[220px]" value={form.remark} onChange={(v) => set({ remark: v })} />],
+            ["备注", <TextInput key="remark" className="min-w-0 flex-1" value={form.remark} onChange={(v) => set({ remark: v })} />],
         ],
         [
             [
                 "*员工状态",
                 <Select
                     key="status"
-                    className="w-[220px]"
+                    className="min-w-0 flex-1"
                     value={String(form.status)}
                     onChange={(v) => set({ status: Number(v) })}
                     options={[
@@ -655,21 +803,18 @@ function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => 
 
     return (
         <Page title="新增员工" subtitle="登记境内员工基本信息与扣除款项" icon={UserAddOutlined}>
-            <div className="mx-auto mt-3 w-[1000px]">
+            <div className="mx-auto mt-3 w-[1000px] max-w-full">
                 <div className="flex justify-end">
-                    <span className="flex text-sm">
-                        <span className="cursor-pointer rounded-l-lg bg-[#2f6bff] px-4 py-1.5 text-white">境内人员</span>
-                        <span className="cursor-pointer rounded-r-lg border border-slate-200 px-4 py-1.5 text-slate-600">境外人员</span>
-                    </span>
+                    <Segmented options={["境内人员", "境外人员"]} value="境内人员" />
                 </div>
                 <div className="mt-4 text-[15px] font-bold text-slate-800">基本信息</div>
                 <div className="mt-3 flex flex-col gap-4">
                     {rows.map((row, i) => (
-                        <div key={i} className="grid grid-cols-3 gap-8">
+                        <div key={i} className="grid grid-cols-3 gap-x-6 gap-y-4">
                             {row.map((cell, j) =>
                                 cell ? (
-                                    <div key={j} className="flex items-center">
-                                        <span className="w-[150px] text-right text-sm text-slate-700">
+                                    <div key={j} className="flex min-w-0 items-center gap-2">
+                                        <span className="w-[110px] shrink-0 text-right text-[13px] text-slate-700">
                                             {String(cell[0]).startsWith("*") && <span className="text-[#ef4444]">*</span>}
                                             {String(cell[0]).replace("*", "")}：
                                         </span>
@@ -683,20 +828,18 @@ function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => 
                     ))}
                 </div>
                 <div className="mt-8 text-[15px] font-bold text-slate-800">扣除款项</div>
-                <div className="mt-3 flex items-center gap-4 text-sm text-slate-700">
+                <div className="mt-3 flex items-center gap-4 text-[13px] text-slate-700">
                     <span>*是否缴纳五险一金：</span>
-                    <span className="flex items-center gap-1.5">
-                        <span className="h-3.5 w-3.5 rounded-full border-[5px] border-[#2f6bff] bg-white" /> 是
-                    </span>
-                    <span className="ml-4 flex items-center gap-1.5">
-                        <span className="h-3.5 w-3.5 rounded-full border border-slate-300 bg-white" /> 否
-                    </span>
+                    <Radio.Group value="1">
+                        <Radio value="1">是</Radio>
+                        <Radio value="2">否</Radio>
+                    </Radio.Group>
                 </div>
-                <div className="mt-3 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[13px] text-[#92640b]">
+                <HintBox className="mt-3">
                     五险一金比例由「五险一金设置」统一维护，保存员工后按账套比例计提。
-                </div>
+                </HintBox>
                 <div className="mt-8 flex justify-center gap-3 pb-8">
-                    <Btn variant={busy ? "disabled" : "primary"} className="!px-7" onClick={() => void save()}>
+                    <Btn variant="primary" disabled={busy} className="!px-7" onClick={() => void save()}>
                         保存
                     </Btn>
                     <Btn className="!px-7" onClick={onBack}>
@@ -722,6 +865,9 @@ export function LemonSalaryManage() {
     const [error, setError] = useState<string | null>(null);
     const [tab, setTab] = useState(0);
     const [adding, setAdding] = useState(false);
+    const [toast, setToast] = useState<string | null>(null);
+    const [importResult, setImportResult] = useState<SalaryBillImportResultDto | null>(null);
+    const fileRef = useRef<HTMLInputElement | null>(null);
 
     const reload = useCallback(async () => {
         if (!accountSetId) {
@@ -741,6 +887,57 @@ export function LemonSalaryManage() {
     useEffect(() => {
         void reload();
     }, [reload]);
+
+    const salaryBase = `/api/accountsets/${accountSetId}/salary`;
+
+    /** 生成工资条 PDF：当期全部员工一人一条，一页 3 条并带裁切线。 */
+    const buildPayslips = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(`${salaryBase}/payslips/pdf?period=${period.period}`, token, `工资条_${period.period}.pdf`);
+        setToast(err ?? "工资条已生成，正在下载…");
+    };
+
+    /** 导出当期工资表（一行一员工，末行合计）。 */
+    const exportBills = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(`${salaryBase}/bills/export?period=${period.period}`, token, `工资表_${period.period}.xlsx`);
+        if (err) {
+            setToast(err);
+        }
+    };
+
+    /** 下载工资表导入模板（与导出同列，导出文件可直接改完再导入）。 */
+    const downloadBillTemplate = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(`${salaryBase}/bills/export?period=${period.period}`, token, "工资表导入模板.xlsx");
+        if (err) {
+            setToast(err);
+        }
+    };
+
+    /** 导入工资表：按编号匹配员工，同期间已有则更新；已生成凭证的行会跳过并说明原因。 */
+    const importBills = async (file: File) => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const { data, error } = await uploadFile<SalaryBillImportResultDto>(
+            `${salaryBase}/bills/import?period=${period.period}`,
+            token,
+            file,
+        );
+        if (error) {
+            setToast(error);
+            return;
+        }
+        setImportResult(data ?? null);
+        await reload();
+    };
 
     if (tab === 1)
         return (
@@ -781,7 +978,7 @@ export function LemonSalaryManage() {
         cost: list.reduce((s2, b) => s2 + (b.cost ?? 0), 0).toFixed(2),
     };
     const rows: Row[] = [
-        ...list.map((b, i) => ({
+        ...list.map((b) => ({
             no: b.employeeCode,
             name: b.employeeName,
             dept: b.dept,
@@ -795,7 +992,6 @@ export function LemonSalaryManage() {
             net: (b.net ?? 0).toFixed(2),
             company: (b.companyPart ?? 0).toFixed(2),
             cost: (b.cost ?? 0).toFixed(2),
-            zebra: i % 2 === 1,
         })),
         { dept: "合计", gross: totals.gross, deduct: totals.deductible, payable: totals.payable, personal: totals.personal, threshold: totals.threshold, tax: totals.tax, adjust: totals.adjust, net: totals.net, company: totals.company, cost: totals.cost, __style: { background: "#fafbfd", fontWeight: 500 } },
     ];
@@ -810,24 +1006,47 @@ export function LemonSalaryManage() {
                             onPrev={() => setOverride(shiftPeriod(period, -1))}
                             onNext={() => setOverride(shiftPeriod(period, 1))}
                         />
-                        <WipBtn title="自定义工资项目尚未接入后端">自定义工资项目</WipBtn>
+                        <WipBtn title="自定义工资项目需支持动态列与公式，暂未实现">自定义工资项目</WipBtn>
                     </>
                 }
                 right={
                     <>
-                        <CheckBox label="编辑、显示工资明细" />
-                        <CheckBox label="多次发放工资" />
-                        <WipBtn title="生成工资条尚未接入后端">生成工资条</WipBtn>
+                        <span title="编辑、显示工资明细开关暂未实现，仅作展示">
+                            <CheckBox label="编辑、显示工资明细" />
+                        </span>
+                        <span title="多次发放工资需拆分工资单，暂未实现，仅作展示">
+                            <CheckBox label="多次发放工资" />
+                        </span>
+                        <Btn dropdown onClick={() => void buildPayslips()} title="按当期工资单生成工资条 PDF（一页 3 条，带裁切线）">
+                            生成工资条
+                        </Btn>
                         <span className="inline-flex items-center gap-1">
-                            <WipBtn title="同步个税申报表尚未接入后端">同步个税申报表</WipBtn>
+                            <WipBtn title="同步个税申报表需对接电子税务局，暂未实现">同步个税申报表</WipBtn>
                             <QuestionCircleOutlined className="text-[14px]" style={ICON_STYLE.muted} />
                         </span>
-                        <WipBtn dropdown title="导入工资条尚未接入后端">导入</WipBtn>
-                        <WipBtn title="发送工资条尚未接入后端">发送工资条</WipBtn>
-                        <WipBtn title="个税申报尚未接入后端">个税申报</WipBtn>
+                        <Btn dropdown onClick={() => fileRef.current?.click()} title="从 .xlsx 导入工资表（按员工编号匹配）">
+                            导入
+                        </Btn>
+                        <WipBtn title="发送工资条需短信 / 邮件通道，暂未实现">发送工资条</WipBtn>
+                        <WipBtn title="个税申报需对接电子税务局，暂未实现">个税申报</WipBtn>
                         <Btn dropdown onClick={() => window.print()}>打印</Btn>
-                        <WipBtn title="档案附件尚未接入后端">附件</WipBtn>
-                        <WipBtn dropdown title="更多操作尚未接入后端">更多操作</WipBtn>
+                        <WipBtn title="工资表附件归档暂未实现">附件</WipBtn>
+                        <Dropdown
+                            trigger={["click"]}
+                            menu={{
+                                items: [
+                                    { key: "export", label: "导出工资表" },
+                                    { key: "template", label: "下载导入模板" },
+                                ],
+                                onClick: ({ key }) => void (key === "export" ? exportBills() : downloadBillTemplate()),
+                            }}
+                        >
+                            <span>
+                                <Btn dropdown title="导出工资表 / 下载导入模板">
+                                    更多操作
+                                </Btn>
+                            </span>
+                        </Dropdown>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -836,9 +1055,50 @@ export function LemonSalaryManage() {
             />
             <StateBar loading={loading} error={error} />
             <div className="flex-1 px-4">
-                <Table cols={cols} rows={rows} />
+                <Table cols={cols} rows={rows} empty={<EmptyTip />} />
             </div>
-            <Pager total={list.length} count={list.length} />
+            <Pager total={list.length} />
+            <input
+                ref={fileRef}
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) {
+                        void importBills(file);
+                    }
+                }}
+            />
+            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
+            {importResult && (
+                <Dialog
+                    title="导入结果"
+                    width={520}
+                    onClose={() => setImportResult(null)}
+                    footer={
+                        <div className="flex justify-end">
+                            <Btn onClick={() => setImportResult(null)}>关闭</Btn>
+                        </div>
+                    }
+                >
+                    <div className="py-2 text-[13px] text-slate-700">
+                        新增 <b>{importResult.imported}</b> 条，更新 <b>{importResult.updated}</b> 条
+                        {(importResult.failures ?? []).length > 0 && `，失败 ${(importResult.failures ?? []).length} 条`}
+                    </div>
+                    {(importResult.failures ?? []).length > 0 && (
+                        <div className="max-h-[240px] overflow-auto rounded border border-slate-200">
+                            {(importResult.failures ?? []).map((f, i) => (
+                                <div key={i} className="flex gap-2 border-b border-slate-100 px-2 py-1 text-[12.5px] last:border-0">
+                                    <span className="w-[52px] shrink-0 text-slate-400">第 {f.row} 行</span>
+                                    <span className="text-[#ef4444]">{f.reason}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Dialog>
+            )}
         </Page>
     );
 }
@@ -855,6 +1115,74 @@ export function LemonSalaryEmployee() {
     const [deleting, setDeleting] = useState<EmployeeDto | null>(null);
     const [busy, setBusy] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [importResult, setImportResult] = useState<EmployeeImportResultDto | null>(null);
+    const empFileRef = useRef<HTMLInputElement | null>(null);
+
+    const empBase = `/api/accountsets/${accountSetId}/salary`;
+
+    /** 导出员工名册（列与导入模板一致）。 */
+    const exportEmployees = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(`${empBase}/employees/export`, token, "员工信息.xlsx");
+        if (err) {
+            setToast(err);
+        }
+    };
+
+    /** 下载员工导入模板。 */
+    const downloadTemplate = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(`${empBase}/employees/import-template`, token, "员工导入模板.xlsx");
+        if (err) {
+            setToast(err);
+        }
+    };
+
+    /** 导入员工：按编号匹配，存在则更新、不存在则新增。 */
+    const importEmployees = async (file: File) => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const { data: result, error } = await uploadFile<EmployeeImportResultDto>(`${empBase}/employees/import`, token, file);
+        if (error) {
+            setToast(error);
+            return;
+        }
+        setImportResult(result ?? null);
+        await data.reload();
+    };
+
+    /** 批量删除员工：已有工资单的员工由后端跳过并给出原因。 */
+    const bulkDelete = async () => {
+        if (!token || !accountSetId || busy) {
+            return;
+        }
+        if (selected.size === 0) {
+            setToast("请先勾选要删除的员工");
+            return;
+        }
+        setBusy(true);
+        try {
+            const res = await new SalariesApi(apiConfig(token)).accountsetsAccountSetIdSalaryEmployeesBulkDeletePost({
+                accountSetId,
+                salaryBulkIdsRequest: { ids: [...selected] },
+            });
+            setSelected(new Set());
+            const messages = res.messages ?? [];
+            const extra = messages.length > 0 ? `；${messages.slice(0, 3).join("，")}` : "";
+            setToast(`已删除 ${res.affected} 人${(res.skipped ?? 0) > 0 ? `，跳过 ${res.skipped} 人` : ""}${extra}`);
+            await data.reload();
+        } catch (e) {
+            setToast(await apiErrorMessage(e, "批量删除失败"));
+        } finally {
+            setBusy(false);
+        }
+    };
 
     const remove = async () => {
         if (!token || !accountSetId || !deleting?.id || busy) {
@@ -877,8 +1205,27 @@ export function LemonSalaryEmployee() {
     };
 
     if (adding) return <EmployeeForm onBack={() => setAdding(false)} onSaved={() => void data.reload()} />;
+
+    const pageIds = data.employees.map((e) => e.id ?? "").filter(Boolean);
+    const allChecked = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+    const toggleOne = (id: string, checked: boolean) =>
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (checked) {
+                next.add(id);
+            } else {
+                next.delete(id);
+            }
+            return next;
+        });
+    const toggleAll = (checked: boolean) => setSelected(checked ? new Set(pageIds) : new Set());
+
     const cols: Col[] = [
-        { key: "ck", title: <CheckBox label="" />, width: "36px" },
+        {
+            key: "ck",
+            title: <CheckBox label="" checked={allChecked} onChange={toggleAll} />,
+            width: "36px",
+        },
         { key: "no", title: "编号", width: "70px" },
         { key: "name", title: "姓名", width: "100px" },
         { key: "dept", title: "部门", width: "110px" },
@@ -890,6 +1237,7 @@ export function LemonSalaryEmployee() {
         { key: "ops", title: "操作", width: "110px" },
     ];
     const rows: Row[] = data.employees.map((e) => ({
+        ck: <CheckBox label="" checked={selected.has(e.id ?? "")} onChange={(c) => toggleOne(e.id ?? "", c)} />,
         no: e.code,
         name: e.name,
         dept: e.dept,
@@ -900,12 +1248,8 @@ export function LemonSalaryEmployee() {
         status: e.statusText,
         ops: (
             <span className="flex gap-2">
-                <span className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline" onClick={() => setEditing(e)}>
-                    编辑
-                </span>
-                <span className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline" onClick={() => setDeleting(e)}>
-                    删除
-                </span>
+                <LinkAction onClick={() => setEditing(e)}>编辑</LinkAction>
+                <LinkAction danger onClick={() => setDeleting(e)}>删除</LinkAction>
             </span>
         ),
     }));
@@ -914,18 +1258,39 @@ export function LemonSalaryEmployee() {
             <SubTabs tabs={["员工信息"]} />
             <ToolRow
                 left={
-                    <Btn variant="primary" dropdown>
+                    <WipBtn dropdown title="按部门/状态筛选员工暂未实现">
                         所有员工
-                    </Btn>
+                    </WipBtn>
                 }
                 right={
                     <>
-                        <CheckBox label="显示所有信息" />
+                        <span title="显示全部字段暂未实现，仅作展示">
+                            <CheckBox label="显示所有信息" />
+                        </span>
                         <Btn variant="primary" onClick={() => setAdding(true)}>增加员工</Btn>
-                        <WipBtn title="同步税务人员信息尚未接入后端">同步税务人员信息</WipBtn>
-                        <WipBtn dropdown title="导入员工尚未接入后端">导入</WipBtn>
-                        <WipBtn title="导出员工尚未接入后端">导出</WipBtn>
-                        <WipBtn dropdown title="批量操作尚未接入后端">批量操作</WipBtn>
+                        <WipBtn title="同步税局人员信息需对接电子税务局，暂未实现">同步税务人员信息</WipBtn>
+                        <Btn dropdown onClick={() => empFileRef.current?.click()} title="从 .xlsx 导入员工（按编号匹配，存在则更新）">
+                            导入
+                        </Btn>
+                        <Btn dropdown onClick={() => void exportEmployees()} title="导出员工名册为 .xlsx">
+                            导出
+                        </Btn>
+                        <Dropdown
+                            trigger={["click"]}
+                            menu={{
+                                items: [
+                                    { key: "delete", label: `批量删除（已选 ${selected.size} 人）`, disabled: selected.size === 0 },
+                                    { key: "template", label: "下载导入模板" },
+                                ],
+                                onClick: ({ key }) => void (key === "delete" ? bulkDelete() : downloadTemplate()),
+                            }}
+                        >
+                            <span>
+                                <Btn dropdown title="批量删除 / 下载导入模板">
+                                    批量操作
+                                </Btn>
+                            </span>
+                        </Dropdown>
                         <span className="cursor-pointer" onClick={() => void data.reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -934,9 +1299,9 @@ export function LemonSalaryEmployee() {
             />
             <StateBar loading={data.loading} error={data.error} />
             <div className="flex-1 px-4">
-                <Table cols={cols} rows={rows} />
+                <Table cols={cols} rows={rows} empty={<EmptyTip />} />
             </div>
-            <Pager total={data.employees.length} count={data.employees.length} />
+            <Pager total={data.employees.length} />
             {editing && (
                 <EmployeeEditDialog
                     employee={editing}
@@ -955,6 +1320,46 @@ export function LemonSalaryEmployee() {
                 />
             )}
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
+            <input
+                ref={empFileRef}
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) {
+                        void importEmployees(file);
+                    }
+                }}
+            />
+            {importResult && (
+                <Dialog
+                    title="导入结果"
+                    width={520}
+                    onClose={() => setImportResult(null)}
+                    footer={
+                        <div className="flex justify-end">
+                            <Btn onClick={() => setImportResult(null)}>关闭</Btn>
+                        </div>
+                    }
+                >
+                    <div className="py-2 text-[13px] text-slate-700">
+                        新增 <b>{importResult.imported}</b> 人，更新 <b>{importResult.updated}</b> 人
+                        {(importResult.failures ?? []).length > 0 && `，失败 ${(importResult.failures ?? []).length} 行`}
+                    </div>
+                    {(importResult.failures ?? []).length > 0 && (
+                        <div className="max-h-[240px] overflow-auto rounded border border-slate-200">
+                            {(importResult.failures ?? []).map((f, i) => (
+                                <div key={i} className="flex gap-2 border-b border-slate-100 px-2 py-1 text-[12.5px] last:border-0">
+                                    <span className="w-[52px] shrink-0 text-slate-400">第 {f.row} 行</span>
+                                    <span className="text-[#ef4444]">{f.reason}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Dialog>
+            )}
         </Page>
     );
 }
@@ -1002,6 +1407,22 @@ export function LemonSalarySummary() {
     }, [reload]);
 
     const rangeText = `${periodFromNumber(startPeriod).year}年01月—${periodLabel(period)}`;
+
+    /** 导出工资统计表（与当前区间一致）。 */
+    const [toast, setToast] = useState<string | null>(null);
+    const exportSummary = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        const err = await downloadBlob(
+            `/api/accountsets/${accountSetId}/salary/summary/export?startPeriod=${startPeriod}&endPeriod=${endPeriod}`,
+            token,
+            `工资统计表_${startPeriod}-${endPeriod}.xlsx`,
+        );
+        if (err) {
+            setToast(err);
+        }
+    };
     const cols: Col[] = [
         { key: "dept", title: "部门", align: "right" },
         { key: "count", title: "人数", align: "right" },
@@ -1045,9 +1466,11 @@ export function LemonSalarySummary() {
                 }
                 right={
                     <>
-                        <CheckBox label="显示员工工资明细" />
+                        <span title="展开员工明细行暂未实现，仅作展示">
+                            <CheckBox label="显示员工工资明细" />
+                        </span>
                         <Btn onClick={() => window.print()}>打印</Btn>
-                        <WipBtn title="导出工资统计表尚未接入后端">导出</WipBtn>
+                        <Btn onClick={() => void exportSummary()} title="导出当前区间的工资统计表为 .xlsx">导出</Btn>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -1056,9 +1479,10 @@ export function LemonSalarySummary() {
             />
             <StateBar loading={loading} error={error} />
             <div className="flex-1 px-4">
-                <Table cols={cols} rows={rows} />
+                <Table cols={cols} rows={rows} empty={<EmptyTip />} />
             </div>
-            <Pager total={rows2.length} count={rows2.length} />
+            <Pager total={rows2.length} />
+            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Page>
     );
 }
@@ -1118,8 +1542,8 @@ function InsuranceEditDialog({
             title={item ? "编辑五险一金" : "新增五险一金"}
             onClose={onClose}
             footer={
-                <div className="flex justify-center gap-3">
-                    <Btn variant={busy ? "disabled" : "primary"} onClick={() => void save()}>
+                <div className="flex justify-end gap-3">
+                    <Btn variant="primary" disabled={busy} onClick={() => void save()}>
                         保存
                     </Btn>
                     <Btn onClick={onClose}>取消</Btn>
@@ -1180,18 +1604,8 @@ export function LemonSalaryInsurance() {
             title: "操作",
             render: (row: Row) => (
                 <span className="flex gap-2">
-                    <span
-                        className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
-                        onClick={() => setEditing((row.__item as InsuranceItemDto) ?? null)}
-                    >
-                        编辑
-                    </span>
-                    <span
-                        className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
-                        onClick={() => setDeleting((row.__item as InsuranceItemDto) ?? null)}
-                    >
-                        删除
-                    </span>
+                    <LinkAction onClick={() => setEditing((row.__item as InsuranceItemDto) ?? null)}>编辑</LinkAction>
+                    <LinkAction danger onClick={() => setDeleting((row.__item as InsuranceItemDto) ?? null)}>删除</LinkAction>
                 </span>
             ),
         },
@@ -1199,32 +1613,31 @@ export function LemonSalaryInsurance() {
     return (
         <Page title="五险一金设置" subtitle="缴纳项目与公司/个人比例维护" icon={SafetyCertificateOutlined}>
             <SubTabs tabs={["五险一金设置"]} />
-            <div className="mx-auto w-[1090px]">
-                <ToolRow
-                    left={
-                        <Btn variant="primary" onClick={() => setEditing("new")}>
-                            新增
-                        </Btn>
-                    }
-                    right={
-                        <span className="cursor-pointer" onClick={() => void data.reload()} title="刷新">
-                            <RefreshIcon />
-                        </span>
-                    }
+            <ToolRow
+                left={
+                    <Btn variant="primary" onClick={() => setEditing("new")}>
+                        新增
+                    </Btn>
+                }
+                right={
+                    <span className="cursor-pointer" onClick={() => void data.reload()} title="刷新">
+                        <RefreshIcon />
+                    </span>
+                }
+            />
+            <StateBar loading={data.loading} error={data.error} />
+            <div className="flex-1 px-4">
+                <Table
+                    cols={cols}
+                    rows={data.insurance.map((i) => ({
+                        __item: i,
+                        name: i.name,
+                        mode: i.modeText ?? "按比例缴纳",
+                        companyRate: `${i.companyRate}%`,
+                        personalRate: i.personalRate == null ? "" : `${i.personalRate}%`,
+                    }))}
+                    empty={<EmptyTip />}
                 />
-                <StateBar loading={data.loading} error={data.error} />
-                <div>
-                    <Table
-                        cols={cols}
-                        rows={data.insurance.map((i) => ({
-                            __item: i,
-                            name: i.name,
-                            mode: i.modeText ?? "按比例缴纳",
-                            companyRate: `${i.companyRate}%`,
-                            personalRate: i.personalRate == null ? "" : `${i.personalRate}%`,
-                        }))}
-                    />
-                </div>
             </div>
             {editing && (
                 <InsuranceEditDialog

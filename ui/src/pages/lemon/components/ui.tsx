@@ -1,6 +1,6 @@
 /**
  * 柠檬云菜单区页面的共享 UI 基元。
- * 视觉遵循全站统一风格（云财蓝）：主色 #2f6bff、圆角、白卡 + slate 灰阶文字，
+ * 视觉遵循全站统一风格（云财蓝）：主色 #2f6bff、直角、白卡 + slate 灰阶文字，
  * 与 @/components/page 的既有实页同一套色板；交互基元一律用 antd 组件实现。
  */
 import type { CSSProperties, ReactNode } from "react";
@@ -86,7 +86,7 @@ export function SplitBtn({ children }: { children: ReactNode }) {
 
 /* ---------------- 期间选择 ---------------- */
 
-/** 期间胶囊（日历图标）。传 onClick 后可点开选择器。 */
+/** 期间按钮（日历图标）。传 onClick 后可点开选择器。 */
 export function PeriodBlock({
     text,
     range,
@@ -206,6 +206,9 @@ export function Select({
             className={className}
             value={value}
             onChange={(v) => onChange(v)}
+            // 科目等长列表动辄上百项，允许输入编码或名称过滤；不输入时行为与原来一致。
+            showSearch
+            optionFilterProp="label"
             options={options.map((o) => (typeof o === "string" ? { value: o, label: o } : o))}
         />
     );
@@ -328,12 +331,14 @@ export function Table({
         }
     }
 
+    const dataRows = rows.map((r, i) => ({ ...r, __key: String(i) } as Row & { __key: string }));
+
     return (
         <ConfigProvider theme={{ components: { Table: { rowHoverBg: "#f6f9ff" } } }}>
-            <AntTable<Row>
-                columns={columns}
-                dataSource={rows}
-                rowKey={(_, i) => String(i)}
+            <AntTable<Row & { __key: string }>
+                columns={columns as TableColumnsType<Row & { __key: string }>}
+                dataSource={dataRows}
+                rowKey={(r) => r.__key}
                 pagination={false}
                 size="small"
                 scroll={{ x: "max-content" }}
@@ -347,11 +352,14 @@ export function Table({
 /* ---------------- 分页页脚 ---------------- */
 
 /** 页脚：左「显示 N 到 M，共 X 条记录」，右页码组（当前为静态展示，后端分页未接入）。 */
-export function Pager({ total = 1, count = 1 }: { total?: number; count?: number }) {
+export function Pager({ total = 0, count }: { total?: number; count?: number }) {
+    // 兼容两种历史传参（total/count 都传记录数、或 count 固定 1），一律取较大者作为记录总数。
+    const records = Math.max(total, count ?? 0);
+    const pages = Math.max(1, Math.ceil(records / 20));
     return (
         <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-[12.5px] text-slate-500">
             <span>
-                显示 1 到 {total}，共 {count} 条记录
+                显示 {records ? 1 : 0} 到 {Math.min(records, 20)}，共 {records} 条记录
             </span>
             <span className="flex items-center gap-2">
                 <span className="inline-flex h-7 items-center rounded-lg border border-slate-200 px-2">
@@ -362,7 +370,7 @@ export function Pager({ total = 1, count = 1 }: { total?: number; count?: number
                 <span className="inline-flex h-7 w-10 items-center justify-center rounded-lg border border-slate-200 font-medium text-[#2f6bff]">
                     1
                 </span>
-                <span>共{count}页</span>
+                <span>共{pages}页</span>
                 <RightOutlined className="text-[13px]" style={ICON_STYLE.muted} />
             </span>
         </div>
@@ -382,7 +390,7 @@ export function ToolRow({ left, right }: { left?: ReactNode; right?: ReactNode }
 }
 
 /**
- * 页面容器：白色圆角卡片（工具行 + 表格 + 页脚同属一张卡）。
+ * 页面容器：白色卡片（工具行 + 表格 + 页脚同属一张卡；圆角由 antd 全局主题统一控制）。
  * 传 title / icon 时额外渲染与既有实页一致的页头横幅。
  */
 export function Page({
@@ -419,7 +427,7 @@ export function Page({
             <Card
                 className={className}
                 variant="borderless"
-                styles={{ root: { borderRadius: 16, boxShadow: "0 1px 2px rgba(16,24,40,0.04)" }, body: { padding: 0 } }}
+                styles={{ root: { boxShadow: "0 1px 2px rgba(16,24,40,0.04)" }, body: { padding: 0 } }}
             >
                 {children}
             </Card>
@@ -428,8 +436,8 @@ export function Page({
 }
 
 /** 刷新图标按钮。 */
-export function RefreshIcon() {
-    return <ReloadOutlined className="text-[15px]" style={ICON_STYLE.muted} />;
+export function RefreshIcon({ onClick }: { onClick?: () => void } = {}) {
+    return <ReloadOutlined className={`text-[15px] ${onClick ? "cursor-pointer" : ""}`} style={ICON_STYLE.muted} onClick={onClick} />;
 }
 
 /** 页内子页签（主色字 + 主色下划线激活态）。传 active/on.onChange 即为受控模式。 */
@@ -508,12 +516,67 @@ export function EmptyTip({ text = "暂无数据" }: { text?: string }) {
     return <span className="block text-center text-[13px] text-slate-400">{text}</span>;
 }
 
+/* ---------------- 行内链接 / 说明块 / 取数状态 ---------------- */
+
+/** 表格操作列的行内链接按钮；danger 用于「删除」等危险操作（标准红）。 */
+export function LinkAction({
+    children,
+    danger,
+    disabled,
+    title,
+    onClick,
+}: {
+    children: ReactNode;
+    danger?: boolean;
+    disabled?: boolean;
+    title?: string;
+    onClick?: () => void;
+}) {
+    return (
+        <Button
+            className="!px-0 !text-[13px]"
+            type="link"
+            size="small"
+            danger={danger}
+            disabled={disabled}
+            title={title}
+            onClick={onClick}
+        >
+            {children}
+        </Button>
+    );
+}
+
+/** 浅色说明块：与 WipTag 同一琥珀色板，用于表单/表格上方的口径说明。 */
+export function HintBox({ children, className = "" }: { children: ReactNode; className?: string }) {
+    return (
+        <div className={cn("rounded-lg bg-[#fffbeb] px-3 py-2 text-[12.5px] leading-5 text-[#b45309]", className)}>
+            {children}
+        </div>
+    );
+}
+
+/** 取数状态条：错误用 antd Alert（文案请经 apiErrorMessage 收敛），加载中用灰字。 */
+export function StateBar({ loading, error }: { loading?: boolean; error?: string | null }) {
+    if (error) {
+        return (
+            <div className="px-4 pb-2">
+                <Alert type="error" showIcon title={error} />
+            </div>
+        );
+    }
+    if (loading) {
+        return <div className="px-4 py-6 text-center text-[13px] text-slate-400">加载中…</div>;
+    }
+    return null;
+}
+
 /* ---------------- 建设中（界面已复刻、后端未接入） ---------------- */
 
 /** 行内「建设中」小标：挂在尚未接后端的按钮/字段旁，避免用户误认为可用。 */
 export function WipTag({ text = "建设中", className = "" }: { text?: string; className?: string }) {
     return (
-        <span className={`rounded-full bg-[#fef3c7] px-2 text-[11px] font-medium leading-5 text-[#b45309] ${className}`}>
+        <span className={`bg-[#fef3c7] px-2 text-[11px] font-medium leading-5 text-[#b45309] ${className}`}>
             {text}
         </span>
     );

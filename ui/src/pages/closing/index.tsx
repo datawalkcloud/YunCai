@@ -388,7 +388,7 @@ export default function ClosingPage() {
                                     key={v.id}
                                     type="button"
                                     onClick={() => v.id && setPrintVoucherId(v.id)}
-                                    className="inline-flex items-center gap-1 rounded-full border border-[#86efac] bg-white px-2.5 py-0.5 text-[12px] text-[#15803d] transition-colors hover:bg-[#f0fdf4]"
+                                    className="inline-flex items-center gap-1 border border-[#86efac] bg-white px-2.5 py-0.5 text-[12px] text-[#15803d] transition-colors hover:bg-[#f0fdf4]"
                                     title="打印该凭证"
                                 >
                                     <PrinterOutlined className="text-[12px]" />
@@ -492,13 +492,13 @@ export default function ClosingPage() {
                 <div className="flex flex-col gap-4">
                     {/* 三步状态 */}
                     <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef1f6] px-3 py-1 text-slate-600">
+                        <span className="inline-flex items-center gap-1.5 bg-[#eef1f6] px-3 py-1 text-slate-600">
                             ① 期末检查
                         </span>
                         <span className="text-slate-300">→</span>
                         <span
                             className={cn(
-                                "inline-flex items-center gap-1.5 rounded-full px-3 py-1",
+                                "inline-flex items-center gap-1.5 px-3 py-1",
                                 selectedKey <= carriedKey
                                     ? "bg-[#d1fae5] text-[#10b981]"
                                     : "bg-[#dbeafe] text-[#3b82f6]",
@@ -509,7 +509,7 @@ export default function ClosingPage() {
                         <span className="text-slate-300">→</span>
                         <span
                             className={cn(
-                                "inline-flex items-center gap-1.5 rounded-full px-3 py-1",
+                                "inline-flex items-center gap-1.5 px-3 py-1",
                                 selectedKey <= closedKey
                                     ? "bg-[#eef1f6] text-slate-500"
                                     : selectedKey <= carriedKey
@@ -661,7 +661,7 @@ export default function ClosingPage() {
                                     <span className="flex min-w-0 flex-wrap items-center gap-2">
                                         <span className="font-medium text-slate-700">{t.name}</span>
                                         {t.isEnabled === false && (
-                                            <span className="rounded-full bg-[#eef1f6] px-1.5 py-0.5 text-[10.5px] text-slate-400">
+                                            <span className="bg-[#eef1f6] px-1.5 py-0.5 text-[10.5px] text-slate-400">
                                                 已停用
                                             </span>
                                         )}

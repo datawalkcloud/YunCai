@@ -68,45 +68,52 @@ const PRO_ROWS: ProRow[] = [
     { module: "售后服务", free: { text: "工作日 社群服务" }, pro: { text: "7×12专属客服一对一服务，提供远程协助" } },
 ];
 
+/** 单元格统一口径：px-3 py-2.5、仅横向分隔线，与基元 Table 一致。 */
+const TD = "border-b border-slate-100 px-3 py-2.5 align-middle text-[13px] text-slate-700";
+
 export default function LemonPro() {
-    const td = "border-b border-slate-100 px-4 py-3 align-middle text-[13px] text-slate-700";
     return (
         <Page title="升级专业版" subtitle="免费版与专业版功能对比（静态展示）" icon={CrownOutlined}>
-            <WipNotice text="本页为柠檬云「升级专业版」界面复刻：项目当前没有付费版本体系，升级/购买流程尚未接入后端，以下内容为静态展示，不代表账套真实状态。" />
-            <div className="mx-auto w-full max-w-[1200px] pb-10">
+            <WipNotice text="本页为『升级专业版』界面复刻：项目当前没有付费版本体系，升级/购买流程尚未接入后端，以下内容为静态展示，不代表账套真实状态。" />
+            <div className="mx-auto w-full max-w-[1200px] p-4">
                 {/* 免费版/专业版功能对比（静态营销文案，非账套真实数据） */}
-                <table className="mt-4 w-full border-collapse">
-                    <thead>
-                        <tr className="bg-muted text-[14px] text-slate-800">
-                            <th className="border border-slate-200 px-4 py-3 text-left font-bold">功能模块</th>
-                            <th className="w-[220px] border border-slate-200 px-4 py-3 text-center font-bold">免费版</th>
-                            <th className="w-[640px] border border-slate-200 px-4 py-3 text-center font-bold">
-                                <span className="mr-1 inline-flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-r from-[#fde68a] to-[#f5a623] align-[-3px] text-[11px] text-[#92640b]">
-                                    👑
-                                </span>
-                                专业版
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {PRO_ROWS.map((r) => (
-                            <tr key={r.module} className="transition-colors hover:bg-[#f6f9ff]">
-                                <td className={td}>
-                                    {r.paid && <CrownOutlined className="mr-1.5 text-[14px]" style={{ color: "#f5a623" }} />}
-                                    {r.module}
-                                </td>
-                                <td className={`${td} text-center`}>
-                                    <CellMark ok={r.free.ok} text={r.free.text} />
-                                </td>
-                                <td className={`${td} text-center leading-5`}>
-                                    <CellMark ok={r.pro.ok} text={r.pro.text} />
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="bg-[#f8fafc] text-[13px] text-slate-800">
+                                <th className="border-b border-slate-200 px-3 py-2.5 text-left font-medium">功能模块</th>
+                                <th className="w-[220px] border-b border-slate-200 px-3 py-2.5 text-center font-medium">免费版</th>
+                                <th className="w-[640px] border-b border-slate-200 px-3 py-2.5 text-center font-medium">
+                                    <span className="mr-1 inline-flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-r from-[#fde68a] to-[#f59e0b] align-[-3px] text-[11px] text-[#92640b]">
+                                        <CrownOutlined />
+                                    </span>
+                                    专业版
+                                </th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {PRO_ROWS.map((r, i) => (
+                                <tr
+                                    key={r.module}
+                                    className={`transition-colors hover:bg-[#f6f9ff] ${i % 2 === 1 ? "bg-[#fafbfd]" : ""}`}
+                                >
+                                    <td className={TD}>
+                                        {r.paid && <CrownOutlined className="mr-1.5 text-[14px]" style={{ color: "#f59e0b" }} />}
+                                        {r.module}
+                                    </td>
+                                    <td className={`${TD} text-center`}>
+                                        <CellMark ok={r.free.ok} text={r.free.text} />
+                                    </td>
+                                    <td className={`${TD} text-center leading-5`}>
+                                        <CellMark ok={r.pro.ok} text={r.pro.text} />
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
                 {/* 立即购买（尚未接入后端，建设中） */}
-                <div className="mt-10 flex justify-center">
+                <div className="mt-4 flex justify-center">
                     <WipBtn title="购买/升级流程尚未接入后端，建设中">立即购买</WipBtn>
                 </div>
             </div>

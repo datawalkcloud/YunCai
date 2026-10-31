@@ -57,16 +57,19 @@ export async function apiErrorMessage(err: unknown, fallback: string): Promise<s
         if (err.response.status === 401) notifyUnauthorized()
         try {
             const data = await err.response.clone().json()
-            if (data && typeof data === "object" && "message" in data) {
-                const message = (data as { message?: unknown }).message
-                if (typeof message === "string" && message) return message
+            if (data && typeof data === "object") {
+                const { message, detail } = data as { message?: unknown; detail?: unknown }
+                // 业务错误约定为 { message }；未捕获异常走 Problem Details，透出 detail 首段即可。
+                const text = typeof message === "string" && message ? message
+                    : typeof detail === "string" && detail ? detail : ""
+                if (text) return text.slice(0, 200)
             }
         } catch {
             // 响应体不是 JSON，继续尝试读取纯文本。
         }
         try {
             const text = await err.response.clone().text()
-            if (text) return text
+            if (text) return text.slice(0, 200)
         } catch {
             // 读取失败则回退到兜底文案。
         }

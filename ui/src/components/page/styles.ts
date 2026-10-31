@@ -1,13 +1,13 @@
 /**
  * 页面级视觉常量：与首页（pages/dashboard）同一套色板。
- * 页头按钮、行内图标按钮、状态胶囊在这里统一，避免各页各写一份。
+ * 页头按钮、行内图标按钮、状态标签在这里统一，避免各页各写一份。
  */
 
-/** 页头操作按钮：白底胶囊。 */
+/** 页头操作按钮：白底直角按钮。 */
 export const PAGE_BTN_GHOST =
     "h-9 rounded-xl border-white/80 bg-white/85 px-3.5 text-[13px] text-slate-600 shadow-[0_2px_8px_rgba(16,24,40,0.05)] hover:bg-white hover:text-slate-800"
 
-/** 页头操作按钮：主色实底胶囊，用于本页主动作。 */
+/** 页头操作按钮：主色实底按钮，用于本页主动作。 */
 export const PAGE_BTN_PRIMARY =
     "h-9 rounded-xl bg-[#2f6bff] px-4 text-[13px] text-white shadow-[0_1px_2px_rgba(47,107,255,0.25)] hover:bg-[#255ce0]"
 
@@ -29,7 +29,7 @@ export const ICON_BTN_DANGER =
 
 export type PillTone = "blue" | "green" | "purple" | "amber" | "red" | "gray"
 
-/** 状态胶囊色调：浅底 + 同色系文字（antd Tag 用内联样式上色，故取色值而非 class）。 */
+/** 状态标签色调：浅底 + 同色系文字（antd Tag 用内联样式上色，故取色值而非 class）。 */
 export const PILL: Record<PillTone, { bg: string; fg: string }> = {
     blue: { bg: "#dbeafe", fg: "#3b82f6" },
     green: { bg: "#d1fae5", fg: "#10b981" },
@@ -39,7 +39,7 @@ export const PILL: Record<PillTone, { bg: string; fg: string }> = {
     gray: { bg: "#eef1f6", fg: "#64748b" },
 }
 
-/** 凭证状态 → 胶囊档位：已过账绿、已审核紫、草稿蓝；借贷不平衡一律红。 */
+/** 凭证状态 → 标签档位：已过账绿、已审核紫、草稿蓝；借贷不平衡一律红。 */
 export function voucherStatusTone(status?: number, isBalanced?: boolean): PillTone {
     if (isBalanced === false) return "red"
     switch (status) {
@@ -52,7 +52,7 @@ export function voucherStatusTone(status?: number, isBalanced?: boolean): PillTo
     }
 }
 
-/** 瓦片与胶囊共用的强调色，取值与首页统计卡一致。 */
+/** 瓦片与标签共用的强调色，取值与首页统计卡一致。 */
 export const ACCENT = {
     blue: "#3b82f6",
     green: "#10b981",

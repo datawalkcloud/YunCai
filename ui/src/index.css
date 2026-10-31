@@ -128,3 +128,31 @@
     @apply font-sans;
   }
 }
+
+/*
+ * 后台管理（账套内业务页）统一直角：antd 组件由全局 theme 的 borderRadius: 0 控制，
+ * 这里兜住手写的 Tailwind 圆角容器，避免 antd 卡片已是直角、旁边横幅/标签还是圆的。
+ * 官网与登录页不在 .admin-shell 内，保持原样。
+ */
+.admin-shell
+  :is(.rounded-sm, .rounded-md, .rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl, .rounded-4xl) {
+  border-radius: 0;
+}
+
+/**
+ * 路由懒加载进度条（见 WorkspaceHeader）：页面 chunk 加载期间扫过一条细光带，
+ * 让「旧页面继续留在屏上」那几百毫秒有明确反馈。
+ */
+@keyframes kj-route-progress {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(380%);
+  }
+}
+
+.kj-route-progress {
+  animation: kj-route-progress 900ms ease-in-out infinite;
+}
+

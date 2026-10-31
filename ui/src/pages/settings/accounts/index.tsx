@@ -2,28 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
     Alert,
     Button,
+    Card,
     Checkbox,
     Drawer,
     Input,
     Modal,
     Radio,
-    Segmented,
     Select,
     Spin,
     Table,
+    Tabs,
 } from "antd"
 import type { TableColumnsType } from "antd"
 import {
-    DeleteOutlined,
-    DownloadOutlined,
     DownOutlined,
-    EditOutlined,
+    DownloadOutlined,
     FileExcelOutlined,
-    PartitionOutlined,
     PlusOutlined,
     ReloadOutlined,
     RightOutlined,
-    TagsOutlined,
+    SearchOutlined,
     UploadOutlined,
 } from "@ant-design/icons"
 
@@ -35,7 +33,6 @@ import { cn } from "@/lib/utils"
 import { useLocalForm } from "@/hooks/useLocalForm"
 import { useConfirm } from "@/hooks/useConfirm"
 import { ASSIST_TYPES, assistLabel } from "@/components/assist/constants"
-import { PageHeader, SectionCard } from "@/components/page/section"
 import { Tile } from "@/components/page/tile"
 import { FormField } from "@/components/page/form-field"
 import { StatusPill } from "@/components/page/status-pill"
@@ -170,6 +167,8 @@ export default function AccountsPage() {
     const [loading, setLoading] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [filter, setFilter] = useState<number | "全部">("全部")
+    const [keyword, setKeyword] = useState("")
+    const [showDisabled, setShowDisabled] = useState(true)
     const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([])
     const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -274,52 +273,105 @@ export default function AccountsPage() {
         [accounts, schemeSegments, createForm.values.parentId],
     )
 
+    // 关键字匹配编码 / 名称 / 助记码 / 状态；命中明细时保留其上级作为路径。
+    const normalizedKeyword = keyword.trim().toLowerCase()
+    const matchesKeyword = useCallback(
+        (account: AccountDto) =>
+            !normalizedKeyword ||
+            [account.code, account.name, account.mnemonic, account.isEnabled ? "启用" : "停用"].some((value) =>
+                (value ?? "").toLowerCase().includes(normalizedKeyword),
+            ),
+        [normalizedKeyword],
+    )
+
     // 按父子关系构建树（顶级按类别筛选，明细挂在父级 children 下）。
     const treeData = useMemo<AccountNode[]>(() => {
         const byCode = (a: AccountDto, b: AccountDto) => (a.code ?? "").localeCompare(b.code ?? "")
         const build = (pid: string | null): AccountNode[] => {
-            const children = accounts.filter((a) => (a.parentId ?? null) === pid).sort(byCode)
-            return children
-                .filter((acc) => !(pid === null && filter !== "全部" && acc.category !== filter))
-                .map((acc) => {
-                    const sub = build(acc.id ?? null)
-                    return { ...acc, children: sub.length > 0 ? sub : undefined }
-                })
+            const children = accounts
+                .filter((a) => (a.parentId ?? null) === pid)
+                .filter((a) => pid !== null || filter === "全部" || a.category === filter)
+                .filter((a) => showDisabled || a.isEnabled)
+                .sort(byCode)
+            const nodes: AccountNode[] = []
+            for (const acc of children) {
+                const sub = build(acc.id ?? null)
+                if (matchesKeyword(acc) || sub.length > 0) {
+                    nodes.push({ ...acc, children: sub.length > 0 ? sub : undefined })
+                }
+            }
+            return nodes
         }
         return build(null)
-    }, [accounts, filter])
+    }, [accounts, filter, showDisabled, matchesKeyword])
+
+    // 当前树上可展开的节点，供「展开所有级次」使用。
+    const expandableIds = useMemo(() => {
+        const ids: string[] = []
+        const walk = (nodes: AccountNode[]) => {
+            for (const node of nodes) {
+                if (node.children?.length) {
+                    ids.push(String(node.id))
+                    walk(node.children)
+                }
+            }
+        }
+        walk(treeData)
+        return ids
+    }, [treeData])
+
+    const expandedSet = useMemo(() => new Set(expandedKeys.map((k) => String(k))), [expandedKeys])
+    const allExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedSet.has(id))
 
     // 受控展开：由 treeData + expandedKeys 算出要渲染的扁平可见行序列（含深度）。
+    // 搜索时强制展开命中路径，直接露出匹配结果。
     const visibleRows = useMemo<VisibleRow[]>(() => {
-        const expanded = new Set(expandedKeys.map((k) => String(k)))
+        const searching = normalizedKeyword.length > 0
         const out: VisibleRow[] = []
         const walk = (nodes: AccountNode[], depth: number) => {
             for (const node of nodes) {
                 out.push({ node, depth })
-                if (node.children && expanded.has(String(node.id))) walk(node.children, depth + 1)
+                if (node.children && (searching || expandedSet.has(String(node.id)))) walk(node.children, depth + 1)
             }
         }
         walk(treeData, 0)
         return out
-    }, [treeData, expandedKeys])
+    }, [treeData, expandedSet, normalizedKeyword])
 
     function toggleExpand(id: string) {
         setExpandedKeys((prev) => (prev.includes(id) ? prev.filter((k) => k !== id) : [...prev, id]))
     }
 
-    // 上级科目下拉可选项：仅显示当前选中类别下的顶级科目（按编码排序）；
-    // 已达编码方案最大级次的科目不可再挂下级。
+    // 上级科目下拉可选项：当前类别下所有还能再开下级的科目（按编码排序）。
     const parentOptions = useMemo(() => {
-        const scheme = (currentSet as any)?.accountCodingScheme ?? "4-2-2-2"
-        const maxLevel = scheme.split("-").length
+        const maxLevel = schemeSegments.length
         return [...accounts]
-            .filter((a) => a.parentId == null && a.category === createForm.values.category && (a.level ?? 0) < maxLevel)
+            .filter((a) => a.category === createForm.values.category && (a.level ?? 0) < maxLevel)
             .sort((a, b) => (a.code ?? "").localeCompare(b.code ?? ""))
-            .map((a) => ({ value: a.id as string, label: `${a.code} ${a.name}（${a.level} 级）` }))
-    }, [accounts, createForm.values.category, currentSet])
+            .map((a) => ({
+                value: a.id as string,
+                label: `${"　".repeat(Math.max((a.level ?? 1) - 1, 0))}${a.code} ${a.name}`,
+            }))
+    }, [accounts, createForm.values.category, schemeSegments])
 
-    function openDrawer() {
-        createForm.fill({ parentId: null, code: "", name: "", category: 1, direction: 1, mnemonic: "", isEnabled: true })
+    /** 打开新增抽屉；从某行「新增」进入时预填上级科目（类别、方向随上级）。 */
+    function openDrawer(parentNode?: AccountDto) {
+        createForm.fill(
+            parentNode
+                ? {
+                      parentId: parentNode.id ?? null,
+                      code: "",
+                      name: "",
+                      category: parentNode.category ?? 1,
+                      direction: parentNode.direction ?? 1,
+                      mnemonic: "",
+                      isEnabled: true,
+                  }
+                : { parentId: null, code: "", name: "", category: 1, direction: 1, mnemonic: "", isEnabled: true },
+        )
+        if (parentNode?.id) {
+            setExpandedKeys((prev) => [...new Set([...prev, parentNode.id as string])])
+        }
         setError("")
         setOpen(true)
     }
@@ -517,6 +569,26 @@ export default function AccountsPage() {
         }
     }
 
+    /** 导出账套全部科目（.xlsx，列与导入模板一致，可原样回传导入）。 */
+    async function exportAccounts() {
+        if (!accountSetId) return
+        try {
+            const response = await fetch(`/api/accountsets/${accountSetId}/Accounts/export`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            if (!response.ok) throw new Error(`导出失败（${response.status}）`)
+            const blob = await response.blob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `${currentSet?.name ?? "科目"}-科目.xlsx`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            setLoadError(err instanceof Error ? err.message : "导出科目失败，请重试。")
+        }
+    }
+
     // ── 科目编辑处理 ──
     function openEditDrawer(account: AccountDto) {
         setEditTarget(account)
@@ -608,20 +680,27 @@ export default function AccountsPage() {
         }
     }
 
-    const expandedSet = useMemo(() => new Set(expandedKeys.map((k) => String(k))), [expandedKeys])
-
     const columns: TableColumnsType<VisibleRow> = [
         {
+            title: "序号",
+            width: 64,
+            align: "center",
+            render: (_, __, index) => <span className="tabular-nums text-slate-500">{index + 1}</span>,
+        },
+        {
             title: "科目编码",
+            width: 230,
             render: (_, { node, depth }) => {
                 const id = String(node.id)
-                const expanded = expandedSet.has(id)
+                // 搜索时可见行强制展开，箭头随之显示为展开态。
+                const expanded = normalizedKeyword.length > 0 || expandedSet.has(id)
                 return (
                     <div className={cn("flex items-center gap-1", indentClass(depth))}>
                         {node.children ? (
                             <Button
                                 type="text"
                                 size="small"
+                                className="size-5 min-w-5 p-0"
                                 aria-label={expanded ? "收起下级科目" : "展开下级科目"}
                                 aria-expanded={expanded}
                                 icon={expanded ? <DownOutlined /> : <RightOutlined />}
@@ -629,9 +708,9 @@ export default function AccountsPage() {
                             />
                         ) : (
                             // 占位，保持与可展开行同宽，编码列纵向对齐。
-                            <span className="size-6 shrink-0" />
+                            <span className="size-5 shrink-0" />
                         )}
-                        <span className="whitespace-nowrap">{node.code}</span>
+                        <span className="whitespace-nowrap tabular-nums">{node.code}</span>
                     </div>
                 )
             },
@@ -657,92 +736,140 @@ export default function AccountsPage() {
                 )
             },
         },
-        { title: "级次", align: "center", render: (_, { node }) => node.level ?? "—" },
-        { title: "类别", render: (_, { node }) => CATEGORY_LABELS[node.category ?? 0] ?? "—" },
-        { title: "余额方向", render: (_, { node }) => DIRECTION_LABELS[node.direction ?? 0] ?? "—" },
+        {
+            title: "助记码",
+            width: 150,
+            render: (_, { node }) =>
+                node.mnemonic ? <span className="text-slate-600">{node.mnemonic}</span> : <span className="text-slate-300">—</span>,
+        },
+        {
+            title: "余额方向",
+            width: 96,
+            align: "center",
+            render: (_, { node }) => DIRECTION_LABELS[node.direction ?? 0] ?? "—",
+        },
         {
             title: "状态",
+            width: 88,
             align: "center",
-            render: (_, { node }) => (
-                node.isEnabled
-                    ? <StatusPill tone="green">启用</StatusPill>
-                    : <StatusPill tone="gray">停用</StatusPill>
-            ),
+            render: (_, { node }) =>
+                node.isEnabled ? <span className="text-slate-700">启用</span> : <span className="text-slate-400">停用</span>,
         },
         {
-            title: "",
-            align: "right",
-            render: (_, { node }) => (
-                <div className="flex items-center justify-end gap-0">
-                    <Button
-                        type="text"
-                        size="small"
-                        title="设置辅助核算"
-                        icon={<TagsOutlined />}
-                        onClick={() => void openAssistDialog(node)}
-                    />
-                    <Button type="text" size="small" title="编辑科目" icon={<EditOutlined />} onClick={() => openEditDrawer(node)} />
-                    <Button
-                        type="text"
-                        size="small"
-                        danger
-                        title={node.children ? "删除科目（需先删除下级）" : "删除科目"}
-                        disabled={deletingId === node.id}
-                        icon={deletingId === node.id ? <ReloadOutlined spin /> : <DeleteOutlined />}
-                        onClick={() => void removeAccount(node)}
-                    />
-                </div>
-            ),
+            title: "操作",
+            width: 176,
+            render: (_, { node }) => {
+                const canAddChild = (node.level ?? 0) < schemeSegments.length
+                return (
+                    <div className="flex items-center gap-2">
+                        {canAddChild && (
+                            <Button type="link" size="small" style={{ padding: 0 }} onClick={() => openDrawer(node)}>
+                                新增
+                            </Button>
+                        )}
+                        <Button type="link" size="small" style={{ padding: 0 }} onClick={() => openEditDrawer(node)}>
+                            编辑
+                        </Button>
+                        <Button
+                            type="link"
+                            size="small"
+                            style={{ padding: 0 }}
+                            title="设置辅助核算"
+                            onClick={() => void openAssistDialog(node)}
+                        >
+                            辅助
+                        </Button>
+                        <Button
+                            type="link"
+                            size="small"
+                            danger
+                            style={{ padding: 0 }}
+                            loading={deletingId === node.id}
+                            title={node.children ? "删除科目（需先删除下级）" : "删除科目"}
+                            onClick={() => void removeAccount(node)}
+                        >
+                            删除
+                        </Button>
+                    </div>
+                )
+            },
         },
     ]
 
-    const filterOptions: { value: string; label: string }[] = [
-        { value: "全部", label: "全部" },
-        ...CATEGORY_OPTIONS.map((c) => ({ value: String(c.value), label: c.label })),
-    ]
+    const filterOptions = [{ value: "全部", label: "全部" }, ...CATEGORY_OPTIONS.map((c) => ({ value: String(c.value), label: c.label }))]
+
+    const emptyText = !accountSetId
+        ? "请先选择账套。"
+        : normalizedKeyword
+          ? "没有匹配的科目，请调整搜索关键字。"
+          : !showDisabled && accounts.length > 0
+            ? "当前分类下没有启用的科目，可勾选「显示停用科目」查看。"
+            : "暂无科目，可点击「新增科目」或通过凭证导入自动建立。"
 
     return (
-        <div className="flex flex-col gap-5">
-            <PageHeader
-                icon={PartitionOutlined}
-                title="科目"
-                subtitle={
-                    <>
-                        账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                        {((currentSet as any)?.accountCodingScheme) ? ` · 编码方案：${(currentSet as any).accountCodingScheme}` : ""}
-                        。维护多级会计科目表，一级科目下可挂明细科目，用于凭证录入与账簿核算。
-                    </>
-                }
-                actions={
-                    <>
-                        <Button icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />} disabled={!accountSetId || loading} onClick={() => void load()}>
-                            刷新
-                        </Button>
-                        <Button icon={<UploadOutlined />} disabled={!accountSetId} onClick={() => setImportOpen(true)}>
-                            导入科目
-                        </Button>
-                        <Button icon={<EditOutlined />} disabled={!accountSetId} onClick={openSchemeModal}>
-                            编码方案
-                        </Button>
-                        <Button type="primary" icon={<PlusOutlined />} disabled={!accountSetId} onClick={openDrawer}>
+        <div className="flex flex-col gap-4">
+            {loadError && <Alert type="error" showIcon title={loadError} closable onClose={() => setLoadError(null)} />}
+
+            <Card
+                variant="borderless"
+                styles={{
+                    root: { boxShadow: "0 1px 2px rgba(16,24,40,0.04)" },
+                    body: { padding: 0 },
+                }}
+            >
+                <Tabs
+                    activeKey={filter === "全部" ? "全部" : String(filter)}
+                    items={filterOptions.map((option) => ({ key: option.value, label: option.label }))}
+                    onChange={(key) => setFilter(key === "全部" ? "全部" : Number(key))}
+                    tabBarStyle={{ margin: 0, paddingInline: 16 }}
+                />
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 px-4 py-2.5">
+                    <Input
+                        allowClear
+                        prefix={<SearchOutlined className="text-slate-400" />}
+                        placeholder="输入编码/名称/助记码/状态等关键字搜索"
+                        value={keyword}
+                        onChange={(e) => setKeyword(e.target.value)}
+                        disabled={!accountSetId}
+                        style={{ width: 280 }}
+                    />
+                    <Checkbox
+                        checked={allExpanded}
+                        disabled={!accountSetId || expandableIds.length === 0}
+                        onChange={(e) => setExpandedKeys(e.target.checked ? expandableIds : [])}
+                    >
+                        展开所有级次
+                    </Checkbox>
+                    <div className="ml-auto flex flex-wrap items-center gap-2">
+                        <Checkbox
+                            checked={showDisabled}
+                            disabled={!accountSetId}
+                            onChange={(e) => setShowDisabled(e.target.checked)}
+                        >
+                            显示停用科目
+                        </Checkbox>
+                        <Button type="primary" icon={<PlusOutlined />} disabled={!accountSetId} onClick={() => openDrawer()}>
                             新增科目
                         </Button>
-                    </>
-                }
-            />
-
-            <SectionCard
-                title={<h3 className="text-[14px] font-semibold text-slate-800">科目列表</h3>}
-                bodyClassName="flex flex-col gap-4"
-            >
-                {loadError && <Alert type="error" showIcon title={loadError} />}
-
-                <div className={cn(SOFT_PANEL, "flex flex-wrap items-center gap-2 px-3 py-2")}>
-                    <Segmented
-                        value={filter === "全部" ? "全部" : String(filter)}
-                        options={filterOptions}
-                        onChange={(v) => setFilter(v === "全部" ? "全部" : Number(v))}
-                    />
+                        <Button disabled={!accountSetId} onClick={openSchemeModal}>
+                            编码设置
+                        </Button>
+                        <Button disabled={!accountSetId} onClick={() => void exportAccounts()}>
+                            导出
+                        </Button>
+                        <Button icon={<UploadOutlined />} disabled={!accountSetId} onClick={() => setImportOpen(true)}>
+                            导入
+                        </Button>
+                        <Button
+                            type="text"
+                            title="刷新"
+                            aria-label="刷新"
+                            icon={<ReloadOutlined spin={loading} />}
+                            disabled={!accountSetId || loading}
+                            onClick={() => void load()}
+                        />
+                    </div>
                 </div>
 
                 <Table<VisibleRow>
@@ -750,15 +877,12 @@ export default function AccountsPage() {
                     columns={columns}
                     dataSource={visibleRows}
                     pagination={false}
-                    size="small"
+                    bordered
+                    size="middle"
                     loading={loading && accounts.length === 0}
-                    locale={{
-                        emptyText: accountSetId
-                            ? "暂无科目，可点击「新增科目」或通过凭证导入自动建立。"
-                            : "请先选择账套。",
-                    }}
+                    locale={{ emptyText }}
                 />
-            </SectionCard>
+            </Card>
 
             {/* 新增科目抽屉 */}
             <Drawer
@@ -1081,7 +1205,7 @@ export default function AccountsPage() {
             <Modal
                 open={schemeModalOpen}
                 width={768}
-                title="科目编码方案"
+                title="科目编码设置"
                 okText="保存"
                 cancelText="取消"
                 confirmLoading={schemeSaving}

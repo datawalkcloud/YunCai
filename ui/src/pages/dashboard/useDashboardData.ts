@@ -11,7 +11,7 @@ import {
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { useAuth } from "@/auth/AuthContext"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
-import { useDefaultAccountingPeriod } from "@/accountSets/useCurrentAccountSet"
+import { useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet"
 
 /** 凭证状态：草稿 1 / 已审核 2 / 已过账 3（与后端 VoucherStatus 对齐）。 */
 export const V_STATUS = {
@@ -38,12 +38,16 @@ export interface DashboardData {
 /**
  * 首页数据源：并发拉取财务概要、凭证列表与结账状态。
  * 任一失败都整屏报错并给出重试，绝不静默 catch。
+ *
+ * period 可选：首页的期间步进器需要回看历史月份，此时的期间由页面传入；
+ * 不传则跟随账套「下一个待结账期间」。传入值需由调用方 useMemo 保持引用稳定。
  */
-export function useDashboardData(): DashboardData {
+export function useDashboardData(period?: AccountingPeriod): DashboardData {
     const { token } = useAuth()
     const accountSetId = useCurrentAccountSetId() ?? ""
     // 表头显示的期间必须就是取数期间，故显式传给概要接口（后端省略时会回退到「最近有凭证期间」）。
-    const period = useDefaultAccountingPeriod()
+    const fallbackPeriod = useDefaultAccountingPeriod()
+    const activePeriod = period ?? fallbackPeriod
 
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -62,7 +66,7 @@ export function useDashboardData(): DashboardData {
         try {
             const config = apiConfig(token)
             const [sum, vs, cl] = await Promise.all([
-                new ReportsApi(config).accountsetsAccountSetIdReportsFinancialSummaryGet({ accountSetId, year: period.year, month: period.month }),
+                new ReportsApi(config).accountsetsAccountSetIdReportsFinancialSummaryGet({ accountSetId, year: activePeriod.year, month: activePeriod.month }),
                 new VouchersApi(config).accountsetsAccountSetIdVouchersGet({ accountSetId }),
                 new ClosingApi(config).accountsetsAccountSetIdClosingGet({ accountSetId }),
             ])
@@ -74,7 +78,7 @@ export function useDashboardData(): DashboardData {
         } finally {
             setLoading(false)
         }
-    }, [accountSetId, token, period])
+    }, [accountSetId, token, activePeriod])
 
     useEffect(() => {
         void load()

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useNavigate, useParams } from "react-router"
 import { Alert, Spin, Table } from "antd"
 import type { TableColumnsType, TableColumnType } from "antd"
 import { AuditOutlined } from "@ant-design/icons"
@@ -73,6 +74,8 @@ export default function TrialBalancePage() {
     const { token } = useAuth()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
+    const { accountSetId: routeId } = useParams<{ accountSetId: string }>()
+    const navigate = useNavigate()
     const currentSet = accountSets.find((s) => s.id === accountSetId)
 
     const [dateRange, setDateRange] = useState<DateRange | null>(null)
@@ -132,6 +135,15 @@ export default function TrialBalancePage() {
         }
     }, [rows])
 
+    // 点行下钻到该科目明细账，沿用同一日期区间。
+    function goSubsidiary(code: string | undefined) {
+        if (!code || !routeId) return
+        const params = new URLSearchParams({ account: code })
+        if (dateRange?.startDate) params.set("startDate", dateRange.startDate)
+        if (dateRange?.endDate) params.set("endDate", dateRange.endDate)
+        navigate(`/${routeId}/ledger/subsidiary?${params.toString()}`)
+    }
+
     return (
         <div className="flex flex-col gap-4">
             <PageHeader
@@ -140,7 +152,7 @@ export default function TrialBalancePage() {
                 subtitle={
                     <>
                         账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                        。汇总各科目的期初余额、本期发生额与期末余额，用于试算平衡与结账核对。
+                        。汇总各科目的期初余额、本期发生额与期末余额，用于试算平衡与结账核对。点击任一行可下钻该科目明细账。
                     </>
                 }
             />
@@ -190,6 +202,7 @@ export default function TrialBalancePage() {
                     loading={loading}
                     emptyText={accountSetId ? "该期间暂无科目余额数据。" : "请先选择账套。"}
                     rowKey={(row) => row.code ?? ""}
+                    onRowClick={(row) => goSubsidiary(row.code)}
                     footer={
                         <Table.Summary.Row>
                             <Table.Summary.Cell index={0} colSpan={2}>

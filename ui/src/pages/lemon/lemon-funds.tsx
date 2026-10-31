@@ -4,39 +4,25 @@
  * 资金报表（六页签汇总）、核对总账、收支类别（收入/支出 + 新增表单）、账户设置（现金/银行存款，启停用/编辑/删除/新增已接后端）。
  * 视觉遵循全站统一风格（云财蓝）：主色 #2f6bff、白卡 + slate 灰阶文字、收入 #10b981 / 支出与错误 #ef4444。
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
-import {
-    DownOutlined,
-    InfoCircleOutlined,
-    BankOutlined,
-    MoneyCollectOutlined,
-    ProfileOutlined,
-    SettingOutlined,
-    WalletOutlined,
-} from "@ant-design/icons";
-import { Input } from "antd";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { WalletOutlined } from "@ant-design/icons";
+import { Alert, Popconfirm } from "antd";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
-import { shiftPeriod, useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
-import { ICON_STYLE } from "@/components/page/styles";
-import { AccountsApi } from "@/apis-gen";
-
-
+import { JournalLedgerPage } from "@/pages/funds/journal-ledger";
+import { BillLedgerPage } from "@/pages/funds/bill-ledger";
 import {
     Btn,
-    CheckBox,
-    DateInput,
     Dialog,
     EmptyTip,
+    FakeInput,
+    LinkAction,
     Page,
     Pager,
-    PeriodBlock,
-    PeriodStepper,
     RefreshIcon,
     Select,
-    SplitBtn,
+    StateBar,
     SubTabs,
     Table,
     TextInput,
@@ -47,11 +33,7 @@ import {
     WipNotice,
 } from "./components/ui";
 import type { Col, Row } from "./components/ui";
-import { BillsApi, JournalsApi, type AccountDto, type BillDto, type JournalDetailDto, type JournalListItemDto } from "@/apis-gen";
-
-/** 后端日期字段运行时是 Date，统一按 yyyy-MM-dd 展示。 */
-const fmtDate = (v: Date | string | null | undefined): string =>
-    v ? new Date(v).toISOString().substring(0, 10) : "";
+import { JournalsApi, AccountsApi, type JournalAccountImportResultDto, type JournalListItemDto, type AccountDto } from "@/apis-gen";
 
 /** 资金账户（日记账）列表数据 Hook（供账户设置页使用）。 */
 function useJournals() {
@@ -84,854 +66,136 @@ function useJournals() {
     return { journals, loading, error, reload };
 }
 
-/* ---------- 现金/银行日记账（已接后端） ---------- */
+/* ---------- 现金/银行日记账：账页见 @/pages/funds/journal-ledger（与现金日记账共用） ---------- */
 
-/** 行内编辑单元格控件尺寸：antd 的 .ant-input 是无层级声明，Tailwind 的 h-/text- 压不过，只能内联。 */
-const jpEdit = { height: 28, fontSize: 13 } as const;
-
-/** 日记账页面：行来自后端流水；勾选行→生成凭证走「未选提示 toast / 未设科目引导弹窗 / 批量出票」三条链路。 */
-function JournalPage({
-    journalType,
-    seqPrefix,
-    bank,
-}: {
-    journalType: number;
-    seqPrefix: string;
-    bank?: boolean;
-}) {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const navigate = useNavigate();
-    const [journals, setJournals] = useState<JournalListItemDto[]>([]);
-    const [journalId, setJournalId] = useState<string>("");
-    const [detail, setDetail] = useState<JournalDetailDto | null>(null);
-    const [selected, setSelected] = useState<Set<string>>(new Set());
-    const [toast, setToast] = useState<string | null>(null);
-    const [showGuide, setShowGuide] = useState(false);
-    const [draft, setDraft] = useState({ date: "", summary: "", category: "", counterparty: "", income: "", expense: "" });
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [tick, setTick] = useState(0);
-    const [showAdd, setShowAdd] = useState(false);
-    const [accounts, setAccounts] = useState<AccountDto[]>([]);
-    const [addForm, setAddForm] = useState({ name: "", type: 1, accountId: "", openingBalance: "", bankName: "", bankAccountNo: "" });
-    const importRef = useRef<HTMLInputElement>(null);
-
-    const journal = journals.find((j) => j.id === journalId) ?? null;
-    const reload = useCallback(async () => {
-        if (!token || !accountSetId) {
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        setError(null);
-        try {
-            const api = new JournalsApi(apiConfig(token));
-            const list = await api.accountsetsAccountSetIdJournalsGet({ accountSetId });
-            const sameType = (list ?? []).filter((j) => j.type === journalType);
-            setJournals(sameType);
-            const target = journalId || sameType[0]?.id || "";
-            setJournalId(target);
-            setDetail(target ? await api.accountsetsAccountSetIdJournalsIdGet({ accountSetId, id: target }) : null);
-            setSelected(new Set());
-        } catch (e) {
-            setError(await apiErrorMessage(e, "加载日记账失败。"));
-        } finally {
-            setLoading(false);
-        }
-    }, [token, accountSetId, journalType, journalId]);
-    useEffect(() => {
-        void reload();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [token, accountSetId, journalType, tick]);
-
-    const nf = (v: number | null | undefined): string =>
-        v == null ? "" : v.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    const switchJournal = async (id: string) => {
-        setJournalId(id);
-        setSelected(new Set());
-        if (token && accountSetId && id) {
-            try {
-                setDetail(await new JournalsApi(apiConfig(token)).accountsetsAccountSetIdJournalsIdGet({ accountSetId, id }));
-            } catch (e) {
-                setError(await apiErrorMessage(e, "加载日记账明细失败。"));
-            }
-        }
-    };
-
-    /** 打开新增日记账弹窗（首次加载明细科目下拉）。 */
-    const openAdd = async () => {
-        setShowAdd(true);
-        if (token && accountSetId && accounts.length === 0) {
-            try {
-                setAccounts(await new AccountsApi(apiConfig(token)).accountsetsAccountSetIdAccountsGet({ accountSetId, leafOnly: true }));
-            } catch {
-                setToast(await apiErrorMessage(new Error("加载科目失败"), "加载科目失败"));
-            }
-        }
-    };
-
-    const createJournal = async () => {
-        if (!token || !accountSetId || !addForm.name.trim()) {
-            setToast("请填写日记账名称");
-            return;
-        }
-        try {
-            await new JournalsApi(apiConfig(token!)).accountsetsAccountSetIdJournalsPost({
-                accountSetId,
-                createJournalRequest: {
-                    name: addForm.name.trim(),
-                    type: addForm.type,
-                    accountId: addForm.accountId || null,
-                    openingBalance: Number(addForm.openingBalance) || 0,
-                    bankName: addForm.type === 2 ? addForm.bankName.trim() || null : null,
-                    bankAccountNo: addForm.type === 2 ? addForm.bankAccountNo.trim() || null : null,
-                },
-            });
-            setShowAdd(false);
-            setAddForm({ name: "", type: 1, accountId: "", openingBalance: "", bankName: "", bankAccountNo: "" });
-            setToast("日记账已创建");
-            setTick((t) => t + 1);
-        } catch (e) {
-            setToast(await apiErrorMessage(e, "创建失败"));
-        }
-    };
-
-    const deleteEntry = async (entryId: string) => {
-        if (!token || !accountSetId || !journalId) {
-            return;
-        }
-        try {
-            await new JournalsApi(apiConfig(token!)).accountsetsAccountSetIdJournalsIdEntriesEntryIdDelete({
-                accountSetId,
-                id: journalId,
-                entryId,
-            });
-            setToast("流水已删除");
-            setTick((t) => t + 1);
-        } catch (e) {
-            setToast(await apiErrorMessage(e, "删除失败"));
-        }
-    };
-
-    /** 导出当前日记账为后端生成的表格文件。 */
-    const exportJournal = async () => {
-        if (!token || !accountSetId || !journalId) {
-            return;
-        }
-        try {
-            const res = await fetch(`/api/accountsets/${accountSetId}/journals/${journalId}/export`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) {
-                throw new Error("导出失败");
-            }
-
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = `${detail?.name ?? "日记账"}.xlsx`;
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-            URL.revokeObjectURL(url);
-        } catch (e) {
-            setToast(e instanceof Error ? e.message : "导出失败");
-        }
-    };
-
-    const importFile = async (file: File) => {
-        if (!token || !accountSetId || !journalId || !file) {
-            return;
-        }
-        try {
-            const result = await new JournalsApi(apiConfig(token!)).accountsetsAccountSetIdJournalsIdImportPost({
-                accountSetId,
-                id: journalId,
-                file,
-            });
-            setToast(`导入完成：成功 ${result.importedEntries ?? 0} / 共 ${result.totalRows ?? 0} 行`);
-            setTick((t) => t + 1);
-        } catch (e) {
-            setToast(await apiErrorMessage(e, "导入失败"));
-        } finally {
-            if (importRef.current) {
-                importRef.current.value = "";
-            }
-        }
-    };
-
-    const addEntry = async () => {
-        if (!token || !accountSetId || !journalId) {
-            return;
-        }
-        if (!draft.date || !draft.summary.trim()) {
-            setToast("请填写日期与摘要");
-            return;
-        }
-        try {
-            await new JournalsApi(apiConfig(token)).accountsetsAccountSetIdJournalsIdEntriesPost({
-                accountSetId,
-                id: journalId,
-                journalEntryRequest: {
-                    date: new Date(draft.date),
-                    summary: draft.summary.trim(),
-                    category: draft.category.trim() || null,
-                    counterparty: draft.counterparty.trim() || null,
-                    income: Number(draft.income) || 0,
-                    expense: Number(draft.expense) || 0,
-                },
-            });
-            setDraft({ date: "", summary: "", category: "", counterparty: "", income: "", expense: "" });
-            setToast("流水已登记");
-            setTick((t) => t + 1);
-        } catch (e) {
-            setToast(await apiErrorMessage(e, "登记失败"));
-        }
-    };
-
-    const genVoucher = async () => {
-        if (selected.size === 0) {
-            setToast("请选择凭证后生成凭证!");
-            return;
-        }
-        if (!journal?.accountId) {
-            setShowGuide(true);
-            return;
-        }
-        try {
-            const result = await new JournalsApi(apiConfig(token!)).accountsetsAccountSetIdJournalsIdEntriesVouchersPost({
-                accountSetId,
-                id: journalId,
-                generateVouchersBatchRequest: { entryIds: [...selected], mergeBy: 1 },
-            });
-            setToast(`已生成 ${result.entryCount ?? 0} 张凭证`);
-            setTick((t) => t + 1);
-        } catch (e) {
-            setToast(await apiErrorMessage(e, "生成凭证失败"));
-        }
-    };
-
-    const entries = detail?.entries ?? [];
-    const cols = [
-        { key: "ck", title: <CheckBox label="" />, width: "36px" },
-        { key: "date", title: "日期", width: "110px" },
-        { key: "summary", title: "摘要" },
-        { key: "ieType", title: "收支类别" },
-        { key: "partner", title: "往来单位" },
-        { key: "income", title: "收入 (借方)", align: "right" as const, width: "100px" },
-        { key: "expense", title: "支出 (贷方)", align: "right" as const, width: "100px" },
-        { key: "balance", title: "余额", align: "right" as const, width: "110px" },
-        { key: "voucher", title: "关联凭证", width: "110px" },
-        { key: "seq", title: "日记账序号", width: "150px" },
-        {
-            key: "ops",
-            title: (
-                <span className="inline-flex items-center gap-1">
-                    操作 <SettingOutlined className="text-[12px]" style={ICON_STYLE.muted} />
-                </span>
-            ),
-            width: "230px",
-        },
-    ];
-    return (
-        <Page title={bank ? "银行日记账" : "现金日记账"} icon={bank ? BankOutlined : MoneyCollectOutlined}>
-            <ToolRow
-                left={
-                    <>
-                        <Select
-                            className="w-[220px]"
-                            value={journalId}
-                            onChange={(v) => void switchJournal(v)}
-                            options={
-                                journals.length === 0
-                                    ? [{ value: "", label: "（暂无日记账）" }]
-                                    : journals.map((j) => ({ value: j.id ?? "", label: j.name ?? "" }))
-                            }
-                        />
-                        <PeriodBlock
-                            range={
-                                entries.length
-                                    ? [fmtDate(entries[0]?.date), fmtDate(entries[entries.length - 1]?.date)]
-                                    : undefined
-                            }
-                            text={detail?.name ?? ""}
-                        />
-                        <CheckBox label="显示全部" />
-                    </>
-                }
-                right={
-                    <>
-                        {bank && (
-                            <span className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#2f6bff]/40 bg-[#eef4ff] px-3 text-sm text-[#2f6bff]">
-                                银企互联 <InfoCircleOutlined className="text-[14px]" />
-                            </span>
-                        )}
-                        <Btn onClick={() => void openAdd()}>新增日记账</Btn>
-                        <input
-                            ref={importRef}
-                            type="file"
-                            accept=".xls,.xlsx"
-                            className="hidden"
-                            onChange={(e) => void importFile(e.target.files?.[0] as File)}
-                        />
-                        <Btn dropdown onClick={() => window.print()}>打印</Btn>
-                        <Btn dropdown onClick={() => importRef.current?.click()}>导入</Btn>
-                        <Btn dropdown onClick={() => void exportJournal()}>导出</Btn>
-                        <WipBtn dropdown title="批量操作建设中，后端未提供端点">批量操作</WipBtn>
-                        <WipBtn dropdown title="关联凭证查看建设中，后端未提供端点">关联凭证</WipBtn>
-                        <SplitBtn>
-                            <span onClick={() => void genVoucher()}>生成凭证</span>
-                        </SplitBtn>
-                        <span className="cursor-pointer" onClick={() => setTick((t) => t + 1)}>
-                            <RefreshIcon />
-                        </span>
-                    </>
-                }
-            />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#ef4444]">{error}</div>}
-            {loading && <div className="px-4 pb-2 text-[13px] text-slate-500">加载中…</div>}
-            <div className="flex-1 px-4">
-                <table className="w-full border-collapse text-sm tabular-nums">
-                    <thead>
-                        <tr className="bg-muted text-[13px] text-slate-700">
-                            {cols.map((c) => (
-                                <th
-                                    key={c.key}
-                                    className={`border-b border-slate-200 px-3 py-2.5 font-normal ${c.align === "right" ? "text-right" : "text-left"}`}
-                                    style={{ width: c.width }}
-                                >
-                                    {c.title}
-                                    {["summary", "ieType", "partner"].includes(String(c.key)) && (
-                                        <DownOutlined className="ml-1 text-[12px]" style={ICON_STYLE.muted} />
-                                    )}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {/* 期初行 */}
-                        <tr className="border-b border-slate-100">
-                            <td />
-                            <td />
-                            <td className="px-3 py-2 text-[13px]">初始化余额</td>
-                            <td />
-                            <td />
-                            <td />
-                            <td />
-                            <td className="px-2 py-1.5">
-                                <span className="block h-7 rounded-lg border border-slate-200 px-2 text-right text-[13px] leading-7 text-slate-700">
-                                    {nf(detail?.openingBalance)}
-                                </span>
-                            </td>
-                            <td />
-                            <td />
-                            <td />
-                        </tr>
-                        {/* 已有流水行（可勾选） */}
-                        {entries.map((e) => (
-                            <tr key={e.id} className={`border-b border-slate-100 ${selected.has(e.id ?? "") ? "bg-[#eef4ff]" : ""}`}>
-                                <td
-                                    className="cursor-pointer px-3 py-2"
-                                    onClick={() =>
-                                        setSelected((prev) => {
-                                            const key = e.id ?? "";
-                                            const next = new Set([...prev].filter((k) => k !== key));
-                                            if (!prev.has(key)) {
-                                                next.add(key);
-                                            }
-                                            return next;
-                                        })
-                                    }
-                                >
-                                    <CheckBox label="" checked={selected.has(e.id ?? "")} />
-                                </td>
-                                <td className="px-3 py-2 text-[13px]">{fmtDate(e.date)}</td>
-                                <td className="px-3 py-2 text-[13px]">{e.summary ?? ""}</td>
-                                <td className="px-3 py-2 text-[13px]">{e.category ?? ""}</td>
-                                <td className="px-3 py-2 text-[13px]">{e.counterparty ?? ""}</td>
-                                <td className="px-3 py-2 text-right text-[13px] text-[#10b981]">{nf(e.income)}</td>
-                                <td className="px-3 py-2 text-right text-[13px] text-[#ef4444]">{nf(e.expense)}</td>
-                                <td className="px-3 py-2 text-right text-[13px]">{nf(e.balance)}</td>
-                                <td className="px-3 py-2 text-[13px]">{e.voucherNo ?? ""}</td>
-                                <td className="px-3 py-2 text-[13px]">
-                                    {`${seqPrefix}-${fmtDate(e.date).replaceAll("-", "")}-${e.sequence ?? ""}`}
-                                </td>
-                                <td className="px-3 py-2">
-                                    <span className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[#2f6bff]">
-                                        {/* 插入行/附件/复制后端未提供端点，先置灰防误操作 */}
-                                        <Btn disabled className="!h-6 !px-1.5 text-[12px]" title="插入行建设中，后端未提供端点">插入</Btn>
-                                        <span className="cursor-pointer hover:underline" onClick={() => void deleteEntry(e.id ?? "")}>
-                                            删除
-                                        </span>
-                                        <span className="cursor-pointer hover:underline" onClick={() => window.print()}>打印</span>
-                                        <Btn disabled className="!h-6 !px-1.5 text-[12px]" title="附件管理建设中，后端未提供端点">附件</Btn>
-                                        <Btn disabled className="!h-6 !px-1.5 text-[12px]" title="复制流水建设中，后端未提供端点">复制</Btn>
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                        {/* 行内新增编辑行 */}
-                        <tr className="border-b border-slate-100">
-                            <td />
-                            <td className="px-2 py-1.5">
-                                <DateInput className="w-full" value={draft.date} onChange={(v) => setDraft({ ...draft, date: v })} />
-                            </td>
-                            <td className="px-2 py-1.5">
-                                <Input
-                                    className="w-full"
-                                    style={{ ...jpEdit, borderColor: "#2f6bff" }}
-                                    value={draft.summary}
-                                    onChange={(ev) => setDraft({ ...draft, summary: ev.target.value })}
-                                />
-                            </td>
-                            <td className="px-2 py-1.5">
-                                <Input
-                                    className="w-full"
-                                    style={jpEdit}
-                                    value={draft.category}
-                                    onChange={(ev) => setDraft({ ...draft, category: ev.target.value })}
-                                />
-                            </td>
-                            <td className="px-2 py-1.5">
-                                <Input
-                                    className="w-full"
-                                    style={jpEdit}
-                                    value={draft.counterparty}
-                                    onChange={(ev) => setDraft({ ...draft, counterparty: ev.target.value })}
-                                />
-                            </td>
-                            <td className="px-2 py-1.5">
-                                <Input
-                                    className="w-full"
-                                    style={{ ...jpEdit, textAlign: "right" }}
-                                    value={draft.income}
-                                    onChange={(ev) => setDraft({ ...draft, income: ev.target.value.replace(/[^\d.]/g, "") })}
-                                />
-                            </td>
-                            <td className="px-2 py-1.5">
-                                <Input
-                                    className="w-full"
-                                    style={{ ...jpEdit, textAlign: "right" }}
-                                    value={draft.expense}
-                                    onChange={(ev) => setDraft({ ...draft, expense: ev.target.value.replace(/[^\d.]/g, "") })}
-                                />
-                            </td>
-                            <td className="px-3 py-2 text-right text-[13px]" />
-                            <td />
-                            <td className="px-3 py-2 text-[13px]">{`${seqPrefix}-${draft.date.replaceAll("-", "") || "NEW"}`}</td>
-                            <td className="px-3 py-2">
-                                <Btn variant="primary" className="!h-7 !px-2 text-[12px]" onClick={() => void addEntry()}>
-                                    保存
-                                </Btn>
-                            </td>
-                        </tr>
-                        {/* 合计行 */}
-                        <tr className="border-b border-slate-100 bg-[#fafbfd]">
-                            <td />
-                            <td />
-                            <td className="px-3 py-2 text-[13px] font-bold text-slate-800">合计</td>
-                            <td />
-                            <td />
-                            <td className="px-3 py-2 text-right text-[13px] text-[#10b981]">{nf(detail?.totalIncome)}</td>
-                            <td className="px-3 py-2 text-right text-[13px] text-[#ef4444]">{nf(detail?.totalExpense)}</td>
-                            <td className="px-3 py-2 text-right text-[13px] text-slate-700">{nf(detail?.closingBalance)}</td>
-                            <td colSpan={3} />
-                        </tr>
-                        {entries.length === 0 && !loading && !error && (
-                            <tr>
-                                <td colSpan={cols.length} className="py-10 text-center text-[13px] text-slate-400">
-                                    本账户暂无流水，请在下方行内登记。
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-            {/* 真实数据不足一页（20 条）时隐藏分页控件，不显示假页码 */}
-            {entries.length > 20 && <Pager total={entries.length} count={1} />}
-            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
-            {/* 未设会计科目引导弹窗 */}
-            {showGuide && (
-                <Dialog
-                    title="提示"
-                    onClose={() => setShowGuide(false)}
-                    footer={
-                        <div className="flex justify-center gap-3">
-                            <Btn
-                                variant="primary"
-                                onClick={() => {
-                                    setShowGuide(false);
-                                    navigate(`/${accountSetId}/settings/accounts`);
-                                }}
-                            >
-                                前往处理
-                            </Btn>
-                            <Btn onClick={() => setShowGuide(false)}>取消</Btn>
-                        </div>
-                    }
-                >
-                    <div className="text-center text-sm leading-6 text-slate-700">
-                        请先设置资金账户{journal?.name ?? ""} 的会计科目，否则不能生成凭证，
-                        <br />
-                        是否立即前往处理？
-                    </div>
-                </Dialog>
-            )}
-            {/* 新增日记账弹窗 */}
-            {showAdd && (
-                <Dialog
-                    title="新增日记账"
-                    onClose={() => setShowAdd(false)}
-                    footer={
-                        <div className="flex justify-center gap-3">
-                            <Btn variant="primary" onClick={() => void createJournal()}>
-                                保存
-                            </Btn>
-                            <Btn onClick={() => setShowAdd(false)}>取消</Btn>
-                        </div>
-                    }
-                >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
-                        <label className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">账簿类型：</span>
-                            <Select
-                                className="w-[220px]"
-                                value={String(addForm.type)}
-                                onChange={(v) => setAddForm({ ...addForm, type: Number(v) })}
-                                options={[
-                                    { value: "1", label: "现金日记账" },
-                                    { value: "2", label: "银行存款日记账" },
-                                ]}
-                            />
-                        </label>
-                        <label className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">名称：</span>
-                            <TextInput className="w-[220px]" value={addForm.name} onChange={(v) => setAddForm({ ...addForm, name: v })} />
-                        </label>
-                        <label className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">关联科目：</span>
-                            <Select
-                                className="w-[220px]"
-                                value={addForm.accountId}
-                                onChange={(v) => setAddForm({ ...addForm, accountId: v })}
-                                options={[
-                                    { value: "", label: "（暂不关联）" },
-                                    ...(accounts ?? []).map((a) => ({ value: a.id ?? "", label: `${a.code ?? ""} ${a.name ?? ""}` })),
-                                ]}
-                            />
-                        </label>
-                        <label className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">期初余额：</span>
-                            <TextInput
-                                className="w-[220px] text-right"
-                                value={addForm.openingBalance}
-                                onChange={(v) => setAddForm({ ...addForm, openingBalance: v.replace(/[^\d.]/g, "") })}
-                            />
-                        </label>
-                        {addForm.type === 2 && (
-                            <>
-                                <label className="flex items-center gap-3">
-                                    <span className="w-[90px] text-right">开户行：</span>
-                                    <TextInput className="w-[220px]" value={addForm.bankName} onChange={(v) => setAddForm({ ...addForm, bankName: v })} />
-                                </label>
-                                <label className="flex items-center gap-3">
-                                    <span className="w-[90px] text-right">银行账号：</span>
-                                    <TextInput className="w-[220px]" value={addForm.bankAccountNo} onChange={(v) => setAddForm({ ...addForm, bankAccountNo: v })} />
-                                </label>
-                            </>
-                        )}
-                    </div>
-                </Dialog>
-            )}
-        </Page>
-    );
-}
-
-/**
- * 银行日记账。journalType=2 是本页的固定语义：
- * 2 = 银行存款类日记账（后端 JournalType），本页只看银行账户，现金日记账由独立入口以 type=1 渲染。
- */
+/** 银行日记账。journalType=2 是本页的固定语义（2 = 银行存款类日记账）。 */
 export function LemonDepositJournal() {
-    return <JournalPage journalType={2} seqPrefix="2-001" bank />;
+    return <JournalLedgerPage journalType={2} seqPrefix="2-001" />;
 }
-/* ---------- 票据管理（期间查询 / 新增 / 删除已接后端） ---------- */
 
-/** 票据种类，与后端 BillKind 枚举一致。 */
-const BILL_KIND_OPTIONS = [
-    { value: "1", label: "银行承兑汇票" },
-    { value: "2", label: "商业承兑汇票" },
-    { value: "3", label: "支票" },
-    { value: "4", label: "其他" },
-];
 
-const emptyBillForm = { category: "", issueDate: "", billNo: "", amount: "", kind: "1", dueDate: "", drawer: "", acceptor: "", transferable: true };
+/* ---------- 票据管理：账页见 @/pages/funds/bill-ledger（对齐柠檬云「票据台账」） ---------- */
 
+/** 票据管理（票据台账）。 */
 export function LemonDraft() {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const defaultPeriod = useDefaultAccountingPeriod();
-    const [userPeriod, setUserPeriod] = useState<AccountingPeriod | null>(null);
-    const period = userPeriod ?? defaultPeriod;
-    const [bills, setBills] = useState<BillDto[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [selected, setSelected] = useState<Set<string>>(new Set());
-    const [toast, setToast] = useState<string | null>(null);
-    const [showAdd, setShowAdd] = useState(false);
-    const [form, setForm] = useState(emptyBillForm);
-    const [busy, setBusy] = useState(false);
-
-    const reload = useCallback(async () => {
-        if (!accountSetId) {
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        try {
-            setBills(
-                await new BillsApi(apiConfig(token)).accountsetsAccountSetIdBillsGet({
-                    accountSetId,
-                    startDate: new Date(period.startDate),
-                    endDate: new Date(period.endDate),
-                }),
-            );
-            setSelected(new Set());
-            setError(null);
-        } catch (err) {
-            setError(await apiErrorMessage(err, "加载票据失败。"));
-        } finally {
-            setLoading(false);
-        }
-    }, [accountSetId, token, period]);
-
-    useEffect(() => {
-        void reload();
-    }, [reload]);
-
-    const toggleSel = (id: string) =>
-        setSelected((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) {
-                next.delete(id);
-            } else {
-                next.add(id);
-            }
-            return next;
-        });
-
-    /** 新增票据：走 POST /accountsets/{id}/bills。 */
-    const createBill = async () => {
-        if (!token || !accountSetId || busy) {
-            return;
-        }
-        if (!form.billNo.trim() || !form.issueDate) {
-            setToast("票据号与出票日必填");
-            return;
-        }
-        const amount = Number(form.amount);
-        if (!(amount > 0)) {
-            setToast("请填写正确的票据金额");
-            return;
-        }
-        setBusy(true);
-        try {
-            await new BillsApi(apiConfig(token)).accountsetsAccountSetIdBillsPost({
-                accountSetId,
-                saveBillRequest: {
-                    category: form.category.trim(),
-                    issueDate: new Date(form.issueDate),
-                    billNo: form.billNo.trim(),
-                    amount,
-                    kind: Number(form.kind),
-                    dueDate: form.dueDate ? new Date(form.dueDate) : null,
-                    drawer: form.drawer.trim() || null,
-                    acceptor: form.acceptor.trim() || null,
-                    transferable: form.transferable,
-                },
-            });
-            setShowAdd(false);
-            setForm(emptyBillForm);
-            setToast("票据已新增");
-            await reload();
-        } catch (e) {
-            setToast(await apiErrorMessage(e, "新增票据失败"));
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    /** 删除票据：后端仅提供单条 DELETE 端点，勾选行逐条调用。 */
-    const deleteBills = async (ids: string[]) => {
-        if (!token || !accountSetId || busy || ids.length === 0) {
-            if (ids.length === 0) {
-                setToast("请先勾选要删除的票据");
-            }
-            return;
-        }
-        setBusy(true);
-        const api = new BillsApi(apiConfig(token));
-        let failMsg = "";
-        for (const id of ids) {
-            try {
-                await api.accountsetsAccountSetIdBillsIdDelete({ accountSetId, id });
-            } catch (e) {
-                failMsg = await apiErrorMessage(e, "删除失败");
-            }
-        }
-        setBusy(false);
-        setToast(failMsg || "票据已删除");
-        await reload();
-    };
-
-    return (
-        <Page title="票据管理" subtitle="按期间登记与查询应收票据" icon={ProfileOutlined}>
-            <SubTabs tabs={["票据台账"]} />
-            <ToolRow
-                left={
-                    <>
-                        <PeriodStepper
-                            text={`${period.year}年${period.month}月`}
-                            onPrev={() => setUserPeriod(shiftPeriod(period, -1))}
-                            onNext={() => setUserPeriod(shiftPeriod(period, 1))}
-                        />
-                        <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
-                            如何管理票据？ <InfoCircleOutlined className="text-[14px]" />
-                        </span>
-                        <CheckBox label="显示所有信息" />
-                    </>
-                }
-                right={
-                    <>
-                        <Btn onClick={() => setShowAdd(true)}>新增</Btn>
-                        <WipBtn dropdown title="后端未提供票据生成凭证端点，建设中">生成凭证</WipBtn>
-                        <WipBtn dropdown title="后端未提供票据导入端点，建设中">导入</WipBtn>
-                        <Btn disabled={busy || selected.size === 0} title="删除勾选的票据" onClick={() => void deleteBills([...selected])}>删除</Btn>
-                        <span className="cursor-pointer" onClick={() => void reload()}>
-                            <RefreshIcon />
-                        </span>
-                    </>
-                }
-            />
-            {error && <div className="px-4 pb-2 text-[13px] text-[#ef4444]">{error}</div>}
-            {loading && <div className="px-4 pb-2 text-[13px] text-slate-500">加载中…</div>}
-            <div className="flex-1 px-4">
-                <table className="w-full border-collapse text-sm tabular-nums">
-                    <thead>
-                        <tr className="bg-muted text-[13px] text-slate-700">
-                            {["", "收支类别", "出票日", "票据号", "票据金额", "票据种类", "汇票到期日", "出票人", "承兑人", "票据状态", "能否转让", "操作"].map(
-                                (t, i) => (
-                                    <th
-                                        key={i}
-                                        className={`border-b border-slate-200 px-3 py-2.5 font-normal ${i === 4 ? "text-right" : "text-left"}`}
-                                        style={{ width: i === 4 ? "110px" : undefined }}
-                                    >
-                                        {t}
-                                    </th>
-                                ),
-                            )}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {bills.map((b) => (
-                            <tr key={b.id} className={`border-b border-slate-100 ${selected.has(b.id ?? "") ? "bg-[#eef4ff]" : ""}`}>
-                                <td className="px-3 py-2">
-                                    <CheckBox label="" checked={selected.has(b.id ?? "")} onChange={() => toggleSel(b.id ?? "")} />
-                                </td>
-                                <td className="px-3 py-2.5 text-[13px]">{b.category}</td>
-                                <td className="px-3 py-2.5 text-[13px]">{fmtDate(b.issueDate)}</td>
-                                <td className="px-3 py-2.5 text-[13px]">{b.billNo}</td>
-                                <td className="px-3 py-2.5 text-right text-[13px] text-slate-700">{(b.amount ?? 0).toFixed(2)}</td>
-                                <td className="px-3 py-2.5 text-[13px]">{b.kindText}</td>
-                                <td className="px-3 py-2.5 text-[13px]">{fmtDate(b.dueDate)}</td>
-                                <td className="px-3 py-2.5 text-[13px]">{b.drawer}</td>
-                                <td className="px-3 py-2.5 text-[13px]">{b.acceptor}</td>
-                                <td className="px-3 py-2.5 text-[13px]">{b.statusText}</td>
-                                <td className="px-3 py-2.5 text-[13px]">{b.transferable ? "是" : "否"}</td>
-                                <td className="px-3 py-2.5">
-                                    <span
-                                        className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
-                                        onClick={() => void deleteBills([b.id ?? ""])}
-                                    >
-                                        删除
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                        {bills.length === 0 && !loading && (
-                            <tr>
-                                <td colSpan={12}>
-                                    <EmptyTip />
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-            {/* 真实数据不足一页时隐藏分页控件，不显示假页码 */}
-            {bills.length > 20 && <Pager total={bills.length} count={1} />}
-            {/* 新增票据弹窗 */}
-            {showAdd && (
-                <Dialog
-                    title="新增票据"
-                    width={520}
-                    onClose={() => setShowAdd(false)}
-                    footer={
-                        <div className="flex justify-center gap-3">
-                            <Btn variant="primary" disabled={busy} onClick={() => void createBill()}>
-                                保存
-                            </Btn>
-                            <Btn onClick={() => setShowAdd(false)}>取消</Btn>
-                        </div>
-                    }
-                >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
-                        <div className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">票据号：</span>
-                            <TextInput className="flex-1" value={form.billNo} onChange={(v) => setForm({ ...form, billNo: v })} placeholder="必填" />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">票据金额：</span>
-                            <TextInput className="flex-1" type="number" value={form.amount} onChange={(v) => setForm({ ...form, amount: v.replace(/[^\d.]/g, "") })} placeholder="必填" />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">票据种类：</span>
-                            <Select className="flex-1" value={form.kind} onChange={(v) => setForm({ ...form, kind: v })} options={BILL_KIND_OPTIONS} />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">出票日：</span>
-                            <DateInput className="flex-1" value={form.issueDate} onChange={(v) => setForm({ ...form, issueDate: v })} />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">汇票到期日：</span>
-                            <DateInput className="flex-1" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">收支类别：</span>
-                            <TextInput className="flex-1" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">出票人：</span>
-                            <TextInput className="flex-1" value={form.drawer} onChange={(v) => setForm({ ...form, drawer: v })} />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="w-[90px] text-right">承兑人：</span>
-                            <TextInput className="flex-1" value={form.acceptor} onChange={(v) => setForm({ ...form, acceptor: v })} />
-                        </div>
-                        <div className="flex items-center gap-3 pl-[102px]">
-                            <CheckBox label="能否转让" checked={form.transferable} onChange={(v) => setForm({ ...form, transferable: v })} />
-                        </div>
-                    </div>
-                </Dialog>
-            )}
-            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
-        </Page>
-    );
+    return <BillLedgerPage />;
 }
 
 /* ---------- 账户设置（现金/银行存款，启停用/编辑/删除/新增已接后端） ---------- */
+
+const CURRENCIES = ["人民币", "美元", "欧元", "港币", "日元", "英镑"];
+
+type AccountFormState = {
+    code: string;
+    name: string;
+    currency: string;
+    accountId: string;
+    openingBalance: string;
+    bankName: string;
+    bankAccountNo: string;
+};
+
+/** 二进制下载：fetch + blob + a[download]，返回错误文案（成功返回 null）。 */
+async function fundsDownload(url: string, token: string, fallbackName: string): Promise<string | null> {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body && typeof body === "object" && "message" in body ? String((body as { message?: unknown }).message ?? "") : "";
+        return message || `下载失败（HTTP ${res.status}）`;
+    }
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const star = /filename\*=UTF-8''([^;\n]+)/i.exec(disposition);
+    const plain = /filename="?([^";\n]+)"?/i.exec(disposition);
+    const name = star ? decodeURIComponent(star[1]) : plain?.[1] ?? fallbackName;
+    const href = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(href);
+    return null;
+}
+
+/** 按账户类型筛选可绑定的末级货币资金科目（1=现金 1001*，2=银行存款 1002*）。 */
+function subjectOptionsOf(accounts: AccountDto[], type: number) {
+    const prefix = type === 2 ? "1002" : "1001";
+    return accounts
+        .filter((a) => a.code?.startsWith(prefix))
+        .map((a) => ({ value: a.id ?? "", label: `${a.code} ${a.name}` }));
+}
+
+/** 表单行：左 80px 右对齐标签 + 右侧自适应控件（本页 Dialog 表单共用）。 */
+function LabelRow({ label, children }: { label: string; children: ReactNode }) {
+    return (
+        <div className="flex items-center gap-3">
+            <span className="w-[80px] text-right">{label}</span>
+            {children}
+        </div>
+    );
+}
+
+/** 账户新增/编辑共用的表单字段（编码 / 名称 / 币别 / 会计科目 / 期初余额 / 开户行·账号）。 */
+function AccountFormFields({
+    form,
+    setForm,
+    accounts,
+    type,
+    hideBank,
+    accountReadOnly,
+}: {
+    form: AccountFormState;
+    setForm: (f: AccountFormState) => void;
+    accounts: AccountDto[];
+    type: number;
+    hideBank?: boolean;
+    accountReadOnly?: boolean;
+}) {
+    const currentSubject = accounts.find((a) => a.id === form.accountId);
+    return (
+        <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+            <LabelRow label="编码：">
+                <TextInput className="flex-1" placeholder="留空自动生成" value={form.code} onChange={(v) => setForm({ ...form, code: v })} />
+            </LabelRow>
+            <LabelRow label="名称：">
+                <TextInput className="flex-1" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+            </LabelRow>
+            <LabelRow label="币别：">
+                <Select className="flex-1" value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} options={CURRENCIES} />
+            </LabelRow>
+            <LabelRow label="会计科目：">
+                {accountReadOnly ? (
+                    <FakeInput className="flex-1" text={currentSubject ? `${currentSubject.code} ${currentSubject.name}` : "—"} />
+                ) : (
+                    <Select
+                        className="flex-1"
+                        value={form.accountId}
+                        onChange={(v) => setForm({ ...form, accountId: v })}
+                        options={[{ value: "", label: "（不指定，自动建明细科目）" }, ...subjectOptionsOf(accounts, type)]}
+                    />
+                )}
+            </LabelRow>
+            <LabelRow label="期初余额：">
+                <TextInput
+                    className="flex-1"
+                    type="number"
+                    value={form.openingBalance}
+                    onChange={(v) => setForm({ ...form, openingBalance: v.replace(/[^\d.]/g, "") })}
+                />
+            </LabelRow>
+            {!hideBank && (
+                <>
+                    <LabelRow label="开户行：">
+                        <TextInput className="flex-1" value={form.bankName} onChange={(v) => setForm({ ...form, bankName: v })} />
+                    </LabelRow>
+                    <LabelRow label="银行账号：">
+                        <TextInput className="flex-1" value={form.bankAccountNo} onChange={(v) => setForm({ ...form, bankAccountNo: v })} />
+                    </LabelRow>
+                </>
+            )}
+        </div>
+    );
+}
+
 
 export function LemonAccountSettings() {
     const { token } = useAuth();
@@ -942,9 +206,57 @@ export function LemonAccountSettings() {
     const [keyword, setKeyword] = useState("");
     const [applied, setApplied] = useState("");
     const [editTarget, setEditTarget] = useState<JournalListItemDto | null>(null);
-    const [editForm, setEditForm] = useState({ name: "", openingBalance: "", bankName: "", bankAccountNo: "" });
+    const [editForm, setEditForm] = useState({ code: "", name: "", currency: "人民币", accountId: "", openingBalance: "", bankName: "", bankAccountNo: "" });
     const [showAdd, setShowAdd] = useState(false);
-    const [addForm, setAddForm] = useState({ name: "", openingBalance: "", bankName: "", bankAccountNo: "" });
+    const [addForm, setAddForm] = useState({ code: "", name: "", currency: "人民币", accountId: "", openingBalance: "", bankName: "", bankAccountNo: "" });
+    const [accounts, setAccounts] = useState<AccountDto[]>([]);
+    const accountImportRef = useRef<HTMLInputElement>(null);
+    const [importing, setImporting] = useState(false);
+    const [importResult, setImportResult] = useState<JournalAccountImportResultDto | null>(null);
+
+    /** 下载资金账户导入模板。 */
+    const doImportTemplate = async () => {
+        if (!token || !accountSetId) return;
+        const err = await fundsDownload(`/api/accountsets/${accountSetId}/journals/accounts/import-template`, token, "资金账户导入模板.xlsx");
+        if (err) setToast(err);
+    };
+
+    /** 资金账户批量导入：同名同类型更新，否则新建。 */
+    const doImportAccounts = async (file: File) => {
+        if (!token || !accountSetId) return;
+        setImporting(true);
+        try {
+            const form = new FormData();
+            form.append("file", file);
+            const res = await fetch(`/api/accountsets/${accountSetId}/journals/accounts/import`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: form,
+            });
+            const body = await res.json().catch(() => null);
+            if (!res.ok) {
+                const message = body && typeof body === "object" && "message" in body ? String((body as { message?: unknown }).message ?? "") : "";
+                setToast(message || `导入失败（HTTP ${res.status}）`);
+                return;
+            }
+            setImportResult(body as JournalAccountImportResultDto);
+            setToast(`导入完成：新增 ${body.imported ?? 0} 个，更新 ${body.updated ?? 0} 个`);
+            await reload();
+        } catch {
+            setToast("导入失败，请检查文件格式。");
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    // 加载末级货币资金科目（1001 现金 / 1002 银行）供「会计科目」下拉选择。
+    useEffect(() => {
+        if (!accountSetId) return;
+        new AccountsApi(apiConfig(token))
+            .accountsetsAccountSetIdAccountsGet({ accountSetId, leafOnly: true })
+            .then((list) => setAccounts(list.filter((a) => a.code?.startsWith("1001") || a.code?.startsWith("1002"))))
+            .catch(() => setAccounts([]));
+    }, [accountSetId, token]);
 
     const asJournal = (row: Record<string, unknown>) => row.__j as JournalListItemDto;
 
@@ -979,14 +291,17 @@ export function LemonAccountSettings() {
     const openEdit = (j: JournalListItemDto) => {
         setEditTarget(j);
         setEditForm({
+            code: j.code ?? "",
             name: j.name ?? "",
+            currency: j.currency ?? "人民币",
+            accountId: j.accountId ?? "",
             openingBalance: j.openingBalance != null ? String(j.openingBalance) : "",
             bankName: j.bankName ?? "",
             bankAccountNo: j.bankAccountNo ?? "",
         });
     };
 
-    /** 保存编辑（名称/期初/开户行/银行账号）：PUT /journals/{id}。 */
+    /** 保存编辑（编码/名称/币别/科目/期初/开户行/银行账号）：PUT /journals/{id}。 */
     const saveEdit = async () => {
         if (!token || !accountSetId || !editTarget) return;
         if (!editForm.name.trim()) {
@@ -999,6 +314,8 @@ export function LemonAccountSettings() {
                 id: editTarget.id ?? "",
                 updateJournalRequest: {
                     name: editForm.name.trim(),
+                    code: editForm.code.trim() || null,
+                    currency: editForm.currency.trim() || null,
                     openingBalance: Number(editForm.openingBalance) || 0,
                     bankName: editTarget.type === 2 ? editForm.bankName.trim() || null : null,
                     bankAccountNo: editTarget.type === 2 ? editForm.bankAccountNo.trim() || null : null,
@@ -1025,14 +342,16 @@ export function LemonAccountSettings() {
                 createJournalRequest: {
                     name: addForm.name.trim(),
                     type: tab === 0 ? 1 : 2,
-                    accountId: null,
+                    code: addForm.code.trim() || null,
+                    currency: addForm.currency.trim() || null,
+                    accountId: addForm.accountId ? addForm.accountId : null,
                     openingBalance: Number(addForm.openingBalance) || 0,
                     bankName: tab === 1 ? addForm.bankName.trim() || null : null,
                     bankAccountNo: tab === 1 ? addForm.bankAccountNo.trim() || null : null,
                 },
             });
             setShowAdd(false);
-            setAddForm({ name: "", openingBalance: "", bankName: "", bankAccountNo: "" });
+            setAddForm({ code: "", name: "", currency: "人民币", accountId: "", openingBalance: "", bankName: "", bankAccountNo: "" });
             setToast("账户已新增");
             await reload();
         } catch (e) {
@@ -1044,17 +363,25 @@ export function LemonAccountSettings() {
     const accountRows = journals
         .filter((j) => (tab === 0 ? j.type === 1 : j.type === 2))
         .filter((j) => !kw || (j.name ?? "").includes(kw) || (j.accountCode ?? "").includes(kw) || (j.accountName ?? "").includes(kw));
-    const rows: Row[] = accountRows.map((j, i) =>
+    const rows: Row[] = accountRows.map((j) =>
         tab === 0
-            ? { __j: j, code: String(i + 1).padStart(3, "0"), name: j.name, currency: "人民币", subject: `${j.accountCode ?? ""} ${j.accountName ?? ""}` }
+            ? {
+                  __j: j,
+                  code: j.code || "",
+                  name: j.name,
+                  currency: j.currency || "人民币",
+                  opening: j.openingBalance != null ? String(j.openingBalance) : "0",
+                  subject: `${j.accountCode ?? ""} ${j.accountName ?? ""}`.trim(),
+              }
             : {
                   __j: j,
-                  code: String(i + 1).padStart(3, "0"),
+                  code: j.code || "",
                   name: j.name,
                   bank: j.bankName ?? "",
                   bankNo: j.bankAccountNo ?? "",
-                  currency: "人民币",
-                  subject: `${j.accountCode ?? ""} ${j.accountName ?? ""}`,
+                  currency: j.currency || "人民币",
+                  opening: j.openingBalance != null ? String(j.openingBalance) : "0",
+                  subject: `${j.accountCode ?? ""} ${j.accountName ?? ""}`.trim(),
               },
     );
 
@@ -1075,8 +402,16 @@ export function LemonAccountSettings() {
             const j = asJournal(row);
             return (
                 <span className="flex items-center gap-2 whitespace-nowrap">
-                    <span className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline" onClick={() => openEdit(j)}>编辑</span>
-                    <span className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline" onClick={() => void removeJournal(j)}>删除</span>
+                    <LinkAction onClick={() => openEdit(j)}>编辑</LinkAction>
+                    <Popconfirm
+                        title={`确定删除账户「${j.name}」吗？`}
+                        description="删除后该账户的期初余额与既有流水将一并清除，且不可恢复。"
+                        okText="确定"
+                        cancelText="取消"
+                        onConfirm={() => void removeJournal(j)}
+                    >
+                        <LinkAction danger>删除</LinkAction>
+                    </Popconfirm>
                 </span>
             );
         },
@@ -1084,28 +419,30 @@ export function LemonAccountSettings() {
     const cols: Col[] =
         tab === 0
             ? [
-                  { key: "code", title: "编码", width: "110px" },
-                  { key: "name", title: "账户名称", width: "220px" },
-                  { key: "currency", title: "币别", width: "120px" },
-                  { key: "subject", title: "会计科目" },
+                  { key: "code", title: "编码", width: "90px" },
+                  { key: "name", title: "账户名称", width: "200px" },
+                  { key: "currency", title: "币别", width: "110px" },
+                  { key: "opening", title: "期初余额", width: "130px", align: "right" },
+                  { key: "subject", title: "会计科目", width: "200px" },
                   statusCol,
                   opsCol,
               ]
             : [
                   { key: "code", title: "编码", width: "70px" },
                   { key: "name", title: "账户名称", width: "180px" },
-                  { key: "bank", title: "开户行", width: "160px" },
-                  { key: "bankNo", title: "银行账号", width: "180px" },
+                  { key: "bank", title: "开户行", width: "150px" },
+                  { key: "bankNo", title: "银行账号", width: "170px" },
                   { key: "currency", title: "币别", width: "90px" },
-                  { key: "subject", title: "会计科目", width: "140px" },
+                  { key: "opening", title: "期初余额", width: "120px", align: "right" },
+                  { key: "subject", title: "会计科目", width: "170px" },
                   statusCol,
                   opsCol,
               ];
     return (
         <Page title="账户设置" subtitle="现金与银行存款资金账户的启停用、编辑与新增" icon={WalletOutlined}>
             <SubTabs tabs={["现金", "银行存款"]} active={tab} onChange={setTab} />
-            {/* 银企互联列已移除：后端未提供绑定端点，功能建设中 */}
-            <WipNotice text="银企互联（绑定银行 / 预约开户）建设中，后端未提供端点，列表暂不展示绑定相关列；启停用、编辑、删除与新增均已接真实数据。" />
+            {/* 银企互联属外部银行对接能力，不在账套复刻范围内；账户核心管理（编码/币别/期初/科目/启停用/增删改/查询）已全部接真实数据。 */}
+            <WipNotice text="银企互联（绑定银行自动获取流水）为外部银行对接能力，未纳入账套复刻；账户设置的核心功能（编码 / 币别 / 期初余额 / 会计科目 / 启用停用 / 新增编辑删除 / 查询 / 模板下载与批量导入）均已接真实数据。" />
             <ToolRow
                 left={
                     <>
@@ -1117,26 +454,50 @@ export function LemonAccountSettings() {
                 right={
                     <>
                         {tab === 1 && <WipBtn title="预约开户建设中，后端未提供端点">预约开户</WipBtn>}
-                        <WipBtn title="账户批量导入建设中，后端未提供端点">导入</WipBtn>
+                        <Btn onClick={() => void doImportTemplate()}>模板</Btn>
+                        <Btn onClick={() => accountImportRef.current?.click()} disabled={importing}>{importing ? "导入中…" : "导入"}</Btn>
+                        <input
+                            ref={accountImportRef}
+                            type="file"
+                            accept=".xlsx"
+                            className="hidden"
+                            onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                e.target.value = "";
+                                if (f) void doImportAccounts(f);
+                            }}
+                        />
                         <Btn variant="primary" onClick={() => setShowAdd(true)}>新增</Btn>
-                        <span className="cursor-pointer" onClick={() => void reload()}>
-                            <RefreshIcon />
-                        </span>
+                        <RefreshIcon onClick={() => void reload()} />
                     </>
                 }
             />
+            <StateBar loading={loading} error={error} />
             <div className="flex-1 px-4">
-                {error && <div className="px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
-                {loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
+                {importResult && (importResult.failures ?? []).length > 0 && (
+                    <div className="mb-2">
+                        <Alert
+                            type="error"
+                            showIcon
+                            title={`有 ${importResult.failures?.length} 行未导入`}
+                            description={
+                                <div className="text-[12.5px] leading-5">
+                                    {(importResult.failures ?? []).slice(0, 8).map((f, i) => (
+                                        <div key={i}>· 第 {f.row} 行「{f.name || "—"}」：{f.reason}</div>
+                                    ))}
+                                </div>
+                            }
+                        />
+                    </div>
+                )}
                 <Table cols={cols} rows={rows} empty={<EmptyTip />} />
             </div>
-            {/* 真实数据不足一页时隐藏分页控件，不显示假页码 */}
-            {rows.length > 20 && <Pager total={rows.length} count={1} />}
+            <Pager total={rows.length} />
             {/* 编辑账户弹窗 */}
             {editTarget && (
                 <Dialog
                     title={`编辑账户（${editTarget.type === 2 ? "银行存款" : "现金"}）`}
-                    width={460}
+                    width={520}
                     onClose={() => setEditTarget(null)}
                     footer={
                         <div className="flex justify-center gap-3">
@@ -1145,35 +506,14 @@ export function LemonAccountSettings() {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
-                        <div className="flex items-center gap-3">
-                            <span className="w-[80px] text-right">名称：</span>
-                            <TextInput className="flex-1" value={editForm.name} onChange={(v) => setEditForm({ ...editForm, name: v })} />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="w-[80px] text-right">期初余额：</span>
-                            <TextInput className="flex-1" type="number" value={editForm.openingBalance} onChange={(v) => setEditForm({ ...editForm, openingBalance: v.replace(/[^\d.]/g, "") })} />
-                        </div>
-                        {editTarget.type === 2 && (
-                            <>
-                                <div className="flex items-center gap-3">
-                                    <span className="w-[80px] text-right">开户行：</span>
-                                    <TextInput className="flex-1" value={editForm.bankName} onChange={(v) => setEditForm({ ...editForm, bankName: v })} />
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="w-[80px] text-right">银行账号：</span>
-                                    <TextInput className="flex-1" value={editForm.bankAccountNo} onChange={(v) => setEditForm({ ...editForm, bankAccountNo: v })} />
-                                </div>
-                            </>
-                        )}
-                    </div>
+                    <AccountFormFields form={editForm} setForm={setEditForm} accounts={accounts} type={editTarget.type ?? 1} hideBank={editTarget.type !== 2} accountReadOnly />
                 </Dialog>
             )}
             {/* 新增账户弹窗 */}
             {showAdd && (
                 <Dialog
                     title={`新增账户（${tab === 0 ? "现金" : "银行存款"}）`}
-                    width={460}
+                    width={520}
                     onClose={() => setShowAdd(false)}
                     footer={
                         <div className="flex justify-center gap-3">
@@ -1182,28 +522,7 @@ export function LemonAccountSettings() {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
-                        <div className="flex items-center gap-3">
-                            <span className="w-[80px] text-right">名称：</span>
-                            <TextInput className="flex-1" value={addForm.name} onChange={(v) => setAddForm({ ...addForm, name: v })} />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="w-[80px] text-right">期初余额：</span>
-                            <TextInput className="flex-1" type="number" value={addForm.openingBalance} onChange={(v) => setAddForm({ ...addForm, openingBalance: v.replace(/[^\d.]/g, "") })} />
-                        </div>
-                        {tab === 1 && (
-                            <>
-                                <div className="flex items-center gap-3">
-                                    <span className="w-[80px] text-right">开户行：</span>
-                                    <TextInput className="flex-1" value={addForm.bankName} onChange={(v) => setAddForm({ ...addForm, bankName: v })} />
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="w-[80px] text-right">银行账号：</span>
-                                    <TextInput className="flex-1" value={addForm.bankAccountNo} onChange={(v) => setAddForm({ ...addForm, bankAccountNo: v })} />
-                                </div>
-                            </>
-                        )}
-                    </div>
+                    <AccountFormFields form={addForm} setForm={setAddForm} accounts={accounts} type={tab === 0 ? 1 : 2} hideBank={tab !== 1} />
                 </Dialog>
             )}
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
