@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Alert, Button, Checkbox, Drawer } from "antd"
+import { Alert, Button, Checkbox, Drawer, Tabs } from "antd"
 import {
     CalendarOutlined,
     CheckCircleOutlined,
@@ -74,6 +74,8 @@ export default function ClosingPage() {
     const [status, setStatus] = useState<ClosingStatusDto | null>(null)
     const [checks, setChecks] = useState<ClosingCheckResultDto | null>(null)
     const [loading, setLoading] = useState(false)
+    /** 页签：期末处理 / 反结账（与柠檬云一致） */
+    const [tab, setTab] = useState<"process" | "reopen">("process")
     const [busy, setBusy] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [notice, setNotice] = useState<string | null>(null)
@@ -349,22 +351,6 @@ export default function ClosingPage() {
                             批量结账
                         </Button>
                         <Button
-                            icon={busy === "reopen" ? <UndoOutlined spin /> : <UndoOutlined />}
-                            disabled={!status?.canReopen || !!busy}
-                            onClick={() => void doReopen()}
-                            title={status?.canReopen ? `反结账（退回 ${status?.closedPeriod}）` : "尚未结账"}
-                        >
-                            反结账
-                        </Button>
-                        <Button
-                            icon={busy === "cancel" ? <RollbackOutlined spin /> : <RollbackOutlined />}
-                            disabled={!status?.canCancelCarry || !!busy}
-                            onClick={() => void doCancelCarry()}
-                            title={status?.canCancelCarry ? `撤销结转（${status?.carriedPeriod}）` : "最近一次结转已被结账覆盖"}
-                        >
-                            撤销结转
-                        </Button>
-                        <Button
                             icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
                             disabled={loading}
                             onClick={() => void loadStatus(true)}
@@ -375,6 +361,45 @@ export default function ClosingPage() {
                 }
             />
 
+            <Tabs
+                activeKey={tab}
+                onChange={(key) => setTab(key as "process" | "reopen")}
+                items={[
+                    { key: "process", label: "期末处理" },
+                    { key: "reopen", label: "反结账" },
+                ]}
+            />
+
+            {tab === "reopen" && (
+                <div className="flex flex-col gap-5">
+                    <SectionCard title={<h3 className="text-[14px] font-semibold text-slate-800">反结账</h3>}>
+                        <p className="text-[13px] leading-6 text-slate-500">
+                            反结账用于把「已结账至」退回上一个期间；若该期间还做过结转，需先「撤销结转」删除结转凭证，再反结账。
+                            结账与反结账都会记入操作日志。
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                                icon={busy === "cancel" ? <RollbackOutlined spin /> : <RollbackOutlined />}
+                                disabled={!status?.canCancelCarry || !!busy}
+                                onClick={() => void doCancelCarry()}
+                                title={status?.canCancelCarry ? `撤销结转（${status?.carriedPeriod}）` : "最近一次结转已被结账覆盖"}
+                            >
+                                撤销结转
+                            </Button>
+                            <Button
+                                icon={busy === "reopen" ? <UndoOutlined spin /> : <UndoOutlined />}
+                                disabled={!status?.canReopen || !!busy}
+                                onClick={() => void doReopen()}
+                                title={status?.canReopen ? `反结账（退回 ${status?.closedPeriod}）` : "尚未结账"}
+                            >
+                                反结账
+                            </Button>
+                        </div>
+                    </SectionCard>
+                </div>
+            )}
+
+            <div className={tab === "reopen" ? "hidden" : "flex flex-col gap-5"}>
             {error && <Alert type="error" showIcon title={error} />}
             {notice && (
                 <Alert
@@ -586,6 +611,8 @@ export default function ClosingPage() {
             </SectionCard>
 
             {/* 结转选项 */}
+            </div>
+
             <Drawer
                 open={carryOpen}
                 size={512}

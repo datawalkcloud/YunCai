@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Alert, Button, Checkbox, Input, Modal, Spin, Table } from "antd"
+import { Alert, Button, Checkbox, Input, Modal, Spin, Table, Tabs } from "antd"
 import type { TableColumnsType } from "antd"
 import {
     ApartmentOutlined,
@@ -56,6 +56,18 @@ export default function AssistItemsPage() {
     const [categoriesLoading, setCategoriesLoading] = useState(false)
     const [categoriesError, setCategoriesError] = useState<string | null>(null)
     const [switchingType, setSwitchingType] = useState<number | null>(null)
+    /** 页签：辅助核算类别 + 七类档案（与柠檬云一致） */
+    const ASSIST_TABS = [
+        { key: "category", label: "辅助核算类别" },
+        { key: "1", label: "客户" },
+        { key: "2", label: "供应商" },
+        { key: "3", label: "职员" },
+        { key: "4", label: "部门" },
+        { key: "5", label: "项目" },
+        { key: "6", label: "存货" },
+        { key: "7", label: "现金流" },
+    ]
+    const [activeTab, setActiveTab] = useState("category")
     const [activeType, setActiveType] = useState(1)
 
     const loadCategories = useCallback(async () => {
@@ -119,6 +131,15 @@ export default function AssistItemsPage() {
                         。维护客户、供应商、部门等核算项目档案；科目挂上辅助核算后，凭证分录必须录入对应档案。
                     </>
                 }
+            />
+
+            <Tabs
+                activeKey={activeTab}
+                onChange={(key) => {
+                    setActiveTab(key)
+                    if (key !== "category") setActiveType(Number(key))
+                }}
+                items={ASSIST_TABS}
             />
 
             {!accountSetId ? (
