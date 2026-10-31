@@ -116,7 +116,7 @@ export default function AccountSetsPage() {
         standard: STANDARDS[0].value,
         currency: "人民币",
         taxpayer: TAXPAYERS[0].value,
-        codingScheme: "4-2-2-2",
+        codingScheme: "4-3-2-2",
     })
     const [formErrors, setFormErrors] = useState<AccountSetErrors>({})
 
@@ -231,7 +231,7 @@ export default function AccountSetsPage() {
             currency: "人民币",
             taxpayer: TAXPAYERS[0].value,
             startPeriod: dayjs().toDate(),
-            codingScheme: "4-2-2-2",
+            codingScheme: "4-3-2-2",
         })
         setOpen(true)
     }
@@ -245,7 +245,7 @@ export default function AccountSetsPage() {
             currency: set.baseCurrency ?? "人民币",
             taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
             startPeriod: set.startPeriod ? parseDate(set.startPeriod) : dayjs().toDate(),
-            codingScheme: set.accountCodingScheme ?? "4-2-2-2",
+            codingScheme: set.accountCodingScheme ?? "4-3-2-2",
             taxpayerNumber: set.taxpayerNumber ?? "",
             vatRate: set.vatRate,
             incomeTaxRate: set.incomeTaxRate,
@@ -263,7 +263,7 @@ export default function AccountSetsPage() {
             currency: set.baseCurrency ?? "人民币",
             taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
             startPeriod: set.startPeriod ? parseDate(set.startPeriod) : dayjs().toDate(),
-            codingScheme: set.accountCodingScheme ?? "4-2-2-2",
+            codingScheme: set.accountCodingScheme ?? "4-3-2-2",
         })
         setOpen(true)
     }
@@ -541,14 +541,14 @@ export default function AccountSetsPage() {
                     required
                     error={formErrors.codingScheme}
                     description={
-                        '以 "-" 分隔各级科目编码的位数，如 4-2-2-2 表示一级 4 位、二级 2 位、三级 2 位、四级 2 位。最多支持 10 级。'
+                        '以 "-" 分隔各级科目编码的位数，如 4-3-2-2 表示一级 4 位、二级 3 位、三级 2 位、四级 2 位。最多支持 10 级。'
                     }
                 >
                     <Input
                         id="account-set-coding-scheme"
                         value={formValues.codingScheme}
                         onChange={(e) => setFormValue("codingScheme", e.target.value)}
-                        placeholder="4-2-2-2"
+                        placeholder="4-3-2-2"
                     />
                 </FormField>
 

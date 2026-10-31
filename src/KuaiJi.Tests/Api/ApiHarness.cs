@@ -42,6 +42,8 @@ internal sealed class ApiHarness : IDisposable
             baseCurrency = "人民币",
             startYear = 2026,
             startMonth = 1,
+            accountCodingScheme = "4-2-2-2",
+            preset = false,
         });
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<AccountSetStub>();

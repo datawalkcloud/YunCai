@@ -97,6 +97,9 @@ namespace KuaiJi.Modules.AccountSets.Application
 
         public int StartMonth { get; init; }
 
+        /// <summary>是否按准则预置科目、收支类别与现金账户；默认 true（与柠檬云一致）。</summary>
+        public bool Preset { get; init; } = true;
+
         /// <summary>科目编码方案，形如 "4-2-2-2"。不传则默认 "4-2-2-2"。</summary>
         public string? AccountCodingScheme { get; init; }
     }

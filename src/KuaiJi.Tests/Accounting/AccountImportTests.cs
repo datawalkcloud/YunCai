@@ -29,7 +29,7 @@ public sealed class AccountImportTests : IDisposable
 
     public AccountImportTests()
     {
-        _accountSet = _db.AddAccountSet("导入账套");
+        _accountSet = _db.AddAccountSet("导入账套", "4-2-2-2");
         _accounts = new AccountRepository(_db.Context);
         _service = new AccountImportService(
             new FakeAccountImportReader(Array.Empty<ImportedAccountRow>()),

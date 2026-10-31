@@ -15,6 +15,9 @@ namespace KuaiJi.Modules.AccountSets.Domain
         /// <summary>默认科目编码方案（4 级，每级位数分别为 4-2-2-2）。</summary>
         public const string DefaultCodingScheme = "4-2-2-2";
 
+        /// <summary>建账入口的默认编码方案：与柠檬云一致（一级 4 位、二级 3 位）。</summary>
+        public const string NewAccountSetCodingScheme = "4-3-2-2";
+
         /// <summary>科目编码方案最大支持级数。</summary>
         public const int MaxCodingLevel = 10;
 

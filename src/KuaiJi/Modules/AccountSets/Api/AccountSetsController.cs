@@ -25,6 +25,7 @@ namespace KuaiJi.Modules.AccountSets.Api
         private readonly IAccountRepository _accountRepository;
         private readonly IVoucherRepository _voucherRepository;
         private readonly IJournalRepository _journalRepository;
+        private readonly IEntryCategoryRepository _entryCategoryRepository;
         private readonly AssistItemService _assistItemService;
         private readonly AppDbContext _context;
 
@@ -33,6 +34,7 @@ namespace KuaiJi.Modules.AccountSets.Api
             IAccountRepository accountRepository,
             IVoucherRepository voucherRepository,
             IJournalRepository journalRepository,
+            IEntryCategoryRepository entryCategoryRepository,
             AssistItemService assistItemService,
             AppDbContext context)
         {
@@ -40,6 +42,7 @@ namespace KuaiJi.Modules.AccountSets.Api
             _accountRepository = accountRepository;
             _voucherRepository = voucherRepository;
             _journalRepository = journalRepository;
+            _entryCategoryRepository = entryCategoryRepository;
             _assistItemService = assistItemService;
             _context = context;
         }
@@ -80,7 +83,7 @@ namespace KuaiJi.Modules.AccountSets.Api
                     request.BaseCurrency,
                     request.StartYear,
                     request.StartMonth,
-                    request.AccountCodingScheme ?? AccountSet.DefaultCodingScheme);
+                    request.AccountCodingScheme ?? AccountSet.NewAccountSetCodingScheme);
             }
             catch (ArgumentException ex)
             {
@@ -98,10 +101,14 @@ namespace KuaiJi.Modules.AccountSets.Api
             await _accountSetRepository.SaveChangesAsync(cancellationToken);
 
             // 建账预置：企业会计准则账套按 2007 版科目表生成科目（与柠檬云一致，建完即有整套科目）。
-            if (accountSet.Standard == AccountingStandard.Enterprise)
+            if (request.Preset && accountSet.Standard == AccountingStandard.Enterprise)
             {
                 await Accounting.Application.AccountPresetSeeder.SeedAsync(
                     accountSet.Id, _accountRepository, cancellationToken);
+
+                // 建账预置（资金）：19 条收支类别 + 001 现金账户
+                await Funds.Application.FundPresetSeeder.SeedAsync(
+                    accountSet.Id, _entryCategoryRepository, _journalRepository, _accountRepository, cancellationToken);
             }
 
             return CreatedAtAction(nameof(GetById), new { id = accountSet.Id }, AccountSetDto.FromDomain(accountSet));
