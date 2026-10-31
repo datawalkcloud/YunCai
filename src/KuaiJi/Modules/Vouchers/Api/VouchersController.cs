@@ -1,3 +1,4 @@
+using KuaiJi.Modules.Auditing.Application;
 using KuaiJi.Modules.Vouchers.Application;
 using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Vouchers.Infrastructure;
@@ -19,19 +20,22 @@ namespace KuaiJi.Modules.Vouchers.Api
         private readonly VoucherAttachmentService _attachmentService;
         private readonly IAccountSetRepository _accountSetRepository;
         private readonly ILogger<VouchersController> _logger;
+        private readonly OperationLogService _operationLogService;
 
         public VouchersController(
             VoucherImportService importService,
             VoucherService voucherService,
             VoucherAttachmentService attachmentService,
             IAccountSetRepository accountSetRepository,
-            ILogger<VouchersController> logger)
+            ILogger<VouchersController> logger,
+            OperationLogService operationLogService)
         {
             _importService = importService;
             _voucherService = voucherService;
             _attachmentService = attachmentService;
             _accountSetRepository = accountSetRepository;
             _logger = logger;
+            _operationLogService = operationLogService;
         }
 
         /// <summary>
@@ -99,6 +103,14 @@ namespace KuaiJi.Modules.Vouchers.Api
             return voucher is null ? NotFound() : Ok(voucher);
         }
 
+        /// <summary>写一条凭证模块的操作日志（审计失败不影响主流程）。</summary>
+        private Task LogAsync(Guid accountSetId, string type, string log, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirst("sub")?.Value ?? User.FindFirst("nameid")?.Value ?? string.Empty;
+            var userName = User.FindFirst("displayName")?.Value ?? User.FindFirst("unique_name")?.Value ?? "未知";
+            return _operationLogService.RecordAsync(accountSetId, userId, userName, type, "凭证", log, cancellationToken);
+        }
+
         /// <summary>制单：新建一张草稿凭证。凭证号省略（为 0）时按凭证字自动续号。</summary>
         [HttpPost]
         public async Task<ActionResult<VoucherDetailDto>> Create(Guid accountSetId, [FromBody] CreateVoucherRequest request, CancellationToken cancellationToken)
@@ -110,6 +122,7 @@ namespace KuaiJi.Modules.Vouchers.Api
             try
             {
                 var voucher = await _voucherService.CreateAsync(accountSetId, preparer, request, cancellationToken);
+                await LogAsync(accountSetId, "新增", $"新增凭证 {voucher.VoucherNo}", cancellationToken);
                 return CreatedAtAction(nameof(GetById), new { accountSetId, id = voucher.Id }, voucher);
             }
             catch (VoucherException ex)
@@ -159,6 +172,10 @@ namespace KuaiJi.Modules.Vouchers.Api
             try
             {
                 var voucher = await _voucherService.ReviewAsync(accountSetId, id, reviewer, cancellationToken);
+                if (voucher is not null)
+                {
+                    await LogAsync(accountSetId, "审核", $"审核凭证 {voucher.VoucherNo}", cancellationToken);
+                }
                 return voucher is null ? NotFound() : Ok(voucher);
             }
             catch (VoucherException ex)
@@ -189,6 +206,10 @@ namespace KuaiJi.Modules.Vouchers.Api
             try
             {
                 var voucher = await _voucherService.PostAsync(accountSetId, id, cancellationToken);
+                if (voucher is not null)
+                {
+                    await LogAsync(accountSetId, "过账", $"过账凭证 {voucher.VoucherNo}", cancellationToken);
+                }
                 return voucher is null ? NotFound() : Ok(voucher);
             }
             catch (VoucherException ex)
