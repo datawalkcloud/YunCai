@@ -79,6 +79,12 @@ export interface OpeningBalanceRowDto {
      * @memberof OpeningBalanceRowDto
      */
     credit?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof OpeningBalanceRowDto
+     */
+    yearOpeningBalance?: number;
 }
 
 /**
@@ -108,6 +114,7 @@ export function OpeningBalanceRowDtoFromJSONTyped(json: any, ignoreDiscriminator
         'openingBalance': json['openingBalance'] == null ? undefined : json['openingBalance'],
         'debit': json['debit'] == null ? undefined : json['debit'],
         'credit': json['credit'] == null ? undefined : json['credit'],
+        'yearOpeningBalance': json['yearOpeningBalance'] == null ? undefined : json['yearOpeningBalance'],
     };
 }
 
@@ -132,6 +139,7 @@ export function OpeningBalanceRowDtoToJSONTyped(value?: OpeningBalanceRowDto | n
         'openingBalance': value['openingBalance'],
         'debit': value['debit'],
         'credit': value['credit'],
+        'yearOpeningBalance': value['yearOpeningBalance'],
     };
 }
 

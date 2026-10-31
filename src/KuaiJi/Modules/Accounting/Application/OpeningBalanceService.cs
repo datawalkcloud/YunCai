@@ -109,6 +109,10 @@ namespace KuaiJi.Modules.Accounting.Application
                             : (a.Direction == BalanceDirection.Debit ? netDebit : -netDebit),
                         Debit = netDebit > 0m ? netDebit : 0m,
                         Credit = netDebit < 0m ? -netDebit : 0m,
+                        // 年初余额：期初余额扣掉本年累计借贷发生额（当前无跨年累计，与期初余额一致）
+                        YearOpeningBalance = a.IsLeaf
+                            ? a.OpeningBalance
+                            : (a.Direction == BalanceDirection.Debit ? netDebit : -netDebit),
                     };
                 })
                 .ToList();

@@ -27,6 +27,9 @@ namespace KuaiJi.Modules.Accounting.Application
 
         /// <summary>贷方列示金额（净额为贷方时）。</summary>
         public decimal Credit { get; init; }
+
+        /// <summary>年初余额（与柠檬云期初页的「年初余额」列一致）。</summary>
+        public decimal YearOpeningBalance { get; init; }
     }
 
     /// <summary>期初余额总表：含全部科目行与试算平衡合计。</summary>

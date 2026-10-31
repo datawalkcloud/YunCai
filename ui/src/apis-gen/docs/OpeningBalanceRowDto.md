@@ -16,6 +16,7 @@ Name | Type
 `openingBalance` | number
 `debit` | number
 `credit` | number
+`yearOpeningBalance` | number
 
 ## Example
 
@@ -34,6 +35,7 @@ const example = {
   "openingBalance": null,
   "debit": null,
   "credit": null,
+  "yearOpeningBalance": null,
 } satisfies OpeningBalanceRowDto
 
 console.log(example)

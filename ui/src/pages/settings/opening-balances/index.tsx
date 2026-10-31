@@ -180,6 +180,14 @@ export default function OpeningBalancesPage() {
                 className: "tabular-nums",
                 render: (v) => fmtAmount(v),
             },
+            {
+                // 与柠檬云期初页一致：年初余额 = 期初余额扣掉本年累计发生
+                title: "年初余额",
+                dataIndex: "yearOpeningBalance",
+                align: "right",
+                className: "tabular-nums",
+                render: (v) => fmtAmount(v),
+            },
         ],
         [edits],
     )
