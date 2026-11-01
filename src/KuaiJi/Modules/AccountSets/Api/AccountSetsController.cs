@@ -26,7 +26,10 @@ namespace KuaiJi.Modules.AccountSets.Api
         private readonly IVoucherRepository _voucherRepository;
         private readonly IJournalRepository _journalRepository;
         private readonly IEntryCategoryRepository _entryCategoryRepository;
+        private readonly IReinitRepository _reinitRepository;
         private readonly AssistItemService _assistItemService;
+        private readonly ITaxCredentialProtector _taxCredentials;
+        private readonly TaxLoginTicketStore _taxLoginTickets;
         private readonly AppDbContext _context;
 
         public AccountSetsController(
@@ -35,7 +38,10 @@ namespace KuaiJi.Modules.AccountSets.Api
             IVoucherRepository voucherRepository,
             IJournalRepository journalRepository,
             IEntryCategoryRepository entryCategoryRepository,
+            IReinitRepository reinitRepository,
             AssistItemService assistItemService,
+            ITaxCredentialProtector taxCredentials,
+            TaxLoginTicketStore taxLoginTickets,
             AppDbContext context)
         {
             _accountSetRepository = accountSetRepository;
@@ -43,8 +49,42 @@ namespace KuaiJi.Modules.AccountSets.Api
             _voucherRepository = voucherRepository;
             _journalRepository = journalRepository;
             _entryCategoryRepository = entryCategoryRepository;
+            _reinitRepository = reinitRepository;
             _assistItemService = assistItemService;
+            _taxCredentials = taxCredentials;
+            _taxLoginTickets = taxLoginTickets;
             _context = context;
+        }
+
+        /// <summary>
+        /// 把当前账套已保存的税局密码换成 2 分钟内有效的一次性票据。
+        /// 网页把票据交给本机助手，助手兑换后在自己的窗口里自动登录税局；密码不进入前端响应。
+        /// </summary>
+        [HttpPost("{id:guid}/tax-login-ticket")]
+        public async Task<ActionResult<TaxLoginTicketDto>> CreateTaxLoginTicket(Guid id, CancellationToken cancellationToken)
+        {
+            var accountSet = await _accountSetRepository.GetByIdAsync(id, cancellationToken);
+            if (accountSet is null)
+            {
+                return NotFound();
+            }
+
+            if (string.IsNullOrEmpty(accountSet.TaxLoginPasswordCipher))
+            {
+                return BadRequest(new { message = "当前账套尚未保存税局实名密码，请先填写密码。" });
+            }
+
+            var password = _taxCredentials.Decrypt(accountSet.TaxLoginPasswordCipher);
+            if (string.IsNullOrEmpty(password))
+            {
+                return BadRequest(new { message = "税局密码无法解密（签名密钥可能已更换），请重新填写密码。" });
+            }
+
+            return Ok(new TaxLoginTicketDto
+            {
+                Ticket = _taxLoginTickets.Issue(password),
+                ExpiresInSeconds = 120
+            });
         }
 
         /// <summary>获取全部账套。</summary>
@@ -144,6 +184,17 @@ namespace KuaiJi.Modules.AccountSets.Api
                     request.TaxpayerNumber ?? accountSet.TaxpayerNumber,
                     request.VatRate ?? accountSet.VatRate,
                     request.IncomeTaxRate ?? accountSet.IncomeTaxRate);
+                accountSet.UpdateTaxLoginInfo(
+                    request.TaxRegion ?? accountSet.TaxRegion,
+                    request.TaxLoginType ?? accountSet.TaxLoginType,
+                    request.TaxIdentityType ?? accountSet.TaxIdentityType,
+                    request.TaxLoginAccount ?? accountSet.TaxLoginAccount,
+                    // 明文只在参数绑定到这一行的瞬间存在；不传保持原密文，传空串清除。
+                    request.TaxLoginPassword is null
+                        ? accountSet.TaxLoginPasswordCipher
+                        : string.IsNullOrWhiteSpace(request.TaxLoginPassword)
+                            ? null
+                            : _taxCredentials.Encrypt(request.TaxLoginPassword));
                 if (request.VoucherWords is not null)
                 {
                     accountSet.SetVoucherWords(request.VoucherWords);
@@ -316,7 +367,10 @@ namespace KuaiJi.Modules.AccountSets.Api
             return Ok(AccountSetDto.FromDomain(accountSet));
         }
 
-        /// <summary>删除账套：仅当其下没有任何科目、凭证、日记账时允许，以保证下属数据不脱离账套。</summary>
+        /// <summary>
+        /// 删除账套：连同其下全部业务数据（科目、凭证、账簿、资金、发票、工资、资产、档案等）一并删除，不可撤销。
+        /// 删除的是当前账套时，自动把剩余账套中按名称排序的第一套设为当前。
+        /// </summary>
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
@@ -326,20 +380,21 @@ namespace KuaiJi.Modules.AccountSets.Api
                 return NotFound();
             }
 
-            var hasAccounts = (await _accountRepository.GetAllAsync(id, cancellationToken)).Count > 0;
-            var hasVouchers = (await _voucherRepository.GetAllAsync(id, cancellationToken)).Count > 0;
-            var hasJournals = (await _journalRepository.GetAllAsync(id, cancellationToken)).Count > 0;
-            if (hasAccounts || hasVouchers || hasJournals)
+            var wasCurrent = accountSet.IsCurrent;
+            await _reinitRepository.DeleteAccountSetAsync(id, cancellationToken);
+
+            if (wasCurrent)
             {
-                return BadRequest(new { message = "账套下仍有科目、凭证或日记账，无法删除。" });
+                // GetAllAsync 走 AsNoTracking，标记当前账套须重新取可追踪实例。
+                var next = (await _accountSetRepository.GetAllAsync(cancellationToken)).FirstOrDefault();
+                if (next is not null)
+                {
+                    var tracked = await _accountSetRepository.GetByIdAsync(next.Id, cancellationToken);
+                    tracked?.MarkAsCurrent();
+                    await _accountSetRepository.SaveChangesAsync(cancellationToken);
+                }
             }
 
-            // 收支类别仅为记账归类的字典数据，随账套一并清理，不阻止删除。
-            var categories = await _context.EntryCategories.Where(c => c.AccountSetId == id).ToListAsync(cancellationToken);
-            _context.EntryCategories.RemoveRange(categories);
-
-            _accountSetRepository.Remove(accountSet);
-            await _accountSetRepository.SaveChangesAsync(cancellationToken);
             return NoContent();
         }
     }

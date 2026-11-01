@@ -96,6 +96,31 @@ namespace KuaiJi.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("start_year");
 
+                    b.Property<string>("TaxIdentityType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tax_identity_type");
+
+                    b.Property<string>("TaxLoginAccount")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tax_login_account");
+
+                    b.Property<string>("TaxLoginPasswordCipher")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("tax_login_password_cipher");
+
+                    b.Property<string>("TaxLoginType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tax_login_type");
+
+                    b.Property<string>("TaxRegion")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tax_region");
+
                     b.Property<string>("TaxpayerNumber")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -1779,6 +1804,35 @@ namespace KuaiJi.Migrations
                     b.ToTable("salary_voucher_settings", (string)null);
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.Tax.Domain.TaxPortalSessionRecord", b =>
+                {
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("PayloadCipher")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_cipher");
+
+                    b.Property<DateTimeOffset>("SavedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("saved_at");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("AccountSetId", "UserId");
+
+                    b.ToTable("tax_portal_sessions", (string)null);
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.Vouchers.Domain.Voucher", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2265,6 +2319,15 @@ namespace KuaiJi.Migrations
                         .WithMany()
                         .HasForeignKey("AccountSetId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.Tax.Domain.TaxPortalSessionRecord", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
+                        .WithMany()
+                        .HasForeignKey("AccountSetId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

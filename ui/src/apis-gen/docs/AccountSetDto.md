@@ -20,6 +20,11 @@ Name | Type
 `taxpayerNumber` | string
 `vatRate` | number
 `incomeTaxRate` | number
+`taxRegion` | string
+`taxLoginType` | string
+`taxIdentityType` | string
+`taxLoginAccount` | string
+`taxLoginPasswordSet` | boolean
 `voucherWords` | string
 `closedPeriod` | string
 `carriedPeriod` | string
@@ -47,6 +52,11 @@ const example = {
   "taxpayerNumber": null,
   "vatRate": null,
   "incomeTaxRate": null,
+  "taxRegion": null,
+  "taxLoginType": null,
+  "taxIdentityType": null,
+  "taxLoginAccount": null,
+  "taxLoginPasswordSet": null,
   "voucherWords": null,
   "closedPeriod": null,
   "carriedPeriod": null,

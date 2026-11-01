@@ -21,8 +21,11 @@ RUN dotnet publish src/KuaiJi/KuaiJi.csproj -c Release -o /app/publish /p:UseApp
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
 ENV ASPNETCORE_URLS=http://+:8080 \
-    DOTNET_EnableDiagnostics=0
+    DOTNET_EnableDiagnostics=0 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 COPY --from=api-build /app/publish ./
+# 服务端登录电子税务局需要无头 Chromium；--with-deps 会一并装齐系统依赖。
+RUN /app/.playwright/node/linux-x64/node /app/.playwright/package/cli.js install --with-deps chromium
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "KuaiJi.dll"]
 

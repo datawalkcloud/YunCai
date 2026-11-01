@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react"
-import { Alert, Button, Drawer, Empty, Input, Select, Spin } from "antd"
+import { App, Alert, Button, Drawer, Empty, Input, Select, Spin } from "antd"
 import {
     BankOutlined,
     CheckCircleFilled,
@@ -13,19 +13,28 @@ import {
     UnlockOutlined,
 } from "@ant-design/icons"
 import dayjs from "dayjs"
+import { useNavigate } from "react-router"
 
 import { useAuth } from "@/auth/AuthContext"
-import { useAccountSets } from "@/accountSets/AccountSetsContext"
+import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { AccountSetsApi, type AccountSetDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { useConfirm } from "@/hooks/useConfirm"
 import { cn } from "@/lib/utils"
-import { PageHeader, SectionCard } from "@/components/page/section"
+import { SectionCard } from "@/components/page/section"
 import { FormField } from "@/components/page/form-field"
 import { StatusPill } from "@/components/page/status-pill"
 import { ICON_STYLE } from "@/components/page/styles"
 import { PeriodField, parseDate } from "@/components/fields/date-fields"
 import { NumberField } from "@/components/fields/number-field"
+import {
+    DEFAULT_TAX_IDENTITY_TYPE,
+    DEFAULT_TAX_LOGIN_TYPE,
+    TAX_IDENTITY_TYPES,
+    TAX_LOGIN_TYPES,
+    TAX_REGIONS,
+    toOptions,
+} from "@/lib/tax-regions"
 
 /** 会计准则枚举值（与后端 AccountingStandard 对应）及其显示名。 */
 const STANDARDS: { value: number; label: string }[] = [
@@ -64,6 +73,14 @@ interface AccountSetForm {
     vatRate?: number
     incomeTaxRate?: number
     voucherWords?: string
+    // 一键登录税局所需资料。密码只在用户主动改写时提交，留空表示保持原值。
+    taxRegion?: string
+    taxLoginType?: string
+    taxIdentityType?: string
+    taxLoginAccount?: string
+    taxLoginPassword?: string
+    /** 后端已存有税局密码（密码本身不下发，仅这个布尔值下发）。 */
+    taxPasswordSaved?: boolean
 }
 
 /** 表单错误集合。 */
@@ -100,7 +117,10 @@ function KeyValue({ label, children }: { label: string, children: ReactNode }) {
 export default function AccountSetsPage() {
     const { token } = useAuth()
     const { refresh: refreshAccountSets } = useAccountSets()
+    const currentAccountSetId = useCurrentAccountSetId()
     const { confirm, confirmDialog } = useConfirm()
+    const { message } = App.useApp()
+    const navigate = useNavigate()
 
     const [sets, setSets] = useState<AccountSetDto[]>([])
     const [loading, setLoading] = useState(false)
@@ -172,16 +192,27 @@ export default function AccountSetsPage() {
         }
     }
 
+    /** 删除账套（连同其下全部数据）；删的是当前账套时跳到剩下的第一套。 */
     async function removeSet(set: AccountSetDto) {
         if (!set.id || busyId) return
-        if (!(await confirm(`确定删除账套「${set.name}」吗？此操作不可撤销。`))) return
+        const name = set.name ?? ""
+        if (!(await confirm(
+            "删除后会一并清除该账套的科目、凭证、账簿、资金、发票、工资、资产、档案等全部数据，且无法恢复。",
+            { title: `删除账套「${name}」`, confirmText: "删除", requireText: name },
+        ))) return
         setBusyId(set.id)
         setListError(null)
         try {
             await new AccountSetsApi(apiConfig(token)).accountSetsIdDelete({ id: set.id })
+            message.success(`账套「${name}」已删除`)
             await load()
+            refreshAccountSets()
+            if (currentAccountSetId === set.id) {
+                const next = sets.find((s) => s.id !== set.id)
+                navigate(next?.id ? `/${next.id}/settings/account-sets` : "/app", { replace: true })
+            }
         } catch (err) {
-            setListError(await apiErrorMessage(err, "删除账套失败，请重试。"))
+            message.error(await apiErrorMessage(err, "删除账套失败，请重试。"))
         } finally {
             setBusyId(null)
         }
@@ -250,6 +281,12 @@ export default function AccountSetsPage() {
             vatRate: set.vatRate,
             incomeTaxRate: set.incomeTaxRate,
             voucherWords: set.voucherWords ?? "记,收,付,转",
+            taxRegion: set.taxRegion ?? undefined,
+            taxLoginType: set.taxLoginType ?? DEFAULT_TAX_LOGIN_TYPE,
+            taxIdentityType: set.taxIdentityType ?? DEFAULT_TAX_IDENTITY_TYPE,
+            taxLoginAccount: set.taxLoginAccount ?? "",
+            taxLoginPassword: "",
+            taxPasswordSaved: set.taxLoginPasswordSet ?? false,
         })
         setOpen(true)
     }
@@ -292,6 +329,12 @@ export default function AccountSetsPage() {
                         vatRate: values.vatRate ?? undefined,
                         incomeTaxRate: values.incomeTaxRate ?? undefined,
                         voucherWords: values.voucherWords?.trim() || undefined,
+                        taxRegion: values.taxRegion || undefined,
+                        taxLoginType: values.taxLoginType || undefined,
+                        taxIdentityType: values.taxIdentityType || undefined,
+                        taxLoginAccount: values.taxLoginAccount?.trim() || undefined,
+                        // 密码留空表示不修改：已保存的密码不会因为打开过一次编辑抽屉就被清掉。
+                        taxLoginPassword: values.taxLoginPassword?.length ? values.taxLoginPassword : undefined,
                     },
                 })
             } else {
@@ -321,27 +364,21 @@ export default function AccountSetsPage() {
 
     return (
         <div className="flex w-full flex-col gap-5">
-            <PageHeader
-                icon={BankOutlined}
-                title="账套"
-                subtitle="管理各单位的账簿账套，可在多套账之间切换当前账套。"
-                actions={
-                    <Button
-                        icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
-                        disabled={loading}
-                        onClick={() => void load()}
-                    >
-                        刷新
-                    </Button>
-                }
-            />
-
             <SectionCard
                 title={<h3 className="text-[14px] font-semibold text-slate-800">账套列表</h3>}
                 action={
-                    <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                        新建账套
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                            disabled={loading}
+                            onClick={() => void load()}
+                        >
+                            刷新
+                        </Button>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                            新建账套
+                        </Button>
+                    </div>
                 }
                 bodyClassName="flex flex-col gap-4"
             >
@@ -389,6 +426,7 @@ export default function AccountSetsPage() {
                                     <KeyValue label="本位币">{set.baseCurrency}</KeyValue>
                                     <KeyValue label="纳税人性质">{taxpayerLabel(set.taxpayerType)}</KeyValue>
                                     <KeyValue label="纳税人识别号">{set.taxpayerNumber || "—"}</KeyValue>
+                                    <KeyValue label="报税地区">{set.taxRegion || "—"}</KeyValue>
                                     <KeyValue label="增值税 / 所得税">{set.vatRate ?? "—"}% / {set.incomeTaxRate ?? "—"}%</KeyValue>
                                     <KeyValue label="凭证字">{set.voucherWords || "—"}</KeyValue>
                                     <KeyValue label="启用期间">{set.startPeriod}</KeyValue>
@@ -413,7 +451,6 @@ export default function AccountSetsPage() {
                                     <div className="flex items-center gap-0">
                                         <Button
                                             type="text"
-                                            size="small"
                                             disabled={busyId === set.id}
                                             onClick={() => void closePeriod(set)}
                                             title={set.nextCloseYear && set.nextCloseMonth ? `结账（${set.nextCloseYear} 年 ${set.nextCloseMonth} 月）` : "结账"}
@@ -421,7 +458,6 @@ export default function AccountSetsPage() {
                                         />
                                         <Button
                                             type="text"
-                                            size="small"
                                             disabled={!set.closedPeriod || busyId === set.id}
                                             onClick={() => void reopenPeriod(set)}
                                             title={set.closedPeriod ? `反结账（退回 ${set.closedPeriod}）` : "尚未结账"}
@@ -429,25 +465,22 @@ export default function AccountSetsPage() {
                                         />
                                         <Button
                                             type="text"
-                                            size="small"
                                             onClick={() => openEdit(set)}
                                             title="编辑账套"
                                             icon={<EditOutlined />}
                                         />
                                         <Button
                                             type="text"
-                                            size="small"
                                             onClick={() => openCopy(set)}
                                             title="复制账套"
                                             icon={<CopyOutlined />}
                                         />
                                         <Button
                                             type="text"
-                                            size="small"
                                             danger
-                                            disabled={set.isCurrent || busyId === set.id}
+                                            disabled={busyId === set.id}
                                             onClick={() => void removeSet(set)}
-                                            title={set.isCurrent ? "当前账套不可删除" : "删除账套"}
+                                            title="删除账套"
                                             icon={<DeleteOutlined />}
                                         />
                                     </div>
@@ -564,6 +597,22 @@ export default function AccountSetsPage() {
                             />
                         </FormField>
 
+                        <FormField
+                            label="报税地区"
+                            htmlFor="account-set-tax-region"
+                            description="电子税务局按省分域部署，「一键登录税局」靠它决定打开哪个入口。"
+                        >
+                            <Select
+                                id="account-set-tax-region"
+                                className="w-full"
+                                showSearch
+                                placeholder="请选择省、自治区、直辖市"
+                                value={formValues.taxRegion}
+                                options={toOptions(TAX_REGIONS)}
+                                onChange={(v) => setFormValue("taxRegion", v)}
+                            />
+                        </FormField>
+
                         <div className="grid grid-cols-2 gap-3">
                             <FormField label="增值税率（%）" htmlFor="account-set-vat-rate">
                                 <NumberField
@@ -586,6 +635,51 @@ export default function AccountSetsPage() {
                                 />
                             </FormField>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField label="税局登录方式" htmlFor="account-set-tax-login-type">
+                                <Select
+                                    id="account-set-tax-login-type"
+                                    className="w-full"
+                                    value={formValues.taxLoginType}
+                                    options={toOptions(TAX_LOGIN_TYPES)}
+                                    onChange={(v) => setFormValue("taxLoginType", v)}
+                                />
+                            </FormField>
+                            <FormField label="税局身份类型" htmlFor="account-set-tax-identity-type">
+                                <Select
+                                    id="account-set-tax-identity-type"
+                                    className="w-full"
+                                    value={formValues.taxIdentityType}
+                                    options={toOptions(TAX_IDENTITY_TYPES)}
+                                    onChange={(v) => setFormValue("taxIdentityType", v)}
+                                />
+                            </FormField>
+                        </div>
+
+                        <FormField label="税局实名账号" htmlFor="account-set-tax-login-account">
+                            <Input
+                                id="account-set-tax-login-account"
+                                value={formValues.taxLoginAccount ?? ""}
+                                onChange={(e) => setFormValue("taxLoginAccount", e.target.value)}
+                                placeholder="税局登录用的手机号或身份证号"
+                                maxLength={50}
+                            />
+                        </FormField>
+
+                        <FormField
+                            label="税局实名密码"
+                            htmlFor="account-set-tax-login-password"
+                            description="加密后存库，接口只回「是否已填写」、不再下发；更换 Jwt 签名密钥会让已存密码解不开，届时重填一次即可。"
+                        >
+                            <Input.Password
+                                id="account-set-tax-login-password"
+                                value={formValues.taxLoginPassword ?? ""}
+                                onChange={(e) => setFormValue("taxLoginPassword", e.target.value)}
+                                placeholder={formValues.taxPasswordSaved ? "已保存，留空表示不修改" : "请输入税局实名密码"}
+                                autoComplete="new-password"
+                            />
+                        </FormField>
 
                         <FormField
                             label="凭证字"

@@ -128,6 +128,15 @@ builder.Services.AddScoped<KuaiJi.Modules.Auditing.Application.OperationLogServi
 builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.ReinitService>();
 builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.IAccountSetMemberRepository, KuaiJi.Modules.AccountSets.Infrastructure.AccountSetMemberRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.MemberService>();
+// 税局密码加解密只依赖配置，无状态，做成单例避免每次请求重派密钥。
+builder.Services.AddSingleton<KuaiJi.Modules.AccountSets.Application.ITaxCredentialProtector, KuaiJi.Modules.AccountSets.Infrastructure.AesTaxCredentialProtector>();
+// 一次性票据放在进程内存里：助手兑换通常在点击后的几秒内完成，重启后未兑换的票据自然作废。
+builder.Services.AddSingleton<KuaiJi.Modules.AccountSets.Application.TaxLoginTicketStore>();
+// 服务端税局通道：无头浏览器与登录会话常驻进程；登录态加密后存数据库，
+// 服务重启、重建容器、换服务器都能免登录取数。
+builder.Services.AddSingleton<KuaiJi.Modules.Tax.Infrastructure.TaxPortalSessionStore>();
+builder.Services.AddSingleton<KuaiJi.Modules.Tax.Application.TaxPortalBrowserHandoffStore>();
+builder.Services.AddSingleton<KuaiJi.Modules.Tax.Application.TaxPortalService>();
 builder.Services.AddScoped<KuaiJi.SharedKernel.Infrastructure.Data.AccountSetBackupService>();
 builder.Services.AddScoped<KuaiJi.Modules.Accounting.Application.AccountAutoCreateService>();
 builder.Services.AddScoped<KuaiJi.Modules.Accounting.Application.IAccountImportReader, KuaiJi.Modules.Accounting.Infrastructure.XlsxAccountImportReader>();

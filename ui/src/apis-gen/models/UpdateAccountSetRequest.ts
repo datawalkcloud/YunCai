@@ -79,6 +79,36 @@ export interface UpdateAccountSetRequest {
      * @memberof UpdateAccountSetRequest
      */
     voucherWords?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    taxRegion?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    taxLoginType?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    taxIdentityType?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    taxLoginAccount?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    taxLoginPassword?: string | null;
 }
 
 /**
@@ -108,6 +138,11 @@ export function UpdateAccountSetRequestFromJSONTyped(json: any, ignoreDiscrimina
         'vatRate': json['vatRate'] == null ? undefined : json['vatRate'],
         'incomeTaxRate': json['incomeTaxRate'] == null ? undefined : json['incomeTaxRate'],
         'voucherWords': json['voucherWords'] == null ? undefined : json['voucherWords'],
+        'taxRegion': json['taxRegion'] == null ? undefined : json['taxRegion'],
+        'taxLoginType': json['taxLoginType'] == null ? undefined : json['taxLoginType'],
+        'taxIdentityType': json['taxIdentityType'] == null ? undefined : json['taxIdentityType'],
+        'taxLoginAccount': json['taxLoginAccount'] == null ? undefined : json['taxLoginAccount'],
+        'taxLoginPassword': json['taxLoginPassword'] == null ? undefined : json['taxLoginPassword'],
     };
 }
 
@@ -132,6 +167,11 @@ export function UpdateAccountSetRequestToJSONTyped(value?: UpdateAccountSetReque
         'vatRate': value['vatRate'],
         'incomeTaxRate': value['incomeTaxRate'],
         'voucherWords': value['voucherWords'],
+        'taxRegion': value['taxRegion'],
+        'taxLoginType': value['taxLoginType'],
+        'taxIdentityType': value['taxIdentityType'],
+        'taxLoginAccount': value['taxLoginAccount'],
+        'taxLoginPassword': value['taxLoginPassword'],
     };
 }
 

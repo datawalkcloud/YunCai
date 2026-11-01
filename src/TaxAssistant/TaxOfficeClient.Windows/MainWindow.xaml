@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Window x:Class="TaxOfficeClient.Windows.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="云财税务助手" MinWidth="1000" MinHeight="600" AllowsTransparency="False" Background="#00FFFFFF" Icon="/Resources/icon-kuaiji.ico" ResizeMode="CanResize" WindowState="Maximized" WindowStyle="None" xmlns:windows="clr-namespace:TaxOfficeClient.Windows">
+  <WindowChrome.WindowChrome>
+    <WindowChrome CaptionHeight="0" CornerRadius="0" GlassFrameThickness="0" NonClientFrameEdges="None" ResizeBorderThickness="0" UseAeroCaptionButtons="False" />
+  </WindowChrome.WindowChrome>
+  <FrameworkElement.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Styles/TabControlStyle.xaml" />
+        <ResourceDictionary Source="/Styles/TabItemStyles.xaml" />
+        <ResourceDictionary Source="/Styles/TitleBarStyles.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </FrameworkElement.Resources>
+  <Border Name="MainBorder" Background="#F6F6F6" BorderBrush="#CCCCCC" BorderThickness="0">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="30" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <Grid Name="TitleBar" Row="0" Background="#00FFFFFF" WindowChrome.IsHitTestVisibleInChrome="True">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Margin="8,0,0,0" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="False">
+          <Image Width="20" Height="20" Margin="0,0,8,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" Source="{Binding Path=Icon, RelativeSource={RelativeSource AncestorType=Window}}" />
+          <TextBlock VerticalAlignment="Center" FontSize="15" Foreground="#333333" Text="{Binding Path=Title, RelativeSource={RelativeSource AncestorType=Window}}" />
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+          <Button Name="RefreshButton" Style="{StaticResource TitleBarButtonStyle}" ToolTip="刷新当前页面" WindowChrome.IsHitTestVisibleInChrome="True" Click="RefreshButton_Click">
+            <Image Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" Source="/Resources/Icons/refresh.png" />
+          </Button>
+          <Button Name="MinimizeButton" Style="{StaticResource TitleBarButtonStyle}" ToolTip="最小化" WindowChrome.IsHitTestVisibleInChrome="True">
+            <Image Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" Source="/Resources/Icons/minimize.png" />
+          </Button>
+          <Button Name="MaximizeRestoreButton" Style="{StaticResource TitleBarButtonStyle}" ToolTip="最大化" WindowChrome.IsHitTestVisibleInChrome="True">
+            <Image Name="MaximizeRestoreIcon" Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" Source="/Resources/Icons/maximize.png" />
+          </Button>
+          <Button Name="CloseButton" Style="{StaticResource CloseButtonStyle}" ToolTip="关闭" WindowChrome.IsHitTestVisibleInChrome="True">
+            <Image Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" Source="/Resources/Icons/close.png" />
+          </Button>
+        </StackPanel>
+        <Border Grid.Column="0" Grid.ColumnSpan="3" Height="1" VerticalAlignment="Bottom" Background="#E0E0E0" />
+      </Grid>
+      <Grid Row="1">
+        <Grid Name="MainContentGrid">
+          <StackPanel Name="BackgroundImage" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Visible">
+            <TextBlock HorizontalAlignment="Center" FontSize="22" FontWeight="SemiBold" Foreground="#333333" Text="云财税务助手" />
+            <TextBlock Margin="0,12,0,0" FontSize="14" Foreground="#666666" LineHeight="24" TextAlignment="Center">
+              <Run Text="请在云财「一键登录税局」页面点击按钮唤起助手。" />
+              <LineBreak />
+              <Run Text="尚未安装时，可在该页面直接下载。" />
+            </TextBlock>
+          </StackPanel>
+          <TabControl Name="MainWindowTabControl" Background="#00FFFFFF" BorderThickness="0" ItemContainerStyle="{StaticResource ClosableTabItemStyle}" Style="{StaticResource TabControlStyle}" />
+        </Grid>
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

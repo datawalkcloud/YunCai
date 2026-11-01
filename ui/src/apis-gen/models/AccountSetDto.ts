@@ -108,6 +108,36 @@ export interface AccountSetDto {
      * @type {string}
      * @memberof AccountSetDto
      */
+    taxRegion?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    taxLoginType?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    taxIdentityType?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    taxLoginAccount?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AccountSetDto
+     */
+    taxLoginPasswordSet?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
     voucherWords?: string;
     /**
      * 
@@ -166,6 +196,11 @@ export function AccountSetDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'taxpayerNumber': json['taxpayerNumber'] == null ? undefined : json['taxpayerNumber'],
         'vatRate': json['vatRate'] == null ? undefined : json['vatRate'],
         'incomeTaxRate': json['incomeTaxRate'] == null ? undefined : json['incomeTaxRate'],
+        'taxRegion': json['taxRegion'] == null ? undefined : json['taxRegion'],
+        'taxLoginType': json['taxLoginType'] == null ? undefined : json['taxLoginType'],
+        'taxIdentityType': json['taxIdentityType'] == null ? undefined : json['taxIdentityType'],
+        'taxLoginAccount': json['taxLoginAccount'] == null ? undefined : json['taxLoginAccount'],
+        'taxLoginPasswordSet': json['taxLoginPasswordSet'] == null ? undefined : json['taxLoginPasswordSet'],
         'voucherWords': json['voucherWords'] == null ? undefined : json['voucherWords'],
         'closedPeriod': json['closedPeriod'] == null ? undefined : json['closedPeriod'],
         'carriedPeriod': json['carriedPeriod'] == null ? undefined : json['carriedPeriod'],
@@ -199,6 +234,11 @@ export function AccountSetDtoToJSONTyped(value?: AccountSetDto | null, ignoreDis
         'taxpayerNumber': value['taxpayerNumber'],
         'vatRate': value['vatRate'],
         'incomeTaxRate': value['incomeTaxRate'],
+        'taxRegion': value['taxRegion'],
+        'taxLoginType': value['taxLoginType'],
+        'taxIdentityType': value['taxIdentityType'],
+        'taxLoginAccount': value['taxLoginAccount'],
+        'taxLoginPasswordSet': value['taxLoginPasswordSet'],
         'voucherWords': value['voucherWords'],
         'closedPeriod': value['closedPeriod'],
         'carriedPeriod': value['carriedPeriod'],

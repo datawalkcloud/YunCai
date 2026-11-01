@@ -10,6 +10,7 @@ using KuaiJi.Modules.Invoices.Domain;
 using KuaiJi.Modules.Auditing.Domain;
 using KuaiJi.Modules.Reports.Domain;
 using KuaiJi.Modules.Salary.Domain;
+using KuaiJi.Modules.Tax.Domain;
 using KuaiJi.Modules.Identity.Domain;
 using KuaiJi.Modules.Vouchers.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -92,6 +93,9 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
 
         public DbSet<CustomReport> CustomReports { get; set; } = null!;
 
+        /// <summary>税局登录态（加密后的 Cookie / localStorage），按账套 + 用户保存。</summary>
+        public DbSet<TaxPortalSessionRecord> TaxPortalSessions { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -127,6 +131,11 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.IsCurrent).HasColumnName("is_current").IsRequired();
                 entity.Property(e => e.AccountCodingScheme).HasColumnName("account_coding_scheme").IsRequired().HasMaxLength(50).HasDefaultValue(AccountSet.DefaultCodingScheme);
                 entity.Property(e => e.TaxpayerNumber).HasColumnName("taxpayer_number").HasMaxLength(50);
+                entity.Property(e => e.TaxRegion).HasColumnName("tax_region").HasMaxLength(50);
+                entity.Property(e => e.TaxLoginType).HasColumnName("tax_login_type").HasMaxLength(50);
+                entity.Property(e => e.TaxIdentityType).HasColumnName("tax_identity_type").HasMaxLength(50);
+                entity.Property(e => e.TaxLoginAccount).HasColumnName("tax_login_account").HasMaxLength(100);
+                entity.Property(e => e.TaxLoginPasswordCipher).HasColumnName("tax_login_password_cipher").HasMaxLength(500);
                 entity.Property(e => e.VatRate).HasColumnName("vat_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(13m);
                 entity.Property(e => e.IncomeTaxRate).HasColumnName("income_tax_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(25m);
                 entity.Property(e => e.VoucherWords).HasColumnName("voucher_words").IsRequired().HasMaxLength(100).HasDefaultValue(AccountSet.DefaultVoucherWords);
@@ -136,6 +145,24 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
 
                 entity.HasIndex(e => e.Name).IsUnique();
                 entity.HasIndex(e => e.IsCurrent);
+            });
+
+            modelBuilder.Entity<TaxPortalSessionRecord>(entity =>
+            {
+                entity.ToTable("tax_portal_sessions");
+                entity.HasKey(e => new { e.AccountSetId, e.UserId });
+
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id");
+                entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.PayloadCipher).HasColumnName("payload_cipher").IsRequired().HasColumnType("text");
+                entity.Property(e => e.SavedAt).HasColumnName("saved_at").IsRequired();
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
+
+                // 登录态随账套删除一并清理，避免残留无法再使用的会话。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Account>(entity =>

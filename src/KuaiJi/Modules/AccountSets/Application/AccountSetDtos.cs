@@ -37,6 +37,24 @@ namespace KuaiJi.Modules.AccountSets.Application
         /// <summary>企业所得税税率（百分比数值）。</summary>
         public decimal IncomeTaxRate { get; init; }
 
+        /// <summary>报税地区（省级税务局名称，如“浙江省”），未填写为 null。</summary>
+        public string? TaxRegion { get; init; }
+
+        /// <summary>税局登录方式（如“企业业务登录”）。</summary>
+        public string? TaxLoginType { get; init; }
+
+        /// <summary>税局身份类型（如“办税员”）。</summary>
+        public string? TaxIdentityType { get; init; }
+
+        /// <summary>税局实名账号。</summary>
+        public string? TaxLoginAccount { get; init; }
+
+        /// <summary>
+        /// 是否已保存税局实名密码。密码本身（含密文）永不出现在响应里，
+        /// 助手取密码走独立的凭据接口，不搭账套查询的便车。
+        /// </summary>
+        public bool TaxLoginPasswordSet { get; init; }
+
         /// <summary>凭证字列表（逗号分隔，如 "记,收,付,转"）。</summary>
         public string VoucherWords { get; init; } = AccountSet.DefaultVoucherWords;
 
@@ -71,6 +89,11 @@ namespace KuaiJi.Modules.AccountSets.Application
                 TaxpayerNumber = accountSet.TaxpayerNumber,
                 VatRate = accountSet.VatRate,
                 IncomeTaxRate = accountSet.IncomeTaxRate,
+                TaxRegion = accountSet.TaxRegion,
+                TaxLoginType = accountSet.TaxLoginType,
+                TaxIdentityType = accountSet.TaxIdentityType,
+                TaxLoginAccount = accountSet.TaxLoginAccount,
+                TaxLoginPasswordSet = accountSet.TaxLoginPasswordCipher is not null,
                 VoucherWords = accountSet.VoucherWords,
                 ClosedPeriod = accountSet.ClosedPeriodText(),
                 CarriedPeriod = accountSet.CarriedPeriodText(),
@@ -131,6 +154,44 @@ namespace KuaiJi.Modules.AccountSets.Application
 
         /// <summary>凭证字列表（逗号分隔）；不传则不修改。</summary>
         public string? VoucherWords { get; init; }
+
+        /// <summary>报税地区（省级税务局名称）；不传则不修改，传空串表示清除。</summary>
+        public string? TaxRegion { get; init; }
+
+        /// <summary>税局登录方式（如“企业业务登录”）；不传则不修改。</summary>
+        public string? TaxLoginType { get; init; }
+
+        /// <summary>税局身份类型（如“办税员”）；不传则不修改。</summary>
+        public string? TaxIdentityType { get; init; }
+
+        /// <summary>税局实名账号；不传则不修改。</summary>
+        public string? TaxLoginAccount { get; init; }
+
+        /// <summary>
+        /// 税局实名密码明文，仅在请求体内出现、加密后才入库；
+        /// 不传表示保持原密码，传空串表示清除。响应里只回「是否已填写」。
+        /// </summary>
+        public string? TaxLoginPassword { get; init; }
+    }
+
+    /// <summary>一次性税局密码票据：由登录态接口签发，本机助手凭票据匿名兑换密码。</summary>
+    public sealed class TaxLoginTicketDto
+    {
+        public string Ticket { get; init; } = string.Empty;
+
+        public int ExpiresInSeconds { get; init; }
+    }
+
+    /// <summary>本机助手兑换票据的请求。</summary>
+    public sealed class TaxLoginTicketRedeemRequest
+    {
+        public string? Ticket { get; init; }
+    }
+
+    /// <summary>兑换结果：仅在这次响应里出现明文密码。</summary>
+    public sealed class TaxLoginPasswordDto
+    {
+        public string Password { get; init; } = string.Empty;
     }
 
     /// <summary>月末结账请求：指定待结账的会计期间（须为下一个待结期间）。</summary>

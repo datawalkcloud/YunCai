@@ -91,6 +91,24 @@ namespace KuaiJi.Modules.AccountSets.Domain
         /// <summary>企业所得税税率（百分比数值，如 25 表示 25%）。</summary>
         public decimal IncomeTaxRate { get; private set; }
 
+        /// <summary>报税地区（省级税务局名称，如“浙江省”）。电子税务局按省分域，助手据此决定打开哪个入口。</summary>
+        public string? TaxRegion { get; private set; }
+
+        /// <summary>税局登录方式（如“企业业务登录”）。与税局页面的下拉一一对应，按文案存储不做本地枚举收敛。</summary>
+        public string? TaxLoginType { get; private set; }
+
+        /// <summary>税局身份类型（如“办税员”）。</summary>
+        public string? TaxIdentityType { get; private set; }
+
+        /// <summary>税局实名账号（手机号或身份证号）。</summary>
+        public string? TaxLoginAccount { get; private set; }
+
+        /// <summary>
+        /// 税局实名密码的密文，入库前由 Application.ITaxCredentialProtector 加密；
+        /// 任何响应 DTO 都不带这个字段，对外只暴露「是否已填写」。
+        /// </summary>
+        public string? TaxLoginPasswordCipher { get; private set; }
+
         /// <summary>凭证字列表，逗号分隔（如 "记,收,付,转"）。制单时凭证字须取自此列表。</summary>
         public string VoucherWords { get; private set; } = DefaultVoucherWords;
 
@@ -153,7 +171,7 @@ namespace KuaiJi.Modules.AccountSets.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("账套名称不能为空。", nameof(name));
+                throw new ArgumentException("账套名称不能为空。");
             }
 
             Name = name.Trim();
@@ -168,12 +186,12 @@ namespace KuaiJi.Modules.AccountSets.Domain
         {
             if (string.IsNullOrWhiteSpace(companyName))
             {
-                throw new ArgumentException("单位名称不能为空。", nameof(companyName));
+                throw new ArgumentException("单位名称不能为空。");
             }
 
             if (string.IsNullOrWhiteSpace(baseCurrency))
             {
-                throw new ArgumentException("记账本位币不能为空。", nameof(baseCurrency));
+                throw new ArgumentException("记账本位币不能为空。");
             }
 
             CompanyName = companyName.Trim();
@@ -187,12 +205,12 @@ namespace KuaiJi.Modules.AccountSets.Domain
         {
             if (vatRate < 0m || vatRate > 100m)
             {
-                throw new ArgumentException("增值税税率必须在 0 到 100 之间。", nameof(vatRate));
+                throw new ArgumentException("增值税税率必须在 0 到 100 之间。");
             }
 
             if (incomeTaxRate < 0m || incomeTaxRate > 100m)
             {
-                throw new ArgumentException("所得税税率必须在 0 到 100 之间。", nameof(incomeTaxRate));
+                throw new ArgumentException("所得税税率必须在 0 到 100 之间。");
             }
 
             TaxpayerNumber = string.IsNullOrWhiteSpace(taxpayerNumber) ? null : taxpayerNumber.Trim();
@@ -200,18 +218,34 @@ namespace KuaiJi.Modules.AccountSets.Domain
             IncomeTaxRate = incomeTaxRate;
         }
 
+        /// <summary>
+        /// 更新税局登录资料（一键登录税局用）。约定与 <see cref="UpdateTaxInfo"/> 的调用方一致：
+        /// 传 null 表示保持原值，传空串表示清除。
+        /// passwordCipher 必须是已加密的密文——明文只在请求处理过程中存在，不落库也不进日志。
+        /// </summary>
+        public void UpdateTaxLoginInfo(string? taxRegion, string? loginType, string? identityType, string? account, string? passwordCipher)
+        {
+            TaxRegion = NullIfBlank(taxRegion);
+            TaxLoginType = NullIfBlank(loginType);
+            TaxIdentityType = NullIfBlank(identityType);
+            TaxLoginAccount = NullIfBlank(account);
+            TaxLoginPasswordCipher = NullIfBlank(passwordCipher);
+        }
+
+        private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
         /// <summary>设置凭证字列表（逗号分隔）。每个凭证字 1–4 个字符，去重后至少保留一个。</summary>
         public void SetVoucherWords(string words)
         {
             var list = ParseVoucherWords(words);
             if (list.Count == 0)
             {
-                throw new ArgumentException("凭证字列表不能为空。", nameof(words));
+                throw new ArgumentException("凭证字列表不能为空。");
             }
 
             if (list.Any(w => w.Length > 4))
             {
-                throw new ArgumentException("单个凭证字不能超过 4 个字符。", nameof(words));
+                throw new ArgumentException("单个凭证字不能超过 4 个字符。");
             }
 
             VoucherWords = string.Join(',', list);
@@ -444,27 +478,27 @@ namespace KuaiJi.Modules.AccountSets.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("账套名称不能为空。", nameof(name));
+                throw new ArgumentException("账套名称不能为空。");
             }
 
             if (string.IsNullOrWhiteSpace(companyName))
             {
-                throw new ArgumentException("单位名称不能为空。", nameof(companyName));
+                throw new ArgumentException("单位名称不能为空。");
             }
 
             if (string.IsNullOrWhiteSpace(baseCurrency))
             {
-                throw new ArgumentException("记账本位币不能为空。", nameof(baseCurrency));
+                throw new ArgumentException("记账本位币不能为空。");
             }
 
             if (startYear < 1900 || startYear > 9999)
             {
-                throw new ArgumentException("启用年份不合法。", nameof(startYear));
+                throw new ArgumentException("启用年份不合法。");
             }
 
             if (startMonth < 1 || startMonth > 12)
             {
-                throw new ArgumentException("启用月份必须在 1 到 12 之间。", nameof(startMonth));
+                throw new ArgumentException("启用月份必须在 1 到 12 之间。");
             }
         }
     }

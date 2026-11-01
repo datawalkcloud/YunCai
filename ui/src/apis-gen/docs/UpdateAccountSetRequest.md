@@ -16,6 +16,11 @@ Name | Type
 `vatRate` | number
 `incomeTaxRate` | number
 `voucherWords` | string
+`taxRegion` | string
+`taxLoginType` | string
+`taxIdentityType` | string
+`taxLoginAccount` | string
+`taxLoginPassword` | string
 
 ## Example
 
@@ -34,6 +39,11 @@ const example = {
   "vatRate": null,
   "incomeTaxRate": null,
   "voucherWords": null,
+  "taxRegion": null,
+  "taxLoginType": null,
+  "taxIdentityType": null,
+  "taxLoginAccount": null,
+  "taxLoginPassword": null,
 } satisfies UpdateAccountSetRequest
 
 console.log(example)

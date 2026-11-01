@@ -115,6 +115,12 @@ const router = createBrowserRouter([
             // 登录后的默认落地：解析默认账套并跳转到 /{accountSetId}。
             { path: "app", element: <DefaultAccountSetRedirect />, errorElement: <RouteErrorElement /> },
             {
+                // 智能报税是独立全屏工作台：自带侧栏与顶栏，不套 DashboardLayout。
+                // 该路径不在记账外壳的子路由里，因此不会与下面的 :accountSetId 分支争抢匹配。
+                path: ":accountSetId/tax/declare",
+                ...lazyRoute(() => import("./groups/tax"), "TaxWorkspace"),
+            },
+            {
                 // 账套 id 作为路由第一段，其下所有页面均归属该账套。
                 path: ":accountSetId",
                 element: <DashboardLayout />,
@@ -192,7 +198,6 @@ const router = createBrowserRouter([
                     { path: "settings/scm-relation", ...lazyRoute(() => import("./groups/settings"), "LemonScmRelation") },
                     { path: "settings/import-old", ...lazyRoute(() => import("./groups/settings"), "LemonImportOld") },
                     { path: "settings/reinit", ...lazyRoute(() => import("./groups/settings"), "LemonReinit") },
-                    { path: "pro", ...lazyRoute(() => import("./groups/dashboard"), "LemonPro") },
                 ],
             },
         ],
