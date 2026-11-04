@@ -657,13 +657,35 @@ namespace KuaiJi.Modules.Closing.Application
             return await GetStatusAsync(accountSetId, cancellationToken);
         }
 
-        /// <summary>反结账：撤销最近一次结账（已结期间退回一个月）；结转进度保持不变。</summary>
-        public async Task<ClosingStatusDto> ReopenAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 反结账：从指定已结期间起撤销结账（该期间及其后的已结期间全部退回，可指定任意已结期间）；
+        /// 不传期间时退回最近一次结账。结转进度保持不变。
+        /// </summary>
+        public async Task<ClosingStatusDto> ReopenAsync(
+            Guid accountSetId,
+            int? year = null,
+            int? month = null,
+            CancellationToken cancellationToken = default)
         {
             var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
+            if (accountSet.ClosedPeriod == 0)
+            {
+                throw new ClosingException("尚未结账，无需反结账。");
+            }
+
+            var targetYear = accountSet.ClosedPeriod / 100;
+            var targetMonth = accountSet.ClosedPeriod % 100;
+            if (year is { } y && month is { } m)
+            {
+                targetYear = y;
+                targetMonth = m;
+            }
+
+            ValidatePeriod(targetYear, targetMonth);
+
             try
             {
-                accountSet.ReopenPeriod();
+                accountSet.ReopenFrom(targetYear, targetMonth);
             }
             catch (InvalidOperationException ex)
             {

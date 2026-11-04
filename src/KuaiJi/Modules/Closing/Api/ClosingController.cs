@@ -92,13 +92,17 @@ namespace KuaiJi.Modules.Closing.Api
             }
         }
 
-        /// <summary>反结账：撤销最近一次结账（已结期间退回一个月）；结转进度保持不变。</summary>
+        /// <summary>反结账：从指定已结期间起撤销结账（该期间及其后全部退回，可指定任意已结期间）；不传期间时退回最近一次结账。结转进度保持不变。</summary>
         [HttpPost("reopen")]
-        public async Task<ActionResult<ClosingStatusDto>> Reopen(Guid accountSetId, CancellationToken cancellationToken)
+        public async Task<ActionResult<ClosingStatusDto>> Reopen(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            CancellationToken cancellationToken)
         {
             try
             {
-                return Ok(await _closingService.ReopenAsync(accountSetId, cancellationToken));
+                return Ok(await _closingService.ReopenAsync(accountSetId, year, month, cancellationToken));
             }
             catch (ClosingException ex)
             {

@@ -342,7 +342,27 @@ namespace KuaiJi.Modules.AccountSets.Domain
             ClosedPeriod = year * 100 + month;
         }
 
-        /// <summary>反结账：撤销最近一次结账，已结期间退回一个月；退到启用期间之前则清零。</summary>
+        /// <summary>
+        /// 反结账：从指定已结期间起撤销结账——该期间及其后的已结期间全部退回，
+        /// 已结账期间退到目标期间的上一个月；退到启用期间之前则清零。
+        /// </summary>
+        public void ReopenFrom(int year, int month)
+        {
+            if (ClosedPeriod == 0)
+            {
+                throw new InvalidOperationException("尚未结账，无需反结账。");
+            }
+
+            if (year * 100 + month > ClosedPeriod)
+            {
+                throw new InvalidOperationException($"该期间尚未结账（当前已结账至 {ClosedPeriod / 100:D4}-{ClosedPeriod % 100:D2}）。");
+            }
+
+            var previous = month == 1 ? (year - 1) * 100 + 12 : year * 100 + (month - 1);
+            ClosedPeriod = previous < StartYear * 100 + StartMonth ? 0 : previous;
+        }
+
+        /// <summary>反结账：撤销最近一次结账，已结期间退回一个月。</summary>
         public void ReopenPeriod()
         {
             if (ClosedPeriod == 0)
@@ -350,10 +370,7 @@ namespace KuaiJi.Modules.AccountSets.Domain
                 throw new InvalidOperationException("尚未结账，无需反结账。");
             }
 
-            var year = ClosedPeriod / 100;
-            var month = ClosedPeriod % 100;
-            var previous = month == 1 ? (year - 1) * 100 + 12 : year * 100 + (month - 1);
-            ClosedPeriod = previous < StartYear * 100 + StartMonth ? 0 : previous;
+            ReopenFrom(ClosedPeriod / 100, ClosedPeriod % 100);
         }
 
         /// <summary>
