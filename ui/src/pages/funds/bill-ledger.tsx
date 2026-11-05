@@ -732,26 +732,19 @@ export function BillLedgerPage() {
                 <div className="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>
             )}
 
-            <Card
-                styles={{
-                    root: { border: "1px solid #f1f5f9", borderRadius: 8 },
-                    body: { padding: "0 14px 8px" },
-                }}
-            >
+            <Card>
                 {/* 页签：与柠檬云「票据管理 → 票据台账」一致 */}
                 <Tabs
-                    size="small"
                     activeKey="ledger"
                     items={[{ key: "ledger", label: "票据台账" }]}
                     tabBarStyle={{ marginBottom: 8 }}
                 />
-                <Flex justify="space-between" align="center" wrap="wrap" gap={8} className="pb-2">
+                <Flex justify="space-between" align="center" wrap="wrap" gap={8} style={{ marginBottom: 16 }}>
                     <Space size={12} wrap>
                         <DatePicker.RangePicker
                             value={[dayjs(range[0]), dayjs(range[1])]}
                             allowClear={false}
                             disabled={showAll}
-                            size="small"
                             style={{ width: 250 }}
                             onChange={(values) => {
                                 if (!values?.[0] || !values?.[1]) return
@@ -771,36 +764,34 @@ export function BillLedgerPage() {
                         >
                             <QuestionCircleOutlined /> 如何管理票据？
                         </Typography.Link>
-                        <Button size="small" icon={<PlusOutlined />} onClick={openCreate}>
+                        <Button icon={<PlusOutlined />} onClick={openCreate}>
                             新增
                         </Button>
                         <Dropdown menu={generateMenu} disabled={busy}>
-                            <Button size="small">
+                            <Button>
                                 生成凭证 <DownOutlined style={{ fontSize: 10 }} />
                             </Button>
                         </Dropdown>
                         <Dropdown menu={importMenu}>
-                            <Button size="small">
+                            <Button>
                                 导入 <DownOutlined style={{ fontSize: 10 }} />
                             </Button>
                         </Dropdown>
-                        <Button size="small" disabled={selectedKeys.length === 0} onClick={() => removeBills(selectedKeys.map(String))}>
+                        <Button disabled={selectedKeys.length === 0} onClick={() => removeBills(selectedKeys.map(String))}>
                             删除
                         </Button>
                         <Tooltip title="刷新">
-                            <Button size="small" icon={<ReloadOutlined />} onClick={() => void load()} />
+                            <Button icon={<ReloadOutlined />} onClick={() => void load()} />
                         </Tooltip>
                         <Tooltip title="全屏">
-                            <Button size="small" icon={<FullscreenOutlined />} onClick={() => void toggleFullscreen()} />
+                            <Button icon={<FullscreenOutlined />} onClick={() => void toggleFullscreen()} />
                         </Tooltip>
                     </Space>
                 </Flex>
 
-                <Spin spinning={loading} size="small">
+                <Spin spinning={loading}>
                     <Table<BillRow>
                         rowKey={(row) => row.id ?? row.billNo ?? ""}
-                        size="small"
-                        bordered
                         columns={columns}
                         dataSource={paged}
                         pagination={false}
@@ -818,10 +809,9 @@ export function BillLedgerPage() {
                     />
                 </Spin>
 
-                <Flex justify="end" align="center" gap={12} className="px-1 pt-3 pb-1 text-[12.5px] text-slate-500">
+                <Flex justify="end" align="center" gap={12} style={{ marginTop: 16 }} className="px-1 pb-1 text-[12.5px] text-slate-500">
                     <span>{`显示 ${filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 ${Math.min(page * pageSize, filtered.length)}，共 ${filtered.length} 条`}</span>
                     <Pagination
-                        size="small"
                         current={page}
                         pageSize={pageSize}
                         total={filtered.length}
@@ -1045,7 +1035,6 @@ export function BillLedgerPage() {
                             (2) 点击下载模板，按照模板格式进行数据整理再导入
                             <Button
                                 type="link"
-                                size="small"
                                 onClick={() =>
                                     void downloadFile(`/accountsets/${accountSetId}/bills/import/template`, "票据导入模板.xlsx")
                                 }

@@ -41,11 +41,12 @@ namespace KuaiJi.Modules.Tax.Infrastructure
                 await using var scope = _scopeFactory.CreateAsyncScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var record = await db.TaxPortalSessions.FindAsync(
-                    new object[] { key.AccountSetId, key.UserId },
+                    new object[] { key.AccountSetId, key.UserId, key.Kind },
                     cancellationToken);
                 if (record is null)
                 {
-                    db.TaxPortalSessions.Add(TaxPortalSessionRecord.Create(key.AccountSetId, key.UserId, cipher, now));
+                    db.TaxPortalSessions.Add(TaxPortalSessionRecord.Create(
+                        key.AccountSetId, key.UserId, key.Kind, cipher, now));
                 }
                 else
                 {
@@ -69,7 +70,9 @@ namespace KuaiJi.Modules.Tax.Infrastructure
             var record = await db.TaxPortalSessions
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
-                    item => item.AccountSetId == key.AccountSetId && item.UserId == key.UserId,
+                    item => item.AccountSetId == key.AccountSetId
+                        && item.UserId == key.UserId
+                        && item.PortalKind == key.Kind,
                     cancellationToken);
             if (record is null)
             {
@@ -104,7 +107,9 @@ namespace KuaiJi.Modules.Tax.Infrastructure
                 await using var scope = _scopeFactory.CreateAsyncScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 await db.TaxPortalSessions
-                    .Where(item => item.AccountSetId == key.AccountSetId && item.UserId == key.UserId)
+                    .Where(item => item.AccountSetId == key.AccountSetId
+                        && item.UserId == key.UserId
+                        && item.PortalKind == key.Kind)
                     .ExecuteDeleteAsync();
             }
             finally

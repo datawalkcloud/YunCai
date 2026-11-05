@@ -6,13 +6,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import dayjs from "dayjs";
-import { Button, DatePicker, Dropdown, Modal } from "antd";
+import { Button, DatePicker, Dropdown, Empty, Modal, Table } from "antd";
 import {
     CrownOutlined,
     FileTextOutlined,
     FolderOpenOutlined,
     FolderOutlined,
-    HddOutlined,
     LeftOutlined,
     PictureOutlined,
     RightOutlined,
@@ -21,13 +20,12 @@ import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import { StatusPill } from "@/components/page/status-pill";
-import { ICON_STYLE, type PillTone } from "@/components/page/styles";
+import { ICON_STYLE, type PillTone, FORM_CONTROL_W } from "@/components/page/styles";
 
 import {
     Btn,
     CheckBox,
     Dialog,
-    EmptyTip,
     HintBox,
     Page,
     RefreshIcon,
@@ -77,12 +75,6 @@ function archiveCode(it: ArchiveItemDto): string {
 function timeOf(value?: Date | null): number {
     return value ? new Date(value).getTime() : 0;
 }
-
-function th2() {
-    return "border-b border-slate-200 bg-[#f8fafc] px-3 py-2.5 text-left text-[13px] font-normal text-slate-500 whitespace-nowrap";
-}
-
-const td2 = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-600 tabular-nums whitespace-nowrap";
 
 const FOLDERS = ["凭证附件", "回单", "发票", "现金流水", "票据", "工资", "资产"];
 
@@ -256,15 +248,6 @@ export default function LemonERecord() {
             setGenSaving(false);
         }
     };
-
-    const toggle = (id: string) =>
-        setSelected((prev) => {
-            const next = new Set([...prev].filter((k) => k !== id));
-            if (!prev.has(id)) {
-                next.add(id);
-            }
-            return next;
-        });
 
     /** 上传：本地文件转 base64 交给后端存档；批量时逐个提交。 */
     const submitUpload = async () => {
@@ -519,22 +502,6 @@ export default function LemonERecord() {
         setPickerOpen(true);
     };
 
-    const togglePick = (id: string) =>
-        setPickIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) {
-                next.delete(id);
-            } else {
-                next.add(id);
-            }
-            return next;
-        });
-
-    const allPicked = items.length > 0 && items.every((it) => pickIds.has(it.id ?? ""));
-
-    const togglePickAll = () =>
-        setPickIds(allPicked ? new Set() : new Set(items.map((it) => it.id ?? "")));
-
     const archivePicked = async () => {
         if (pickIds.size === 0) {
             setToast("请先勾选要归档的档案");
@@ -605,15 +572,6 @@ export default function LemonERecord() {
     const paged = filtered.slice((current - 1) * pageSize, current * pageSize);
     const from = total === 0 ? 0 : (current - 1) * pageSize + 1;
     const to = Math.min(current * pageSize, total);
-    const allChecked = paged.length > 0 && paged.every((it) => selected.has(it.id ?? ""));
-
-    const toggleAll = () =>
-        setSelected((prev) => {
-            if (allChecked) {
-                return new Set([...prev].filter((id) => !paged.some((it) => it.id === id)));
-            }
-            return new Set([...prev, ...paged.map((it) => it.id ?? "")]);
-        });
 
     const keywordBox = (
         <div className="flex items-center gap-2">
@@ -849,67 +807,53 @@ export default function LemonERecord() {
     const columns = tab === 1 ? archivedColumns : listColumns;
 
     return (
-        <Page title="会计电子档案" subtitle="凭证附件、回单、发票等资料的电子化归档管理" icon={HddOutlined}>
+        <Page>
             <SubTabs tabs={["电子档案列表", "电子档案归档"]} active={tab} onChange={changeTab} />
-            {tab === 0 ? toolList : toolArchived}
+            <div style={{ marginBottom: 16 }}>{tab === 0 ? toolList : toolArchived}</div>
             <div className="flex min-h-0 flex-1">
                 <div className="flex min-w-0 flex-1 flex-col px-4">
-                    <div className="overflow-x-auto">
-                        <table
-                            className={`w-full border-collapse text-[13px] ${tab === 1 ? "min-w-[1000px]" : "min-w-[1560px]"}`}
-                        >
-                            <thead>
-                                <tr>
-                                    <th className={`${th2()} w-[36px]`}>
-                                        <span className="inline-flex cursor-pointer" onClick={toggleAll}>
-                                            <CheckBox label="" checked={allChecked} />
-                                        </span>
-                                    </th>
-                                    {columns.map((c) => (
-                                        <th key={c.key} className={th2()} style={{ width: c.width }}>
-                                            {c.title}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paged.map((it, i) => (
-                                    <tr
-                                        key={it.id}
-                                        className={`transition-colors hover:bg-[#f6f9ff] ${i % 2 === 1 ? "bg-[#fafbfd]" : "bg-white"}`}
-                                    >
-                                        <td className={td2}>
-                                            <span className="inline-flex cursor-pointer" onClick={() => toggle(it.id ?? "")}>
-                                                <CheckBox label="" checked={selected.has(it.id ?? "")} />
+                    {/* antd Table 自带横向滚动（scroll.x），外层再包 overflow-x-auto 会让 overflow-y 被计算成 auto，多出一条竖向滚动条 */}
+                    <Table<ArchiveItemDto>
+                        rowKey={(it) => it.id ?? ""}
+                        scroll={{ x: "max-content" }}
+                        rowSelection={{
+                            selectedRowKeys: [...selected],
+                            onChange: (keys) => setSelected(new Set(keys as string[])),
+                        }}
+                        columns={columns.map((c) => ({
+                            key: c.key,
+                            title: c.title,
+                            width: c.width,
+                            render: (_: unknown, it: ArchiveItemDto) => c.render(it),
+                        }))}
+                        dataSource={paged}
+                        pagination={false}
+                        locale={{
+                            emptyText: (
+                                <Empty
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                    description={
+                                        tab === 1 ? (
+                                            <span>
+                                                您还没有归档数据，请点击{" "}
+                                                <span
+                                                    className="cursor-pointer text-[#2f6bff] hover:underline"
+                                                    onClick={openPicker}
+                                                >
+                                                    “归档”
+                                                </span>{" "}
+                                                按钮进行归档操作哦~
                                             </span>
-                                        </td>
-                                        {columns.map((c) => (
-                                            <td key={c.key} className={td2}>
-                                                {c.render(it)}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    {total === 0 && (
-                        <div className="py-10 text-center">
-                            {tab === 1 ? (
-                                <span className="text-[13px] text-slate-400">
-                                    您还没有归档数据，请点击{" "}
-                                    <span className="cursor-pointer text-[#2f6bff] hover:underline" onClick={openPicker}>
-                                        “归档”
-                                    </span>{" "}
-                                    按钮进行归档操作哦~
-                                </span>
-                            ) : (
-                                <EmptyTip text="暂无档案，点击「电脑上传」把凭证附件、回单、发票等文件存入电子档案。" />
-                            )}
-                        </div>
-                    )}
+                                        ) : (
+                                            "暂无档案，点击「电脑上传」把凭证附件、回单、发票等文件存入电子档案。"
+                                        )
+                                    }
+                                />
+                            ),
+                        }}
+                    />
                     {(tab === 0 || total > 0) && (
-                        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-1 py-3 text-[12.5px] text-slate-500">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-1 py-3 text-[12.5px] text-slate-500">
                             <span>显示 {from} 到 {to}，共 {total} 条</span>
                             <span className="flex items-center gap-2">
                                 <Select
@@ -920,7 +864,6 @@ export default function LemonERecord() {
                                 />
                                 <Button
                                     type="text"
-                                    size="small"
                                     icon={<LeftOutlined />}
                                     disabled={current <= 1}
                                     onClick={() => setPage(current - 1)}
@@ -930,7 +873,6 @@ export default function LemonERecord() {
                                 </span>
                                 <Button
                                     type="text"
-                                    size="small"
                                     icon={<RightOutlined />}
                                     disabled={current >= pageCount}
                                     onClick={() => setPage(current + 1)}
@@ -1002,42 +944,23 @@ export default function LemonERecord() {
                         暂无可归档的档案，请先在「电子档案列表」上传。
                     </div>
                 ) : (
-                    <div className="max-h-[380px] overflow-auto">
-                        <table className="w-full border-collapse text-[13px]">
-                            <thead>
-                                <tr>
-                                    <th className={`${th2()} w-[36px]`}>
-                                        <span className="inline-flex cursor-pointer" onClick={togglePickAll}>
-                                            <CheckBox label="" checked={allPicked} />
-                                        </span>
-                                    </th>
-                                    {["文件名称", "文件类别", "上传日期", "大小"].map((t) => (
-                                        <th key={t} className={th2()}>
-                                            {t}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {items.map((it) => (
-                                    <tr key={it.id} className="hover:bg-[#f6f9ff]">
-                                        <td className={td2}>
-                                            <span
-                                                className="inline-flex cursor-pointer"
-                                                onClick={() => togglePick(it.id ?? "")}
-                                            >
-                                                <CheckBox label="" checked={pickIds.has(it.id ?? "")} />
-                                            </span>
-                                        </td>
-                                        <td className={td2}>{it.fileName}</td>
-                                        <td className={td2}>{it.category}</td>
-                                        <td className={td2}>{fmtDate(it.uploadedAt)}</td>
-                                        <td className={td2}>{fmtBytes(it.fileSize ?? 0)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <Table<ArchiveItemDto>
+                        rowKey={(it) => it.id ?? ""}
+                        pagination={false}
+                        scroll={{ y: 360 }}
+                        rowSelection={{
+                            selectedRowKeys: [...pickIds],
+                            onChange: (keys) => setPickIds(new Set(keys as string[])),
+                        }}
+                        columns={[
+                            { title: "文件名称", dataIndex: "fileName", width: 280, ellipsis: true },
+                            { title: "文件类别", dataIndex: "category", width: 120, ellipsis: true },
+                            { title: "上传日期", width: 130, render: (_, it) => fmtDate(it.uploadedAt) },
+                            { title: "大小", width: 100, render: (_, it) => fmtBytes(it.fileSize ?? 0) },
+                        ]}
+                        dataSource={items}
+                        locale={{ emptyText: "暂无文件" }}
+                    />
                 )}
                 </Dialog>
             )}
@@ -1075,7 +998,7 @@ export default function LemonERecord() {
                         onChange={setUploadFolder}
                         options={folderOptions}
                     />
-                    <Button size="small" type="primary" onClick={openFolderDialog}>
+                    <Button type="primary" onClick={openFolderDialog}>
                         新增文件
                     </Button>
                 </div>
@@ -1092,7 +1015,7 @@ export default function LemonERecord() {
                 >
                     <FolderOpenOutlined className="mb-2 text-[26px]" />
                     <div className="text-[13px]">将文件拖拽到此处，或按 Ctrl + V 粘贴上传</div>
-                    <Button size="small" className="mt-2" onClick={() => addRef.current?.click()}>
+                    <Button className="mt-2" onClick={() => addRef.current?.click()}>
                         选择文件
                     </Button>
                 </div>
@@ -1167,7 +1090,7 @@ export default function LemonERecord() {
                         <div className="flex items-center gap-3">
                             <span className="w-[80px] text-right">凭证日期：</span>
                             <DatePicker
-                                className="w-[180px]"
+                                className={FORM_CONTROL_W}
                                 allowClear={false}
                                 value={genForm.date ? dayjs(genForm.date) : null}
                                 onChange={(_, text) => setGenForm({ ...genForm, date: (text as string) || genForm.date })}
@@ -1185,7 +1108,7 @@ export default function LemonERecord() {
                         <div className="flex items-center gap-3">
                             <span className="w-[80px] text-right">金额：</span>
                             <TextInput
-                                className="w-[180px]"
+                                className={FORM_CONTROL_W}
                                 type="number"
                                 value={genForm.amount}
                                 onChange={(v) => setGenForm({ ...genForm, amount: v })}

@@ -1,7 +1,7 @@
 /**
  * 智能报税 · 税费种管理。
  *
- * 与税局「税费种管理」页面同构：认定提示条 + 更新 / 新增 / 删除 + 征收项目 × 申报种类表格。
+ * 与税局「税费种管理」页面同构：认定提示条 + 页头征收类型 + 更新 / 新增 / 删除 + 征收项目 × 申报种类表格。
  * 认定信息由服务器的税局会话读取（需先在「一键登录税局」完成登录），页面不再使用演示数据；
  * 新增 / 删除只改本页内存，刷新后以税局核定为准。
  */
@@ -14,6 +14,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxKinds, type TaxKindRow as ApiTaxKindRow } from "@/lib/tax-portal";
+import { TAX_THEME } from "@/lib/tax-theme";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
 
@@ -93,6 +94,7 @@ export function TaxKindsPage() {
     const accountSetId = useCurrentAccountSetId();
     const { token } = useAuth();
     const [rows, setRows] = useState<TaxKindRow[]>([]);
+    const [levyType, setLevyType] = useState("");
     const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const [needLogin, setNeedLogin] = useState(false);
@@ -109,6 +111,7 @@ export function TaxKindsPage() {
             if (result.needLogin) {
                 // 税局登录态缺失或过期：直接弹出登录表单，用户补一次短信验证码后继续取数。
                 setRows([]);
+                setLevyType("");
                 setSelectedKeys([]);
                 setNeedLogin(true);
                 setLoginOpen(true);
@@ -117,6 +120,7 @@ export function TaxKindsPage() {
 
             const next = toLocalRows(result.rows);
             setRows(next);
+            setLevyType(result.levyType?.trim() ?? "");
             setSelectedKeys([]);
             setNeedLogin(false);
             if (next.length > 0) {
@@ -199,8 +203,8 @@ export function TaxKindsPage() {
                 </span>
             ),
         },
-        { title: "申报种类", dataIndex: "declareKind", key: "declareKind" },
-        { title: "申报期限", dataIndex: "period", key: "period", width: 184 },
+        { title: "申报种类", dataIndex: "declareKind", key: "declareKind", width: 340 },
+        { title: "申报期限", dataIndex: "period", key: "period", width: 120 },
         {
             title: (
                 <span className="inline-flex items-center gap-1">
@@ -212,30 +216,18 @@ export function TaxKindsPage() {
             ),
             dataIndex: "option",
             key: "option",
-            width: 250,
+            width: 140,
         },
-        { title: "认定有效期起", dataIndex: "validFrom", key: "validFrom", width: 240 },
-        { title: "认定有效期止", dataIndex: "validTo", key: "validTo", width: 240 },
-        { title: "数据来源", dataIndex: "source", key: "source", width: 183 },
+        { title: "认定有效期起", dataIndex: "validFrom", key: "validFrom", width: 150 },
+        { title: "认定有效期止", dataIndex: "validTo", key: "validTo", width: 150 },
+        { title: "数据来源", dataIndex: "source", key: "source", width: 120 },
     ];
 
     return (
-        <ConfigProvider
-            theme={{
-                token: { colorPrimary: "#2f6bff", borderRadius: 2 },
-                components: {
-                    Table: {
-                        headerBg: "#f4f7ff",
-                        headerColor: "#475569",
-                        borderColor: "#eef2f7",
-                        rowHoverBg: "#f6f9ff",
-                    },
-                },
-            }}
-        >
+        <ConfigProvider theme={TAX_THEME}>
             <div className="flex h-full flex-col px-6 pt-4">
                 <div className="flex flex-wrap items-start justify-between gap-4" style={{ marginBottom: 16 }}>
-                    <div className="flex max-w-[1180px] items-start gap-2 rounded-[2px] border border-[#f0d7a8] bg-[#fff9ef] px-4 py-3 text-[13px] leading-6 text-[#8a6a35]">
+                    <div className="flex max-w-[1180px] items-start gap-2 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-4 py-3 text-[13px] leading-6 text-[#8a6a35]">
                         <ExclamationCircleFilled className="mt-1 shrink-0 text-[14px] text-[#e6a23c]" />
                         <div>
                             温馨提示：1、若税费种认定信息或财务会计制度备案信息有
@@ -263,6 +255,14 @@ export function TaxKindsPage() {
                     </div>
 
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        {levyType && (
+                            <Tooltip title="征收类型由电子税务局按户认定（服务型 / 货物型等），决定税局给企业推送哪套申报表与征收品目；随税费种认定信息一并取回，税局没回时不显示。">
+                                <span className="inline-flex h-8 cursor-help items-center gap-1 rounded-md border border-[#dfe5f0] bg-white px-3 text-[13px] text-slate-500">
+                                    征收类型：
+                                    <span className="font-medium text-slate-700">{levyType}</span>
+                                </span>
+                            </Tooltip>
+                        )}
                         {needLogin && (
                             <Button icon={<LoginOutlined />} onClick={() => setLoginOpen(true)}>
                                 登录电子税务局
@@ -334,7 +334,7 @@ export function TaxKindsPage() {
                 onCancel={() => setAddOpen(false)}
                 destroyOnHidden
             >
-                <div className="mb-3 rounded-[2px] bg-[#f6f9ff] px-3 py-2 text-[12.5px] leading-5 text-slate-500">
+                <div className="mb-3 rounded-lg bg-[#f6f9ff] px-3 py-2 text-[12.5px] leading-5 text-slate-500">
                     手动新增用于补全税局取数不全的税费种，仅保存在本页；实际申报仍以电子税务局核定为准。
                 </div>
                 <Form<AddFormValues>

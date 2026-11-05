@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { Spin, Table } from "antd"
-import type { TableColumnsType } from "antd"
+import type { TableColumnsType, TableProps } from "antd"
 
 import { cn } from "@/lib/utils"
 
@@ -17,6 +17,8 @@ export interface LedgerTableProps<D> {
     onRowClick?: (row: D, index: number) => void
     /** 行级附加样式，用于区分期初 / 合计行。 */
     rowClassName?: (row: D, index: number) => string | undefined
+    /** 展开配置；科目余额表等树形账页用它控制级次展开。 */
+    expandable?: TableProps<D>["expandable"]
     /** 合计行等自定义页脚，内部用 Table.Summary.Row / Cell。 */
     footer?: ReactNode
 }
@@ -32,6 +34,7 @@ export function LedgerTable<D>({
     rowKey,
     onRowClick,
     rowClassName,
+    expandable,
     footer,
 }: LedgerTableProps<D>) {
     const showSpinner = Boolean(loading) && data.length === 0
@@ -43,7 +46,7 @@ export function LedgerTable<D>({
                 dataSource={data}
                 rowKey={rowKey}
                 pagination={false}
-                size="small"
+                expandable={expandable}
                 rowClassName={(row, index) =>
                     cn(rowClassName?.(row, index), onRowClick && "cursor-pointer")
                 }
@@ -67,8 +70,8 @@ export function LedgerTable<D>({
                         : () => <Table.Summary>{footer}</Table.Summary>
                 }
             />
-            {/* 页脚：与柠檬云一致的「显示 x 到 y，共 z 条」 */}
-            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 text-[12.5px] text-slate-500">
+            {/* 页脚：与柠檬云一致的「显示 x 到 y，共 z 条」；不画上边框 —— 表格末行已有分隔线，再加一条会叠成双线 */}
+            <div className="flex items-center justify-between px-4 py-2.5 text-[12.5px] text-slate-500">
                 <span>
                     显示 {data.length ? 1 : 0} 到 {Math.min(data.length, 20)}，共 {data.length} 条
                 </span>
@@ -103,7 +106,8 @@ export interface LedgerSectionProps {
 export function LedgerSection({ heading, extra, children }: LedgerSectionProps) {
     return (
         <section className="flex flex-col overflow-hidden rounded-xl border border-slate-100">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 bg-muted px-4 py-2.5">
+            {/* 段标题条不画下边框：它紧贴表格上沿，再加一条线会被读成表格的外框上沿 */}
+            <div className="flex flex-wrap items-baseline justify-between gap-2 bg-muted px-4 py-2.5">
                 <h2 className="flex items-center gap-2 text-[13px] font-semibold text-slate-800">
                     <span className="h-3 w-1 rounded-full bg-[#2f6bff]" />
                     {heading}

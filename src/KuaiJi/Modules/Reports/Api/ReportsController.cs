@@ -1,6 +1,7 @@
 using KuaiJi.Modules.Ledgers.Application;
 using KuaiJi.Modules.Reports.Application;
 using KuaiJi.Modules.Reports.Domain;
+using KuaiJi.Modules.Reports.Infrastructure;
 using KuaiJi.SharedKernel.Infrastructure.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,8 @@ namespace KuaiJi.Modules.Reports.Api
         private readonly TaxStatisticsService _taxStatisticsService;
         private readonly FinancialSummaryService _financialSummaryService;
         private readonly ReportExportService _reportExportService;
+        private readonly BalanceSheetXlsExportService _balanceSheetXlsExportService;
+        private readonly BalanceSheetPdfExportService _balanceSheetPdfExportService;
 
         public ReportsController(
             TrialBalanceService trialBalanceService,
@@ -40,7 +43,9 @@ namespace KuaiJi.Modules.Reports.Api
             EquityChangeService equityChangeService,
             TaxStatisticsService taxStatisticsService,
             FinancialSummaryService financialSummaryService,
-            ReportExportService reportExportService)
+            ReportExportService reportExportService,
+            BalanceSheetXlsExportService balanceSheetXlsExportService,
+            BalanceSheetPdfExportService balanceSheetPdfExportService)
         {
             _trialBalanceService = trialBalanceService;
             _balanceSheetService = balanceSheetService;
@@ -54,10 +59,13 @@ namespace KuaiJi.Modules.Reports.Api
             _taxStatisticsService = taxStatisticsService;
             _financialSummaryService = financialSummaryService;
             _reportExportService = reportExportService;
+            _balanceSheetXlsExportService = balanceSheetXlsExportService;
+            _balanceSheetPdfExportService = balanceSheetPdfExportService;
         }
 
         /// <summary>
-        /// 导出报表为 .xlsx。kind 取值：trial-balance / balance-sheet / income-statement / income-quarter /
+        /// 导出报表。资产负债表按账套会计标准导出两栏版式的 .xls（会企01表 / 会小企01表）；
+        /// 其余报表为 .xlsx。kind 取值：trial-balance / balance-sheet / income-statement / income-quarter /
         /// cash-flow / cash-flow-quarter / department-income / project-income / expense-detail / equity-change /
         /// tax / financial-summary；year/month/quarter 为可选期间参数，省略时取最近有凭证期间。
         /// </summary>
@@ -77,6 +85,13 @@ namespace KuaiJi.Modules.Reports.Api
 
             try
             {
+                if (exportKind == ReportExportKind.BalanceSheet)
+                {
+                    var (content, fileName) = await _balanceSheetXlsExportService.ExportAsync(
+                        accountSetId, year, month, cancellationToken);
+                    return File(content, BalanceSheetXlsBuilder.ContentType, fileName);
+                }
+
                 var book = await _reportExportService.ExportAsync(accountSetId, exportKind, year, month, quarter, cancellationToken);
                 return File(FlatWorkbookBuilder.Build(book), FlatWorkbook.XlsxContentType, book.FileName);
             }
@@ -127,6 +142,29 @@ namespace KuaiJi.Modules.Reports.Api
             {
                 var result = await _balanceSheetService.GetAsync(accountSetId, year, month, cancellationToken);
                 return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 资产负债表 PDF（A4 纵向两栏版式）。可选 year/month 指定会计期间，省略时取最近有凭证的月份。
+        /// 服务端渲染，不含浏览器打印的页眉页脚；版式与 .xls 导出、页面打印稿一致。
+        /// </summary>
+        [HttpGet("balance-sheet/pdf")]
+        public async Task<IActionResult> ExportBalanceSheetPdf(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var (content, fileName) = await _balanceSheetPdfExportService.ExportAsync(
+                    accountSetId, year, month, cancellationToken);
+                return File(content, BalanceSheetPdfBuilder.ContentType, fileName);
             }
             catch (ReportException ex)
             {

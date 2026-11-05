@@ -33,13 +33,13 @@ public sealed class LedgerSourceTests : IDisposable
     public void Dispose() => _h.Dispose();
 
     [Fact]
-    public async Task GetFactsAsync_DraftAndReviewedVouchers_AreNotTakenIntoLedger()
+    public async Task GetFactsAsync_UnpostedVouchers_AreNotTakenIntoLedger()
     {
         // 同一科目同一天的三张凭证，只有已过账那张入账
         _h.AddVoucher(new DateOnly(2026, 3, 10), VoucherStatus.Draft,
             _h.Entry("草稿款", _cash.Id, 111m, 0m), _h.Entry("草稿款", _revenue.Id, 0m, 111m));
-        _h.AddVoucher(new DateOnly(2026, 3, 10), VoucherStatus.Reviewed,
-            _h.Entry("已审核未过账", _cash.Id, 222m, 0m), _h.Entry("已审核未过账", _revenue.Id, 0m, 222m));
+        _h.AddVoucher(new DateOnly(2026, 3, 10), VoucherStatus.Draft,
+            _h.Entry("另一张草稿", _cash.Id, 222m, 0m), _h.Entry("另一张草稿", _revenue.Id, 0m, 222m));
         _h.AddVoucher(new DateOnly(2026, 3, 10), VoucherStatus.Posted,
             _h.Entry("已过账", _cash.Id, 333m, 0m), _h.Entry("已过账", _revenue.Id, 0m, 333m));
 
@@ -112,7 +112,8 @@ public sealed class LedgerSourceTests : IDisposable
         {
             Assert.Equal("收", f.Word);
             Assert.Equal("测试制单人", f.Preparer);
-            Assert.Equal("测试审核人", f.Reviewer);
+            // 保存即入账后不再有审核环节，未经导入的历史凭证没有审核人。
+            Assert.Null(f.Reviewer);
             Assert.Equal(1, f.Number); // 本用例里第一张凭证，号由装置自增从 1 起
             Assert.Equal($"{f.Word}-{f.Number}", f.VoucherNo);
         });
@@ -189,8 +190,8 @@ public sealed class LedgerSourceTests : IDisposable
     {
         _h.AddVoucher(new DateOnly(2026, 3, 5), VoucherStatus.Draft,
             _h.Entry("草稿", _cash.Id, 10m, 0m), _h.Entry("草稿", _revenue.Id, 0m, 10m));
-        _h.AddVoucher(new DateOnly(2026, 3, 6), VoucherStatus.Reviewed,
-            _h.Entry("已审核", _cash.Id, 10m, 0m), _h.Entry("已审核", _revenue.Id, 0m, 10m));
+        _h.AddVoucher(new DateOnly(2026, 3, 6), VoucherStatus.Draft,
+            _h.Entry("未过账草稿", _cash.Id, 10m, 0m), _h.Entry("未过账草稿", _revenue.Id, 0m, 10m));
         _h.AddVoucher(new DateOnly(2026, 3, 7), VoucherStatus.Posted,
             _h.Entry("已过账", _cash.Id, 10m, 0m), _h.Entry("已过账", _revenue.Id, 0m, 10m));
         _h.AddVoucher(new DateOnly(2026, 4, 5), VoucherStatus.Draft,
@@ -207,8 +208,8 @@ public sealed class LedgerSourceTests : IDisposable
             _h.Entry("最早是草稿", _cash.Id, 10m, 0m), _h.Entry("最早是草稿", _revenue.Id, 0m, 10m));
         _h.AddVoucher(new DateOnly(2026, 3, 10), VoucherStatus.Posted,
             _h.Entry("中间已过账", _cash.Id, 10m, 0m), _h.Entry("中间已过账", _revenue.Id, 0m, 10m));
-        _h.AddVoucher(new DateOnly(2026, 5, 20), VoucherStatus.Reviewed,
-            _h.Entry("最晚是已审核", _cash.Id, 10m, 0m), _h.Entry("最晚是已审核", _revenue.Id, 0m, 10m));
+        _h.AddVoucher(new DateOnly(2026, 5, 20), VoucherStatus.Draft,
+            _h.Entry("最晚是草稿", _cash.Id, 10m, 0m), _h.Entry("最晚是草稿", _revenue.Id, 0m, 10m));
 
         var (first, last) = await _source.GetVoucherDateBoundsAsync(_h.AccountSet.Id);
 
@@ -238,8 +239,7 @@ public sealed class LedgerSourceTests : IDisposable
         Assert.Equal(2, postedFacts.Count); // 一借一贷两行都在账上
 
         var tracked = await _h.Context.Vouchers.SingleAsync(v => v.Id == voucher.Id);
-        tracked.Unpost();   // 已过账 → 已审核
-        tracked.Unreview(); // 已审核 → 草稿
+        tracked.Unpost(); // 已过账 → 草稿
         await _h.Context.SaveChangesAsync();
         _h.DetachAll();
 

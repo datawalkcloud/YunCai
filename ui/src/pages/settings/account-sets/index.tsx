@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react"
-import { App, Alert, Button, Drawer, Empty, Input, Select, Spin } from "antd"
+import { App, Alert, Button, Drawer, Empty, Spin, Tabs } from "antd"
 import {
     BankOutlined,
     CheckCircleFilled,
@@ -22,87 +22,26 @@ import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { useConfirm } from "@/hooks/useConfirm"
 import { cn } from "@/lib/utils"
 import { SectionCard } from "@/components/page/section"
-import { FormField } from "@/components/page/form-field"
+import { parseDate } from "@/components/fields/date-fields"
 import { StatusPill } from "@/components/page/status-pill"
 import { ICON_STYLE } from "@/components/page/styles"
-import { PeriodField, parseDate } from "@/components/fields/date-fields"
-import { NumberField } from "@/components/fields/number-field"
 import {
-    DEFAULT_TAX_IDENTITY_TYPE,
-    DEFAULT_TAX_LOGIN_TYPE,
-    TAX_IDENTITY_TYPES,
-    TAX_LOGIN_TYPES,
-    TAX_REGIONS,
-    toOptions,
-} from "@/lib/tax-regions"
-
-/** 会计准则枚举值（与后端 AccountingStandard 对应）及其显示名。 */
-const STANDARDS: { value: number; label: string }[] = [
-    { value: 1, label: "企业会计准则" },
-    { value: 2, label: "小企业会计准则" },
-    { value: 3, label: "民间非营利组织会计制度" },
-]
-/** 纳税人性质枚举值（与后端 TaxpayerType 对应）及其显示名。 */
-const TAXPAYERS: { value: number; label: string }[] = [
-    { value: 1, label: "一般纳税人" },
-    { value: 2, label: "小规模纳税人" },
-]
-
-/** 科目编码方案格式：每级 1-2 位数字、以 "-" 分隔，最多 10 级。 */
-const CODING_SCHEME_PATTERN = /^\d{1,2}(-\d{1,2}){0,9}$/
-
-function standardLabel(value?: number): string {
-    return STANDARDS.find((s) => s.value === value)?.label ?? "—"
-}
-
-function taxpayerLabel(value?: number): string {
-    return TAXPAYERS.find((t) => t.value === value)?.label ?? "—"
-}
-
-/** 账套表单字段。 */
-interface AccountSetForm {
-    name: string
-    company: string
-    standard: number
-    currency: string
-    taxpayer: number
-    startPeriod?: Date
-    codingScheme: string
-    // 以下为编辑时才提交的涉税与凭证字信息（新增账套时由后端按纳税人性质预置）。
-    taxpayerNumber?: string
-    vatRate?: number
-    incomeTaxRate?: number
-    voucherWords?: string
-    // 一键登录税局所需资料。密码只在用户主动改写时提交，留空表示保持原值。
-    taxRegion?: string
-    taxLoginType?: string
-    taxIdentityType?: string
-    taxLoginAccount?: string
-    taxLoginPassword?: string
-    /** 后端已存有税局密码（密码本身不下发，仅这个布尔值下发）。 */
-    taxPasswordSaved?: boolean
-}
-
-/** 表单错误集合。 */
-type AccountSetErrors = Partial<Record<keyof AccountSetForm, string>>
-
-/**
- * 表单校验，提示文案与原 antd rules 逐条一致。
- * 凭证字只在编辑态渲染（等价原条件挂载的 Form.Item），故也只在校验编辑态。
- */
-function validateAccountSet(values: AccountSetForm, isEditing: boolean): AccountSetErrors {
-    const errors: AccountSetErrors = {}
-    if (!values.name) errors.name = "请填写账套名称"
-    if (!values.company) errors.company = "请填写单位名称"
-    if (!values.startPeriod) errors.startPeriod = "请选择启用期间"
-    if (!values.codingScheme) {
-        errors.codingScheme = "请填写科目编码方案"
-    } else if (!CODING_SCHEME_PATTERN.test(values.codingScheme)) {
-        errors.codingScheme = "格式须如 4-2-2-2，每级 1-2 位数字，最多 10 级"
-    }
-    if (isEditing && !values.voucherWords) errors.voucherWords = "请填写凭证字"
-    return errors
-}
+    BasicInfoFields,
+    FunctionParamsFields,
+    TaxInfoFields,
+    type AccountSetFieldsProps,
+} from "./account-set-form"
+import {
+    FORM_TABS,
+    emptyForm,
+    formFromDto,
+    standardLabel,
+    tabOfField,
+    taxpayerLabel,
+    validateAccountSet,
+    type AccountSetErrors,
+    type AccountSetForm,
+} from "./account-set-form-data"
 
 /** 卡片内的键值行，替代原嵌套 Row/Col 的两列布局。 */
 function KeyValue({ label, children }: { label: string, children: ReactNode }) {
@@ -112,6 +51,13 @@ function KeyValue({ label, children }: { label: string, children: ReactNode }) {
             <span className="min-w-0 text-right text-slate-700">{children}</span>
         </div>
     )
+}
+
+/** 三页表单共用同一份受控字段集，按页签挑要渲染的那一页。 */
+function renderTab(key: string, fields: AccountSetFieldsProps): ReactNode {
+    if (key === "function") return <FunctionParamsFields {...fields} />
+    if (key === "tax") return <TaxInfoFields {...fields} />
+    return <BasicInfoFields {...fields} />
 }
 
 export default function AccountSetsPage() {
@@ -130,15 +76,9 @@ export default function AccountSetsPage() {
     const [submitting, setSubmitting] = useState(false)
     const [open, setOpen] = useState(false)
     const [editing, setEditing] = useState<AccountSetDto | null>(null)
-    const [formValues, setFormValues] = useState<AccountSetForm>({
-        name: "",
-        company: "",
-        standard: STANDARDS[0].value,
-        currency: "人民币",
-        taxpayer: TAXPAYERS[0].value,
-        codingScheme: "4-3-2-2",
-    })
+    const [formValues, setFormValues] = useState<AccountSetForm>(emptyForm)
     const [formErrors, setFormErrors] = useState<AccountSetErrors>({})
+    const [activeTab, setActiveTab] = useState<string>("basic")
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -161,6 +101,7 @@ export default function AccountSetsPage() {
     function fillForm(next: AccountSetForm) {
         setFormValues(next)
         setFormErrors({})
+        setActiveTab("basic")
     }
 
     /** 改单个字段，对应原控件的 onChange；已有错误时即时重算。 */
@@ -170,11 +111,13 @@ export default function AccountSetsPage() {
         if (Object.keys(formErrors).length > 0) setFormErrors(validateAccountSet(next, !!editing))
     }
 
-    /** 提交前校验，对应原 validateFields。 */
+    /** 提交前校验：有错时把抽屉切到出错字段所在的页签，避免改了 A 页看不见 B 页的红字。 */
     function checkForm() {
         const next = validateAccountSet(formValues, !!editing)
         setFormErrors(next)
-        return Object.keys(next).length === 0
+        const first = Object.keys(next)[0] as keyof AccountSetForm | undefined
+        if (first) setActiveTab(tabOfField(first))
+        return !first
     }
 
     async function setCurrent(id?: string) {
@@ -255,52 +198,22 @@ export default function AccountSetsPage() {
 
     function openCreate() {
         setEditing(null)
-        fillForm({
-            name: "",
-            company: "",
-            standard: STANDARDS[0].value,
-            currency: "人民币",
-            taxpayer: TAXPAYERS[0].value,
-            startPeriod: dayjs().toDate(),
-            codingScheme: "4-3-2-2",
-        })
+        fillForm({ ...emptyForm(), startPeriod: dayjs().toDate() })
         setOpen(true)
     }
 
     function openEdit(set: AccountSetDto) {
         setEditing(set)
-        fillForm({
-            name: set.name ?? "",
-            company: set.companyName ?? "",
-            standard: set.standard ?? STANDARDS[0].value,
-            currency: set.baseCurrency ?? "人民币",
-            taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
-            startPeriod: set.startPeriod ? parseDate(set.startPeriod) : dayjs().toDate(),
-            codingScheme: set.accountCodingScheme ?? "4-3-2-2",
-            taxpayerNumber: set.taxpayerNumber ?? "",
-            vatRate: set.vatRate,
-            incomeTaxRate: set.incomeTaxRate,
-            voucherWords: set.voucherWords ?? "记,收,付,转",
-            taxRegion: set.taxRegion ?? undefined,
-            taxLoginType: set.taxLoginType ?? DEFAULT_TAX_LOGIN_TYPE,
-            taxIdentityType: set.taxIdentityType ?? DEFAULT_TAX_IDENTITY_TYPE,
-            taxLoginAccount: set.taxLoginAccount ?? "",
-            taxLoginPassword: "",
-            taxPasswordSaved: set.taxLoginPasswordSet ?? false,
-        })
+        fillForm(formFromDto(set))
         setOpen(true)
     }
 
     function openCopy(set: AccountSetDto) {
         setEditing(null)
         fillForm({
+            ...formFromDto(set),
             name: `${set.name ?? ""}（副本）`,
-            company: set.companyName ?? "",
-            standard: set.standard ?? STANDARDS[0].value,
-            currency: set.baseCurrency ?? "人民币",
-            taxpayer: set.taxpayerType ?? TAXPAYERS[0].value,
             startPeriod: set.startPeriod ? parseDate(set.startPeriod) : dayjs().toDate(),
-            codingScheme: set.accountCodingScheme ?? "4-3-2-2",
         })
         setOpen(true)
     }
@@ -315,7 +228,7 @@ export default function AccountSetsPage() {
         try {
             const api = new AccountSetsApi(apiConfig(token))
             if (editing) {
-                // 编辑
+                // 编辑：三页字段一次提交，未改动的密码不传即保持原值。
                 await api.accountSetsIdPut({
                     id: editing.id!,
                     updateAccountSetRequest: {
@@ -325,9 +238,15 @@ export default function AccountSetsPage() {
                         taxpayerType: values.taxpayer,
                         baseCurrency: values.currency.trim() || "人民币",
                         accountCodingScheme: values.codingScheme?.trim() || undefined,
+                        industry: values.industry ?? "",
+                        assetsModuleEnabled: values.assetsEnabled,
+                        fundsModuleEnabled: values.fundsEnabled,
+                        balanceAssistScope: values.balanceAssistScope,
+                        unitDecimalPlaces: values.unitDecimals,
                         taxpayerNumber: values.taxpayerNumber?.trim() || undefined,
                         vatRate: values.vatRate ?? undefined,
                         incomeTaxRate: values.incomeTaxRate ?? undefined,
+                        isExportEnterprise: values.isExport ?? false,
                         voucherWords: values.voucherWords?.trim() || undefined,
                         taxRegion: values.taxRegion || undefined,
                         taxLoginType: values.taxLoginType || undefined,
@@ -335,6 +254,10 @@ export default function AccountSetsPage() {
                         taxLoginAccount: values.taxLoginAccount?.trim() || undefined,
                         // 密码留空表示不修改：已保存的密码不会因为打开过一次编辑抽屉就被清掉。
                         taxLoginPassword: values.taxLoginPassword?.length ? values.taxLoginPassword : undefined,
+                        iitChannel: values.iitChannel || undefined,
+                        iitLoginType: values.iitLoginType || undefined,
+                        iitLoginAccount: values.iitAccount?.trim() || undefined,
+                        iitLoginPassword: values.iitPassword?.length ? values.iitPassword : undefined,
                     },
                 })
             } else {
@@ -349,6 +272,7 @@ export default function AccountSetsPage() {
                         startYear: dayjs(period).year(),
                         startMonth: dayjs(period).month() + 1,
                         accountCodingScheme: values.codingScheme?.trim() || undefined,
+                        industry: values.industry || undefined,
                     },
                 })
             }
@@ -360,6 +284,13 @@ export default function AccountSetsPage() {
         } finally {
             setSubmitting(false)
         }
+    }
+
+    const fields: AccountSetFieldsProps = {
+        values: formValues,
+        errors: formErrors,
+        editing: !!editing,
+        onChange: setFormValue,
     }
 
     return (
@@ -491,212 +422,36 @@ export default function AccountSetsPage() {
                 )}
             </SectionCard>
 
-            {/* 新增 / 编辑账套 */}
+            {/* 新增 / 编辑账套：编辑态按「基本信息 / 功能参数 / 税务信息」三页组织 */}
             <Drawer
                 open={open}
-                size={512}
+                size={editing ? 700 : 512}
                 title={editing ? "编辑账套" : "新增账套"}
                 onClose={() => setOpen(false)}
-                styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
+                styles={{ body: { display: "flex", flexDirection: "column" } }}
                 footer={
                     <div className="flex justify-end gap-2">
                         <Button onClick={() => setOpen(false)}>取消</Button>
                         <Button type="primary" loading={submitting} onClick={() => void saveSet()}>
-                            {editing ? "保存" : "创建账套"}
+                            {editing ? "保存账套" : "创建账套"}
                         </Button>
                     </div>
                 }
             >
-                <p className="text-[12.5px] text-slate-400">
-                    {editing ? '修改账套基本信息后点击"保存"。' : '填写单位与核算信息后点击"创建账套"保存。'}
-                </p>
-
-                <FormField label="账套名称" htmlFor="account-set-name" required error={formErrors.name}>
-                    <Input
-                        id="account-set-name"
-                        value={formValues.name}
-                        onChange={(e) => setFormValue("name", e.target.value)}
-                        placeholder="如 华信科技 2026"
+                {editing ? (
+                    <Tabs
+                        activeKey={activeTab}
+                        onChange={setActiveTab}
+                        items={FORM_TABS.map((tab) => ({
+                            key: tab.key,
+                            label: tab.label,
+                            children: renderTab(tab.key, fields),
+                        }))}
                     />
-                </FormField>
-
-                <FormField label="单位名称" htmlFor="account-set-company" required error={formErrors.company}>
-                    <Input
-                        id="account-set-company"
-                        value={formValues.company}
-                        onChange={(e) => setFormValue("company", e.target.value)}
-                        placeholder="如 华信科技有限公司"
-                    />
-                </FormField>
-
-                <FormField label="会计准则" htmlFor="account-set-standard">
-                    <Select
-                        id="account-set-standard"
-                        className="w-full"
-                        value={formValues.standard}
-                        options={STANDARDS}
-                        onChange={(v) => setFormValue("standard", v)}
-                    />
-                </FormField>
-
-                <FormField label="记账本位币" htmlFor="account-set-currency">
-                    <Input
-                        id="account-set-currency"
-                        value={formValues.currency}
-                        onChange={(e) => setFormValue("currency", e.target.value)}
-                        placeholder="人民币"
-                    />
-                </FormField>
-
-                <FormField label="纳税人性质" htmlFor="account-set-taxpayer">
-                    <Select
-                        id="account-set-taxpayer"
-                        className="w-full"
-                        value={formValues.taxpayer}
-                        options={TAXPAYERS}
-                        onChange={(v) => setFormValue("taxpayer", v)}
-                    />
-                </FormField>
-
-                <FormField label="启用期间" required error={formErrors.startPeriod}>
-                    <PeriodField
-                        value={formValues.startPeriod}
-                        onChange={(v) => setFormValue("startPeriod", v)}
-                        disabled={!!editing}
-                        allowClear={false}
-                        className="w-full"
-                    />
-                </FormField>
-
-                <FormField
-                    label="科目编码方案"
-                    htmlFor="account-set-coding-scheme"
-                    required
-                    error={formErrors.codingScheme}
-                    description={
-                        '以 "-" 分隔各级科目编码的位数，如 4-3-2-2 表示一级 4 位、二级 3 位、三级 2 位、四级 2 位。最多支持 10 级。'
-                    }
-                >
-                    <Input
-                        id="account-set-coding-scheme"
-                        value={formValues.codingScheme}
-                        onChange={(e) => setFormValue("codingScheme", e.target.value)}
-                        placeholder="4-3-2-2"
-                    />
-                </FormField>
-
-                {editing && (
-                    <>
-                        <FormField label="纳税人识别号" htmlFor="account-set-taxpayer-number">
-                            <Input
-                                id="account-set-taxpayer-number"
-                                value={formValues.taxpayerNumber ?? ""}
-                                onChange={(e) => setFormValue("taxpayerNumber", e.target.value)}
-                                placeholder="如 91330100MA27XXXXXX"
-                                maxLength={50}
-                            />
-                        </FormField>
-
-                        <FormField
-                            label="报税地区"
-                            htmlFor="account-set-tax-region"
-                            description="电子税务局按省分域部署，「一键登录税局」靠它决定打开哪个入口。"
-                        >
-                            <Select
-                                id="account-set-tax-region"
-                                className="w-full"
-                                showSearch
-                                placeholder="请选择省、自治区、直辖市"
-                                value={formValues.taxRegion}
-                                options={toOptions(TAX_REGIONS)}
-                                onChange={(v) => setFormValue("taxRegion", v)}
-                            />
-                        </FormField>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <FormField label="增值税率（%）" htmlFor="account-set-vat-rate">
-                                <NumberField
-                                    id="account-set-vat-rate"
-                                    value={formValues.vatRate}
-                                    onChange={(v) => setFormValue("vatRate", v)}
-                                    min={0}
-                                    max={100}
-                                    precision={2}
-                                />
-                            </FormField>
-                            <FormField label="所得税率（%）" htmlFor="account-set-income-tax-rate">
-                                <NumberField
-                                    id="account-set-income-tax-rate"
-                                    value={formValues.incomeTaxRate}
-                                    onChange={(v) => setFormValue("incomeTaxRate", v)}
-                                    min={0}
-                                    max={100}
-                                    precision={2}
-                                />
-                            </FormField>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <FormField label="税局登录方式" htmlFor="account-set-tax-login-type">
-                                <Select
-                                    id="account-set-tax-login-type"
-                                    className="w-full"
-                                    value={formValues.taxLoginType}
-                                    options={toOptions(TAX_LOGIN_TYPES)}
-                                    onChange={(v) => setFormValue("taxLoginType", v)}
-                                />
-                            </FormField>
-                            <FormField label="税局身份类型" htmlFor="account-set-tax-identity-type">
-                                <Select
-                                    id="account-set-tax-identity-type"
-                                    className="w-full"
-                                    value={formValues.taxIdentityType}
-                                    options={toOptions(TAX_IDENTITY_TYPES)}
-                                    onChange={(v) => setFormValue("taxIdentityType", v)}
-                                />
-                            </FormField>
-                        </div>
-
-                        <FormField label="税局实名账号" htmlFor="account-set-tax-login-account">
-                            <Input
-                                id="account-set-tax-login-account"
-                                value={formValues.taxLoginAccount ?? ""}
-                                onChange={(e) => setFormValue("taxLoginAccount", e.target.value)}
-                                placeholder="税局登录用的手机号或身份证号"
-                                maxLength={50}
-                            />
-                        </FormField>
-
-                        <FormField
-                            label="税局实名密码"
-                            htmlFor="account-set-tax-login-password"
-                            description="加密后存库，接口只回「是否已填写」、不再下发；更换 Jwt 签名密钥会让已存密码解不开，届时重填一次即可。"
-                        >
-                            <Input.Password
-                                id="account-set-tax-login-password"
-                                value={formValues.taxLoginPassword ?? ""}
-                                onChange={(e) => setFormValue("taxLoginPassword", e.target.value)}
-                                placeholder={formValues.taxPasswordSaved ? "已保存，留空表示不修改" : "请输入税局实名密码"}
-                                autoComplete="new-password"
-                            />
-                        </FormField>
-
-                        <FormField
-                            label="凭证字"
-                            htmlFor="account-set-voucher-words"
-                            required
-                            error={formErrors.voucherWords}
-                            description="以逗号分隔多个凭证字，制单时只能从中选择，如：记,收,付,转。"
-                        >
-                            <Input
-                                id="account-set-voucher-words"
-                                value={formValues.voucherWords ?? ""}
-                                onChange={(e) => setFormValue("voucherWords", e.target.value)}
-                                placeholder="记,收,付,转"
-                                maxLength={100}
-                            />
-                        </FormField>
-                    </>
+                ) : (
+                    <div className="pt-1">
+                        <BasicInfoFields {...fields} />
+                    </div>
                 )}
             </Drawer>
 

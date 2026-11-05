@@ -6,7 +6,6 @@ import {
     CheckCircleOutlined,
     CloseOutlined,
     DownloadOutlined,
-    MoneyCollectOutlined,
     ReloadOutlined,
     SaveOutlined,
     UploadOutlined,
@@ -19,7 +18,7 @@ import { AccountsApi, type OpeningBalanceRowDto, type OpeningBalancesDto } from 
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { PageHeader, SectionCard } from "@/components/page/section"
+import { SectionCard } from "@/components/page/section"
 import { StatusPill } from "@/components/page/status-pill"
 import { NumberField } from "@/components/fields/number-field"
 
@@ -238,60 +237,53 @@ export default function OpeningBalancesPage() {
 
     return (
         <div className="flex w-full flex-col gap-5">
-            <PageHeader
-                icon={MoneyCollectOutlined}
-                title="期初余额"
-                subtitle="录入账套启用期间的科目期初余额；末级科目按余额方向录入，反方向余额用负数。"
-                actions={
-                    <>
-                        {/* 与柠檬云「期初」一致：导出模板 / 导入 / 试算平衡 */}
-                        <Button icon={<DownloadOutlined />} onClick={() => void exportTemplate()} disabled={!accountSetId}>
-                            导出
-                        </Button>
-                        <Button
-                            icon={<UploadOutlined />}
-                            onClick={() => importInputRef.current?.click()}
-                            disabled={!accountSetId || importing}
-                        >
-                            导入
-                        </Button>
-                        <Button
-                            icon={<CalculatorOutlined />}
-                            onClick={() =>
-                                setCheckMessage(
-                                    totals.balanced
-                                        ? `试算平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}。`
-                                        : `试算不平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}，差额 ${fmtAmount(Math.abs(totals.debit - totals.credit))}。`,
-                                )
-                            }
-                        >
-                            试算平衡
-                        </Button>
-                        <input
-                            ref={importInputRef}
-                            type="file"
-                            accept=".xlsx"
-                            className="hidden"
-                            onChange={(e) => void importFile(e.target.files?.[0] ?? null)}
-                        />
-                        <Button
-                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
-                            disabled={loading}
-                            onClick={() => void load()}
-                        >
-                            刷新
-                        </Button>
-                        <Button
-                            type="primary"
-                            icon={saving ? <SaveOutlined spin /> : <SaveOutlined />}
-                            disabled={!dirty || saving}
-                            onClick={() => void save()}
-                        >
-                            保存
-                        </Button>
-                    </>
-                }
-            />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* 与柠檬云「期初」一致：导出模板 / 导入 / 试算平衡 */}
+                <Button icon={<DownloadOutlined />} onClick={() => void exportTemplate()} disabled={!accountSetId}>
+                    导出
+                </Button>
+                <Button
+                    icon={<UploadOutlined />}
+                    onClick={() => importInputRef.current?.click()}
+                    disabled={!accountSetId || importing}
+                >
+                    导入
+                </Button>
+                <Button
+                    icon={<CalculatorOutlined />}
+                    onClick={() =>
+                        setCheckMessage(
+                            totals.balanced
+                                ? `试算平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}。`
+                                : `试算不平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}，差额 ${fmtAmount(Math.abs(totals.debit - totals.credit))}。`,
+                        )
+                    }
+                >
+                    试算平衡
+                </Button>
+                <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".xlsx"
+                    className="hidden"
+                    onChange={(e) => void importFile(e.target.files?.[0] ?? null)}
+                />
+                <Button
+                    icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                    disabled={loading}
+                    onClick={() => void load()}
+                >
+                    刷新
+                </Button>
+                <Button
+                    type="primary"
+                    icon={saving ? <SaveOutlined spin /> : <SaveOutlined />}
+                    disabled={!dirty || saving}
+                    onClick={() => void save()}
+                >
+                    保存
+                </Button>
+            </div>
 
             {error && <Alert type="error" showIcon title={error} />}
 
@@ -303,7 +295,6 @@ export default function OpeningBalancesPage() {
                     action={
                         <Button
                             type="text"
-                            size="small"
                             title="关闭"
                             icon={<CloseOutlined />}
                             onClick={() => setSavedTip(false)}
@@ -342,7 +333,6 @@ export default function OpeningBalancesPage() {
                     <>
                         {/* 科目类别页签：与柠檬云「期初」一致（资产/负债/共同/权益/成本/损益） */}
                         <Tabs
-                            size="small"
                             activeKey={String(activeCategory)}
                             onChange={(key) => setActiveCategory(Number(key))}
                             items={CATEGORY_TABS.map((t) => ({ key: String(t.value), label: t.label }))}
@@ -352,7 +342,6 @@ export default function OpeningBalancesPage() {
                             dataSource={(data?.rows ?? []).filter((row) => (row.category ?? 1) === activeCategory)}
                             rowKey={(row) => row.accountId ?? row.code ?? ""}
                             pagination={false}
-                            size="small"
                         />
                     </>
                 )}

@@ -100,7 +100,7 @@ namespace KuaiJi.Modules.Accounting.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             Guard(code, name);
@@ -146,7 +146,7 @@ namespace KuaiJi.Modules.Accounting.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("科目名称不能为空。", nameof(name));
+                throw new ArgumentException("科目名称不能为空。");
             }
 
             Name = name.Trim();
@@ -201,6 +201,12 @@ namespace KuaiJi.Modules.Accounting.Domain
         /// <summary>停用科目。</summary>
         public void Disable() => IsEnabled = false;
 
+        /// <summary>
+        /// 下级科目全部删除后恢复末级标记。IsLeaf 是持久化标记（挂下级时置 false），
+        /// 删除下级若不同步回置，上级会永久停在非末级状态被「非末级不可记账/不可录期初」挡住。
+        /// </summary>
+        public void RestoreLeaf() => IsLeaf = true;
+
         /// <summary>编码方案变更时，用新编码、新上级和新级次重建此科目。</summary>
         public void RebaseCode(string newCode, Guid? newParentId, int newLevel)
         {
@@ -213,12 +219,12 @@ namespace KuaiJi.Modules.Accounting.Domain
         {
             if (string.IsNullOrWhiteSpace(code))
             {
-                throw new ArgumentException("科目编码不能为空。", nameof(code));
+                throw new ArgumentException("科目编码不能为空。");
             }
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("科目名称不能为空。", nameof(name));
+                throw new ArgumentException("科目名称不能为空。");
             }
         }
     }

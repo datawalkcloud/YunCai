@@ -10,6 +10,9 @@ Name | Type
 `title` | string
 `status` | string
 `message` | string
+`group` | string
+`actionKey` | string
+`actionText` | string
 
 ## Example
 
@@ -22,6 +25,9 @@ const example = {
   "title": null,
   "status": null,
   "message": null,
+  "group": null,
+  "actionKey": null,
+  "actionText": null,
 } satisfies ClosingCheckItemDto
 
 console.log(example)

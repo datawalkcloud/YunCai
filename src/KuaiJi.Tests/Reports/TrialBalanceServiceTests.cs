@@ -37,12 +37,12 @@ public sealed class TrialBalanceServiceTests : IDisposable
         => dto.Rows.Single(r => r.Code == code);
 
     [Fact]
-    public async Task GetAsync_DraftAndReviewedVouchers_AreAbsentFromBalances()
+    public async Task GetAsync_UnpostedVouchers_AreAbsentFromBalances()
     {
         _h.AddVoucher(new DateOnly(2026, 3, 5), VoucherStatus.Draft,
             _h.Entry("草稿", _cash.Id, 8_000m, 0m), _h.Entry("草稿", _revenue.Id, 0m, 8_000m));
-        _h.AddVoucher(new DateOnly(2026, 3, 6), VoucherStatus.Reviewed,
-            _h.Entry("已审核未过账", _cash.Id, 7_000m, 0m), _h.Entry("已审核未过账", _revenue.Id, 0m, 7_000m));
+        _h.AddVoucher(new DateOnly(2026, 3, 6), VoucherStatus.Draft,
+            _h.Entry("未过账草稿", _cash.Id, 7_000m, 0m), _h.Entry("未过账草稿", _revenue.Id, 0m, 7_000m));
         _h.AddVoucher(new DateOnly(2026, 3, 7), VoucherStatus.Posted,
             _h.Entry("已过账", _cash.Id, 300m, 0m), _h.Entry("已过账", _revenue.Id, 0m, 300m));
 
@@ -119,9 +119,11 @@ public sealed class TrialBalanceServiceTests : IDisposable
 
         var dto = await _service.GetAsync(_h.AccountSet.Id, new DateOnly(2026, 3, 1), new DateOnly(2026, 3, 31));
 
-        Assert.Equal(dto.Rows.Sum(r => r.OpeningDebit), dto.Rows.Sum(r => r.OpeningCredit));
-        Assert.Equal(dto.Rows.Sum(r => r.PeriodDebit), dto.Rows.Sum(r => r.PeriodCredit));
-        Assert.Equal(dto.Rows.Sum(r => r.EndingDebit), dto.Rows.Sum(r => r.EndingCredit));
+        // 上级行已含下级合计，试算平衡只取一级科目累加
+        var roots = dto.Rows.Where(r => r.ParentCode is null).ToList();
+        Assert.Equal(roots.Sum(r => r.OpeningDebit), roots.Sum(r => r.OpeningCredit));
+        Assert.Equal(roots.Sum(r => r.PeriodDebit), roots.Sum(r => r.PeriodCredit));
+        Assert.Equal(roots.Sum(r => r.EndingDebit), roots.Sum(r => r.EndingCredit));
         // 数字本身也要对得上：期末银行存款 2_000 - 600 + 1_500 = 2_900（借方）
         Assert.Equal(2_900m, Row(dto, "1002").EndingDebit);
     }
@@ -142,13 +144,16 @@ public sealed class TrialBalanceServiceTests : IDisposable
     [Fact]
     public async Task GetAsync_RowsOrderedByAccountCode()
     {
-        _h.AddAccount("2101", "应付账款", AccountCategory.Liability, BalanceDirection.Credit, opening: 5m);
+        // 用构造函数未占用的号段（1001/2101/6001/6602 已建），且每个都带期初——
+        // 无余额又无本期发生额的科目不入表，只有 0 期初的科目会被剔除。
+        _h.AddAccount("6401", "主营业务成本", AccountCategory.ProfitAndLoss, BalanceDirection.Debit, opening: 5m);
         _h.AddAccount("1122", "应收账款", AccountCategory.Asset, BalanceDirection.Debit, opening: 5m);
-        _h.AddAccount("6602", "管理费用", AccountCategory.ProfitAndLoss, BalanceDirection.Debit);
+        _h.AddAccount("2202", "应付账款——明细", AccountCategory.Liability, BalanceDirection.Credit, opening: 5m);
 
         var dto = await _service.GetAsync(_h.AccountSet.Id, new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31));
 
-        Assert.Equal(["1001", "1122", "2101", "6001", "6602"], dto.Rows.Select(r => r.Code).ToArray());
+        // 建表顺序是 6401→1122→2202（插入序），断言输出按编码升序，说明排序取的是编码而非入库顺序。
+        Assert.Equal(["1122", "2202", "6401"], dto.Rows.Select(r => r.Code).ToArray());
     }
 
     [Fact]
@@ -196,18 +201,32 @@ public sealed class TrialBalanceServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAsync_NonLeafParent_HasRowOnlyWhenItCarriesItsOwnBalance()
+    public async Task GetAsync_NonLeafParent_RollsUpChildAmounts()
     {
         var parent = _h.AddAccount("1122", "应收账款", AccountCategory.Asset, BalanceDirection.Debit);
         var child = _h.AddChild(parent, "112201", "甲公司");
+        var grandchild = _h.AddChild(child, "11220101", "乙公司");
         _h.AddVoucher(new DateOnly(2026, 3, 10), VoucherStatus.Posted,
-            _h.Entry("挂明细", child.Id, 500m, 0m), _h.Entry("挂明细", _revenue.Id, 0m, 500m));
+            _h.Entry("挂明细", grandchild.Id, 500m, 0m), _h.Entry("挂明细", _revenue.Id, 0m, 500m));
 
         var dto = await _service.GetAsync(_h.AccountSet.Id, new DateOnly(2026, 3, 1), new DateOnly(2026, 3, 31));
 
-        // 本级没有直接挂账也没有启用期初 ⇒ 不出一行；上级合计由账页侧 GetAccountBalance 负责（见 LedgerDataSetTests）
-        Assert.DoesNotContain(parent.Code, dto.Rows.Select(r => r.Code));
-        Assert.Equal(500m, Row(dto, "112201").PeriodDebit);
+        // 上级行汇总整棵子树：1122、112201 都没有直接挂账，但凭最末级的 500 也要层层汇总；前端据此挂成树
+        var parentRow = Row(dto, "1122");
+        Assert.Equal(1, parentRow.Level);
+        Assert.Null(parentRow.ParentCode);
+        Assert.Equal(500m, parentRow.PeriodDebit);
+        Assert.Equal(500m, parentRow.EndingDebit);
+
+        var childRow = Row(dto, "112201");
+        Assert.Equal(2, childRow.Level);
+        Assert.Equal("1122", childRow.ParentCode);
+        Assert.Equal(500m, childRow.PeriodDebit);
+
+        var grandchildRow = Row(dto, "11220101");
+        Assert.Equal(3, grandchildRow.Level);
+        Assert.Equal("112201", grandchildRow.ParentCode);
+        Assert.Equal(500m, grandchildRow.PeriodDebit);
     }
 
     [Fact]

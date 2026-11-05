@@ -45,6 +45,12 @@ export interface CurrencyDto {
     rate?: number;
     /**
      * 
+     * @type {number}
+     * @memberof CurrencyDto
+     */
+    convertType?: number;
+    /**
+     * 
      * @type {string}
      * @memberof CurrencyDto
      */
@@ -78,6 +84,7 @@ export function CurrencyDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'code': json['code'] == null ? undefined : json['code'],
         'name': json['name'] == null ? undefined : json['name'],
         'rate': json['rate'] == null ? undefined : json['rate'],
+        'convertType': json['convertType'] == null ? undefined : json['convertType'],
         'convertText': json['convertText'] == null ? undefined : json['convertText'],
         'isBase': json['isBase'] == null ? undefined : json['isBase'],
     };
@@ -98,6 +105,7 @@ export function CurrencyDtoToJSONTyped(value?: CurrencyDto | null, ignoreDiscrim
         'code': value['code'],
         'name': value['name'],
         'rate': value['rate'],
+        'convertType': value['convertType'],
         'convertText': value['convertText'],
         'isBase': value['isBase'],
     };

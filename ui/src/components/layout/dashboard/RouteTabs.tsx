@@ -7,7 +7,7 @@ import {
     LeftOutlined,
     RightOutlined,
 } from "@ant-design/icons";
-import { Dropdown } from "antd";
+import { Button, Dropdown } from "antd";
 
 import { cn } from "@/lib/utils";
 import { ICON_STYLE } from "@/components/page/styles";
@@ -98,13 +98,13 @@ export function RouteTabs() {
                         onClick: ({ key }) => go(key),
                     }}
                 >
-                    <button
-                        type="button"
+                    <Button
+                        shape="circle"
+                        size="small"
                         title="全部页签"
-                        className="flex size-6 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition-colors hover:border-[#2f6bff]/40 hover:text-[#2f6bff]"
-                    >
-                        <DownOutlined className="text-[9px]" />
-                    </button>
+                        className="!text-slate-500 hover:!border-[#2f6bff] hover:!text-[#2f6bff]"
+                        icon={<DownOutlined className="text-[9px]" />}
+                    />
                 </Dropdown>
             )}
         </div>
@@ -113,13 +113,15 @@ export function RouteTabs() {
 
 function ScrollArrow({ direction, onClick }: { direction: "left" | "right"; onClick: () => void }) {
     return (
-        <button
-            type="button"
+        <Button
+            type="text"
+            size="small"
             onClick={onClick}
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white hover:text-slate-600"
-        >
-            {direction === "left" ? <LeftOutlined className="text-[10px]" /> : <RightOutlined className="text-[10px]" />}
-        </button>
+            className="!text-slate-400 hover:!text-slate-600"
+            icon={
+                direction === "left" ? <LeftOutlined className="text-[10px]" /> : <RightOutlined className="text-[10px]" />
+            }
+        />
     );
 }
 

@@ -10,7 +10,6 @@ Name | Type
 `endDate` | Date
 `word` | string
 `preparer` | string
-`reviewed` | boolean
 `hasAssists` | boolean
 `summaryContains` | string
 `remarkContains` | string
@@ -35,7 +34,6 @@ const example = {
   "endDate": null,
   "word": null,
   "preparer": null,
-  "reviewed": null,
   "hasAssists": null,
   "summaryContains": null,
   "remarkContains": null,

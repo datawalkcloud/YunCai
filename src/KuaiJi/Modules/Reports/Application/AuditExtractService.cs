@@ -187,7 +187,6 @@ namespace KuaiJi.Modules.Reports.Application
         private static string StatusText(VoucherStatus status) => status switch
         {
             VoucherStatus.Draft => "草稿",
-            VoucherStatus.Reviewed => "已审核",
             VoucherStatus.Posted => "已记账",
             _ => "未知",
         };

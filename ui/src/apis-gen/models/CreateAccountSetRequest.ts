@@ -73,6 +73,12 @@ export interface CreateAccountSetRequest {
      * @memberof CreateAccountSetRequest
      */
     accountCodingScheme?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateAccountSetRequest
+     */
+    industry?: string | null;
 }
 
 /**
@@ -101,6 +107,7 @@ export function CreateAccountSetRequestFromJSONTyped(json: any, ignoreDiscrimina
         'startMonth': json['startMonth'] == null ? undefined : json['startMonth'],
         'preset': json['preset'] == null ? undefined : json['preset'],
         'accountCodingScheme': json['accountCodingScheme'] == null ? undefined : json['accountCodingScheme'],
+        'industry': json['industry'] == null ? undefined : json['industry'],
     };
 }
 
@@ -124,6 +131,7 @@ export function CreateAccountSetRequestToJSONTyped(value?: CreateAccountSetReque
         'startMonth': value['startMonth'],
         'preset': value['preset'],
         'accountCodingScheme': value['accountCodingScheme'],
+        'industry': value['industry'],
     };
 }
 

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Alert, Button, Checkbox, Dropdown, Input, Modal, Spin, Table, Tabs } from "antd"
 import type { TableColumnsType } from "antd"
 import {
-    ApartmentOutlined,
     DownloadOutlined,
     SearchOutlined,
     DeleteOutlined,
@@ -12,7 +11,7 @@ import {
     RightOutlined,
 } from "@ant-design/icons"
 
-import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { AccountSetsApi, AssistItemsApi, type AssistCategoryStatDto, type AssistItemDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
@@ -20,7 +19,7 @@ import { useConfirm } from "@/hooks/useConfirm"
 import { cn } from "@/lib/utils"
 import { ASSIST_CODE_MAX_LENGTH, assistExpectedCodeLength, assistSupportsHierarchy } from "@/components/assist/constants"
 import { invalidateAssistItems } from "@/components/assist/assist-store"
-import { PageHeader, SectionCard } from "@/components/page/section"
+import { SectionCard } from "@/components/page/section"
 import { FormField } from "@/components/page/form-field"
 import { StatusPill } from "@/components/page/status-pill"
 
@@ -60,9 +59,7 @@ const emptyForm: ItemForm = { code: "", name: "", contact: "", remark: "" }
 
 export default function AssistItemsPage() {
     const { token } = useAuth()
-    const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const currentSet = accountSets.find((s) => s.id === accountSetId)
 
     const [categories, setCategories] = useState<AssistCategoryStatDto[]>([])
     const [categoriesLoading, setCategoriesLoading] = useState(false)
@@ -134,17 +131,6 @@ export default function AssistItemsPage() {
 
     return (
         <div className="flex flex-col gap-5">
-            <PageHeader
-                icon={ApartmentOutlined}
-                title="辅助核算"
-                subtitle={
-                    <>
-                        账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                        。维护客户、供应商、部门等核算项目档案；科目挂上辅助核算后，凭证分录必须录入对应档案。
-                    </>
-                }
-            />
-
             <Tabs
                 activeKey={activeTab}
                 onChange={(key) => {
@@ -500,7 +486,6 @@ function AssistItemListPanel({
                     {node.children ? (
                         <Button
                             type="text"
-                            size="small"
                             aria-label={
                                 expandedKeys.includes(String(node.id)) ? "收起下级" : "展开下级"
                             }
@@ -565,7 +550,6 @@ function AssistItemListPanel({
                         {hierarchical && (
                             <Button
                                 type="text"
-                                size="small"
                                 title="新增下级档案"
                                 icon={<PlusOutlined />}
                                 onClick={() => void openCreate(node)}
@@ -573,14 +557,12 @@ function AssistItemListPanel({
                         )}
                         <Button
                             type="text"
-                            size="small"
                             title="编辑档案"
                             icon={<EditOutlined />}
                             onClick={() => openEdit(node)}
                         />
                         <Button
                             type="text"
-                            size="small"
                             className="text-[12px] text-slate-400"
                             disabled={busyId === id}
                             onClick={() => void toggleEnabled(node)}
@@ -589,7 +571,6 @@ function AssistItemListPanel({
                         </Button>
                         <Button
                             type="text"
-                            size="small"
                             danger
                             title={node.children ? "删除档案（需先删除下级）" : "删除档案"}
                             disabled={busyId === id}
@@ -654,7 +635,7 @@ function AssistItemListPanel({
                         title={
                             <>
                                 该类别尚未在账套启用，不能新增档案。
-                                <Button type="link" size="small" onClick={onCategoryEnabledChange}>
+                                <Button type="link" onClick={onCategoryEnabledChange}>
                                     立即启用
                                 </Button>
                             </>
@@ -675,11 +656,10 @@ function AssistItemListPanel({
                             rowKey={(row) => String(row.node.id)}
                             rowClassName={(row) => (row.node.isEnabled ? "" : "text-slate-400")}
                             pagination={false}
-                            size="small"
                             locale={{ emptyText: "该类别暂无档案，可点击「新增档案」建立。" }}
                         />
-                        {/* 页脚：与柠檬云一致的「显示 x 到 y，共 z 条」 */}
-                        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 text-[12.5px] text-slate-500">
+                        {/* 页脚：与柠檬云一致的「显示 x 到 y，共 z 条」；不画上边框 —— 表格末行已有分隔线，再加一条会叠成双线 */}
+                        <div className="flex items-center justify-between px-4 py-2.5 text-[12.5px] text-slate-500">
                             <span>
                                 显示 {filteredRows.length ? 1 : 0} 到 {Math.min(filteredRows.length, 20)}，共 {filteredRows.length} 条
                             </span>

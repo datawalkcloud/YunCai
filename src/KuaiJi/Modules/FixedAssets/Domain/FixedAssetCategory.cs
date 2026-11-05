@@ -113,7 +113,7 @@ namespace KuaiJi.Modules.FixedAssets.Domain
         {
             if (string.IsNullOrWhiteSpace(code))
             {
-                throw new ArgumentException("类别编码不能为空。", nameof(code));
+                throw new ArgumentException("类别编码不能为空。");
             }
 
             if (code.Trim().Length > MaxCodeLength)
@@ -123,7 +123,7 @@ namespace KuaiJi.Modules.FixedAssets.Domain
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("类别名称不能为空。", nameof(name));
+                throw new ArgumentException("类别名称不能为空。");
             }
 
             if (name.Trim().Length > MaxNameLength)
@@ -133,17 +133,17 @@ namespace KuaiJi.Modules.FixedAssets.Domain
 
             if (subjectAccountId == Guid.Empty)
             {
-                throw new ArgumentException("必须选择资产对应的会计科目。", nameof(subjectAccountId));
+                throw new ArgumentException("必须选择资产对应的会计科目。");
             }
 
             if (months <= 0)
             {
-                throw new ArgumentException("折旧年限（月）必须大于零。", nameof(months));
+                throw new ArgumentException("折旧年限（月）必须大于零。");
             }
 
             if (residualRate < 0m || residualRate > 100m)
             {
-                throw new ArgumentException("预计净残值率必须在 0-100 之间。", nameof(residualRate));
+                throw new ArgumentException("预计净残值率必须在 0-100 之间。");
             }
         }
     }

@@ -117,8 +117,6 @@ export default function AgeingAnalysisPage() {
     return (
         <LedgerPageShell
             page="ageing"
-            title="账龄分析"
-            hint="按「科目 × 档案」列示期末未核销余额，并按账龄区间分档展示金额与占比。"
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}

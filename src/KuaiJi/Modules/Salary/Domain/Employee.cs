@@ -16,46 +16,43 @@ namespace KuaiJi.Modules.Salary.Domain
         {
         }
 
-        private Employee(
-            Guid id,
-            Guid accountSetId,
-            string code,
-            string name,
-            EmployeeGender gender,
-            EmployeeIdType idType,
-            string? idNo,
-            string? dept,
-            string? phone,
-            string? email,
-            DateOnly? birthDate,
-            DateOnly? hireDate,
-            string? bankName,
-            string? bankAccountNo,
-            string? post,
-            string? title,
-            Guid? subjectAccountId,
-            EmployeeStatus status,
-            string? remark)
+        /// <summary>新建员工，须归属于某一账套。</summary>
+        public static Employee Create(Guid accountSetId, EmployeeProfile profile)
         {
-            Id = id;
-            AccountSetId = accountSetId;
-            Code = code;
-            Name = name;
-            Gender = gender;
-            IdType = idType;
-            IdNo = idNo;
-            Dept = dept;
-            Phone = phone;
-            Email = email;
-            BirthDate = birthDate;
-            HireDate = hireDate;
-            BankName = bankName;
-            BankAccountNo = bankAccountNo;
-            Post = post;
-            Title = title;
-            SubjectAccountId = subjectAccountId;
-            Status = status;
-            Remark = remark;
+            GuardCode(profile.Code);
+            GuardName(profile.Name);
+            return new Employee
+            {
+                Id = Guid.NewGuid(),
+                AccountSetId = accountSetId,
+                Code = profile.Code.Trim(),
+                Name = profile.Name.Trim(),
+                Gender = profile.Gender,
+                IdType = profile.IdType,
+                IdNo = Normalize(profile.IdNo),
+                Dept = Normalize(profile.Dept),
+                Phone = Normalize(profile.Phone),
+                Email = Normalize(profile.Email),
+                BirthDate = profile.BirthDate,
+                HireDate = profile.HireDate,
+                BankName = Normalize(profile.BankName),
+                BankAccountNo = Normalize(profile.BankAccountNo),
+                Post = Normalize(profile.Post),
+                Title = Normalize(profile.Title),
+                Education = Normalize(profile.Education),
+                IsDisabled = profile.IsDisabled,
+                IsMartyrFamily = profile.IsMartyrFamily,
+                IsSoloElder = profile.IsSoloElder,
+                IsSeniorExpert = profile.IsSeniorExpert,
+                EmploymentType = profile.EmploymentType,
+                DeductBasicExpense = profile.DeductBasicExpense,
+                PayStartDate = profile.PayStartDate,
+                SubjectAccountId = profile.SubjectAccountId,
+                PaysSocialInsurance = profile.PaysSocialInsurance,
+                Status = profile.Status,
+                LeaveDate = profile.Status == EmployeeStatus.Resigned ? profile.LeaveDate ?? DateOnly.FromDateTime(DateTime.UtcNow) : null,
+                Remark = Normalize(profile.Remark),
+            };
         }
 
         /// <summary>员工标识。</summary>
@@ -109,8 +106,35 @@ namespace KuaiJi.Modules.Salary.Domain
         /// <summary>职称。</summary>
         public string? Title { get; private set; }
 
+        /// <summary>学历。</summary>
+        public string? Education { get; private set; }
+
+        /// <summary>是否残疾人。</summary>
+        public bool IsDisabled { get; private set; }
+
+        /// <summary>是否烈属。</summary>
+        public bool IsMartyrFamily { get; private set; }
+
+        /// <summary>是否孤老。</summary>
+        public bool IsSoloElder { get; private set; }
+
+        /// <summary>是否高级专家（未选择为 null）。</summary>
+        public bool? IsSeniorExpert { get; private set; }
+
+        /// <summary>任职受雇从业类型。</summary>
+        public EmployeeEmploymentType EmploymentType { get; private set; }
+
+        /// <summary>是否扣除减除费用。</summary>
+        public bool DeductBasicExpense { get; private set; } = true;
+
+        /// <summary>工资始发日期。</summary>
+        public DateOnly? PayStartDate { get; private set; }
+
         /// <summary>计提工资科目标识（生成计提工资凭证的借方科目）。</summary>
         public Guid? SubjectAccountId { get; private set; }
+
+        /// <summary>是否缴纳五险一金。</summary>
+        public bool PaysSocialInsurance { get; private set; } = true;
 
         /// <summary>员工状态。</summary>
         public EmployeeStatus Status { get; private set; }
@@ -118,98 +142,47 @@ namespace KuaiJi.Modules.Salary.Domain
         /// <summary>备注。</summary>
         public string? Remark { get; private set; }
 
-        /// <summary>新建员工，须归属于某一账套。</summary>
-        public static Employee Create(
-            Guid accountSetId,
-            string code,
-            string name,
-            EmployeeGender gender,
-            EmployeeIdType idType,
-            string? idNo,
-            string? dept,
-            string? phone,
-            string? email,
-            DateOnly? birthDate,
-            DateOnly? hireDate,
-            string? bankName,
-            string? bankAccountNo,
-            string? post,
-            string? title,
-            Guid? subjectAccountId,
-            EmployeeStatus status,
-            string? remark)
-        {
-            GuardCode(code);
-            GuardName(name);
-            return new Employee(
-                Guid.NewGuid(),
-                accountSetId,
-                code.Trim(),
-                name.Trim(),
-                gender,
-                idType,
-                Normalize(idNo),
-                Normalize(dept),
-                Normalize(phone),
-                Normalize(email),
-                birthDate,
-                hireDate,
-                Normalize(bankName),
-                Normalize(bankAccountNo),
-                Normalize(post),
-                Normalize(title),
-                subjectAccountId,
-                status,
-                Normalize(remark));
-        }
-
         /// <summary>修改员工档案。离职时记录离职日期。</summary>
-        public void Update(
-            string code,
-            string name,
-            EmployeeGender gender,
-            EmployeeIdType idType,
-            string? idNo,
-            string? dept,
-            string? phone,
-            string? email,
-            DateOnly? birthDate,
-            DateOnly? hireDate,
-            string? bankName,
-            string? bankAccountNo,
-            string? post,
-            string? title,
-            Guid? subjectAccountId,
-            EmployeeStatus status,
-            string? remark)
+        public void Update(EmployeeProfile profile)
         {
-            GuardCode(code);
-            GuardName(name);
-            Code = code.Trim();
-            Name = name.Trim();
-            Gender = gender;
-            IdType = idType;
-            IdNo = Normalize(idNo);
-            Dept = Normalize(dept);
-            Phone = Normalize(phone);
-            Email = Normalize(email);
-            BirthDate = birthDate;
-            HireDate = hireDate;
-            BankName = Normalize(bankName);
-            BankAccountNo = Normalize(bankAccountNo);
-            Post = Normalize(post);
-            Title = Normalize(title);
-            SubjectAccountId = subjectAccountId;
-            Status = status;
-            LeaveDate = status == EmployeeStatus.Resigned ? LeaveDate ?? DateOnly.FromDateTime(DateTime.UtcNow) : null;
-            Remark = Normalize(remark);
+            GuardCode(profile.Code);
+            GuardName(profile.Name);
+            Code = profile.Code.Trim();
+            Name = profile.Name.Trim();
+            Gender = profile.Gender;
+            IdType = profile.IdType;
+            IdNo = Normalize(profile.IdNo);
+            Dept = Normalize(profile.Dept);
+            Phone = Normalize(profile.Phone);
+            Email = Normalize(profile.Email);
+            BirthDate = profile.BirthDate;
+            HireDate = profile.HireDate;
+            BankName = Normalize(profile.BankName);
+            BankAccountNo = Normalize(profile.BankAccountNo);
+            Post = Normalize(profile.Post);
+            Title = Normalize(profile.Title);
+            Education = Normalize(profile.Education);
+            IsDisabled = profile.IsDisabled;
+            IsMartyrFamily = profile.IsMartyrFamily;
+            IsSoloElder = profile.IsSoloElder;
+            IsSeniorExpert = profile.IsSeniorExpert;
+            EmploymentType = profile.EmploymentType;
+            DeductBasicExpense = profile.DeductBasicExpense;
+            PayStartDate = profile.PayStartDate;
+            SubjectAccountId = profile.SubjectAccountId;
+            PaysSocialInsurance = profile.PaysSocialInsurance;
+            Status = profile.Status;
+            LeaveDate = profile.Status == EmployeeStatus.Resigned
+                ? profile.LeaveDate ?? LeaveDate ?? DateOnly.FromDateTime(DateTime.UtcNow)
+                : null;
+            Remark = Normalize(profile.Remark);
         }
 
         private static void GuardCode(string code)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
-                throw new ArgumentException("员工编号不能为空。", nameof(code));
+                throw new ArgumentException("员工编号不能为空。");
             }
 
             if (code.Trim().Length > MaxCodeLength)
@@ -222,7 +195,7 @@ namespace KuaiJi.Modules.Salary.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("员工姓名不能为空。", nameof(name));
+                throw new ArgumentException("员工姓名不能为空。");
             }
 
             if (name.Trim().Length > MaxNameLength)

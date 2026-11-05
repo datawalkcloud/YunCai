@@ -47,12 +47,12 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (voucherId == Guid.Empty)
             {
-                throw new ArgumentException("附件必须归属某张凭证。", nameof(voucherId));
+                throw new ArgumentException("附件必须归属某张凭证。");
             }
 
             if (content is null || content.Length == 0)
             {
-                throw new ArgumentException("附件内容为空。", nameof(content));
+                throw new ArgumentException("附件内容为空。");
             }
 
             var name = string.IsNullOrWhiteSpace(fileName) ? "未命名附件" : fileName.Trim();

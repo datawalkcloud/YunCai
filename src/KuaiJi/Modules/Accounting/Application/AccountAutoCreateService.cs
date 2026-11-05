@@ -73,7 +73,7 @@ namespace KuaiJi.Modules.Accounting.Application
                     try
                     {
                         var child = parent.AddChild(code, name, direction);
-                        FinalizeAccount(child, mnemonic, isEnabled);
+                        FinalizeAccount(child, mnemonic, isEnabled, parent);
                         await _accountRepository.AddAsync(child, cancellationToken);
                         knownAccounts[code] = child;
                         return child;
@@ -86,7 +86,7 @@ namespace KuaiJi.Modules.Accounting.Application
                 }
 
                 // 无上级可参照，当作一级科目创建。
-                category ??= InferCategoryByCodePrefix(code);
+                category ??= InferCategoryByCodePrefix(code, name);
                 if (category is null)
                 {
                     warnings?.Add($"科目「{code} {name}」的类别无法识别，已跳过。");
@@ -147,7 +147,7 @@ namespace KuaiJi.Modules.Accounting.Application
                 Account account;
                 if (level == 1)
                 {
-                    category ??= InferCategoryByCodePrefix(code);
+                    category ??= InferCategoryByCodePrefix(code, name);
                     if (category is null)
                     {
                         warnings?.Add($"顶级科目「{code} {name}」无法推断类别，已跳过。");
@@ -162,7 +162,7 @@ namespace KuaiJi.Modules.Accounting.Application
                     account = immediateParent!.AddChild(code, name, direction);
                 }
 
-                FinalizeAccount(account, mnemonic, isEnabled);
+                FinalizeAccount(account, mnemonic, isEnabled, immediateParent);
                 await _accountRepository.AddAsync(account, cancellationToken);
                 knownAccounts[code] = account;
                 return account;
@@ -203,8 +203,12 @@ namespace KuaiJi.Modules.Accounting.Application
                 .MaxBy(a => a.Code.Length);
         }
 
-        /// <summary>根据编码首位推断科目类别。</summary>
-        public static AccountCategory? InferCategoryByCodePrefix(string code)
+        /// <summary>
+        /// 根据编码首位推断科目类别。4xxx 的归属依赖科目表体系：2007 企业准则为权益
+        /// （4001 实收资本、4103 本年利润），旧准则/小企业准则为成本（4001 生产成本、4101 制造费用），
+        /// 因此按名称中的权益关键字判定，避免权益类被计成存货。
+        /// </summary>
+        public static AccountCategory? InferCategoryByCodePrefix(string code, string? name = null)
         {
             if (code.Length == 0) return null;
             return code[0] switch
@@ -212,11 +216,23 @@ namespace KuaiJi.Modules.Accounting.Application
                 '1' => AccountCategory.Asset,
                 '2' => AccountCategory.Liability,
                 '3' => AccountCategory.Equity,
-                '4' => AccountCategory.Cost,
+                '4' => LooksLikeEquity(name) ? AccountCategory.Equity : AccountCategory.Cost,
                 '5' => AccountCategory.Cost,
                 '6' => AccountCategory.ProfitAndLoss,
                 _ => null,
             };
+        }
+
+        private static readonly string[] EquityNameKeywords =
+        [
+            "实收资本", "股本", "资本公积", "其他权益工具", "其他综合收益", "专项储备",
+            "盈余公积", "一般风险准备", "本年利润", "利润分配", "库存股",
+        ];
+
+        private static bool LooksLikeEquity(string? name)
+        {
+            return !string.IsNullOrWhiteSpace(name)
+                   && EquityNameKeywords.Any(keyword => name.Contains(keyword, StringComparison.Ordinal));
         }
 
         /// <summary>解析或自动创建上级科目。尝试从子科目名称中提取上级名称。</summary>
@@ -259,7 +275,7 @@ namespace KuaiJi.Modules.Accounting.Application
                 Account parent;
                 if (parentLevel == 1)
                 {
-                    var cat = fallbackCategory ?? InferCategoryByCodePrefix(parentCode);
+                    var cat = fallbackCategory ?? InferCategoryByCodePrefix(parentCode, parentName);
                     if (cat is null) return null;
                     var dir = fallbackDirection ?? DefaultDirection(cat.Value, string.Empty);
                     parent = Account.CreateRoot(accountSetId, parentCode, parentName, cat.Value, dir, isPreset: false);
@@ -271,6 +287,7 @@ namespace KuaiJi.Modules.Accounting.Application
                     warnings?.Add($"上级科目「{parentCode}」不存在，已自动创建为 {parentLevel} 级科目。");
                 }
 
+                FinalizeAccount(parent, null, true, grandParent);
                 await _accountRepository.AddAsync(parent, cancellationToken);
                 knownAccounts[parentCode] = parent;
                 return parent;
@@ -309,10 +326,12 @@ namespace KuaiJi.Modules.Accounting.Application
             return extracted.Length > 0 ? extracted : null;
         }
 
-        internal static void FinalizeAccount(Account account, string? mnemonic, bool isEnabled)
+        /// <summary>落库前收尾：未填助记码时按名称自动生成（沿用柠檬云「父缩写_子缩写」规则），再处理停用。</summary>
+        internal static void FinalizeAccount(Account account, string? mnemonic, bool isEnabled, Account? parent = null)
         {
-            if (!string.IsNullOrWhiteSpace(mnemonic))
-                account.SetMnemonic(mnemonic.Trim());
+            var resolved = AccountMnemonic.Resolve(mnemonic, account.Name, parent?.Mnemonic, parent?.Name);
+            if (resolved is not null)
+                account.SetMnemonic(resolved);
             if (!isEnabled)
                 account.Disable();
         }

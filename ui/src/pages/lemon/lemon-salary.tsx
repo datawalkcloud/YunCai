@@ -4,18 +4,14 @@
  * 视觉遵循全站云财蓝：主色 #2f6bff、直角卡片、白卡 + slate 灰阶文字。
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Dropdown, Radio, Segmented } from "antd";
+import { Alert, Drawer, Dropdown, Radio, Segmented } from "antd";
 import {
-    BarChartOutlined,
     PayCircleOutlined,
     QuestionCircleOutlined,
-    SafetyCertificateOutlined,
-    TeamOutlined,
-    UserAddOutlined,
     WalletOutlined,
 } from "@ant-design/icons";
 
-import { ICON_STYLE } from "@/components/page/styles";
+import { ICON_STYLE, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
 import { Tile } from "@/components/page/tile";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
@@ -62,6 +58,8 @@ import {
     type SalarySummaryRowDto,
     type SalaryVoucherSettingDto,
 } from "@/apis-gen";
+import { syncIitPersonnel } from "@/lib/tax-iit";
+import { IitLoginModal } from "@/pages/tax/IitLoginModal";
 
 /* ---------- 公共小工具 ---------- */
 
@@ -134,7 +132,7 @@ async function uploadFile<T>(url: string, token: string, file: File): Promise<{ 
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
     return (
         <label className="flex items-center gap-3">
-            <span className="w-[110px] shrink-0 text-right text-[13px] text-slate-700">
+            <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-slate-700`}>
                 {required && <span className="text-[#ef4444]">*</span>}
                 {label}：
             </span>
@@ -143,190 +141,180 @@ function Field({ label, required, children }: { label: string; required?: boolea
     );
 }
 
-/** 员工表单可编辑字段（后端仅回显以下字段，其余隐藏字段暂不支持在此维护）。 */
-interface EmployeeFormState {
+/** 员工抽屉的可编辑字段。日期统一用 yyyy-MM-dd 字符串，提交时再包成 Date。 */
+interface EmployeeDraft {
     code: string;
     name: string;
-    gender: number;
     idType: number;
-    status: number;
-    dept: string;
+    idNo: string;
+    gender: number;
+    birthDate: string;
     phone: string;
     email: string;
-    idNo: string;
-    subjectAccountId: string;
-    hireDate: string;
+    education: string;
+    isDisabled: boolean;
+    isMartyrFamily: boolean;
+    isSoloElder: boolean;
+    /** 是否高级专家："" 未选择 / "1" 是 / "2" 否 */
+    isSeniorExpert: string;
+    bankName: string;
+    bankAccountNo: string;
     remark: string;
+    employmentType: number;
+    deductBasicExpense: boolean;
+    dept: string;
+    post: string;
+    title: string;
+    hireDate: string;
+    payStartDate: string;
+    subjectAccountId: string;
+    status: number;
+    paysSocialInsurance: boolean;
+    /** 险种标识 → 缴纳基数文本（空串表示未填） */
+    bases: Record<string, string>;
 }
 
-function employeeToForm(e: EmployeeDto): EmployeeFormState {
+/** 学历候选（与柠檬云人员档案一致，允许留空）。 */
+const EDUCATION_OPTIONS = ["专科", "本科", "硕士", "博士", "其他"];
+
+/** 任职受雇从业类型展示文本 → 枚举值（后端只回显文本）。 */
+const employmentTypeOf = (t?: string | null) =>
+    t === "保险营销员" ? 2 : t === "证券经纪人" ? 3 : t === "劳务派遣" ? 4 : t === "其他" ? 5 : 1;
+
+/** 三态「是否高级专家」：null 未选择。 */
+const seniorExpertOf = (v: boolean | null | undefined) => (v === true ? "1" : v === false ? "2" : "");
+
+/** 缴纳基数文本 → 数字；非法或负数按 0（即不登记该险种）。 */
+function toAmount(text: string): number {
+    const n = Number(text.replace(/[,，\s]/g, ""));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** 日期字符串 → 提交用 Date（先按 yyyy-MM-dd 构造，避免东八区回退一天）。 */
+const toDateArg = (text: string) => (text ? new Date(text) : null);
+
+function emptyDraft(code: string): EmployeeDraft {
+    return {
+        code,
+        name: "",
+        idType: 1,
+        idNo: "",
+        gender: 1,
+        birthDate: "",
+        phone: "",
+        email: "",
+        education: "本科",
+        isDisabled: false,
+        isMartyrFamily: false,
+        isSoloElder: false,
+        isSeniorExpert: "",
+        bankName: "",
+        bankAccountNo: "",
+        remark: "",
+        employmentType: 1,
+        deductBasicExpense: true,
+        dept: "",
+        post: "",
+        title: "",
+        hireDate: "",
+        payStartDate: "",
+        subjectAccountId: "",
+        status: 1,
+        paysSocialInsurance: true,
+        bases: {},
+    };
+}
+
+/** 员工档案 → 抽屉草稿；bases 先按账套险种铺空，再用已登记的基数覆盖。 */
+function draftFromEmployee(e: EmployeeDto, insurance: InsuranceItemDto[]): EmployeeDraft {
+    const bases: Record<string, string> = {};
+    for (const item of insurance) {
+        if (item.id) {
+            bases[item.id] = "";
+        }
+    }
+    for (const row of e.insurances ?? []) {
+        if (row.insuranceItemId) {
+            bases[row.insuranceItemId] = String(row.insuranceBase ?? "");
+        }
+    }
+
     return {
         code: e.code ?? "",
         name: e.name ?? "",
-        gender: genderOf(e.genderText),
         idType: idTypeOf(e.idTypeText),
-        status: statusOf(e.statusText),
-        dept: e.dept ?? "",
+        idNo: e.idNo ?? "",
+        gender: genderOf(e.genderText),
+        birthDate: toDateInput(e.birthDate),
         phone: e.phone ?? "",
         email: e.email ?? "",
-        idNo: e.idNo ?? "",
-        subjectAccountId: e.subjectAccountId ?? "",
-        hireDate: toDateInput(e.hireDate),
+        education: e.education ?? "",
+        isDisabled: e.isDisabled ?? false,
+        isMartyrFamily: e.isMartyrFamily ?? false,
+        isSoloElder: e.isSoloElder ?? false,
+        isSeniorExpert: seniorExpertOf(e.isSeniorExpert),
+        bankName: e.bankName ?? "",
+        bankAccountNo: e.bankAccountNo ?? "",
         remark: e.remark ?? "",
+        employmentType: employmentTypeOf(e.employmentTypeText),
+        deductBasicExpense: e.deductBasicExpense ?? true,
+        dept: e.dept ?? "",
+        post: e.post ?? "",
+        title: e.title ?? "",
+        hireDate: toDateInput(e.hireDate),
+        payStartDate: toDateInput(e.payStartDate),
+        subjectAccountId: e.subjectAccountId ?? "",
+        status: statusOf(e.statusText),
+        paysSocialInsurance: e.paysSocialInsurance ?? true,
+        bases,
     };
 }
 
-function toSaveEmployee(f: EmployeeFormState) {
+/** 草稿 → SaveEmployeeRequest；不缴五险一金时不提交任何基数。 */
+function draftToRequest(d: EmployeeDraft, insurance: InsuranceItemDto[]) {
+    const insurances = d.paysSocialInsurance
+        ? insurance
+              .filter((i) => i.id && toAmount(d.bases[i.id] ?? "") > 0)
+              .map((i) => ({ insuranceItemId: i.id as string, insuranceBase: toAmount(d.bases[i.id ?? ""] ?? "") }))
+        : [];
+
     return {
-        code: f.code.trim(),
-        name: f.name.trim(),
-        gender: f.gender,
-        idType: f.idType,
-        status: f.status,
-        idNo: f.idNo.trim() || null,
-        dept: f.dept.trim() || null,
-        phone: f.phone.trim() || null,
-        email: f.email.trim() || null,
-        hireDate: f.hireDate ? new Date(f.hireDate) : null,
-        subjectAccountId: f.subjectAccountId || null,
-        remark: f.remark.trim() || null,
+        code: d.code.trim(),
+        name: d.name.trim(),
+        gender: d.gender,
+        idType: d.idType,
+        idNo: d.idNo.trim() || null,
+        dept: d.dept.trim() || null,
+        phone: d.phone.trim() || null,
+        email: d.email.trim() || null,
+        birthDate: toDateArg(d.birthDate),
+        hireDate: toDateArg(d.hireDate),
+        bankName: d.bankName.trim() || null,
+        bankAccountNo: d.bankAccountNo.trim() || null,
+        post: d.post.trim() || null,
+        title: d.title.trim() || null,
+        education: d.education || null,
+        isDisabled: d.isDisabled,
+        isMartyrFamily: d.isMartyrFamily,
+        isSoloElder: d.isSoloElder,
+        isSeniorExpert: d.isSeniorExpert === "" ? null : d.isSeniorExpert === "1",
+        employmentType: d.employmentType,
+        deductBasicExpense: d.deductBasicExpense,
+        payStartDate: toDateArg(d.payStartDate),
+        paysSocialInsurance: d.paysSocialInsurance,
+        insurances,
+        subjectAccountId: d.subjectAccountId || null,
+        status: d.status,
+        remark: d.remark.trim() || null,
     };
 }
 
-/** 员工编辑对话框：Dialog + TextInput/Select，保存走 PUT 端点。 */
-function EmployeeEditDialog({
-    employee,
-    accounts,
-    onClose,
-    onSaved,
-}: {
-    employee: EmployeeDto;
-    accounts: AccountDto[];
-    onClose: () => void;
-    onSaved: () => void;
-}) {
-    const { token } = useAuth();
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const [form, setForm] = useState<EmployeeFormState>(() => employeeToForm(employee));
-    const [toast, setToast] = useState<string | null>(null);
-    const [busy, setBusy] = useState(false);
-    const set = (patch: Partial<EmployeeFormState>) => setForm((prev) => ({ ...prev, ...patch }));
-
-    const save = async () => {
-        if (!token || !accountSetId || !employee.id || busy) {
-            return;
-        }
-        if (!form.code.trim() || !form.name.trim()) {
-            setToast("编号与姓名必填");
-            return;
-        }
-        setBusy(true);
-        try {
-            await new SalariesApi(apiConfig(token)).accountsetsAccountSetIdSalaryEmployeesIdPut({
-                accountSetId,
-                id: employee.id,
-                saveEmployeeRequest: toSaveEmployee(form),
-            });
-            onSaved();
-            onClose();
-        } catch (e) {
-            setToast(await apiErrorMessage(e, "保存失败"));
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    return (
-        <Dialog
-            title="编辑员工"
-            width={620}
-            onClose={onClose}
-            footer={
-                <div className="flex justify-end gap-3">
-                    <Btn variant="primary" disabled={busy} onClick={() => void save()}>
-                        保存
-                    </Btn>
-                    <Btn onClick={onClose}>取消</Btn>
-                </div>
-            }
-        >
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                <Field label="编号" required>
-                    <TextInput className="w-full" value={form.code} onChange={(v) => set({ code: v })} />
-                </Field>
-                <Field label="姓名" required>
-                    <TextInput className="w-full" value={form.name} onChange={(v) => set({ name: v })} />
-                </Field>
-                <Field label="性别" required>
-                    <Select
-                        className="w-full"
-                        value={String(form.gender)}
-                        onChange={(v) => set({ gender: Number(v) })}
-                        options={[
-                            { value: "1", label: "男" },
-                            { value: "2", label: "女" },
-                        ]}
-                    />
-                </Field>
-                <Field label="证件类型" required>
-                    <Select
-                        className="w-full"
-                        value={String(form.idType)}
-                        onChange={(v) => set({ idType: Number(v) })}
-                        options={[
-                            { value: "1", label: "居民身份证" },
-                            { value: "2", label: "护照" },
-                            { value: "3", label: "其他" },
-                        ]}
-                    />
-                </Field>
-                <Field label="证件号码">
-                    <TextInput className="w-full" value={form.idNo} onChange={(v) => set({ idNo: v })} />
-                </Field>
-                <Field label="部门">
-                    <TextInput className="w-full" value={form.dept} onChange={(v) => set({ dept: v })} />
-                </Field>
-                <Field label="手机">
-                    <TextInput className="w-full" value={form.phone} onChange={(v) => set({ phone: v })} />
-                </Field>
-                <Field label="邮箱">
-                    <TextInput className="w-full" value={form.email} onChange={(v) => set({ email: v })} />
-                </Field>
-                <Field label="入职日期">
-                    <DateInput className="w-full" value={form.hireDate} onChange={(v) => set({ hireDate: v })} />
-                </Field>
-                <Field label="员工状态" required>
-                    <Select
-                        className="w-full"
-                        value={String(form.status)}
-                        onChange={(v) => set({ status: Number(v) })}
-                        options={[
-                            { value: "1", label: "在职" },
-                            { value: "2", label: "离职" },
-                        ]}
-                    />
-                </Field>
-                <Field label="计提工资科目">
-                    <Select
-                        className="w-full"
-                        value={form.subjectAccountId}
-                        onChange={(v) => set({ subjectAccountId: v })}
-                        options={[
-                            { value: "", label: "（请选择）" },
-                            ...accounts.map((a) => ({ value: a.id ?? "", label: `${a.code ?? ""} ${a.name ?? ""}` })),
-                        ]}
-                    />
-                </Field>
-                <Field label="备注">
-                    <TextInput className="w-full" value={form.remark} onChange={(v) => set({ remark: v })} />
-                </Field>
-            </div>
-            <HintBox className="mt-4">
-                出生日期、银行信息与岗位/职称暂不支持在此编辑（后端员工列表未返回这些字段）。
-            </HintBox>
-            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
-        </Dialog>
-    );
+/** 新增时的建议编号：取现有编号末尾数字的最大值 +1，三位补零。 */
+function nextEmployeeCode(employees: EmployeeDto[]): string {
+    const nums = employees
+        .map((e) => Number((e.code ?? "").match(/\d+$/)?.[0] ?? ""))
+        .filter((n) => Number.isFinite(n) && n > 0);
+    return String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3, "0");
 }
 
 /** 删除确认对话框。 */
@@ -515,7 +503,6 @@ function SalaryAccrueView() {
                         <Btn
                             variant="primary"
                             disabled={busy}
-                            className="!px-6"
                             onClick={() => void generate(c.kind)}
                         >
                             生成凭证
@@ -640,215 +627,365 @@ function SalaryVoucherSettingDialog({ onClose, onSaved }: { onClose: () => void;
     );
 }
 
-/** 新增员工表单字段默认值。 */
-const emptyEmployee = {
-    code: "",
-    name: "",
-    idType: 1,
-    idNo: "",
-    gender: 1,
-    birthDate: "",
-    phone: "",
-    email: "",
-    bankName: "",
-    bankAccountNo: "",
-    hireDate: "",
-    dept: "",
-    post: "",
-    title: "",
-    subjectAccountId: "",
-    status: 1,
-    remark: "",
-};
+/** 抽屉分区：加粗小标题 + 内容。 */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+    return (
+        <section>
+            <div className="text-[15px] font-bold text-slate-800">{title}</div>
+            <div className="mt-3">{children}</div>
+        </section>
+    );
+}
 
-/** 新增员工（整页表单，境内人员；已接后端 employeesPost）。 */
-function EmployeeForm({ onBack, onSaved }: { onBack: () => void; onSaved: () => void }) {
+/** 新增/编辑员工抽屉（对应柠檬云「新增员工」）：三段版式，扣除款项比例取「五险一金设置」。 */
+function EmployeeDrawer({
+    employee,
+    insurance,
+    accounts,
+    employees,
+    open,
+    onClose,
+    onSaved,
+}: {
+    employee: EmployeeDto | null;
+    insurance: InsuranceItemDto[];
+    accounts: AccountDto[];
+    /** 全部员工：仅用于新增时建议编号。 */
+    employees: EmployeeDto[];
+    open: boolean;
+    onClose: () => void;
+    onSaved: (text: string) => void;
+}) {
+    return (
+        <Drawer
+            open={open}
+            size={1000}
+            title={employee ? `编辑员工 - ${employee.name ?? employee.code ?? ""}` : "新增员工"}
+            onClose={onClose}
+            styles={{ body: { display: "flex", flexDirection: "column", gap: 24 } }}
+        >
+            {open && (
+                <EmployeeDrawerForm
+                    key={employee?.id ?? "new"}
+                    employee={employee}
+                    insurance={insurance}
+                    accounts={accounts}
+                    suggestedCode={nextEmployeeCode(employees)}
+                    onClose={onClose}
+                    onSaved={onSaved}
+                />
+            )}
+        </Drawer>
+    );
+}
+
+/** 抽屉表单体：随抽屉打开重新挂载，草稿从 employee（或建议编号）初始化。 */
+function EmployeeDrawerForm({
+    employee,
+    insurance,
+    accounts,
+    suggestedCode,
+    onClose,
+    onSaved,
+}: {
+    employee: EmployeeDto | null;
+    insurance: InsuranceItemDto[];
+    accounts: AccountDto[];
+    suggestedCode: string;
+    onClose: () => void;
+    onSaved: (text: string) => void;
+}) {
     const { token } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
-    const [form, setForm] = useState(emptyEmployee);
-    const accounts = useLeafAccounts();
-    const [toast, setToast] = useState<string | null>(null);
+    const [draft, setDraft] = useState<EmployeeDraft>(() =>
+        employee ? draftFromEmployee(employee, insurance) : emptyDraft(suggestedCode),
+    );
+    // 境外人员不持有居民身份证，证件类型只给护照/其他；打开时按已有证件类型回推。
+    const [abroad, setAbroad] = useState(() => (employee ? idTypeOf(employee.idTypeText) !== 1 : false));
     const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const set = (patch: Partial<typeof emptyEmployee>) => setForm((prev) => ({ ...prev, ...patch }));
+    const set = (patch: Partial<EmployeeDraft>) => setDraft((prev) => ({ ...prev, ...patch }));
 
     const save = async () => {
-        if (!token || !accountSetId) {
+        if (!token || !accountSetId || busy) {
             return;
         }
-        if (!form.code.trim() || !form.name.trim()) {
-            setToast("编号与姓名必填");
+        if (!draft.code.trim() || !draft.name.trim()) {
+            setError("编号与姓名必填");
+            return;
+        }
+        if (draft.idType === 1 && !draft.idNo.trim()) {
+            setError("证件类型为居民身份证时，证件号码必填");
             return;
         }
         setBusy(true);
+        setError(null);
         try {
-            await new SalariesApi(apiConfig(token)).accountsetsAccountSetIdSalaryEmployeesPost({
-                accountSetId,
-                saveEmployeeRequest: {
-                    code: form.code.trim(),
-                    name: form.name.trim(),
-                    gender: form.gender,
-                    idType: form.idType,
-                    idNo: form.idNo.trim() || null,
-                    dept: form.dept.trim() || null,
-                    phone: form.phone.trim() || null,
-                    email: form.email.trim() || null,
-                    birthDate: form.birthDate ? new Date(form.birthDate) : null,
-                    hireDate: form.hireDate ? new Date(form.hireDate) : null,
-                    bankName: form.bankName.trim() || null,
-                    bankAccountNo: form.bankAccountNo.trim() || null,
-                    post: form.post.trim() || null,
-                    title: form.title.trim() || null,
-                    subjectAccountId: form.subjectAccountId || null,
-                    status: form.status,
-                    remark: form.remark.trim() || null,
-                },
-            });
-            setToast("员工已新增");
-            onSaved();
-            onBack();
+            const api = new SalariesApi(apiConfig(token));
+            const body = draftToRequest(draft, insurance);
+            if (employee?.id) {
+                await api.accountsetsAccountSetIdSalaryEmployeesIdPut({ accountSetId, id: employee.id, saveEmployeeRequest: body });
+            } else {
+                await api.accountsetsAccountSetIdSalaryEmployeesPost({ accountSetId, saveEmployeeRequest: body });
+            }
+            onSaved(employee ? "员工已更新" : "员工已新增");
         } catch (e) {
-            setToast(await apiErrorMessage(e, "保存失败"));
+            setError(await apiErrorMessage(e, "保存失败"));
         } finally {
             setBusy(false);
         }
     };
 
-    const rows: Array<Array<[string, ReactNode] | null>> = [
-        [
-            ["*编号", <TextInput key="code" className="min-w-0 flex-1" value={form.code} onChange={(v) => set({ code: v })} />],
-            ["*姓名", <TextInput key="name" className="min-w-0 flex-1" value={form.name} onChange={(v) => set({ name: v })} />],
-            [
-                "*证件类型",
-                <Select
-                    key="idType"
-                    className="min-w-0 flex-1"
-                    value={String(form.idType)}
-                    onChange={(v) => set({ idType: Number(v) })}
-                    options={[
-                        { value: "1", label: "居民身份证" },
-                        { value: "2", label: "护照" },
-                        { value: "3", label: "其他" },
-                    ]}
-                />,
-            ],
-        ],
-        [
-            ["*证件号码", <TextInput key="idNo" className="min-w-0 flex-1" value={form.idNo} onChange={(v) => set({ idNo: v })} />],
-            [
-                "*性别",
-                <Select
-                    key="gender"
-                    className="min-w-0 flex-1"
-                    value={String(form.gender)}
-                    onChange={(v) => set({ gender: Number(v) })}
-                    options={[
-                        { value: "1", label: "男" },
-                        { value: "2", label: "女" },
-                    ]}
-                />,
-            ],
-            ["*出生日期", <DateInput key="birth" className="min-w-0 flex-1" value={form.birthDate} onChange={(v) => set({ birthDate: v })} />],
-        ],
-        [
-            ["手机", <TextInput key="phone" className="min-w-0 flex-1" value={form.phone} onChange={(v) => set({ phone: v })} />],
-            ["邮箱", <TextInput key="email" className="min-w-0 flex-1" value={form.email} onChange={(v) => set({ email: v })} />],
-            null,
-        ],
-        [
-            ["银行名称", <TextInput key="bank" className="min-w-0 flex-1" value={form.bankName} onChange={(v) => set({ bankName: v })} />],
-            ["银行账号", <TextInput key="acct" className="min-w-0 flex-1" value={form.bankAccountNo} onChange={(v) => set({ bankAccountNo: v })} />],
-            ["*入职日期", <DateInput key="hire" className="min-w-0 flex-1" value={form.hireDate} onChange={(v) => set({ hireDate: v })} />],
-        ],
-        [
-            ["*部门", <TextInput key="dept" className="min-w-0 flex-1" value={form.dept} onChange={(v) => set({ dept: v })} />],
-            ["岗位", <TextInput key="post" className="min-w-0 flex-1" value={form.post} onChange={(v) => set({ post: v })} />],
-            null,
-        ],
-        [
-            ["职称", <TextInput key="title" className="min-w-0 flex-1" value={form.title} onChange={(v) => set({ title: v })} />],
-            [
-                "*计提工资科目",
-                <Select
-                    key="subject"
-                    className="min-w-0 flex-1"
-                    value={form.subjectAccountId}
-                    onChange={(v) => set({ subjectAccountId: v })}
-                    options={[
-                        { value: "", label: "（请选择）" },
-                        ...accounts.map((a) => ({ value: a.id ?? "", label: `${a.code ?? ""} ${a.name ?? ""}` })),
-                    ]}
-                />,
-            ],
-            ["备注", <TextInput key="remark" className="min-w-0 flex-1" value={form.remark} onChange={(v) => set({ remark: v })} />],
-        ],
-        [
-            [
-                "*员工状态",
-                <Select
-                    key="status"
-                    className="min-w-0 flex-1"
-                    value={String(form.status)}
-                    onChange={(v) => set({ status: Number(v) })}
-                    options={[
-                        { value: "1", label: "在职" },
-                        { value: "2", label: "离职" },
-                    ]}
-                />,
-            ],
-            null,
-            null,
-        ],
+    const idTypeOptions = abroad
+        ? [
+              { value: "2", label: "护照" },
+              { value: "3", label: "其他" },
+          ]
+        : [
+              { value: "1", label: "居民身份证" },
+              { value: "2", label: "护照" },
+              { value: "3", label: "其他" },
+          ];
+
+    /** 金额列按缴纳基数 × 账套比例实时算出，只读。 */
+    const insuranceRows: Row[] = insurance.map((item) => {
+        const id = item.id ?? "";
+        const base = toAmount(draft.bases[id] ?? "");
+        const companyRate = item.companyRate ?? 0;
+        const personalRate = item.personalRate ?? 0;
+        return {
+            __id: id,
+            name: item.name,
+            cRate: `${companyRate}%`,
+            cAmt: nf((base * companyRate) / 100),
+            pRate: item.personalRate == null ? "—" : `${personalRate}%`,
+            pAmt: nf((base * personalRate) / 100),
+        };
+    });
+    const insuranceCols: Col[] = [
+        { key: "name", title: "缴纳项目", width: "140px" },
+        {
+            key: "base",
+            title: "缴纳基数",
+            width: "160px",
+            render: (row) => {
+                const id = String(row.__id);
+                return (
+                    <TextInput
+                        className="w-full"
+                        type="number"
+                        value={draft.bases[id] ?? ""}
+                        onChange={(v) => set({ bases: { ...draft.bases, [id]: v } })}
+                    />
+                );
+            },
+        },
+        { key: "cRate", title: "比例", group: "公司承担部分", align: "right", width: "80px" },
+        { key: "cAmt", title: "金额", group: "公司承担部分", align: "right", width: "120px" },
+        { key: "pRate", title: "比例", group: "个人承担部分", align: "right", width: "80px" },
+        { key: "pAmt", title: "金额", group: "个人承担部分", align: "right", width: "120px" },
     ];
 
     return (
-        <Page title="新增员工" subtitle="登记境内员工基本信息与扣除款项" icon={UserAddOutlined}>
-            <div className="mx-auto mt-3 w-[1000px] max-w-full">
-                <div className="flex justify-end">
-                    <Segmented options={["境内人员", "境外人员"]} value="境内人员" />
+        <>
+            <div className="flex justify-end">
+                <Segmented
+                    options={["境内人员", "境外人员"]}
+                    value={abroad ? "境外人员" : "境内人员"}
+                    onChange={(v) => {
+                        const isAbroad = v === "境外人员";
+                        setAbroad(isAbroad);
+                        if (isAbroad && draft.idType === 1) {
+                            set({ idType: 2 });
+                        }
+                    }}
+                />
+            </div>
+
+            <Section title="基本信息">
+                <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+                    <Field label="编号" required>
+                        <TextInput className="min-w-0 flex-1" value={draft.code} onChange={(v) => set({ code: v })} />
+                    </Field>
+                    <Field label="姓名" required>
+                        <TextInput className="min-w-0 flex-1" value={draft.name} onChange={(v) => set({ name: v })} />
+                    </Field>
+                    <Field label="证件类型" required>
+                        <Select
+                            className="min-w-0 flex-1"
+                            value={String(draft.idType)}
+                            onChange={(v) => set({ idType: Number(v) })}
+                            options={idTypeOptions}
+                        />
+                    </Field>
+                    <Field label="证件号码" required={draft.idType === 1}>
+                        <TextInput className="min-w-0 flex-1" value={draft.idNo} onChange={(v) => set({ idNo: v })} />
+                    </Field>
+                    <Field label="性别" required>
+                        <Select
+                            className="min-w-0 flex-1"
+                            value={String(draft.gender)}
+                            onChange={(v) => set({ gender: Number(v) })}
+                            options={[
+                                { value: "1", label: "男" },
+                                { value: "2", label: "女" },
+                            ]}
+                        />
+                    </Field>
+                    <Field label="出生日期">
+                        <DateInput className="min-w-0 flex-1" value={draft.birthDate} onChange={(v) => set({ birthDate: v })} />
+                    </Field>
+                    <Field label="手机">
+                        <TextInput className="min-w-0 flex-1" value={draft.phone} onChange={(v) => set({ phone: v })} />
+                    </Field>
+                    <Field label="邮箱">
+                        <TextInput className="min-w-0 flex-1" value={draft.email} onChange={(v) => set({ email: v })} />
+                    </Field>
+                    <Field label="开户银行">
+                        <TextInput className="min-w-0 flex-1" value={draft.bankName} onChange={(v) => set({ bankName: v })} />
+                    </Field>
+                    <Field label="银行账号">
+                        <TextInput className="min-w-0 flex-1" value={draft.bankAccountNo} onChange={(v) => set({ bankAccountNo: v })} />
+                    </Field>
+                    <Field label="备注">
+                        <TextInput className="min-w-0 flex-1" value={draft.remark} onChange={(v) => set({ remark: v })} />
+                    </Field>
                 </div>
-                <div className="mt-4 text-[15px] font-bold text-slate-800">基本信息</div>
-                <div className="mt-3 flex flex-col gap-4">
-                    {rows.map((row, i) => (
-                        <div key={i} className="grid grid-cols-3 gap-x-6 gap-y-4">
-                            {row.map((cell, j) =>
-                                cell ? (
-                                    <div key={j} className="flex min-w-0 items-center gap-2">
-                                        <span className="w-[110px] shrink-0 text-right text-[13px] text-slate-700">
-                                            {String(cell[0]).startsWith("*") && <span className="text-[#ef4444]">*</span>}
-                                            {String(cell[0]).replace("*", "")}：
-                                        </span>
-                                        {cell[1]}
-                                    </div>
-                                ) : (
-                                    <span key={j} />
-                                ),
-                            )}
-                        </div>
-                    ))}
+            </Section>
+
+            <Section title="任职受雇信息">
+                <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+                    <Field label="从业类型" required>
+                        <Select
+                            className="min-w-0 flex-1"
+                            value={String(draft.employmentType)}
+                            onChange={(v) => set({ employmentType: Number(v) })}
+                            options={[
+                                { value: "1", label: "雇员" },
+                                { value: "2", label: "保险营销员" },
+                                { value: "3", label: "证券经纪人" },
+                                { value: "4", label: "劳务派遣" },
+                                { value: "5", label: "其他" },
+                            ]}
+                        />
+                    </Field>
+                    <Field label="部门">
+                        <TextInput className="min-w-0 flex-1" value={draft.dept} onChange={(v) => set({ dept: v })} />
+                    </Field>
+                    <Field label="岗位">
+                        <TextInput className="min-w-0 flex-1" value={draft.post} onChange={(v) => set({ post: v })} />
+                    </Field>
+                    <Field label="职称">
+                        <TextInput className="min-w-0 flex-1" value={draft.title} onChange={(v) => set({ title: v })} />
+                    </Field>
+                    <Field label="学历">
+                        <Select
+                            className="min-w-0 flex-1"
+                            value={draft.education}
+                            onChange={(v) => set({ education: v })}
+                            options={[{ value: "", label: "（未填写）" }, ...EDUCATION_OPTIONS]}
+                        />
+                    </Field>
+                    <Field label="入职日期">
+                        <DateInput className="min-w-0 flex-1" value={draft.hireDate} onChange={(v) => set({ hireDate: v })} />
+                    </Field>
+                    <Field label="工资始发日期">
+                        <DateInput className="min-w-0 flex-1" value={draft.payStartDate} onChange={(v) => set({ payStartDate: v })} />
+                    </Field>
+                    <div className="flex min-w-0 items-center gap-3">
+                        <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-slate-700`}>
+                            <span className="text-[#ef4444]">*</span>减除费用：
+                        </span>
+                        <Radio.Group
+                            value={draft.deductBasicExpense ? "1" : "2"}
+                            onChange={(e) => set({ deductBasicExpense: e.target.value === "1" })}
+                        >
+                            <Radio value="1">是</Radio>
+                            <Radio value="2">否</Radio>
+                        </Radio.Group>
+                    </div>
+                    <Field label="高级专家">
+                        <Select
+                            className="min-w-0 flex-1"
+                            value={draft.isSeniorExpert}
+                            onChange={(v) => set({ isSeniorExpert: v })}
+                            options={[
+                                { value: "", label: "（未选择）" },
+                                { value: "1", label: "是" },
+                                { value: "2", label: "否" },
+                            ]}
+                        />
+                    </Field>
+                    <Field label="员工状态" required>
+                        <Select
+                            className="min-w-0 flex-1"
+                            value={String(draft.status)}
+                            onChange={(v) => set({ status: Number(v) })}
+                            options={[
+                                { value: "1", label: "在职" },
+                                { value: "2", label: "离职" },
+                            ]}
+                        />
+                    </Field>
+                    <Field label="计提工资科目">
+                        <Select
+                            className="min-w-0 flex-1"
+                            value={draft.subjectAccountId}
+                            onChange={(v) => set({ subjectAccountId: v })}
+                            options={[
+                                { value: "", label: "（请选择）" },
+                                ...accounts.map((a) => ({ value: a.id ?? "", label: `${a.code ?? ""} ${a.name ?? ""}` })),
+                            ]}
+                        />
+                    </Field>
+                    <div className="flex min-w-0 items-center gap-4">
+                        <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-slate-700`}>税收减免：</span>
+                        <span className="flex flex-wrap items-center gap-4">
+                            <CheckBox label="残疾" checked={draft.isDisabled} onChange={(c) => set({ isDisabled: c })} />
+                            <CheckBox label="烈属" checked={draft.isMartyrFamily} onChange={(c) => set({ isMartyrFamily: c })} />
+                            <CheckBox label="孤老" checked={draft.isSoloElder} onChange={(c) => set({ isSoloElder: c })} />
+                        </span>
+                    </div>
                 </div>
-                <div className="mt-8 text-[15px] font-bold text-slate-800">扣除款项</div>
-                <div className="mt-3 flex items-center gap-4 text-[13px] text-slate-700">
-                    <span>*是否缴纳五险一金：</span>
-                    <Radio.Group value="1">
+            </Section>
+
+            <Section title="扣除款项">
+                <div className="flex items-center gap-3">
+                    <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-slate-700`}>
+                        <span className="text-[#ef4444]">*</span>是否缴纳五险一金：
+                    </span>
+                    <Radio.Group
+                        value={draft.paysSocialInsurance ? "1" : "2"}
+                        onChange={(e) => set({ paysSocialInsurance: e.target.value === "1" })}
+                    >
                         <Radio value="1">是</Radio>
                         <Radio value="2">否</Radio>
                     </Radio.Group>
                 </div>
-                <HintBox className="mt-3">
-                    五险一金比例由「五险一金设置」统一维护，保存员工后按账套比例计提。
-                </HintBox>
-                <div className="mt-8 flex justify-center gap-3 pb-8">
-                    <Btn variant="primary" disabled={busy} className="!px-7" onClick={() => void save()}>
-                        保存
-                    </Btn>
-                    <Btn className="!px-7" onClick={onBack}>
-                        取消
-                    </Btn>
-                </div>
+                {draft.paysSocialInsurance ? (
+                    insurance.length > 0 ? (
+                        <div className="mt-3">
+                            <Table cols={insuranceCols} rows={insuranceRows} empty={<EmptyTip />} />
+                            <div className="mt-2 text-[12.5px] text-slate-400">
+                                比例来自「五险一金设置」，缴纳基数留空或为 0 表示不为该员工缴纳此项目。
+                            </div>
+                        </div>
+                    ) : (
+                        <HintBox className="mt-3">尚未配置五险一金项目，请先到「五险一金设置」新增。</HintBox>
+                    )
+                ) : null}
+            </Section>
+
+            {error && <Alert type="error" showIcon title={error} />}
+
+            <div className="flex justify-center gap-3 pb-2">
+                <Btn variant="primary" disabled={busy} onClick={() => void save()}>
+                    {busy ? "保存中…" : "保存"}
+                </Btn>
+                <Btn onClick={onClose}>取消</Btn>
             </div>
-            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
-        </Page>
+        </>
     );
 }
 
@@ -864,7 +1001,6 @@ export function LemonSalaryManage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [tab, setTab] = useState(0);
-    const [adding, setAdding] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
     const [importResult, setImportResult] = useState<SalaryBillImportResultDto | null>(null);
     const fileRef = useRef<HTMLInputElement | null>(null);
@@ -941,13 +1077,11 @@ export function LemonSalaryManage() {
 
     if (tab === 1)
         return (
-            <Page title="工资管理" subtitle="计提工资与发放工资一键生成凭证" icon={WalletOutlined}>
+            <Page>
                 <SubTabs tabs={["工资列表", "计提工资、发放工资"]} active={1} onChange={setTab} />
                 <SalaryAccrueView />
             </Page>
         );
-    if (adding) return <EmployeeForm onBack={() => setAdding(false)} onSaved={() => void reload()} />;
-
     const cols: Col[] = [
         { key: "ck", title: <CheckBox label="" />, width: "36px" },
         { key: "no", title: "编号", width: "70px" },
@@ -996,7 +1130,7 @@ export function LemonSalaryManage() {
         { dept: "合计", gross: totals.gross, deduct: totals.deductible, payable: totals.payable, personal: totals.personal, threshold: totals.threshold, tax: totals.tax, adjust: totals.adjust, net: totals.net, company: totals.company, cost: totals.cost, __style: { background: "#fafbfd", fontWeight: 500 } },
     ];
     return (
-        <Page title="工资管理" subtitle="当期工资表与计提发放" icon={WalletOutlined}>
+        <Page>
             <SubTabs tabs={["工资列表", "计提工资、发放工资"]} active={tab} onChange={setTab} />
             <ToolRow
                 left={
@@ -1110,13 +1244,16 @@ export function LemonSalaryEmployee() {
     const accountSetId = useCurrentAccountSetId() ?? "";
     const data = useEmployeeAndInsurance();
     const accounts = useLeafAccounts();
-    const [adding, setAdding] = useState(false);
-    const [editing, setEditing] = useState<EmployeeDto | null>(null);
+    /** 抽屉目标："new" 新增、员工对象编辑、null 关闭。 */
+    const [drawer, setDrawer] = useState<EmployeeDto | null | "new">(null);
     const [deleting, setDeleting] = useState<EmployeeDto | null>(null);
     const [busy, setBusy] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [importResult, setImportResult] = useState<EmployeeImportResultDto | null>(null);
+    /** 税局人员同步：取数在服务端的无头浏览器里跑，按分钟计；未登录时弹个税登录窗。 */
+    const [syncing, setSyncing] = useState(false);
+    const [loginOpen, setLoginOpen] = useState(false);
     const empFileRef = useRef<HTMLInputElement | null>(null);
 
     const empBase = `/api/accountsets/${accountSetId}/salary`;
@@ -1155,6 +1292,35 @@ export function LemonSalaryEmployee() {
         }
         setImportResult(result ?? null);
         await data.reload();
+    };
+
+    /** 同步税局人员信息：取回个税「人员信息采集」名单并写进员工档案，税局没给的字段用档案默认值。 */
+    const syncFromIit = async () => {
+        if (!token || !accountSetId || syncing) {
+            return;
+        }
+        setSyncing(true);
+        try {
+            const outcome = await syncIitPersonnel(accountSetId, token);
+            if (outcome.needLogin) {
+                setLoginOpen(true);
+                return;
+            }
+            if (!outcome.sync) {
+                setToast(outcome.message ?? "未从个税系统取回人员信息。");
+                return;
+            }
+            const { imported, updated, skipped } = outcome.sync;
+            setToast(
+                `已同步个税人员 ${outcome.rows.length} 人：新增 ${imported} 人、更新 ${updated} 人` +
+                    (skipped ? `，${skipped} 条缺姓名未登记` : ""),
+            );
+            await data.reload();
+        } catch (e) {
+            setToast(e instanceof Error ? e.message : "同步税局人员信息失败");
+        } finally {
+            setSyncing(false);
+        }
     };
 
     /** 批量删除员工：已有工资单的员工由后端跳过并给出原因。 */
@@ -1204,8 +1370,6 @@ export function LemonSalaryEmployee() {
         }
     };
 
-    if (adding) return <EmployeeForm onBack={() => setAdding(false)} onSaved={() => void data.reload()} />;
-
     const pageIds = data.employees.map((e) => e.id ?? "").filter(Boolean);
     const allChecked = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
     const toggleOne = (id: string, checked: boolean) =>
@@ -1248,13 +1412,13 @@ export function LemonSalaryEmployee() {
         status: e.statusText,
         ops: (
             <span className="flex gap-2">
-                <LinkAction onClick={() => setEditing(e)}>编辑</LinkAction>
+                <LinkAction onClick={() => setDrawer(e)}>编辑</LinkAction>
                 <LinkAction danger onClick={() => setDeleting(e)}>删除</LinkAction>
             </span>
         ),
     }));
     return (
-        <Page title="员工信息" subtitle="在职与离职员工名册维护" icon={TeamOutlined}>
+        <Page>
             <ToolRow
                 left={
                     <WipBtn dropdown title="按部门/状态筛选员工暂未实现">
@@ -1266,8 +1430,14 @@ export function LemonSalaryEmployee() {
                         <span title="显示全部字段暂未实现，仅作展示">
                             <CheckBox label="显示所有信息" />
                         </span>
-                        <Btn variant="primary" onClick={() => setAdding(true)}>增加员工</Btn>
-                        <WipBtn title="同步税局人员信息需对接电子税务局，暂未实现">同步税局人员信息</WipBtn>
+                        <Btn variant="primary" onClick={() => setDrawer("new")}>增加员工</Btn>
+                        <Btn
+                            onClick={() => void syncFromIit()}
+                            disabled={syncing}
+                            title="从自然人电子税务局取回「人员信息采集」名单并按证件号/姓名写入员工档案"
+                        >
+                            {syncing ? "同步中…" : "同步税局人员信息"}
+                        </Btn>
                         <Btn dropdown onClick={() => empFileRef.current?.click()} title="从 .xlsx 导入员工（按编号匹配，存在则更新）">
                             导入
                         </Btn>
@@ -1301,14 +1471,19 @@ export function LemonSalaryEmployee() {
                 <Table cols={cols} rows={rows} empty={<EmptyTip />} />
             </div>
             <Pager total={data.employees.length} />
-            {editing && (
-                <EmployeeEditDialog
-                    employee={editing}
-                    accounts={accounts}
-                    onClose={() => setEditing(null)}
-                    onSaved={() => void data.reload()}
-                />
-            )}
+            <EmployeeDrawer
+                open={drawer !== null}
+                employee={drawer && drawer !== "new" ? drawer : null}
+                insurance={data.insurance}
+                accounts={accounts}
+                employees={data.employees}
+                onClose={() => setDrawer(null)}
+                onSaved={(text) => {
+                    setDrawer(null);
+                    setToast(text);
+                    void data.reload();
+                }}
+            />
             {deleting && (
                 <ConfirmDialog
                     title="删除员工"
@@ -1318,6 +1493,16 @@ export function LemonSalaryEmployee() {
                     onConfirm={() => void remove()}
                 />
             )}
+            <IitLoginModal
+                open={loginOpen}
+                accountSetId={accountSetId}
+                onClose={() => setLoginOpen(false)}
+                onSuccess={() => {
+                    setLoginOpen(false);
+                    // 登录成功后接着把刚才没跑成的同步补上，省得用户再点一次。
+                    void syncFromIit();
+                }}
+            />
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
             <input
                 ref={empFileRef}
@@ -1453,7 +1638,7 @@ export function LemonSalarySummary() {
         },
     ];
     return (
-        <Page title="工资统计表" subtitle={`按部门汇总 ${rangeText} 的工资数据`} icon={BarChartOutlined}>
+        <Page>
             <ToolRow
                 left={
                     <PeriodStepper
@@ -1550,13 +1735,13 @@ function InsuranceEditDialog({
         >
             <div className="flex flex-col gap-3">
                 <Field label="缴纳项目" required>
-                    <TextInput className="w-[220px]" value={name} onChange={setName} />
+                    <TextInput className={FORM_CONTROL_W} value={name} onChange={setName} />
                 </Field>
                 <Field label="公司缴纳比例(%)">
-                    <TextInput className="w-[220px]" type="number" value={companyRate} onChange={setCompanyRate} />
+                    <TextInput className={FORM_CONTROL_W} type="number" value={companyRate} onChange={setCompanyRate} />
                 </Field>
                 <Field label="个人缴纳比例(%)">
-                    <TextInput className="w-[220px]" type="number" value={personalRate} onChange={setPersonalRate} />
+                    <TextInput className={FORM_CONTROL_W} type="number" value={personalRate} onChange={setPersonalRate} />
                 </Field>
             </div>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
@@ -1609,7 +1794,7 @@ export function LemonSalaryInsurance() {
         },
     ];
     return (
-        <Page title="五险一金设置" subtitle="缴纳项目与公司/个人比例维护" icon={SafetyCertificateOutlined}>
+        <Page>
             <ToolRow
                 left={
                     <Btn variant="primary" onClick={() => setEditing("new")}>

@@ -8,6 +8,8 @@ Name | Type
 ------------ | -------------
 `code` | string
 `name` | string
+`level` | number
+`parentCode` | string
 `openingDebit` | number
 `openingCredit` | number
 `periodDebit` | number
@@ -24,6 +26,8 @@ import type { TrialBalanceRowDto } from ''
 const example = {
   "code": null,
   "name": null,
+  "level": null,
+  "parentCode": null,
   "openingDebit": null,
   "openingCredit": null,
   "periodDebit": null,

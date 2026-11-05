@@ -64,9 +64,9 @@ export function amountToChineseUppercase(n: number): string {
 
     let s = n < 0 ? "负" : ""
 
-    // 元位为零时只写角分（壹角 / 壹分），不额外带出「零元」
+    // 元位为零也要带出「零元」（与柠檬云一致：0.01 → 零元壹分）
     const hasYuan = yuan > 0
-    if (hasYuan) s += integerToChinese(yuan) + "元"
+    s += hasYuan ? integerToChinese(yuan) + "元" : "零元"
 
     if (fen === 0) return s + "整"
 

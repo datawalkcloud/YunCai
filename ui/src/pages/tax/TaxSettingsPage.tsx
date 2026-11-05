@@ -22,7 +22,11 @@ import { QuestionCircleOutlined } from "@ant-design/icons";
 import { useParams } from "react-router";
 
 import { cn } from "@/lib/utils";
+import { taxTheme } from "@/lib/tax-theme";
 import { FORM_CONTROL_W } from "@/components/page/styles";
+
+/** 报税设置表格比默认更松的行高。 */
+const SETTINGS_THEME = taxTheme({ cellPaddingBlock: 9, cellPaddingInline: 16 });
 
 type StampDutyMode = "manual" | "auto";
 type UnclosedMode = "latest" | "latestClosed" | "none";
@@ -108,7 +112,7 @@ function loadSettings(accountSetId: string): SettingsState {
 /** 卡片小标题：主色竖条 + 标题，与税局客户端的板块样式一致。 */
 function SettingsCard({ title, children }: { title: string; children: ReactNode }) {
     return (
-        <section className="rounded-[2px] border border-[#eef2f7] bg-[#fcfcfc] px-5 py-5">
+        <section className="rounded-lg border border-[#eef2f7] bg-[#fcfcfc] px-5 py-5">
             <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#333]">
                 <span className="h-3.5 w-[3px] shrink-0 bg-[#2f6bff]" />
                 {title}
@@ -212,21 +216,7 @@ export function TaxSettingsPage() {
     ];
 
     return (
-        <ConfigProvider
-            theme={{
-                token: { colorPrimary: "#2f6bff", borderRadius: 2 },
-                components: {
-                    Table: {
-                        headerBg: "#f4f7ff",
-                        headerColor: "#475569",
-                        borderColor: "#eef2f7",
-                        rowHoverBg: "#f6f9ff",
-                        cellPaddingBlock: 9,
-                        cellPaddingInline: 16,
-                    },
-                },
-            }}
-        >
+        <ConfigProvider theme={SETTINGS_THEME}>
             <div className="flex min-h-full flex-col bg-white">
                 <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[#e5e5e5] px-4">
                     <span className="h-3.5 w-[3px] shrink-0 bg-[#2f6bff]" />
@@ -269,7 +259,7 @@ export function TaxSettingsPage() {
                             </span>
                             <span
                                 className={cn(
-                                    "inline-flex h-7 items-stretch overflow-hidden rounded-[2px] border border-[#dcdfe6] bg-[#fafafa]",
+                                    "inline-flex h-7 items-stretch overflow-hidden rounded-md border border-[#dcdfe6] bg-[#fafafa]",
                                     !autoStampDuty && "cursor-not-allowed",
                                 )}
                             >

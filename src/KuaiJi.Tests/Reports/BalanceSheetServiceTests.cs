@@ -112,6 +112,56 @@ public sealed class BalanceSheetServiceTests : IDisposable
         Assert.Equal(expected, BalanceSheetService.LineName(line));
     }
 
+    // —— 小企业准则（会小企01表）：行次体系与版式都不同，映射需单独验证 ——
+
+    [Theory]
+    [InlineData("1001", AccountCategory.Asset, 1, 1)]      // 货币资金（借方为正）
+    [InlineData("1601", AccountCategory.Asset, 18, 1)]     // 固定资产原价
+    [InlineData("1602", AccountCategory.Asset, 19, -1)]    // 累计折旧：贷方余额在「减」行以正数展示
+    [InlineData("2202", AccountCategory.Liability, 33, -1)]
+    [InlineData("4001", AccountCategory.Equity, 48, -1)]   // 实收资本
+    [InlineData("4103", AccountCategory.Equity, 51, -1)]   // 本年利润 → 未分配利润
+    [InlineData("6301", AccountCategory.ProfitAndLoss, 51, -1)]
+    public void MapSmallBusinessLines_MapsToSmallBusinessRows(
+        string code, AccountCategory category, int expectedLine, int expectedSign)
+    {
+        var mapped = BalanceSheetService.MapSmallBusinessLines(code, category);
+
+        Assert.Contains((expectedLine, (decimal)expectedSign), mapped);
+    }
+
+    [Fact]
+    public void MapSmallBusinessLines_InventoryAlsoFeedsDetailRow()
+    {
+        // 存货既进主行 9，也进「其中：原材料」明细行 10
+        var mapped = BalanceSheetService.MapSmallBusinessLines("1403", AccountCategory.Asset);
+
+        Assert.Contains((9, 1m), mapped);
+        Assert.Contains((10, 1m), mapped);
+    }
+
+    [Fact]
+    public async Task GetAsync_SmallBusinessStandard_UsesSmallBusinessRowsAndTemplate()
+    {
+        using var harness = new LedgerHarness("小企业账套", AccountingStandard.SmallBusiness);
+        var service = new BalanceSheetService(
+            new AccountSetRepository(harness.Context),
+            new AccountRepository(harness.Context),
+            new VoucherRepository(harness.Context));
+
+        harness.AddAccount("1001", "库存现金", AccountCategory.Asset, BalanceDirection.Debit, opening: 20_010.18m);
+        harness.AddAccount("4001", "实收资本", AccountCategory.Equity, BalanceDirection.Credit, opening: 20_001m);
+        harness.AddAccount("4103", "本年利润", AccountCategory.Equity, BalanceDirection.Credit, opening: 9.18m);
+
+        var sheet = await service.GetAsync(harness.AccountSet.Id, 2026, 1);
+
+        Assert.Equal(2, sheet.Standard);
+        Assert.Equal("会小企01表", sheet.TemplateTitle);
+        Assert.Equal(20_010.18m, sheet.Lines.Single(l => l.Line == 1).Ending);
+        Assert.Equal(20_001m, sheet.Lines.Single(l => l.Line == 48).Ending);
+        Assert.Equal(9.18m, sheet.Lines.Single(l => l.Line == 51).Ending);
+    }
+
     // —— ③④ 报表主体 ——
 
     [Fact]

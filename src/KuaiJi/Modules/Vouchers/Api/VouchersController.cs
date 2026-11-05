@@ -39,7 +39,7 @@ namespace KuaiJi.Modules.Vouchers.Api
         }
 
         /// <summary>
-        /// 获取指定账套的凭证列表。支持期间、凭证字、制单人、审核状态、辅助核算、摘要、备注、
+        /// 获取指定账套的凭证列表。支持期间、凭证字、制单人、辅助核算、摘要、备注、
         /// 科目（含下级）、借贷方向、金额区间、凭证号区间等筛选，以及按凭证号/日期升降序排序。
         /// deleted=true 时返回回收站中的凭证。
         /// </summary>
@@ -50,7 +50,6 @@ namespace KuaiJi.Modules.Vouchers.Api
             [FromQuery] DateOnly? endDate,
             [FromQuery] string? word,
             [FromQuery] string? preparer,
-            [FromQuery] bool? reviewed,
             [FromQuery] bool? hasAssists,
             [FromQuery] string? summary,
             [FromQuery] string? remark,
@@ -73,7 +72,6 @@ namespace KuaiJi.Modules.Vouchers.Api
                     EndDate = endDate,
                     Word = word,
                     Preparer = preparer,
-                    Reviewed = reviewed,
                     HasAssists = hasAssists,
                     SummaryContains = summary,
                     RemarkContains = remark,
@@ -111,7 +109,7 @@ namespace KuaiJi.Modules.Vouchers.Api
             return _operationLogService.RecordAsync(accountSetId, userId, userName, type, "凭证", log, cancellationToken);
         }
 
-        /// <summary>制单：新建一张草稿凭证。凭证号省略（为 0）时按凭证字自动续号。</summary>
+        /// <summary>制单：新建一张凭证并直接过账入账。凭证号省略（为 0）时按凭证字自动续号。</summary>
         [HttpPost]
         public async Task<ActionResult<VoucherDetailDto>> Create(Guid accountSetId, [FromBody] CreateVoucherRequest request, CancellationToken cancellationToken)
         {
@@ -131,7 +129,7 @@ namespace KuaiJi.Modules.Vouchers.Api
             }
         }
 
-        /// <summary>编辑凭证（仅草稿可改）。凭证字与号保持不变，可修改日期、附单据数与全部分录。</summary>
+        /// <summary>编辑凭证（仅反过账退回的草稿可改），保存后重新过账。</summary>
         [HttpPut("{id:guid}")]
         public async Task<ActionResult<VoucherDetailDto>> Update(Guid accountSetId, Guid id, [FromBody] UpdateVoucherRequest request, CancellationToken cancellationToken)
         {
@@ -161,64 +159,7 @@ namespace KuaiJi.Modules.Vouchers.Api
             }
         }
 
-        /// <summary>审核凭证：草稿 → 已审核。要求借贷平衡，审核人取当前登录用户的显示名。</summary>
-        [HttpPost("{id:guid}/review")]
-        public async Task<ActionResult<VoucherDetailDto>> Review(Guid accountSetId, Guid id, CancellationToken cancellationToken)
-        {
-            // 审核人取自当前登录用户的显示名（JWT 的 displayName 声明）。
-            var reviewer = User.FindFirst("displayName")?.Value
-                           ?? User.FindFirst("unique_name")?.Value
-                           ?? "未知";
-            try
-            {
-                var voucher = await _voucherService.ReviewAsync(accountSetId, id, reviewer, cancellationToken);
-                if (voucher is not null)
-                {
-                    await LogAsync(accountSetId, "审核", $"审核凭证 {voucher.VoucherNo}", cancellationToken);
-                }
-                return voucher is null ? NotFound() : Ok(voucher);
-            }
-            catch (VoucherException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        /// <summary>反审核凭证：已审核 → 草稿，清空审核人。</summary>
-        [HttpPost("{id:guid}/unreview")]
-        public async Task<ActionResult<VoucherDetailDto>> Unreview(Guid accountSetId, Guid id, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var voucher = await _voucherService.UnreviewAsync(accountSetId, id, cancellationToken);
-                return voucher is null ? NotFound() : Ok(voucher);
-            }
-            catch (VoucherException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        /// <summary>过账凭证：已审核 → 已过账（登记入账锁定）。</summary>
-        [HttpPost("{id:guid}/post")]
-        public async Task<ActionResult<VoucherDetailDto>> Post(Guid accountSetId, Guid id, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var voucher = await _voucherService.PostAsync(accountSetId, id, cancellationToken);
-                if (voucher is not null)
-                {
-                    await LogAsync(accountSetId, "过账", $"过账凭证 {voucher.VoucherNo}", cancellationToken);
-                }
-                return voucher is null ? NotFound() : Ok(voucher);
-            }
-            catch (VoucherException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        /// <summary>反过账凭证：已过账 → 已审核（撤销登记入账），结账期间内禁止。</summary>
+        /// <summary>反过账凭证：已过账 → 草稿（撤销登记入账），结账期间内禁止。</summary>
         [HttpPost("{id:guid}/unpost")]
         public async Task<ActionResult<VoucherDetailDto>> Unpost(Guid accountSetId, Guid id, CancellationToken cancellationToken)
         {
@@ -448,7 +389,7 @@ namespace KuaiJi.Modules.Vouchers.Api
             }
         }
 
-        /// <summary>复制一张凭证：生成同凭证字下的新草稿凭证。</summary>
+        /// <summary>复制一张凭证：生成同凭证字下的新凭证并直接入账。</summary>
         [HttpPost("{id:guid}/copy")]
         public async Task<ActionResult<VoucherDetailDto>> Copy(
             Guid accountSetId, Guid id, [FromQuery] DateOnly? date, CancellationToken cancellationToken)
@@ -466,7 +407,7 @@ namespace KuaiJi.Modules.Vouchers.Api
             }
         }
 
-        /// <summary>红冲一张凭证：生成金额取反的草稿凭证，摘要带「冲销…」前缀。</summary>
+        /// <summary>红冲一张凭证：生成金额取反的凭证并直接入账，摘要带「冲销…」前缀。</summary>
         [HttpPost("{id:guid}/reverse")]
         public async Task<ActionResult<VoucherDetailDto>> Reverse(
             Guid accountSetId, Guid id, [FromQuery] DateOnly? date, CancellationToken cancellationToken)

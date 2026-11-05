@@ -206,8 +206,8 @@ public sealed class LedgerDataSetFactoryTests : IDisposable
     {
         _h.AddVoucher(new DateOnly(2026, 3, 5), VoucherStatus.Draft,
             _h.Entry("草稿", _cash.Id, 10m, 0m), _h.Entry("草稿", _revenue.Id, 0m, 10m));
-        _h.AddVoucher(new DateOnly(2026, 3, 6), VoucherStatus.Reviewed,
-            _h.Entry("已审核", _cash.Id, 10m, 0m), _h.Entry("已审核", _revenue.Id, 0m, 10m));
+        _h.AddVoucher(new DateOnly(2026, 3, 6), VoucherStatus.Draft,
+            _h.Entry("未过账草稿", _cash.Id, 10m, 0m), _h.Entry("未过账草稿", _revenue.Id, 0m, 10m));
         _h.AddVoucher(new DateOnly(2026, 3, 7), VoucherStatus.Posted,
             _h.Entry("已过账", _cash.Id, 10m, 0m), _h.Entry("已过账", _revenue.Id, 0m, 10m));
 

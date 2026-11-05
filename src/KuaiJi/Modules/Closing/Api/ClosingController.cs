@@ -54,6 +54,61 @@ namespace KuaiJi.Modules.Closing.Api
             }
         }
 
+        /// <summary>期末检查（第 1 步）：预置结转项的本期金额、可用性与已生成状态。</summary>
+        [HttpGet("pre-close")]
+        public async Task<ActionResult<PreCloseListDto>> GetPreClose(
+            Guid accountSetId,
+            [FromQuery] int year,
+            [FromQuery] int month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _closingService.GetPreCloseAsync(accountSetId, year, month, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>生成单个预置结转项（账簿类）的凭证并自动过账。</summary>
+        [HttpPost("pre-close/generate")]
+        public async Task<ActionResult<GeneratePreCloseResultDto>> GeneratePreClose(
+            Guid accountSetId,
+            [FromBody] GeneratePreCloseRequest request,
+            CancellationToken cancellationToken)
+        {
+            var operatorName = User.FindFirst("displayName")?.Value
+                               ?? User.FindFirst("unique_name")?.Value
+                               ?? "未知";
+            try
+            {
+                return Ok(await _closingService.GeneratePreCloseVoucherAsync(accountSetId, operatorName, request, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>结转损益预览：返回将要生成的结转凭证（含模板凭证），不落库。</summary>
+        [HttpPost("carry-forward/preview")]
+        public async Task<ActionResult<CarryForwardPreviewDto>> PreviewCarryForward(
+            Guid accountSetId,
+            [FromBody] CarryForwardRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _closingService.PreviewCarryForwardAsync(accountSetId, request, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>结转损益：生成结转凭证（损益类 → 本年利润，可选 → 未分配利润）并自动过账。</summary>
         [HttpPost("carry-forward")]
         public async Task<ActionResult<CarryForwardResultDto>> CarryForward(
@@ -68,6 +123,30 @@ namespace KuaiJi.Modules.Closing.Api
             try
             {
                 return Ok(await _closingService.CarryForwardAsync(accountSetId, operatorName, request, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 年末补做结转未分配利润：为已结转损益的 12 月生成「本年利润 → 未分配利润」凭证并自动过账。
+        /// 不改变结转进度；已存在同类凭证或本年利润无余额时直接返回说明。
+        /// </summary>
+        [HttpPost("retained-earnings")]
+        public async Task<ActionResult<TransferRetainedResultDto>> TransferRetainedEarnings(
+            Guid accountSetId,
+            [FromBody] ClosingPeriodRequest request,
+            CancellationToken cancellationToken)
+        {
+            var operatorName = User.FindFirst("displayName")?.Value
+                               ?? User.FindFirst("unique_name")?.Value
+                               ?? "未知";
+            try
+            {
+                return Ok(await _closingService.TransferRetainedEarningsAsync(
+                    accountSetId, operatorName, request.Year, request.Month, cancellationToken));
             }
             catch (ClosingException ex)
             {
@@ -110,7 +189,7 @@ namespace KuaiJi.Modules.Closing.Api
             }
         }
 
-        /// <summary>撤销结转：删除最近一次结转生成的凭证并退回结转进度（已结账的期间须先反结账）。</summary>
+        /// <summary>撤销结转：删除指定期间及其后已结转期间的系统结转凭证并退回结转进度（已结账的期间须先反结账）。</summary>
         [HttpPost("cancel-carry")]
         public async Task<ActionResult<CancelCarryResultDto>> CancelCarry(
             Guid accountSetId,
@@ -222,6 +301,20 @@ namespace KuaiJi.Modules.Closing.Api
             try
             {
                 return Ok(await _closingService.CloseBatchAsync(accountSetId, cancellationToken));
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>批量标记结转：把损益余额已为 0 的连续期间批量标记为已结转（不生成凭证）。</summary>
+        [HttpPost("carry-batch")]
+        public async Task<ActionResult<CarryBatchResultDto>> CarryBatch(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _closingService.CarryBatchAsync(accountSetId, cancellationToken));
             }
             catch (ClosingException ex)
             {

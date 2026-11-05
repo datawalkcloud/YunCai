@@ -15,6 +15,7 @@ Name | Type
 `startMonth` | number
 `preset` | boolean
 `accountCodingScheme` | string
+`industry` | string
 
 ## Example
 
@@ -32,6 +33,7 @@ const example = {
   "startMonth": null,
   "preset": null,
   "accountCodingScheme": null,
+  "industry": null,
 } satisfies CreateAccountSetRequest
 
 console.log(example)

@@ -4,7 +4,6 @@
  * 并给出「销项 vs 进项」对比与全年趋势。金额全部来自已录入的发票（销项 / 进项），实时汇总。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BankOutlined } from "@ant-design/icons";
 
 import { Btn, EmptyTip, Page, PeriodStepper, RefreshIcon, Table, ToolRow, WipBtn } from "./components/ui";
 import type { Col, Row } from "./components/ui";
@@ -93,7 +92,7 @@ export function LemonVatCalc() {
     const trendMax = Math.max(1, ...trend.map((t) => Math.abs(t.value)));
 
     return (
-        <Page title="增值税测算" subtitle="按税款所属期测算应交增值税，数据取自已录入的进销项发票" icon={BankOutlined}>
+        <Page>
             <ToolRow
                 left={
                     <>
@@ -115,7 +114,7 @@ export function LemonVatCalc() {
                     </>
                 }
             />
-            <div className="flex-1 overflow-auto px-4 pb-4">
+            <div className="flex-1 px-4 pb-4">
                 {error && <div className="py-2 text-[13px] text-red-500">{error}</div>}
                 {loading && <div className="px-1 py-2 text-[13px] text-slate-500">加载中…</div>}
                 <Table

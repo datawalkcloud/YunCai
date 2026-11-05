@@ -47,7 +47,7 @@ Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "快捷方式："; Flags: checkedonce
-Name: "autostart"; Description: "开机自动启动助手（推荐，网页才能随时检测到助手）"; GroupDescription: "启动选项："; Flags: checkedonce
+Name: "autostart"; Description: "开机自动启动助手（推荐，网页才能随时检测到助手）"; GroupDescription: "启动选项："
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs

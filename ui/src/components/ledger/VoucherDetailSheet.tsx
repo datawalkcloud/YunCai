@@ -120,7 +120,6 @@ export function VoucherDetailSheet({
                         dataSource={entries}
                         rowKey={(row) => row.id ?? String(row.lineNumber)}
                         pagination={false}
-                        size="small"
                         summary={() => (
                             <Table.Summary.Row>
                                 <Table.Summary.Cell index={0} colSpan={4}>

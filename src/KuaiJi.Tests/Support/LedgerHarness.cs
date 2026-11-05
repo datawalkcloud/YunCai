@@ -17,7 +17,7 @@ namespace KuaiJi.Tests.Support;
 /// 任意类别/方向/层级的科目、期初、以及**指定状态**的凭证（可带辅助核算）。
 /// <para>
 /// 不复用 <c>SqliteTestContext.AddVoucher</c> 的原因：那条固定「借 100 / 贷 100」两行且停在草稿，
-/// 而账簿与报表只认已过账凭证（AGENTS.md「领域须知」：草稿/已审核未过账不入账），
+/// 而账簿与报表只认已过账凭证（AGENTS.md「领域须知」：反过账退回的草稿不入账），
 /// 必须能精确控制科目、方向、金额与状态，否则口径类断言无法成立。
 /// </para>
 /// </summary>
@@ -26,9 +26,9 @@ internal sealed class LedgerHarness : IDisposable
     private readonly SqliteTestContext _db = new();
     private int _nextNumber = 1;
 
-    public LedgerHarness(string accountSetName = "账簿测试账套")
+    public LedgerHarness(string accountSetName = "账簿测试账套", AccountingStandard standard = AccountingStandard.Enterprise)
     {
-        AccountSet = _db.AddAccountSet(accountSetName); // 启用期间 2026-01，见 SqliteTestContext
+        AccountSet = _db.AddAccountSet(accountSetName, standard: standard); // 启用期间 2026-01，见 SqliteTestContext
     }
 
     public AccountSet AccountSet { get; }
@@ -119,7 +119,7 @@ internal sealed class LedgerHarness : IDisposable
     public AssistRef Ref(AssistType type, AssistItem item) => new(type, item.Id);
 
     /// <summary>
-    /// 记一张凭证并按 <paramref name="status"/> 推进状态：草稿不审核，已审核只审核，已过账审核+过账。
+    /// 记一张凭证并按 <paramref name="status"/> 推进状态：草稿不处理，已过账调用 <see cref="Voucher.Post"/>。
     /// 凭证字固定「记」，号自增；日期与状态由用例掌控，这是口径断言的关键变量。
     /// </summary>
     public Voucher AddVoucher(DateOnly date, VoucherStatus status, params SeedEntry[] entries)
@@ -131,11 +131,6 @@ internal sealed class LedgerHarness : IDisposable
         foreach (var entry in entries)
         {
             voucher.AddEntry(entry.Summary, entry.AccountId, entry.Debit, entry.Credit, entry.Assists);
-        }
-
-        if (status >= VoucherStatus.Reviewed)
-        {
-            voucher.Review("测试审核人");
         }
 
         if (status == VoucherStatus.Posted)
@@ -156,11 +151,6 @@ internal sealed class LedgerHarness : IDisposable
         foreach (var entry in entries)
         {
             voucher.AddEntry(entry.Summary, entry.AccountId, entry.Debit, entry.Credit, entry.Assists);
-        }
-
-        if (status >= VoucherStatus.Reviewed)
-        {
-            voucher.Review("测试审核人");
         }
 
         if (status == VoucherStatus.Posted)

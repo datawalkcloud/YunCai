@@ -699,7 +699,6 @@ export default function AccountsPage() {
                         {node.children ? (
                             <Button
                                 type="text"
-                                size="small"
                                 className="size-5 min-w-5 p-0"
                                 aria-label={expanded ? "收起下级科目" : "展开下级科目"}
                                 aria-expanded={expanded}
@@ -763,16 +762,15 @@ export default function AccountsPage() {
                 return (
                     <div className="flex items-center gap-2">
                         {canAddChild && (
-                            <Button type="link" size="small" style={{ padding: 0 }} onClick={() => openDrawer(node)}>
+                            <Button type="link" style={{ padding: 0 }} onClick={() => openDrawer(node)}>
                                 新增
                             </Button>
                         )}
-                        <Button type="link" size="small" style={{ padding: 0 }} onClick={() => openEditDrawer(node)}>
+                        <Button type="link" style={{ padding: 0 }} onClick={() => openEditDrawer(node)}>
                             编辑
                         </Button>
                         <Button
                             type="link"
-                            size="small"
                             style={{ padding: 0 }}
                             title="设置辅助核算"
                             onClick={() => void openAssistDialog(node)}
@@ -781,7 +779,6 @@ export default function AccountsPage() {
                         </Button>
                         <Button
                             type="link"
-                            size="small"
                             danger
                             style={{ padding: 0 }}
                             loading={deletingId === node.id}
@@ -823,7 +820,6 @@ export default function AccountsPage() {
                 variant="borderless"
                 styles={{
                     root: { boxShadow: "0 1px 2px rgba(16,24,40,0.04)" },
-                    body: { padding: 0 },
                 }}
             >
                 <Tabs
@@ -833,7 +829,10 @@ export default function AccountsPage() {
                     tabBarStyle={{ margin: 0, paddingInline: 16 }}
                 />
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 px-4 py-2.5">
+                <div
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5"
+                    style={{ marginBottom: 16 }}
+                >
                     <Input
                         allowClear
                         prefix={<SearchOutlined className="text-slate-400" />}
@@ -886,7 +885,6 @@ export default function AccountsPage() {
                     columns={columns}
                     dataSource={visibleRows}
                     pagination={false}
-                    bordered
                     size="middle"
                     loading={loading && accounts.length === 0}
                     locale={{ emptyText }}
@@ -1107,7 +1105,7 @@ export default function AccountsPage() {
                 styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
             >
                 <p className="text-[12.5px] text-slate-400">
-                    支持从 Excel 文件批量导入会计科目。系统按编码查重，已存在的科目自动跳过并告警。
+                    支持从 Excel 文件批量导入会计科目。系统按编码查重，已存在的科目自动跳过并告警；未填写的助记码按科目名称自动生成拼音首字母。导入只新增科目，不会删除账套中已有的其他科目。
                 </p>
 
                 <div className="flex flex-col gap-1">

@@ -21,6 +21,17 @@ Name | Type
 `taxIdentityType` | string
 `taxLoginAccount` | string
 `taxLoginPassword` | string
+`industry` | string
+`assetsModuleEnabled` | boolean
+`fundsModuleEnabled` | boolean
+`voucherAuditRequired` | boolean
+`balanceAssistScope` | number
+`unitDecimalPlaces` | number
+`isExportEnterprise` | boolean
+`iitChannel` | string
+`iitLoginType` | string
+`iitLoginAccount` | string
+`iitLoginPassword` | string
 
 ## Example
 
@@ -44,6 +55,17 @@ const example = {
   "taxIdentityType": null,
   "taxLoginAccount": null,
   "taxLoginPassword": null,
+  "industry": null,
+  "assetsModuleEnabled": null,
+  "fundsModuleEnabled": null,
+  "voucherAuditRequired": null,
+  "balanceAssistScope": null,
+  "unitDecimalPlaces": null,
+  "isExportEnterprise": null,
+  "iitChannel": null,
+  "iitLoginType": null,
+  "iitLoginAccount": null,
+  "iitLoginPassword": null,
 } satisfies UpdateAccountSetRequest
 
 console.log(example)

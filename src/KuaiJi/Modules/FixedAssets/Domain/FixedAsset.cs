@@ -140,12 +140,12 @@ namespace KuaiJi.Modules.FixedAssets.Domain
         {
             if (value < 0m)
             {
-                throw new ArgumentException("累计折旧不能为负数。", nameof(value));
+                throw new ArgumentException("累计折旧不能为负数。");
             }
 
             if (value > depreciableBase)
             {
-                throw new ArgumentException("累计折旧不能超过应折旧总额。", nameof(value));
+                throw new ArgumentException("累计折旧不能超过应折旧总额。");
             }
 
             AccumulatedDepreciation = value;
@@ -206,7 +206,7 @@ namespace KuaiJi.Modules.FixedAssets.Domain
 
             if (clearedDate < StartDate)
             {
-                throw new ArgumentException("清理日期不得早于开始使用日期。", nameof(clearedDate));
+                throw new ArgumentException("清理日期不得早于开始使用日期。");
             }
 
             Status = FixedAssetStatus.Cleared;
@@ -217,7 +217,7 @@ namespace KuaiJi.Modules.FixedAssets.Domain
         {
             if (string.IsNullOrWhiteSpace(code))
             {
-                throw new ArgumentException("资产编号不能为空。", nameof(code));
+                throw new ArgumentException("资产编号不能为空。");
             }
 
             if (code.Trim().Length > MaxCodeLength)
@@ -227,7 +227,7 @@ namespace KuaiJi.Modules.FixedAssets.Domain
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("资产名称不能为空。", nameof(name));
+                throw new ArgumentException("资产名称不能为空。");
             }
 
             if (name.Trim().Length > MaxNameLength)
@@ -237,7 +237,7 @@ namespace KuaiJi.Modules.FixedAssets.Domain
 
             if (originValue <= 0m)
             {
-                throw new ArgumentException("资产原值必须大于零。", nameof(originValue));
+                throw new ArgumentException("资产原值必须大于零。");
             }
         }
 

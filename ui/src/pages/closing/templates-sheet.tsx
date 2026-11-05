@@ -278,14 +278,12 @@ export function ClosingTemplatesSheet({
                                     <div className="flex items-center gap-0">
                                         <Button
                                             type="text"
-                                            size="small"
                                             title="编辑"
                                             icon={<EditOutlined />}
                                             onClick={() => openEdit(t)}
                                         />
                                         <Button
                                             type="text"
-                                            size="small"
                                             danger
                                             title="删除"
                                             disabled={busyId === t.id}
@@ -355,7 +353,6 @@ export function ClosingTemplatesSheet({
                                     <span className="text-[12px] text-slate-400">第 {index + 1} 行</span>
                                     <Button
                                         type="text"
-                                        size="small"
                                         danger
                                         title="删除该行"
                                         icon={<DeleteOutlined />}
@@ -373,7 +370,6 @@ export function ClosingTemplatesSheet({
                                     <div className="col-span-4">
                                         <Select<string>
                                             className="w-full"
-                                            size="small"
                                             placeholder="会计科目"
                                             allowClear
                                             value={l.accountId || undefined}
@@ -384,7 +380,6 @@ export function ClosingTemplatesSheet({
                                     <div className="col-span-2">
                                         <Select<number>
                                             className="w-full"
-                                            size="small"
                                             value={l.direction}
                                             options={DIRECTION_OPTIONS}
                                             onChange={(v) => setLine(l.key, { direction: v })}
@@ -393,7 +388,6 @@ export function ClosingTemplatesSheet({
                                     <div className="col-span-2">
                                         <Select<number>
                                             className="w-full"
-                                            size="small"
                                             value={l.sourceType}
                                             options={SOURCE_OPTIONS}
                                             onChange={(v) => setLine(l.key, { sourceType: v })}
@@ -421,7 +415,6 @@ export function ClosingTemplatesSheet({
                                             <div className="col-span-8">
                                                 <Select<string>
                                                     className="w-full"
-                                                    size="small"
                                                     placeholder="来源科目"
                                                     allowClear
                                                     value={l.sourceAccountId || undefined}

@@ -140,12 +140,12 @@ namespace KuaiJi.Modules.Archives.Domain
             GuardFileName(fileName);
             if (content is { LongLength: > MaxFileBytes })
             {
-                throw new ArgumentException("单个文件不能超过 10 MB。", nameof(content));
+                throw new ArgumentException("单个文件不能超过 10 MB。");
             }
 
             if (string.IsNullOrWhiteSpace(uploader))
             {
-                throw new ArgumentException("上传人不能为空。", nameof(uploader));
+                throw new ArgumentException("上传人不能为空。");
             }
 
             return new ArchiveItem(
@@ -213,7 +213,7 @@ namespace KuaiJi.Modules.Archives.Domain
         {
             if (string.IsNullOrWhiteSpace(fileName))
             {
-                throw new ArgumentException("文件名称不能为空。", nameof(fileName));
+                throw new ArgumentException("文件名称不能为空。");
             }
 
             if (fileName.Trim().Length > MaxFileNameLength)

@@ -40,6 +40,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
             "salary_voucher_settings",
             "employees",
             "insurance_items",
+            "employee_insurances",
             "voucher_templates",
             "voucher_template_lines",
             "closing_templates",

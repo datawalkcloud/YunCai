@@ -109,6 +109,72 @@ export interface UpdateAccountSetRequest {
      * @memberof UpdateAccountSetRequest
      */
     taxLoginPassword?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    industry?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdateAccountSetRequest
+     */
+    assetsModuleEnabled?: boolean | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdateAccountSetRequest
+     */
+    fundsModuleEnabled?: boolean | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdateAccountSetRequest
+     */
+    voucherAuditRequired?: boolean | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof UpdateAccountSetRequest
+     */
+    balanceAssistScope?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof UpdateAccountSetRequest
+     */
+    unitDecimalPlaces?: number | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdateAccountSetRequest
+     */
+    isExportEnterprise?: boolean | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    iitChannel?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    iitLoginType?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    iitLoginAccount?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateAccountSetRequest
+     */
+    iitLoginPassword?: string | null;
 }
 
 /**
@@ -143,6 +209,17 @@ export function UpdateAccountSetRequestFromJSONTyped(json: any, ignoreDiscrimina
         'taxIdentityType': json['taxIdentityType'] == null ? undefined : json['taxIdentityType'],
         'taxLoginAccount': json['taxLoginAccount'] == null ? undefined : json['taxLoginAccount'],
         'taxLoginPassword': json['taxLoginPassword'] == null ? undefined : json['taxLoginPassword'],
+        'industry': json['industry'] == null ? undefined : json['industry'],
+        'assetsModuleEnabled': json['assetsModuleEnabled'] == null ? undefined : json['assetsModuleEnabled'],
+        'fundsModuleEnabled': json['fundsModuleEnabled'] == null ? undefined : json['fundsModuleEnabled'],
+        'voucherAuditRequired': json['voucherAuditRequired'] == null ? undefined : json['voucherAuditRequired'],
+        'balanceAssistScope': json['balanceAssistScope'] == null ? undefined : json['balanceAssistScope'],
+        'unitDecimalPlaces': json['unitDecimalPlaces'] == null ? undefined : json['unitDecimalPlaces'],
+        'isExportEnterprise': json['isExportEnterprise'] == null ? undefined : json['isExportEnterprise'],
+        'iitChannel': json['iitChannel'] == null ? undefined : json['iitChannel'],
+        'iitLoginType': json['iitLoginType'] == null ? undefined : json['iitLoginType'],
+        'iitLoginAccount': json['iitLoginAccount'] == null ? undefined : json['iitLoginAccount'],
+        'iitLoginPassword': json['iitLoginPassword'] == null ? undefined : json['iitLoginPassword'],
     };
 }
 
@@ -172,6 +249,17 @@ export function UpdateAccountSetRequestToJSONTyped(value?: UpdateAccountSetReque
         'taxIdentityType': value['taxIdentityType'],
         'taxLoginAccount': value['taxLoginAccount'],
         'taxLoginPassword': value['taxLoginPassword'],
+        'industry': value['industry'],
+        'assetsModuleEnabled': value['assetsModuleEnabled'],
+        'fundsModuleEnabled': value['fundsModuleEnabled'],
+        'voucherAuditRequired': value['voucherAuditRequired'],
+        'balanceAssistScope': value['balanceAssistScope'],
+        'unitDecimalPlaces': value['unitDecimalPlaces'],
+        'isExportEnterprise': value['isExportEnterprise'],
+        'iitChannel': value['iitChannel'],
+        'iitLoginType': value['iitLoginType'],
+        'iitLoginAccount': value['iitLoginAccount'],
+        'iitLoginPassword': value['iitLoginPassword'],
     };
 }
 

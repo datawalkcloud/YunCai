@@ -234,6 +234,88 @@ public sealed class SalaryServiceTests : IDisposable
         Assert.Contains("员工编号不能为空", ex.Message);
     }
 
+    // ===================== 税局人员同步 =====================
+
+    [Fact]
+    public async Task SyncIit_NewPerson_UsesProfileDefaultsAndGeneratesCode()
+    {
+        await AddEmployee("001", "老员工");
+
+        var result = await _service.SyncIitPersonnelAsync(_accountSet.Id, [
+            new IitPersonnelSyncRow { Name = "张三", IdNo = "3412************97", Dept = "销售部" },
+        ]);
+
+        Assert.Equal(1, result.Imported);
+        var created = (await _service.GetEmployeesAsync(_accountSet.Id)).Single(e => e.Name == "张三");
+        // 税局只给了姓名与部门：编号取现有末尾数字 +1，其余一律用员工档案默认值。
+        Assert.Equal("002", created.Code);
+        Assert.Equal("男", created.GenderText);
+        Assert.Equal("居民身份证", created.IdTypeText);
+        Assert.Equal("雇员", created.EmploymentTypeText);
+        Assert.Equal("在职", created.StatusText);
+        Assert.True(created.DeductBasicExpense);
+        Assert.True(created.PaysSocialInsurance);
+        Assert.Equal("销售部", created.Dept);
+        // 脱敏证件号不能当真实号码存进档案。
+        Assert.Null(created.IdNo);
+    }
+
+    [Fact]
+    public async Task SyncIit_MatchedEmployee_OverwritesOnlyWhatTaxProvided()
+    {
+        var employee = await _service.CreateEmployeeAsync(_accountSet.Id, new SaveEmployeeRequest
+        {
+            Code = "001",
+            Name = "张三",
+            Gender = 2,
+            IdType = 1,
+            IdNo = "341201199001010097",
+            Email = "z@example.com",
+            Status = 1,
+        });
+
+        var result = await _service.SyncIitPersonnelAsync(_accountSet.Id, [
+            new IitPersonnelSyncRow
+            {
+                Name = "张三",
+                IdNo = "3412************97",
+                Phone = "138****0000",
+                Dept = "销售部",
+                HireDate = "2026-01-05",
+            },
+        ]);
+
+        Assert.Equal(1, result.Updated);
+        Assert.Equal(0, result.Imported);
+        var synced = (await _service.GetEmployeesAsync(_accountSet.Id)).Single(e => e.Id == employee.Id);
+        // 编号不动（工资表按编号匹配员工）；税局没给或给的是脱敏值的列保留档案原值。
+        Assert.Equal("001", synced.Code);
+        Assert.Equal("女", synced.GenderText);
+        Assert.Equal("341201199001010097", synced.IdNo);
+        Assert.Null(synced.Phone);
+        Assert.Equal("z@example.com", synced.Email);
+        Assert.Equal("销售部", synced.Dept);
+        Assert.Equal(new DateOnly(2026, 1, 5), synced.HireDate);
+    }
+
+    [Fact]
+    public async Task SyncIit_TwoRowsSameName_ResignsFirstAndRegistersSecondSeparately()
+    {
+        await AddEmployee("001", "张三", dept: "销售部");
+
+        var result = await _service.SyncIitPersonnelAsync(_accountSet.Id, [
+            new IitPersonnelSyncRow { Name = "张三", LeaveDate = "2026-03-31" },
+            new IitPersonnelSyncRow { Name = "张三" },
+        ]);
+
+        Assert.Equal(1, result.Updated);
+        // 税局只回脱敏号时同名两笔分不出谁是谁：第二笔另开一档，不把两个人并成一个。
+        Assert.Equal(1, result.Imported);
+        var original = await _db.Context.Employees.SingleAsync(e => e.AccountSetId == _accountSet.Id && e.Code == "001");
+        Assert.Equal(EmployeeStatus.Resigned, original.Status);
+        Assert.Equal(new DateOnly(2026, 3, 31), original.LeaveDate);
+    }
+
     [Fact]
     public async Task DeleteEmployee_HasSalaryBills_ThrowsAndKeepsEmployee()
     {

@@ -77,12 +77,12 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             if (fromJournalId == Guid.Empty || toJournalId == Guid.Empty)
             {
-                throw new ArgumentException("转出与转入账户不能为空。", nameof(fromJournalId));
+                throw new ArgumentException("转出与转入账户不能为空。");
             }
 
             if (fromJournalId == toJournalId)
@@ -92,7 +92,7 @@ namespace KuaiJi.Modules.Funds.Domain
 
             if (amount <= 0m)
             {
-                throw new ArgumentException("转账金额必须大于 0。", nameof(amount));
+                throw new ArgumentException("转账金额必须大于 0。");
             }
 
             var finalSummary = string.IsNullOrWhiteSpace(summary) ? DefaultSummary : summary.Trim();
@@ -148,7 +148,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (amount <= 0m)
             {
-                throw new ArgumentException("转账金额必须大于 0。", nameof(amount));
+                throw new ArgumentException("转账金额必须大于 0。");
             }
 
             var finalSummary = string.IsNullOrWhiteSpace(summary) ? DefaultSummary : summary.Trim();

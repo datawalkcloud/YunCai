@@ -18,6 +18,7 @@ import type {
   AccountSetDto,
   ClosePeriodRequest,
   CreateAccountSetRequest,
+  TaxLoginTicketDto,
   UpdateAccountSetRequest,
 } from '../models/index';
 import {
@@ -27,6 +28,8 @@ import {
     ClosePeriodRequestToJSON,
     CreateAccountSetRequestFromJSON,
     CreateAccountSetRequestToJSON,
+    TaxLoginTicketDtoFromJSON,
+    TaxLoginTicketDtoToJSON,
     UpdateAccountSetRequestFromJSON,
     UpdateAccountSetRequestToJSON,
 } from '../models/index';
@@ -59,6 +62,10 @@ export interface AccountSetsIdPutRequest {
 }
 
 export interface AccountSetsIdReopenPeriodPostRequest {
+    id: string;
+}
+
+export interface AccountSetsIdTaxLoginTicketPostRequest {
     id: string;
 }
 
@@ -244,6 +251,27 @@ export interface AccountSetsApiInterface {
     /**
      */
     accountSetsIdReopenPeriodPost(requestParameters: AccountSetsIdReopenPeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto>;
+
+    /**
+     * Creates request options for accountSetsIdTaxLoginTicketPost without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof AccountSetsApiInterface
+     */
+    accountSetsIdTaxLoginTicketPostRequestOpts(requestParameters: AccountSetsIdTaxLoginTicketPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AccountSetsApiInterface
+     */
+    accountSetsIdTaxLoginTicketPostRaw(requestParameters: AccountSetsIdTaxLoginTicketPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TaxLoginTicketDto>>;
+
+    /**
+     */
+    accountSetsIdTaxLoginTicketPost(requestParameters: AccountSetsIdTaxLoginTicketPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TaxLoginTicketDto>;
 
     /**
      * Creates request options for accountSetsPost without sending the request
@@ -635,6 +663,49 @@ export class AccountSetsApi extends runtime.BaseAPI implements AccountSetsApiInt
      */
     async accountSetsIdReopenPeriodPost(requestParameters: AccountSetsIdReopenPeriodPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountSetDto> {
         const response = await this.accountSetsIdReopenPeriodPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountSetsIdTaxLoginTicketPost without sending the request
+     */
+    async accountSetsIdTaxLoginTicketPostRequestOpts(requestParameters: AccountSetsIdTaxLoginTicketPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountSetsIdTaxLoginTicketPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/AccountSets/{id}/tax-login-ticket`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountSetsIdTaxLoginTicketPostRaw(requestParameters: AccountSetsIdTaxLoginTicketPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TaxLoginTicketDto>> {
+        const requestOptions = await this.accountSetsIdTaxLoginTicketPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TaxLoginTicketDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountSetsIdTaxLoginTicketPost(requestParameters: AccountSetsIdTaxLoginTicketPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TaxLoginTicketDto> {
+        const response = await this.accountSetsIdTaxLoginTicketPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

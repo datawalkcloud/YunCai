@@ -1,4 +1,5 @@
 import {
+    AuditOutlined,
     BankOutlined,
     BookOutlined,
     CalendarOutlined,
@@ -7,20 +8,20 @@ import {
     FundOutlined,
     SettingOutlined,
     TeamOutlined,
-    ToolOutlined,
     WalletOutlined,
 } from "@ant-design/icons";
 
 /* ------------------------------------------------------------------ */
 /*  菜单模型：to 为账套下的相对子路径（每项都有真实链接）。                */
 /*  带 children 的是折叠分组；无 children 的是直达项（如期末结转）。        */
-/*  wip 子项属「外部对接 · 未接入」分组（需第三方渠道，见 docs/柠檬云J6功能差距清单.md 第四节）。 */
+/*  wip 项按柠檬云 J6 的原位置归入各分组，仅标记「需第三方渠道、尚未接入」   */
+/*  （见 docs/柠檬云J6功能差距清单.md 第四节）。                            */
 /* ------------------------------------------------------------------ */
 
 export type MenuLeaf = { label: string; wip?: boolean; to: string };
-export type MenuGroup = { label: string; icon: React.ReactNode; to?: string; children?: MenuLeaf[] };
+export type MenuGroup = { label: string; icon: React.ReactNode; to?: string; wip?: boolean; children?: MenuLeaf[] };
 
-/** 菜单层级：与柠檬云 J6 一致（首页 + 凭证/资金/发票/工资/资产/期末结转/账簿/报表/设置），末尾为「外部对接 · 未接入」折叠分组。 */
+/** 菜单层级：与柠檬云 J6 一致（首页 + 凭证/资金/发票/工资/资产/期末结转/账簿/报表/一键报税/设置）。 */
 export const menuGroups: MenuGroup[] = [
     {
         label: "凭证",
@@ -29,6 +30,7 @@ export const menuGroups: MenuGroup[] = [
             { label: "新增凭证", to: "vouchers/new" },
             { label: "查看凭证", to: "vouchers/manage" },
             { label: "会计电子档案", to: "vouchers/erecord" },
+            { label: "收票宝", to: "vouchers/spb", wip: true },
         ],
     },
     {
@@ -42,6 +44,7 @@ export const menuGroups: MenuGroup[] = [
             { label: "资金报表", to: "funds/report" },
             { label: "核对总账", to: "funds/reconciliation" },
             { label: "收支类别", to: "funds/entry-categories" },
+            { label: "银企互联", to: "funds/bank-link", wip: true },
             { label: "账户设置", to: "funds/account" },
         ],
     },
@@ -49,11 +52,13 @@ export const menuGroups: MenuGroup[] = [
         label: "发票",
         icon: <FileDoneOutlined />,
         children: [
+            { label: "一键取票", to: "invoices/fetch", wip: true },
             { label: "销项发票", to: "invoices/sales" },
             { label: "进项发票", to: "invoices/purchase" },
             { label: "费用单据", to: "invoices/expense" },
             { label: "增值税测算", to: "invoices/vat-calc" },
             { label: "发票资金一览表", to: "invoices/summary" },
+            { label: "发票风险分析", to: "invoices/risk", wip: true },
         ],
     },
     {
@@ -114,6 +119,14 @@ export const menuGroups: MenuGroup[] = [
         ],
     },
     {
+        label: "一键报税",
+        icon: <AuditOutlined />,
+        children: [
+            { label: "一键报税", to: "tax/declare" },
+            { label: "一键登录税局", to: "tax/login" },
+        ],
+    },
+    {
         label: "设置",
         icon: <SettingOutlined />,
         children: [
@@ -129,21 +142,9 @@ export const menuGroups: MenuGroup[] = [
             { label: "备份恢复", to: "settings/backup" },
             { label: "旧账导入", to: "settings/import-old" },
             { label: "操作日志", to: "settings/log" },
-            { label: "重新初始化", to: "settings/reinit" },
-        ],
-    },
-    {
-        label: "外部对接 · 未接入",
-        icon: <ToolOutlined />,
-        children: [
-            { label: "收票宝", to: "vouchers/spb", wip: true },
-            { label: "银企互联", to: "funds/bank-link", wip: true },
-            { label: "一键取票", to: "invoices/fetch", wip: true },
-            { label: "发票风险分析", to: "invoices/risk", wip: true },
-            { label: "一键登录税局", to: "tax/login", wip: true },
             { label: "关联云发票", to: "settings/eis-relation", wip: true },
             { label: "关联进销存", to: "settings/scm-relation", wip: true },
-            { label: "升级专业版", to: "pro", wip: true },
+            { label: "重新初始化", to: "settings/reinit" },
         ],
     },
 ];

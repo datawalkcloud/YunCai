@@ -197,7 +197,7 @@ export default function ReconciliationPage() {
             render: (_, r) => (
                 <span className="flex items-center gap-2">
                     <span className="font-medium text-[#2f6bff]">{r.journalName ?? ""}</span>
-                    {!r.balanced && <span className="bg-[#fef2f2] px-1.5 text-[11px] leading-5 text-[#ef4444]">不平</span>}
+                    {!r.balanced && <span className="rounded-sm bg-[#fef2f2] px-1.5 text-[11px] leading-5 text-[#ef4444]">不平</span>}
                     {!r.accountCode && <span className="text-[11px] text-[#b45309]">未关联科目</span>}
                 </span>
             ),
@@ -230,14 +230,13 @@ export default function ReconciliationPage() {
         <div className="flex flex-col gap-3">
             {error && <div className="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
 
-            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 }, body: { padding: 0 } }}>
+            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 } }}>
                 {/* 工具行一：期间 + 打印/导出/刷新 */}
-                <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
+                <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 px-4 py-2.5">
                     <Space size={10} wrap>
                         <DatePicker
                             picker="month"
-                            size="small"
-                            allowClear={false}
+                                                       allowClear={false}
                             value={period}
                             style={{ width: 130 }}
                             onChange={(value) => {
@@ -247,8 +246,7 @@ export default function ReconciliationPage() {
                             }}
                         />
                         <Select
-                            size="small"
-                            style={{ width: 90 }}
+                                                       style={{ width: 90 }}
                             value={day}
                             showSearch
                             optionFilterProp="label"
@@ -280,8 +278,7 @@ export default function ReconciliationPage() {
 
                     <Space size={8} wrap>
                         <Button
-                            size="small"
-                            autoInsertSpace={false}
+                                                       autoInsertSpace={false}
                             disabled={!data}
                             onClick={() => {
                                 if (data) openPrintWindow(buildPrintHtml(data, accountSetName || "当前账套", periodText))
@@ -289,22 +286,21 @@ export default function ReconciliationPage() {
                         >
                             打印
                         </Button>
-                        <Button size="small" autoInsertSpace={false} onClick={() => void exportReport()}>
+                        <Button autoInsertSpace={false} onClick={() => void exportReport()}>
                             导出
                         </Button>
                         <Tooltip title="刷新">
-                            <Button size="small" icon={<ReloadOutlined spin={loading} />} onClick={() => void load()} />
+                            <Button icon={<ReloadOutlined spin={loading} />} onClick={() => void load()} />
                         </Tooltip>
                     </Space>
                 </div>
 
                 {/* 工具行二：账户 + 只显示不平 */}
-                <div className="flex min-h-[48px] flex-wrap items-center gap-4 border-b border-slate-100 px-4 py-2">
+                <div className="flex min-h-[48px] flex-wrap items-center gap-4 px-4 py-2" style={{ marginBottom: 16 }}>
                     <Space size={8}>
                         <span className="text-[13px] text-slate-600">账户：</span>
                         <Select
-                            size="small"
-                            style={{ width: 150 }}
+                                                       style={{ width: 150 }}
                             value={journalId}
                             onChange={(value) => {
                                 setJournalId(value)
@@ -332,21 +328,18 @@ export default function ReconciliationPage() {
                         dataSource={pagedRows}
                         rowKey={(r) => r.journalId ?? ""}
                         pagination={false}
-                        size="small"
-                        bordered
-                        loading={loading}
+                                               loading={loading}
                         locale={{ emptyText: <div className="py-10 text-[13px] text-slate-400">暂无数据</div> }}
                         onRow={(r) => (r.balanced ? {} : { style: { background: "#fff7f7" } })}
                     />
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 text-[12.5px] text-slate-500">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
                         <span>
                             显示 {visibleRows.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, visibleRows.length)}，共{" "}
                             {visibleRows.length} 条
                         </span>
                         <Space size={8}>
                             <Select
-                                size="small"
-                                style={{ width: 100 }}
+                                                               style={{ width: 100 }}
                                 value={pageSize}
                                 onChange={(value) => {
                                     setPageSize(value)
@@ -354,15 +347,14 @@ export default function ReconciliationPage() {
                                 }}
                                 options={[20, 50, 100, 200].map((v) => ({ value: v, label: `${v} 条/页` }))}
                             />
-                            <Button size="small" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                            <Button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                                 上一页
                             </Button>
                             <span>
                                 第 {page} / {Math.max(1, Math.ceil(visibleRows.length / pageSize))} 页
                             </span>
                             <Button
-                                size="small"
-                                disabled={page >= Math.ceil(visibleRows.length / pageSize) || visibleRows.length === 0}
+                                                               disabled={page >= Math.ceil(visibleRows.length / pageSize) || visibleRows.length === 0}
                                 onClick={() => setPage((p) => p + 1)}
                             >
                                 下一页

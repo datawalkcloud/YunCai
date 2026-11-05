@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CancelCarryResultDto,
+  CarryForwardPreviewDto,
   CarryForwardRequest,
   CarryForwardResultDto,
   CloseBatchResultDto,
@@ -24,11 +25,16 @@ import type {
   ClosingStatusDto,
   ClosingTemplateDto,
   ClosingTemplatePreviewDto,
+  GeneratePreCloseRequest,
+  GeneratePreCloseResultDto,
+  PreCloseListDto,
   SaveClosingTemplateRequest,
 } from '../models/index';
 import {
     CancelCarryResultDtoFromJSON,
     CancelCarryResultDtoToJSON,
+    CarryForwardPreviewDtoFromJSON,
+    CarryForwardPreviewDtoToJSON,
     CarryForwardRequestFromJSON,
     CarryForwardRequestToJSON,
     CarryForwardResultDtoFromJSON,
@@ -45,6 +51,12 @@ import {
     ClosingTemplateDtoToJSON,
     ClosingTemplatePreviewDtoFromJSON,
     ClosingTemplatePreviewDtoToJSON,
+    GeneratePreCloseRequestFromJSON,
+    GeneratePreCloseRequestToJSON,
+    GeneratePreCloseResultDtoFromJSON,
+    GeneratePreCloseResultDtoToJSON,
+    PreCloseListDtoFromJSON,
+    PreCloseListDtoToJSON,
     SaveClosingTemplateRequestFromJSON,
     SaveClosingTemplateRequestToJSON,
 } from '../models/index';
@@ -55,6 +67,11 @@ export interface AccountsetsAccountSetIdClosingCancelCarryPostRequest {
 }
 
 export interface AccountsetsAccountSetIdClosingCarryForwardPostRequest {
+    accountSetId: string;
+    carryForwardRequest: CarryForwardRequest;
+}
+
+export interface AccountsetsAccountSetIdClosingCarryForwardPreviewPostRequest {
     accountSetId: string;
     carryForwardRequest: CarryForwardRequest;
 }
@@ -78,8 +95,21 @@ export interface AccountsetsAccountSetIdClosingGetRequest {
     accountSetId: string;
 }
 
+export interface AccountsetsAccountSetIdClosingPreCloseGeneratePostRequest {
+    accountSetId: string;
+    generatePreCloseRequest: GeneratePreCloseRequest;
+}
+
+export interface AccountsetsAccountSetIdClosingPreCloseGetRequest {
+    accountSetId: string;
+    year?: number;
+    month?: number;
+}
+
 export interface AccountsetsAccountSetIdClosingReopenPostRequest {
     accountSetId: string;
+    year?: number;
+    month?: number;
 }
 
 export interface AccountsetsAccountSetIdClosingTemplatesGetRequest {
@@ -160,6 +190,29 @@ export interface ClosingApiInterface {
     /**
      */
     accountsetsAccountSetIdClosingCarryForwardPost(requestParameters: AccountsetsAccountSetIdClosingCarryForwardPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CarryForwardResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdClosingCarryForwardPreviewPost without sending the request
+     * @param {string} accountSetId 
+     * @param {CarryForwardRequest} carryForwardRequest 
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingCarryForwardPreviewPostRequestOpts(requestParameters: AccountsetsAccountSetIdClosingCarryForwardPreviewPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {CarryForwardRequest} carryForwardRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingCarryForwardPreviewPostRaw(requestParameters: AccountsetsAccountSetIdClosingCarryForwardPreviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CarryForwardPreviewDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdClosingCarryForwardPreviewPost(requestParameters: AccountsetsAccountSetIdClosingCarryForwardPreviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CarryForwardPreviewDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdClosingChecksGet without sending the request
@@ -252,8 +305,58 @@ export interface ClosingApiInterface {
     accountsetsAccountSetIdClosingGet(requestParameters: AccountsetsAccountSetIdClosingGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClosingStatusDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdClosingPreCloseGeneratePost without sending the request
+     * @param {string} accountSetId 
+     * @param {GeneratePreCloseRequest} generatePreCloseRequest 
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingPreCloseGeneratePostRequestOpts(requestParameters: AccountsetsAccountSetIdClosingPreCloseGeneratePostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {GeneratePreCloseRequest} generatePreCloseRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingPreCloseGeneratePostRaw(requestParameters: AccountsetsAccountSetIdClosingPreCloseGeneratePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GeneratePreCloseResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdClosingPreCloseGeneratePost(requestParameters: AccountsetsAccountSetIdClosingPreCloseGeneratePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GeneratePreCloseResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdClosingPreCloseGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingPreCloseGetRequestOpts(requestParameters: AccountsetsAccountSetIdClosingPreCloseGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingPreCloseGetRaw(requestParameters: AccountsetsAccountSetIdClosingPreCloseGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PreCloseListDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdClosingPreCloseGet(requestParameters: AccountsetsAccountSetIdClosingPreCloseGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PreCloseListDto>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdClosingReopenPost without sending the request
      * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
      * @throws {RequiredError}
      * @memberof ClosingApiInterface
      */
@@ -262,6 +365,8 @@ export interface ClosingApiInterface {
     /**
      * 
      * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof ClosingApiInterface
@@ -503,6 +608,59 @@ export class ClosingApi extends runtime.BaseAPI implements ClosingApiInterface {
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdClosingCarryForwardPreviewPost without sending the request
+     */
+    async accountsetsAccountSetIdClosingCarryForwardPreviewPostRequestOpts(requestParameters: AccountsetsAccountSetIdClosingCarryForwardPreviewPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdClosingCarryForwardPreviewPost().'
+            );
+        }
+
+        if (requestParameters['carryForwardRequest'] == null) {
+            throw new runtime.RequiredError(
+                'carryForwardRequest',
+                'Required parameter "carryForwardRequest" was null or undefined when calling accountsetsAccountSetIdClosingCarryForwardPreviewPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/closing/carry-forward/preview`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CarryForwardRequestToJSON(requestParameters['carryForwardRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingCarryForwardPreviewPostRaw(requestParameters: AccountsetsAccountSetIdClosingCarryForwardPreviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CarryForwardPreviewDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdClosingCarryForwardPreviewPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CarryForwardPreviewDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingCarryForwardPreviewPost(requestParameters: AccountsetsAccountSetIdClosingCarryForwardPreviewPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CarryForwardPreviewDto> {
+        const response = await this.accountsetsAccountSetIdClosingCarryForwardPreviewPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdClosingChecksGet without sending the request
      */
     async accountsetsAccountSetIdClosingChecksGetRequestOpts(requestParameters: AccountsetsAccountSetIdClosingChecksGetRequest): Promise<runtime.RequestOpts> {
@@ -693,6 +851,110 @@ export class ClosingApi extends runtime.BaseAPI implements ClosingApiInterface {
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdClosingPreCloseGeneratePost without sending the request
+     */
+    async accountsetsAccountSetIdClosingPreCloseGeneratePostRequestOpts(requestParameters: AccountsetsAccountSetIdClosingPreCloseGeneratePostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdClosingPreCloseGeneratePost().'
+            );
+        }
+
+        if (requestParameters['generatePreCloseRequest'] == null) {
+            throw new runtime.RequiredError(
+                'generatePreCloseRequest',
+                'Required parameter "generatePreCloseRequest" was null or undefined when calling accountsetsAccountSetIdClosingPreCloseGeneratePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/closing/pre-close/generate`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GeneratePreCloseRequestToJSON(requestParameters['generatePreCloseRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingPreCloseGeneratePostRaw(requestParameters: AccountsetsAccountSetIdClosingPreCloseGeneratePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GeneratePreCloseResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdClosingPreCloseGeneratePostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GeneratePreCloseResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingPreCloseGeneratePost(requestParameters: AccountsetsAccountSetIdClosingPreCloseGeneratePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GeneratePreCloseResultDto> {
+        const response = await this.accountsetsAccountSetIdClosingPreCloseGeneratePostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdClosingPreCloseGet without sending the request
+     */
+    async accountsetsAccountSetIdClosingPreCloseGetRequestOpts(requestParameters: AccountsetsAccountSetIdClosingPreCloseGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdClosingPreCloseGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['year'] != null) {
+            queryParameters['year'] = requestParameters['year'];
+        }
+
+        if (requestParameters['month'] != null) {
+            queryParameters['month'] = requestParameters['month'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/closing/pre-close`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingPreCloseGetRaw(requestParameters: AccountsetsAccountSetIdClosingPreCloseGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PreCloseListDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdClosingPreCloseGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PreCloseListDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingPreCloseGet(requestParameters: AccountsetsAccountSetIdClosingPreCloseGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PreCloseListDto> {
+        const response = await this.accountsetsAccountSetIdClosingPreCloseGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdClosingReopenPost without sending the request
      */
     async accountsetsAccountSetIdClosingReopenPostRequestOpts(requestParameters: AccountsetsAccountSetIdClosingReopenPostRequest): Promise<runtime.RequestOpts> {
@@ -704,6 +966,14 @@ export class ClosingApi extends runtime.BaseAPI implements ClosingApiInterface {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['year'] != null) {
+            queryParameters['year'] = requestParameters['year'];
+        }
+
+        if (requestParameters['month'] != null) {
+            queryParameters['month'] = requestParameters['month'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 

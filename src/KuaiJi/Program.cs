@@ -111,6 +111,8 @@ builder.Services.AddScoped<KuaiJi.Modules.Funds.Domain.IBillRepository, KuaiJi.M
 builder.Services.AddScoped<KuaiJi.Modules.FixedAssets.Domain.IFixedAssetRepository, KuaiJi.Modules.FixedAssets.Infrastructure.FixedAssetRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.Expenses.Domain.IExpenseRepository, KuaiJi.Modules.Expenses.Infrastructure.ExpenseRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.Invoices.Domain.IInvoiceRepository, KuaiJi.Modules.Invoices.Infrastructure.InvoiceRepository>();
+// 税局「一键取票」落库：按「账套 + 方向 + 发票号」跳过重复，不覆盖已认证/已入账的发票。
+builder.Services.AddScoped<KuaiJi.Modules.Invoices.Domain.IInvoiceTaxImporter, KuaiJi.Modules.Invoices.Infrastructure.InvoiceTaxImporter>();
 builder.Services.AddScoped<KuaiJi.Modules.Salary.Domain.ISalaryRepository, KuaiJi.Modules.Salary.Infrastructure.SalaryRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.Archives.Domain.IArchiveRepository, KuaiJi.Modules.Archives.Infrastructure.ArchiveRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.Auditing.Domain.IOperationLogRepository, KuaiJi.Modules.Auditing.Infrastructure.OperationLogRepository>();
@@ -135,8 +137,16 @@ builder.Services.AddSingleton<KuaiJi.Modules.AccountSets.Application.TaxLoginTic
 // 服务端税局通道：无头浏览器与登录会话常驻进程；登录态加密后存数据库，
 // 服务重启、重建容器、换服务器都能免登录取数。
 builder.Services.AddSingleton<KuaiJi.Modules.Tax.Infrastructure.TaxPortalSessionStore>();
+// 任务中心台账：每次服务端税局操作落一行，写入走自己的作用域，做成单例。
+builder.Services.AddSingleton<KuaiJi.Modules.Tax.Infrastructure.TaxTaskStore>();
 builder.Services.AddSingleton<KuaiJi.Modules.Tax.Application.TaxPortalBrowserHandoffStore>();
 builder.Services.AddSingleton<KuaiJi.Modules.Tax.Application.TaxPortalService>();
+// 个税取数跑在请求之外：提交即返回任务标识，后台执行器负责跑完并回填任务中心。
+builder.Services.AddSingleton<KuaiJi.Modules.Tax.Application.TaxIitFetchJobRunner>();
+// 一键取票同样是后台任务：税局查询要翻页，跑完再统一落库。
+builder.Services.AddSingleton<KuaiJi.Modules.Tax.Application.TaxInvoiceSyncJobRunner>();
+// 个税报表填写按累计预扣法读工资模块数据，属于纯查询，不落库。
+builder.Services.AddScoped<KuaiJi.Modules.Tax.Application.IitReportService>();
 builder.Services.AddScoped<KuaiJi.SharedKernel.Infrastructure.Data.AccountSetBackupService>();
 builder.Services.AddScoped<KuaiJi.Modules.Accounting.Application.AccountAutoCreateService>();
 builder.Services.AddScoped<KuaiJi.Modules.Accounting.Application.IAccountImportReader, KuaiJi.Modules.Accounting.Infrastructure.XlsxAccountImportReader>();
@@ -165,6 +175,8 @@ builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.MultiColumnLedgerS
 builder.Services.AddScoped<KuaiJi.Modules.Ledgers.Application.AgeingAnalysisService>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.TrialBalanceService>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.BalanceSheetService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.BalanceSheetXlsExportService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.BalanceSheetPdfExportService>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.CashJournalService>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.IncomeStatementService>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.CashFlowService>();
@@ -281,6 +293,18 @@ try
             startupLogger.LogInformation("数据库迁移与初始化完成，进程退出。");
             return;
         }
+    }
+
+    // 个税取数是后台任务，重启后内存里的任务全没了，台账却可能还留着「进行中」；
+    // 开机先把它收口成失败，任务中心才不会挂着一行永远不动的进行中。台账是旁路能力，失败不影响启动。
+    try
+    {
+        await app.Services.GetRequiredService<KuaiJi.Modules.Tax.Application.TaxIitFetchJobRunner>()
+            .AbandonInterruptedAsync(CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        startupLogger.LogWarning(ex, "[任务中心] 收口重启前未完成任务失败");
     }
 
     // Configure the HTTP request pipeline.

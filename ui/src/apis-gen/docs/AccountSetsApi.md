@@ -12,6 +12,7 @@ All URIs are relative to *http://localhost:5271*
 | [**accountSetsIdGet**](AccountSetsApi.md#accountsetsidget) | **GET** /AccountSets/{id} |  |
 | [**accountSetsIdPut**](AccountSetsApi.md#accountsetsidput) | **PUT** /AccountSets/{id} |  |
 | [**accountSetsIdReopenPeriodPost**](AccountSetsApi.md#accountsetsidreopenperiodpost) | **POST** /AccountSets/{id}/reopen-period |  |
+| [**accountSetsIdTaxLoginTicketPost**](AccountSetsApi.md#accountsetsidtaxloginticketpost) | **POST** /AccountSets/{id}/tax-login-ticket |  |
 | [**accountSetsPost**](AccountSetsApi.md#accountsetspost) | **POST** /AccountSets |  |
 
 
@@ -518,6 +519,71 @@ example().catch(console.error);
 ### Return type
 
 [**AccountSetDto**](AccountSetDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountSetsIdTaxLoginTicketPost
+
+> TaxLoginTicketDto accountSetsIdTaxLoginTicketPost(id)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  AccountSetsApi,
+} from '';
+import type { AccountSetsIdTaxLoginTicketPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new AccountSetsApi();
+
+  const body = {
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountSetsIdTaxLoginTicketPostRequest;
+
+  try {
+    const data = await api.accountSetsIdTaxLoginTicketPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**TaxLoginTicketDto**](TaxLoginTicketDto.md)
 
 ### Authorization
 

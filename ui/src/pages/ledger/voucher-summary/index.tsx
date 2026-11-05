@@ -59,18 +59,6 @@ export default function VoucherSummaryPage() {
     return (
         <LedgerPageShell
             page="voucher-summary"
-            title="凭证汇总表"
-            hint="按科目汇总区间内已过账凭证的借贷发生额，凭证张数与附件张数均按凭证去重统计。"
-            actions={
-
-                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-
-                    打印
-
-                </Button>
-
-            }
-
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
@@ -81,12 +69,17 @@ export default function VoucherSummaryPage() {
                     switches={SWITCHES}
                     loading={query.loading}
                     extra={
-                        <LedgerExportButton
-                            kind="voucher-summary"
-                            accountSetId={accountSetId}
-                            token={token}
-                            conditions={query.committed}
-                        />
+                        <>
+                            <LedgerExportButton
+                                kind="voucher-summary"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
+                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                                打印
+                            </Button>
+                        </>
                     }
                     disabled={!accountSetId}
                 />

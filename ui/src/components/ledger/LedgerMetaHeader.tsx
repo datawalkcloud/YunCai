@@ -5,8 +5,7 @@ import { Chip } from "@/components/page/chip"
 
 /**
  * 账页公共页头：账套、记账单位、查询期间与结账进度；
- * 区间内存在未过账凭证时给出显式提示（账簿只统计已过账凭证）。
- */
+ * 区间内存在未过账凭证时给出显式提示（账簿只统计已过账凭证）。 */
 export function LedgerMetaHeader({ meta }: { meta?: LedgerMetaDto | null }) {
     if (!meta) return null
     const unposted = meta.unpostedVoucherCount ?? 0
@@ -30,7 +29,7 @@ export function LedgerMetaHeader({ meta }: { meta?: LedgerMetaDto | null }) {
                 <Alert
                     type="warning"
                     showIcon
-                    title={`${meta.periodText} 内有 ${unposted} 张未过账凭证未纳入账簿，请先在凭证页完成审核并过账。`}
+                    title={`${meta.periodText} 内有 ${unposted} 张草稿凭证未纳入账簿，请先在凭证页打开并保存入账。`}
                 />
             )}
         </div>

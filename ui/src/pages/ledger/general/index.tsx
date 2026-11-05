@@ -98,18 +98,6 @@ export default function GeneralLedgerPage() {
     return (
         <LedgerPageShell
             page="general"
-            title="总账"
-            hint="按科目分段、每个自然月一行列示期初、本月借贷、期末与余额方向。点击月份行可下钻该科目明细账。"
-            actions={
-
-                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-
-                    打印
-
-                </Button>
-
-            }
-
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
@@ -120,12 +108,17 @@ export default function GeneralLedgerPage() {
                     switches={SWITCHES}
                     loading={query.loading}
                     extra={
-                        <LedgerExportButton
-                            kind="general"
-                            accountSetId={accountSetId}
-                            token={token}
-                            conditions={query.committed}
-                        />
+                        <>
+                            <LedgerExportButton
+                                kind="general"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
+                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                                打印
+                            </Button>
+                        </>
                     }
                     disabled={!accountSetId}
                 />

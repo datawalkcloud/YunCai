@@ -1,5 +1,5 @@
-import { Fragment, useMemo, useRef, useState } from "react"
-import { Button, DatePicker, Input, InputNumber, Modal, Select } from "antd"
+import { useMemo, useRef, useState } from "react"
+import { Button, DatePicker, Input, InputNumber, Modal, Select, Table } from "antd"
 import { DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons"
 import dayjs from "dayjs"
 
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { AssistItemSelect } from "@/components/assist/assist-item-select"
 import { assistLabel } from "@/components/assist/constants"
 import { useAccountAssistConfigs } from "@/components/assist/assist-store"
+import { AmountCells, AmountHeaderCell } from "@/components/voucher/amount-grid"
 
 /**
  * 凭证分录行。借方与贷方以字符串保存，便于输入编辑；account 存科目 id；
@@ -25,9 +26,6 @@ interface EntryRow {
     credit: string
     assists: Record<number, string>
 }
-
-/** 金额分位列，从高位到低位（最高支持到亿位，角、分为小数位）。 */
-const AMOUNT_COLUMNS = ["亿", "千万", "百万", "十万", "万", "千", "百", "十", "元", "角", "分"]
 
 /** 制单默认日期：本地今天的 yyyy-MM-dd（不能用 UTC 口径，否则凌晨会落到昨天）。 */
 function today(): string {
@@ -96,112 +94,6 @@ function detectDirectionIssues(entries: EntryRow[], accountMap: Map<string | und
     return issues
 }
 
-/** 将金额按分位拆解为与 AMOUNT_COLUMNS 对齐的字符数组，0 时全部留空。 */
-function digitCells(value: number): string[] {
-    const cells = Array<string>(AMOUNT_COLUMNS.length).fill("")
-    if (value === 0) return cells
-    const absValue = Math.abs(value)
-    const cents = Math.round(absValue * 100)
-    if (cents <= 0) return cells
-    const str = String(cents)
-    for (let i = 0; i < str.length && i < cells.length; i++) {
-        cells[cells.length - 1 - i] = str[str.length - 1 - i]
-    }
-    return cells
-}
-
-const thCls = "border border-border px-1 py-1 text-center font-medium text-muted-foreground"
-const tdCls = "border border-border p-0 align-middle"
-
-/** 规整金额输入：仅数字与一个小数点，且小数点后最多两位。 */
-function sanitizeAmount(v: string): string {
-    let s = v.replace(/[^\d.]/g, "")
-    const dot = s.indexOf(".")
-    if (dot !== -1) {
-        const intPart = s.slice(0, dot).slice(0, 9)
-        const decPart = s.slice(dot + 1).replace(/\./g, "").slice(0, 2)
-        s = intPart + "." + decPart
-    } else {
-        s = s.slice(0, 9)
-    }
-    return s
-}
-
-/** 分位竖线：元→角、千→百、百万→十万处用强调色分隔，其余常规边框色；末列（分）不画线。 */
-function digitCellCls(i: number): string {
-    if (i >= 10) return ""
-    if (i === 8) return "border-r border-destructive/40"
-    if (i === 5 || i === 2) return "border-r border-primary/40"
-    return "border-r border-border"
-}
-
-/** 借方 / 贷方金额的 11 个分位表头；竖排中文按字换行纵向排布。 */
-function AmountColumnHeader({ idPrefix }: { idPrefix: string }) {
-    return (
-        <div className="grid grid-cols-11">
-            {AMOUNT_COLUMNS.map((c, i) => (
-                <div
-                    key={`${idPrefix}-${i}`}
-                    className={cn(
-                        "flex h-12 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground",
-                        digitCellCls(i),
-                    )}
-                >
-                    {c.split("").map((ch, j) => (
-                        <span key={j}>{ch}</span>
-                    ))}
-                </div>
-            ))}
-        </div>
-    )
-}
-
-/** 借方 / 贷方金额分位小格；editable 时聚焦可直接输入完整数值，失焦后按位对齐到分位小格。 */
-function AmountCells({
-    value,
-    editable,
-    raw,
-    onChange,
-}: {
-    value: number
-    editable?: boolean
-    raw?: string
-    onChange?: (v: string) => void
-}) {
-    const [focused, setFocused] = useState(false)
-    const cells = digitCells(value)
-    const isNegative = value < 0
-    return (
-        <div className="relative">
-            <div className={cn("grid grid-cols-11", isNegative && "text-destructive")}>
-                {cells.map((d, i) => (
-                    <div key={i} className={cn("flex h-[54px] items-center justify-center tabular-nums", digitCellCls(i))}>
-                        {focused ? "" : d}
-                    </div>
-                ))}
-            </div>
-            {editable && (
-                <input
-                    inputMode="decimal"
-                    value={raw ?? ""}
-                    onChange={(e) => onChange?.(sanitizeAmount(e.target.value))}
-                    onFocus={(e) => {
-                        setFocused(true)
-                        e.target.select()
-                    }}
-                    onBlur={() => setFocused(false)}
-                    className={cn(
-                        "absolute inset-0 h-full w-full px-2 text-right outline-none",
-                        focused
-                            ? "bg-accent/40 text-foreground caret-primary"
-                            : "bg-transparent text-transparent caret-transparent",
-                    )}
-                />
-            )}
-        </div>
-    )
-}
-
 /**
  * 凭证录入表单（仿纸质记账凭证）。校验借贷平衡后调用后端保存，成功后回调 onSaved。
  * 科目来自账套下启用中的末级科目；凭证号留空时由后端按凭证字自动续号。
@@ -212,6 +104,8 @@ export default function VoucherForm({
     preparer,
     token,
     initial,
+    initialDate,
+    initialWord,
     onSaved,
     onCancel,
 }: {
@@ -221,6 +115,10 @@ export default function VoucherForm({
     token?: string
     /** 传入则为编辑模式：回填字段并调用更新端点；凭证字与号不可更改。 */
     initial?: VoucherDetailDto
+    /** 新增模式下预设凭证日期（列表「插入」用）。 */
+    initialDate?: string
+    /** 新增模式下预设凭证字。 */
+    initialWord?: string
     onSaved: () => void
     onCancel: () => void
 }) {
@@ -232,9 +130,9 @@ export default function VoucherForm({
         const raw = accountSets.find((s) => s.id === accountSetId)?.voucherWords ?? "记,收,付,转"
         return raw.split(/[,，、\s]+/).filter(Boolean)
     }, [accountSets, accountSetId])
-    const [voucherWord, setVoucherWord] = useState(initial?.word ?? "记")
+    const [voucherWord, setVoucherWord] = useState(initial?.word ?? initialWord ?? "记")
     const [voucherNo, setVoucherNo] = useState(initial?.number ? String(initial.number) : "")
-    const [date, setDate] = useState(() => (initial?.date ? toISODate(initial.date) : today()))
+    const [date, setDate] = useState(() => (initial?.date ? toISODate(initial.date) : initialDate ?? today()))
     const [attachments, setAttachments] = useState(initial?.attachmentCount != null ? String(initial.attachmentCount) : "0")
     const [entries, setEntries] = useState<EntryRow[]>(() => toEntryRows(initial))
     const [saving, setSaving] = useState(false)
@@ -329,6 +227,10 @@ export default function VoucherForm({
         try {
             const api = new VouchersApi(apiConfig(token))
             if (editing && initial?.id) {
+                // 已过账凭证先反过账，更新后再重新入账（列表里直接点「修改」无需用户手动反过账）。
+                if (initial.status === 3) {
+                    await api.accountsetsAccountSetIdVouchersIdUnpostPost({ accountSetId, id: initial.id })
+                }
                 const request: UpdateVoucherRequest = {
                     date: dateValue,
                     attachmentCount,
@@ -475,146 +377,126 @@ export default function VoucherForm({
 
             {/* 分录表格 */}
             <div className="overflow-x-auto">
-                <table className="w-full min-w-[1040px] border-collapse text-sm">
-                    <colgroup>
-                        <col className="w-60" />
-                        <col className="w-50" />
-                        {AMOUNT_COLUMNS.map((_, i) => (
-                            <col key={`d-${i}`} className="w-6" />
-                        ))}
-                        {AMOUNT_COLUMNS.map((_, i) => (
-                            <col key={`c-${i}`} className="w-6" />
-                        ))}
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th rowSpan={2} className={thCls}>
-                                摘要
-                            </th>
-                            <th rowSpan={2} className={thCls}>
-                                会计科目
-                            </th>
-                            <th colSpan={11} className={thCls}>
-                                借方金额
-                            </th>
-                            <th colSpan={11} className={thCls}>
-                                贷方金额
-                            </th>
-                        </tr>
-                        <tr>
-                            <th colSpan={11} className={cn(thCls, "p-0 align-top")}>
-                                <AmountColumnHeader idPrefix="dh" />
-                            </th>
-                            <th colSpan={11} className={cn(thCls, "p-0 align-top")}>
-                                <AmountColumnHeader idPrefix="ch" />
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {entries.map((entry) => {
-                            // 本行科目挂了的辅助核算维度；为空则不展开辅助核算行。
-                            const assistTypes = assistTypesOf(entry.accountId)
-                            return (
-                            <Fragment key={entry.id}>
-                            <tr>
-                                <td className={tdCls}>
-                                    <div className="flex items-center">
-                                        <Input
-                                            variant="borderless"
-                                            value={entry.summary}
-                                            onChange={(e) => updateEntry(entry.id, { summary: e.target.value })}
-                                            placeholder="摘要"
-                                            className="flex-1"
-                                        />
-                                        <Button
-                                            type="text"
-                                            size="small"
-                                            danger
-                                            title="删除该行"
-                                            disabled={entries.length <= 1}
-                                            icon={<DeleteOutlined />}
-                                            className="mr-1 shrink-0"
-                                            onClick={() => removeRow(entry.id)}
+                <Table<EntryRow>
+                    size="small"
+                    pagination={false}
+                    rowKey={(e) => e.id}
+                    dataSource={entries}
+                    columns={[
+                        {
+                            title: "摘要",
+                            width: 240,
+                            onCell: () => ({ style: { padding: 0 } }),
+                            render: (_, entry) => (
+                                <div className="flex items-center">
+                                    <Input
+                                        variant="borderless"
+                                        value={entry.summary}
+                                        onChange={(e) => updateEntry(entry.id, { summary: e.target.value })}
+                                        placeholder="摘要"
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        type="text"
+                                        danger
+                                        title="删除该行"
+                                        disabled={entries.length <= 1}
+                                        icon={<DeleteOutlined />}
+                                        className="mr-1 shrink-0"
+                                        onClick={() => removeRow(entry.id)}
+                                    />
+                                </div>
+                            ),
+                        },
+                        {
+                            title: "会计科目",
+                            width: 200,
+                            onCell: () => ({ style: { padding: 0 } }),
+                            render: (_, entry) => (
+                                <Select
+                                    variant="borderless"
+                                    className="w-full"
+                                    placeholder="请选择科目"
+                                    allowClear
+                                    showSearch
+                                    optionFilterProp="label"
+                                    value={entry.accountId || undefined}
+                                    options={accountOptions}
+                                    onChange={(v) =>
+                                        // 换科目后原辅助核算取值不再适用，清空重选。
+                                        updateEntry(entry.id, { accountId: v ?? "", assists: {} })
+                                    }
+                                />
+                            ),
+                        },
+                        {
+                            title: <AmountHeaderCell title="借方金额" idPrefix="dh" />,
+                            onCell: () => ({ style: { padding: 0 } }),
+                            render: (_, entry) => (
+                                <AmountCells
+                                    value={toAmount(entry.debit)}
+                                    editable
+                                    raw={entry.debit}
+                                    onChange={(v) => updateEntry(entry.id, { debit: v })}
+                                />
+                            ),
+                        },
+                        {
+                            title: <AmountHeaderCell title="贷方金额" idPrefix="ch" />,
+                            onCell: () => ({ style: { padding: 0 } }),
+                            render: (_, entry) => (
+                                <AmountCells
+                                    value={toAmount(entry.credit)}
+                                    editable
+                                    raw={entry.credit}
+                                    onChange={(v) => updateEntry(entry.id, { credit: v })}
+                                />
+                            ),
+                        },
+                        Table.EXPAND_COLUMN,
+                    ]}
+                    expandable={{
+                        // 辅助核算录入行：每维度一个档案下拉，必录项标红星。
+                        expandedRowRender: (entry) => (
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-muted/30 px-2 py-1">
+                                {assistTypesOf(entry.accountId).map((cfg) => (
+                                    <div key={cfg.type} className="flex items-center gap-1">
+                                        <span className="text-xs text-muted-foreground">
+                                            {assistLabel(cfg.type)}
+                                            {cfg.isRequired !== false && <span className="text-destructive">*</span>}
+                                        </span>
+                                        <AssistItemSelect
+                                            accountSetId={accountSetId}
+                                            token={token}
+                                            type={cfg.type as number}
+                                            value={entry.assists[cfg.type as number] ?? ""}
+                                            onChange={(itemId) => updateAssist(entry.id, cfg.type as number, itemId)}
                                         />
                                     </div>
-                                </td>
-                                <td className={tdCls}>
-                                    <Select
-                                        variant="borderless"
-                                        className="w-full"
-                                        placeholder="请选择科目"
-                                        allowClear
-                                        showSearch
-                                        optionFilterProp="label"
-                                        value={entry.accountId || undefined}
-                                        options={accountOptions}
-                                        onChange={(v) =>
-                                            // 换科目后原辅助核算取值不再适用，清空重选。
-                                            updateEntry(entry.id, { accountId: v ?? "", assists: {} })
-                                        }
-                                    />
-                                </td>
-                                <td className={tdCls} colSpan={11}>
-                                    <AmountCells
-                                        value={toAmount(entry.debit)}
-                                        editable
-                                        raw={entry.debit}
-                                        onChange={(v) => updateEntry(entry.id, { debit: v })}
-                                    />
-                                </td>
-                                <td className={tdCls} colSpan={11}>
-                                    <AmountCells
-                                        value={toAmount(entry.credit)}
-                                        editable
-                                        raw={entry.credit}
-                                        onChange={(v) => updateEntry(entry.id, { credit: v })}
-                                    />
-                                </td>
-                            </tr>
-                            {assistTypes.length > 0 && (
-                                // 辅助核算录入行：每维度一个档案下拉，必录项标红星。
-                                <tr>
-                                    <td className={cn(tdCls, "bg-muted/30 px-2 py-1")} colSpan={24}>
-                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                            {assistTypes.map((cfg) => (
-                                                <div key={cfg.type} className="flex items-center gap-1">
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {assistLabel(cfg.type)}
-                                                        {cfg.isRequired !== false && (
-                                                            <span className="text-destructive">*</span>
-                                                        )}
-                                                    </span>
-                                                    <AssistItemSelect
-                                                        accountSetId={accountSetId}
-                                                        token={token}
-                                                        type={cfg.type as number}
-                                                        value={entry.assists[cfg.type as number] ?? ""}
-                                                        onChange={(itemId) =>
-                                                            updateAssist(entry.id, cfg.type as number, itemId)
-                                                        }
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                            </Fragment>
-                            )
-                        })}
-                        <tr className="font-medium">
-                            <td className={cn(tdCls, "px-2 py-2")} colSpan={2}>
+                                ))}
+                            </div>
+                        ),
+                        expandedRowKeys: entries
+                            .filter((e) => assistTypesOf(e.accountId).length > 0)
+                            .map((e) => e.id),
+                        rowExpandable: (entry) => assistTypesOf(entry.accountId).length > 0,
+                        expandIcon: () => null,
+                    }}
+                    summary={() => (
+                        <Table.Summary.Row>
+                            <Table.Summary.Cell index={0} colSpan={2} className="px-2 py-2 font-medium">
                                 合计：{amountToChineseUppercase(totalDebit)}
-                            </td>
-                            <td className={tdCls} colSpan={11}>
+                            </Table.Summary.Cell>
+                            <Table.Summary.Cell index={2} className="!p-0">
                                 <AmountCells value={totalDebit} />
-                            </td>
-                            <td className={tdCls} colSpan={11}>
+                            </Table.Summary.Cell>
+                            <Table.Summary.Cell index={3} className="!p-0">
                                 <AmountCells value={totalCredit} />
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            </Table.Summary.Cell>
+                            <Table.Summary.Cell index={4} />
+                        </Table.Summary.Row>
+                    )}
+                />
             </div>
 
             {/* 签字栏 */}
@@ -629,7 +511,7 @@ export default function VoucherForm({
 
             {/* 操作区 */}
             <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-                <Button size="small" icon={<PlusOutlined />} onClick={addRow}>
+                <Button icon={<PlusOutlined />} onClick={addRow}>
                     添加分录
                 </Button>
                 <span className={cn("text-sm", balanced ? "text-muted-foreground" : "text-destructive")}>

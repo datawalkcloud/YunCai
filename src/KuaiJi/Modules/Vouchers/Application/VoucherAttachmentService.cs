@@ -41,7 +41,7 @@ namespace KuaiJi.Modules.Vouchers.Application
 
             if (voucher.Status != VoucherStatus.Draft)
             {
-                throw new VoucherException("凭证已审核或已过账，不能再上传附件。");
+                throw new VoucherException("凭证已过账，请先反过账再上传附件。");
             }
 
             if (content is null || content.Length == 0)
@@ -89,7 +89,7 @@ namespace KuaiJi.Modules.Vouchers.Application
             var voucher = await EnsureVoucherExistsAsync(accountSetId, voucherId, cancellationToken);
             if (voucher.Status != VoucherStatus.Draft)
             {
-                throw new VoucherException("凭证已审核或已过账，不能删除附件。");
+                throw new VoucherException("凭证已过账，不能删除附件。");
             }
 
             var attachment = await _attachmentRepository.GetAsync(voucherId, attachmentId, cancellationToken);

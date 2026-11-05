@@ -89,6 +89,32 @@ namespace KuaiJi.Modules.Salary.Infrastructure
             _context.InsuranceItems.Remove(item);
         }
 
+        public async Task<IReadOnlyList<EmployeeInsurance>> GetEmployeeInsurancesAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        {
+            var list = await _context.EmployeeInsurances.AsNoTracking()
+                .Where(i => i.AccountSetId == accountSetId)
+                .ToListAsync(cancellationToken);
+            return list;
+        }
+
+        public async Task<IReadOnlyList<EmployeeInsurance>> GetEmployeeInsurancesForUpdateAsync(Guid accountSetId, Guid employeeId, CancellationToken cancellationToken = default)
+        {
+            var list = await _context.EmployeeInsurances
+                .Where(i => i.AccountSetId == accountSetId && i.EmployeeId == employeeId)
+                .ToListAsync(cancellationToken);
+            return list;
+        }
+
+        public async Task AddEmployeeInsuranceAsync(EmployeeInsurance item, CancellationToken cancellationToken = default)
+        {
+            await _context.EmployeeInsurances.AddAsync(item, cancellationToken);
+        }
+
+        public void RemoveEmployeeInsurance(EmployeeInsurance item)
+        {
+            _context.EmployeeInsurances.Remove(item);
+        }
+
         public Task<SalaryBill?> GetBillByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
         {
             return _context.SalaryBills.AsNoTracking()

@@ -6,7 +6,10 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.75rem;
+  /* 圆角基准：与 antd 主题 token 对齐（antd 控件 6px / 卡片·弹窗 8px）。
+     手写 Tailwind 容器用 rounded-lg(8)≈antd 卡片、rounded-md(6)≈antd 控件，
+     保证自写组件与 antd 圆角一致。调整圆角时改这里 + main.tsx 的 antd token 两处同步。 */
+  --radius: 0.5rem;
   --background: #f4f6fb;
   --foreground: #1e293b;
   --card: #ffffff;
@@ -130,13 +133,15 @@
 }
 
 /*
- * 后台管理（账套内业务页）统一直角：antd 组件由全局 theme 的 borderRadius: 0 控制，
- * 这里兜住手写的 Tailwind 圆角容器，避免 antd 卡片已是直角、旁边横幅/标签还是圆的。
- * 官网与登录页不在 .admin-shell 内，保持原样。
+ * 后台管理（账套内业务页）统一圆角：圆角完全交给 antd 主题 token + 上方 --radius，
+ * 不再在此硬性归零。antd 组件自带圆角（token.borderRadius / borderRadiusLG），
+ * 手写 Tailwind 容器（rounded-*/rounded-md/rounded-lg）通过 --radius 与 antd 同尺度，
+ * 因此页面内 antd 组件与自写组件圆角一致。
+ * 如需整体收紧/放大圆角，只改 main.tsx 的 antd token 与这里的 --radius 两处即可。
+ * 官网与登录页不在 .admin-shell 内，沿用各自设计语言（其圆角本就大于后台）。
  */
-.admin-shell
-  :is(.rounded-sm, .rounded-md, .rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl, .rounded-4xl) {
-  border-radius: 0;
+.admin-shell {
+  /* 仅作为后台壳层语义标记，圆角由全局 theme 统一控制，此处不再覆盖。 */
 }
 
 /**
@@ -155,4 +160,3 @@
 .kj-route-progress {
   animation: kj-route-progress 900ms ease-in-out infinite;
 }
-

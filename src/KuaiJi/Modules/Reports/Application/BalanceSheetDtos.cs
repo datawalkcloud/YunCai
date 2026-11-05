@@ -19,6 +19,12 @@ namespace KuaiJi.Modules.Reports.Application
     /// <summary>资产负债表：选定会计期间及各标准行次的期末/年初金额。</summary>
     public sealed class BalanceSheetDto
     {
+        /// <summary>账套采用的会计标准（1=企业会计准则，2=小企业会计准则，3=民间非营利组织）。</summary>
+        public int Standard { get; init; }
+
+        /// <summary>本次报表采用的版式名称，如「会企01表」「会小企01表」。</summary>
+        public string TemplateTitle { get; init; } = "会企01表";
+
         /// <summary>会计期间——年份。</summary>
         public int Year { get; init; }
 

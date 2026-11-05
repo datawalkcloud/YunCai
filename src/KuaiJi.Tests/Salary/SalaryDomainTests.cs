@@ -123,15 +123,12 @@ public sealed class SalaryDomainTests
     public void Employee_Create_TrimsFieldsAndEnforcesMaxLengths()
     {
         // 编号/姓名去空格入库；超长（>20 / >50）分别被守卫拒绝。
-        var employee = Employee.Create(
-            SetId, " E001 ", " 张三 ", EmployeeGender.Male, EmployeeIdType.ResidentIdCard,
-            null, null, null, null, null, null, null, null, null, null, null, EmployeeStatus.Active, null);
+        var employee = Employee.Create(SetId, new EmployeeProfile { Code = " E001 ", Name = " 张三 " });
         Assert.Equal("E001", employee.Code);
         Assert.Equal("张三", employee.Name);
 
         Assert.Throws<ArgumentException>(() => Employee.Create(
-            SetId, new string('X', Employee.MaxCodeLength + 1), "张三", EmployeeGender.Male, EmployeeIdType.ResidentIdCard,
-            null, null, null, null, null, null, null, null, null, null, null, EmployeeStatus.Active, null));
+            SetId, new EmployeeProfile { Code = new string('X', Employee.MaxCodeLength + 1), Name = "张三" }));
     }
 
     [Fact]

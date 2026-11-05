@@ -351,7 +351,7 @@ export default function EntryCategoriesPage() {
             dataIndex: "isEnabled",
             width: 110,
             align: "center",
-            render: (_, r) => <Switch size="small" checked={r.isEnabled} onChange={(v) => void toggleEnabled(r, v)} />,
+            render: (_, r) => <Switch checked={r.isEnabled} onChange={(v) => void toggleEnabled(r, v)} />,
         },
         {
             title: "操作",
@@ -388,7 +388,7 @@ export default function EntryCategoriesPage() {
         <div className="flex flex-col gap-3">
             {error && <div className="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
 
-            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 }, body: { padding: 0 } }}>
+            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 } }}>
                 <Tabs
                     className="lemon-sub-tabs"
                     activeKey={String(type)}
@@ -404,12 +404,11 @@ export default function EntryCategoriesPage() {
                 />
 
                 {/* 工具行 */}
-                <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
+                <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 px-4 py-2.5" style={{ marginBottom: 16 }}>
                     <Space size={8} wrap>
                         <span className="text-[13px] text-slate-600">输入编码或名称：</span>
                         <Input
-                            size="small"
-                            allowClear
+                                                       allowClear
                             className="w-[220px]"
                             value={keyword}
                             prefix={<SearchOutlined className="text-slate-400" />}
@@ -421,8 +420,7 @@ export default function EntryCategoriesPage() {
                         />
                         <Button
                             type="primary"
-                            size="small"
-                            autoInsertSpace={false}
+                                                       autoInsertSpace={false}
                             onClick={() => {
                                 setApplied(keyword)
                                 setPage(1)
@@ -433,17 +431,17 @@ export default function EntryCategoriesPage() {
                     </Space>
 
                     <Space size={8} wrap>
-                        <Button size="small" autoInsertSpace={false} onClick={() => setImportOpen(true)}>
+                        <Button autoInsertSpace={false} onClick={() => setImportOpen(true)}>
                             导入
                         </Button>
-                        <Button size="small" autoInsertSpace={false} onClick={() => void exportCategories()}>
+                        <Button autoInsertSpace={false} onClick={() => void exportCategories()}>
                             导出
                         </Button>
-                        <Button type="primary" size="small" autoInsertSpace={false} onClick={() => openCreate()}>
+                        <Button type="primary" autoInsertSpace={false} onClick={() => openCreate()}>
                             新增
                         </Button>
                         <Tooltip title="刷新">
-                            <Button size="small" icon={<ReloadOutlined spin={loading} />} onClick={() => void load()} />
+                            <Button icon={<ReloadOutlined spin={loading} />} onClick={() => void load()} />
                         </Tooltip>
                     </Space>
                 </div>
@@ -455,19 +453,16 @@ export default function EntryCategoriesPage() {
                         dataSource={paged}
                         rowKey={(r) => r.id ?? ""}
                         pagination={false}
-                        size="small"
-                        bordered
-                        loading={loading}
+                                               loading={loading}
                         locale={{ emptyText: <div className="py-10 text-[13px] text-slate-400">暂无数据</div> }}
                     />
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 text-[12.5px] text-slate-500">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
                         <span>
                             显示 {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, filtered.length)}，共{" "}
                             {filtered.length} 条
                         </span>
                         <Pagination
-                            size="small"
-                            current={page}
+                                                       current={page}
                             pageSize={pageSize}
                             total={filtered.length}
                             pageSizeOptions={PAGE_SIZE_OPTIONS}
@@ -579,7 +574,7 @@ export default function EntryCategoriesPage() {
                         onChange={({ fileList }) => setImportFile(fileList[0] ?? null)}
                         onRemove={() => setImportFile(null)}
                     >
-                        <Button size="small">选择文件</Button>
+                        <Button>选择文件</Button>
                     </Upload>
                 </div>
             </Modal>

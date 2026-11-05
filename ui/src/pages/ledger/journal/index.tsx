@@ -70,8 +70,6 @@ export default function VoucherJournalPage() {
     return (
         <LedgerPageShell
             page="journal"
-            title="序时账"
-            hint="按期间顺序逐笔列示全部已过账凭证分录，点击任一分录行可查看该凭证全文。"
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}

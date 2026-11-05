@@ -58,7 +58,6 @@ export function AssistItemSelect({
 
     return (
         <Select
-            size="small"
             className={cn("w-44", className)}
             aria-label="选择核算项目"
             placeholder="选择核算项目"

@@ -5,7 +5,7 @@ import { Tag } from "antd"
 import { PILL, type PillTone } from "./styles"
 
 /**
- * 状态标签：账页与凭证列表共用的小号标签，直角形状跟随 antd 全局主题。
+ * 状态标签：账页与凭证列表共用的小号标签，圆角形状跟随 antd 全局主题。
  * 色调走内联样式而非类名，避免与 antd Tag 自身注入的背景/描边规则争夺优先级。
  */
 export function StatusPill({

@@ -279,6 +279,26 @@ namespace KuaiJi.Modules.Salary.Api
             }
         }
 
+        /// <summary>
+        /// 同步个税「人员信息采集」名单到员工档案（按证件号码 / 姓名匹配，存在则更新、不存在则新增）。
+        /// 名单由前端从个税取数结果带来，税局没给的字段用员工档案默认值。
+        /// </summary>
+        [HttpPost("employees/sync-from-iit")]
+        public async Task<ActionResult<EmployeeImportResultDto>> SyncEmployeesFromIit(
+            Guid accountSetId,
+            IitPersonnelSyncRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _salaryService.SyncIitPersonnelAsync(accountSetId, request?.Rows ?? [], cancellationToken));
+            }
+            catch (SalaryException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>批量删除员工；有工资单的员工计入跳过并给出原因。</summary>
         [HttpPost("employees/bulk-delete")]
         public async Task<ActionResult<SalaryBulkResultDto>> BulkDeleteEmployees(

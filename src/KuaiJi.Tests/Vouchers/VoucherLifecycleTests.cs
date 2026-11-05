@@ -14,11 +14,10 @@ namespace KuaiJi.Tests.Vouchers;
 
 /// <summary>
 /// 凭证生命周期测试（编号规则之外的行为，编号相关见 VoucherNumberingTests）：
-/// - 制单校验：无分录、凭证字不在账套列表、科目无效/非末级/停用、账套不存在、已结账期间；
-///   （借贷不平衡不拦制单，只拦审核/过账——见 Create_WithUnbalancedEntries_SavesDraftButBlocksReview）
-/// - 状态流转：审核（要求平衡且有分录）、反审核、过账、反过账，以及非法流转与已结期间拦截；
-/// - 编辑与删除：草稿才可改、已过账/已结期间不可删、回收站软删除与还原/彻底删除；
-/// - 复制与红冲：新号草稿、金额取反与「冲销yyyymm字-号_」摘要前缀；
+/// - 制单校验：无分录、借贷不平衡、凭证字不在账套列表、科目无效/非末级/停用、账套不存在、已结账期间；
+/// - 状态流转：保存即过账、反过账退回草稿，以及非法流转与已结期间拦截；
+/// - 编辑与删除：已过账须先反过账才可改、已过账/已结期间不可删、回收站软删除与还原/彻底删除；
+/// - 复制与红冲：新号凭证直接入账、金额取反与「冲销yyyymm字-号_」摘要前缀；
 /// - 凭证号重排：断号续接、范围内存在已过账凭证时拒绝。
 /// </summary>
 public sealed class VoucherLifecycleTests : IDisposable
@@ -109,18 +108,17 @@ public sealed class VoucherLifecycleTests : IDisposable
         ],
     };
 
-    /// <summary>经服务创建一张平衡草稿凭证（记-1）。</summary>
-    private async Task<VoucherDetailDto> CreateDraftAsync()
+    /// <summary>经服务创建一张平衡凭证（保存即过账，记-1）。</summary>
+    private async Task<VoucherDetailDto> CreatePostedAsync()
     {
         return await _service.CreateAsync(_accountSet.Id, "制单人", NewRequest());
     }
 
-    /// <summary>经服务创建并过账一张凭证（记-1）。</summary>
-    private async Task<VoucherDetailDto> CreatePostedAsync()
+    /// <summary>经服务创建后反过账退回草稿（记-1），用于验证编辑/删除等仅草稿可用的路径。</summary>
+    private async Task<VoucherDetailDto> CreateDraftAsync()
     {
-        var created = await CreateDraftAsync();
-        await _service.ReviewAsync(_accountSet.Id, created.Id, "审核人");
-        return await _service.PostAsync(_accountSet.Id, created.Id) ?? throw new InvalidOperationException("过账失败");
+        var created = await CreatePostedAsync();
+        return await _service.UnpostAsync(_accountSet.Id, created.Id) ?? throw new InvalidOperationException("反过账失败");
     }
 
     // —— 制单校验 ——
@@ -135,24 +133,21 @@ public sealed class VoucherLifecycleTests : IDisposable
     }
 
     [Fact]
-    public async Task Create_WithUnbalancedEntries_SavesDraftButBlocksReview()
+    public async Task Create_BalancedVoucher_IsPostedImmediately()
     {
-        // 生产口径：制单只保证「至少一条分录」，借贷平衡校验推迟到审核/过账
-        // （Voucher.EnsurePostable 由 Review()/Post() 调用），草稿允许不平衡；
-        // 空分录则在制单时就被应用服务拦下（见 Create_WithoutEntries_Throws），两者校验点不同。
-        var draft = await _service.CreateAsync(_accountSet.Id, "制单人", NewRequest(
-            debit: 100m,
-            credit: 60m));
+        var created = await _service.CreateAsync(_accountSet.Id, "制单人", NewRequest());
 
-        // 不平衡草稿能建出来，且如实反映借贷两侧合计与不平衡状态。
-        Assert.Equal((int)VoucherStatus.Draft, draft.Status);
-        Assert.False(draft.IsBalanced);
-        Assert.Equal(100m, draft.TotalDebit);
-        Assert.Equal(60m, draft.TotalCredit);
+        // 保存即入账：制单不再经过审核，落库即为已过账。
+        Assert.Equal((int)VoucherStatus.Posted, created.Status);
+        Assert.Equal("已过账", created.StatusText);
+    }
 
-        // 审核时被领域层拦下，透出「借贷不平衡」中文文案。
+    [Fact]
+    public async Task Create_WithUnbalancedEntries_Throws()
+    {
+        // 保存即入账，借贷平衡成为保存的硬性条件（Voucher.EnsurePostable 由 Post() 调用）。
         var ex = await Assert.ThrowsAsync<VoucherException>(
-            () => _service.ReviewAsync(_accountSet.Id, draft.Id, "审核人"));
+            () => _service.CreateAsync(_accountSet.Id, "制单人", NewRequest(debit: 100m, credit: 60m)));
 
         Assert.Contains("借贷不平衡", ex.Message);
     }
@@ -278,6 +273,9 @@ public sealed class VoucherLifecycleTests : IDisposable
             ],
         });
 
+        // 保存一次即重新过账，二次编辑前必须先反过账退回草稿。
+        await _service.UnpostAsync(_accountSet.Id, created.Id);
+
         // 请求两条与原有两条一致即可整体替换；收缩场景再单独验证
         var shrunk = await _service.UpdateAsync(_accountSet.Id, created.Id, new UpdateVoucherRequest
         {
@@ -322,19 +320,18 @@ public sealed class VoucherLifecycleTests : IDisposable
     }
 
     [Fact]
-    public async Task Update_ReviewedVoucher_Throws()
+    public async Task Update_PostedVoucher_Throws()
     {
-        var created = await CreateDraftAsync();
-        await _service.ReviewAsync(_accountSet.Id, created.Id, "审核人");
+        var posted = await CreatePostedAsync();
 
         var ex = await Assert.ThrowsAsync<VoucherException>(
-            () => _service.UpdateAsync(_accountSet.Id, created.Id, new UpdateVoucherRequest
+            () => _service.UpdateAsync(_accountSet.Id, posted.Id, new UpdateVoucherRequest
             {
                 Date = new DateOnly(2026, 2, 15),
                 Entries = NewRequest().Entries,
             }));
 
-        Assert.Contains("不能修改", ex.Message);
+        Assert.Contains("请先反过账", ex.Message);
     }
 
     // —— 删除与回收站 ——
@@ -424,9 +421,10 @@ public sealed class VoucherLifecycleTests : IDisposable
     [Fact]
     public async Task ClearRecycleBin_RemovesOnlyDeletedVouchers()
     {
-        var deleted1 = await CreateDraftAsync();
-        var deleted2 = await _service.CreateAsync(_accountSet.Id, "制单人", NewRequest(number: 2));
-        var kept = await _service.CreateAsync(_accountSet.Id, "制单人", NewRequest(number: 3));
+        // 只有草稿能进回收站（已过账须先反过账），所以这里直接落三张草稿。
+        var deleted1 = SeedRaw("记", 1, (100m, 0m), (0m, 100m));
+        var deleted2 = SeedRaw("记", 2, (100m, 0m), (0m, 100m));
+        var kept = SeedRaw("记", 3, (100m, 0m), (0m, 100m));
 
         // 生产每个 HTTP 请求各用一个新 DbContext；这里用 DetachAll 还原请求边界，
         // 否则制单时 Add 进来的实例会与清回收站时 Remove 的同主键实例撞车
@@ -444,156 +442,24 @@ public sealed class VoucherLifecycleTests : IDisposable
         Assert.NotNull(await _vouchers.GetByIdAsync(_accountSet.Id, kept.Id));
     }
 
-    // —— 审核与反审核 ——
+    // —— 反过账 ——
 
     [Fact]
-    public async Task Review_DraftBalanced_SetsReviewedWithReviewer()
-    {
-        var created = await CreateDraftAsync();
-
-        var reviewed = await _service.ReviewAsync(_accountSet.Id, created.Id, "审核人");
-
-        Assert.NotNull(reviewed);
-        Assert.Equal((int)VoucherStatus.Reviewed, reviewed.Status);
-        Assert.Equal("已审核", reviewed.StatusText);
-        Assert.Equal("审核人", reviewed.Reviewer);
-    }
-
-    [Fact]
-    public async Task Review_UnbalancedVoucher_Throws()
-    {
-        var unbalanced = SeedRaw("记", 1, (100m, 0m), (0m, 60m));
-
-        var ex = await Assert.ThrowsAsync<VoucherException>(
-            () => _service.ReviewAsync(_accountSet.Id, unbalanced.Id, "审核人"));
-
-        Assert.Contains("借贷不平衡", ex.Message);
-    }
-
-    [Fact]
-    public async Task Review_EntrylessVoucher_Throws()
-    {
-        var entryless = SeedRaw("记", 1);
-
-        var ex = await Assert.ThrowsAsync<VoucherException>(
-            () => _service.ReviewAsync(_accountSet.Id, entryless.Id, "审核人"));
-
-        Assert.Equal("凭证至少需要一条分录。", ex.Message);
-    }
-
-    [Fact]
-    public async Task Review_AlreadyReviewedVoucher_Throws()
-    {
-        var created = await CreateDraftAsync();
-        await _service.ReviewAsync(_accountSet.Id, created.Id, "审核人");
-
-        var ex = await Assert.ThrowsAsync<VoucherException>(
-            () => _service.ReviewAsync(_accountSet.Id, created.Id, "另一审核人"));
-
-        Assert.Equal("只有草稿状态的凭证才能审核。", ex.Message);
-    }
-
-    [Fact]
-    public async Task Review_WithBlankReviewer_Throws()
-    {
-        var created = await CreateDraftAsync();
-
-        var ex = await Assert.ThrowsAsync<VoucherException>(
-            () => _service.ReviewAsync(_accountSet.Id, created.Id, "  "));
-
-        // 领域层抛 ArgumentException("审核人不能为空。", nameof(reviewer))，TransitionAsync 原样透出 ex.Message，
-        // 但 ArgumentException.Message 会在文案后追加「 (Parameter 'reviewer')」，故用 Contains 校验核心中文文案。
-        Assert.Contains("审核人不能为空。", ex.Message);
-    }
-
-    [Fact]
-    public async Task Review_MissingVoucher_ReturnsNull()
-    {
-        Assert.Null(await _service.ReviewAsync(_accountSet.Id, Guid.NewGuid(), "审核人"));
-    }
-
-    [Fact]
-    public async Task Unreview_ReviewedVoucher_ReturnsToDraftAndClearsReviewer()
-    {
-        var created = await CreateDraftAsync();
-        await _service.ReviewAsync(_accountSet.Id, created.Id, "审核人");
-
-        var unreviewed = await _service.UnreviewAsync(_accountSet.Id, created.Id);
-
-        Assert.NotNull(unreviewed);
-        Assert.Equal((int)VoucherStatus.Draft, unreviewed.Status);
-        Assert.Null(unreviewed.Reviewer);
-    }
-
-    [Fact]
-    public async Task Unreview_DraftVoucher_Throws()
-    {
-        var created = await CreateDraftAsync();
-
-        var ex = await Assert.ThrowsAsync<VoucherException>(
-            () => _service.UnreviewAsync(_accountSet.Id, created.Id));
-
-        Assert.Equal("只有已审核未过账的凭证才能反审核。", ex.Message);
-    }
-
-    [Fact]
-    public async Task Unreview_VoucherInClosedPeriod_Throws()
-    {
-        var created = await CreateDraftAsync();
-        await _service.ReviewAsync(_accountSet.Id, created.Id, "审核人");
-        ClosePeriod(2026, 2);
-
-        var ex = await Assert.ThrowsAsync<VoucherException>(
-            () => _service.UnreviewAsync(_accountSet.Id, created.Id));
-
-        Assert.Contains("所属期间已结账", ex.Message);
-        Assert.Contains("不能反审核", ex.Message);
-    }
-
-    // —— 过账与反过账 ——
-
-    [Fact]
-    public async Task Post_DraftVoucher_Throws()
-    {
-        var created = await CreateDraftAsync();
-
-        var ex = await Assert.ThrowsAsync<VoucherException>(
-            () => _service.PostAsync(_accountSet.Id, created.Id));
-
-        Assert.Equal("只有已审核的凭证才能过账。", ex.Message);
-    }
-
-    [Fact]
-    public async Task Post_ReviewedVounter_SetsPosted()
-    {
-        var created = await CreateDraftAsync();
-        await _service.ReviewAsync(_accountSet.Id, created.Id, "审核人");
-
-        var posted = await _service.PostAsync(_accountSet.Id, created.Id);
-
-        Assert.NotNull(posted);
-        Assert.Equal((int)VoucherStatus.Posted, posted.Status);
-        Assert.Equal("已过账", posted.StatusText);
-        // 过账后审核人保留
-        Assert.Equal("审核人", posted.Reviewer);
-    }
-
-    [Fact]
-    public async Task Post_MissingVoucher_ReturnsNull()
-    {
-        Assert.Null(await _service.PostAsync(_accountSet.Id, Guid.NewGuid()));
-    }
-
-    [Fact]
-    public async Task Unpost_PostedVoucher_ReturnsToReviewedAndKeepsReviewer()
+    public async Task Unpost_PostedVoucher_ReturnsToDraft()
     {
         var posted = await CreatePostedAsync();
 
         var unposted = await _service.UnpostAsync(_accountSet.Id, posted.Id);
 
         Assert.NotNull(unposted);
-        Assert.Equal((int)VoucherStatus.Reviewed, unposted.Status);
-        Assert.Equal("审核人", unposted.Reviewer);
+        Assert.Equal((int)VoucherStatus.Draft, unposted.Status);
+        Assert.Equal("草稿", unposted.StatusText);
+    }
+
+    [Fact]
+    public async Task Unpost_MissingVoucher_ReturnsNull()
+    {
+        Assert.Null(await _service.UnpostAsync(_accountSet.Id, Guid.NewGuid()));
     }
 
     [Fact]
@@ -622,7 +488,7 @@ public sealed class VoucherLifecycleTests : IDisposable
     // —— 复制与红冲 ——
 
     [Fact]
-    public async Task Copy_CreatesDraftCopyWithNextNumberAndSameEntries()
+    public async Task Copy_CreatesPostedCopyWithNextNumberAndSameEntries()
     {
         var created = await CreateDraftAsync();
 
@@ -631,7 +497,8 @@ public sealed class VoucherLifecycleTests : IDisposable
         Assert.NotEqual(created.Id, copy.Id);
         Assert.Equal("记", copy.Word);
         Assert.Equal(2, copy.Number);
-        Assert.Equal((int)VoucherStatus.Draft, copy.Status);
+        // 平衡的复制件直接入账，不再留下一张没人处理的草稿。
+        Assert.Equal((int)VoucherStatus.Posted, copy.Status);
         Assert.Equal("复制人", copy.Preparer);
         Assert.Equal(2, copy.Entries.Count);
         Assert.Equal(100m, copy.Entries[0].Debit);
@@ -669,7 +536,7 @@ public sealed class VoucherLifecycleTests : IDisposable
         var reversal = await _service.ReverseAsync(_accountSet.Id, created.Id, "制单人");
 
         Assert.Equal(2, reversal.Number);
-        Assert.Equal((int)VoucherStatus.Draft, reversal.Status);
+        Assert.Equal((int)VoucherStatus.Posted, reversal.Status);
         Assert.Equal(-100m, reversal.Entries[0].Debit);
         Assert.Equal(-100m, reversal.Entries[1].Credit);
         Assert.StartsWith("冲销202602记-1_", reversal.Entries[0].Summary);
@@ -720,7 +587,7 @@ public sealed class VoucherLifecycleTests : IDisposable
     [Fact]
     public async Task Renumber_IgnoresRecycledVouchers()
     {
-        var recycled = await _service.CreateAsync(_accountSet.Id, "制单人", NewRequest(number: 5));
+        var recycled = SeedRaw("记", 5, (100m, 0m), (0m, 100m));
         await _service.DeleteAsync(_accountSet.Id, recycled.Id);
         SeedRaw("记", 1, (100m, 0m), (0m, 100m));
 

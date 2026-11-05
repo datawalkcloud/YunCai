@@ -1,14 +1,15 @@
 /**
  * 柠檬云菜单区页面的共享 UI 基元。
- * 视觉遵循全站统一风格（云财蓝）：主色 #2f6bff、直角、白卡 + slate 灰阶文字，
+ * 视觉遵循全站统一风格（云财蓝）：主色 #2f6bff、圆角、白卡 + slate 灰阶文字，
  * 与 @/components/page 的既有实页同一套色板；交互基元一律用 antd 组件实现。
  */
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, Ref } from "react";
 
 import dayjs from "dayjs";
 
 import {
     Alert,
+    AutoComplete,
     Button,
     Card,
     Checkbox,
@@ -20,8 +21,9 @@ import {
     Switch,
     Table as AntTable,
     Tabs,
+    theme,
 } from "antd";
-import type { TableColumnsType } from "antd";
+import type { ButtonProps, TableColumnsType } from "antd";
 import {
     CalendarOutlined,
     DownOutlined,
@@ -31,13 +33,29 @@ import {
     SearchOutlined,
 } from "@ant-design/icons";
 
-import { PageHeader } from "@/components/page/section";
 import { ICON_STYLE } from "@/components/page/styles";
 import { cn } from "@/lib/utils";
 
 /* ---------------- 按钮 ---------------- */
 
 type BtnVariant = "primary" | "plain" | "link" | "disabled";
+
+/**
+ * variant/type/onClick 由本组件自己定义（antd 的 variant 是 outlined/filled 那套语义，
+ * onClick 需要事件参数交给触发器，本组件对外只暴露无参回调），其余沿用 antd Button 属性。
+ */
+type BtnProps = Omit<ButtonProps, "type" | "variant" | "children" | "onClick"> & {
+    variant?: BtnVariant;
+    children: ReactNode;
+    dropdown?: boolean;
+    onClick?: () => void;
+    /**
+     * React 19 里 ref 是普通属性。Dropdown / Tooltip / Popconfirm 这类触发器通过
+     * cloneElement 注入 ref 来拿到真实 DOM 节点做弹层对齐，这里必须转发下去，
+     * 否则弹层找不到锚点，会停在页面左上角（rc-trigger 的 -1000vw/-1000vh 占位）。
+     */
+    ref?: Ref<HTMLButtonElement>;
+};
 
 /** 页面按钮：主色实底 / 白底描边 / 链接 / 置灰。可选右侧 ▾ 分隔。 */
 export function Btn({
@@ -48,17 +66,13 @@ export function Btn({
     disabled,
     title,
     onClick,
-}: {
-    variant?: BtnVariant;
-    children: ReactNode;
-    dropdown?: boolean;
-    className?: string;
-    disabled?: boolean;
-    title?: string;
-    onClick?: () => void;
-}) {
+    ref,
+    ...rest
+}: BtnProps) {
     return (
         <Button
+            {...rest}
+            ref={ref}
             className={className}
             title={title}
             disabled={disabled || variant === "disabled"}
@@ -120,25 +134,33 @@ export function PeriodStepper({
     onPrev?: () => void;
     onNext?: () => void;
 }) {
+    // 高度取自 antd token（compact 下即 28px），使自写控件与 antd 输入框/按钮等高、视觉统一。
+    const { token } = theme.useToken();
+    const h = token.controlHeight;
     return (
         // 期间名称用 span 展示（不是按钮），避免被当成可点击动作；两侧箭头才是按钮
-        <span className="inline-flex items-center overflow-hidden rounded border border-[#2f6bff]">
+        <span className="inline-flex items-center overflow-hidden rounded-md border border-[#2f6bff]">
             <button
                 type="button"
                 aria-label="上一期"
-                className="flex h-8 w-8 items-center justify-center bg-[#2f6bff] text-white disabled:opacity-60"
+                style={{ height: h, width: h }}
+                className="flex items-center justify-center bg-[#2f6bff] text-white disabled:opacity-60"
                 disabled={!onPrev}
                 onClick={onPrev}
             >
                 <LeftOutlined />
             </button>
-            <span className="inline-flex h-8 items-center bg-[#2f6bff] px-3 text-[13px] font-medium tabular-nums text-white">
+            <span
+                style={{ height: h }}
+                className="inline-flex items-center bg-[#2f6bff] px-3 text-[13px] font-medium tabular-nums text-white"
+            >
                 {text}
             </span>
             <button
                 type="button"
                 aria-label="下一期"
-                className="flex h-8 w-8 items-center justify-center bg-[#2f6bff] text-white disabled:opacity-60"
+                style={{ height: h, width: h }}
+                className="flex items-center justify-center bg-[#2f6bff] text-white disabled:opacity-60"
                 disabled={!onNext}
                 onClick={onNext}
             >
@@ -230,6 +252,35 @@ export function Select({
     );
 }
 
+/**
+ * 组合框：既能从下拉里选，也能直接录入下拉之外的值（如自定义币别代码）。
+ * 输入内容按 value 或 label 做包含匹配，label 一般写成「编码（名称）」方便按任一项检索。
+ */
+export function ComboBox({
+    value,
+    onChange,
+    options,
+    placeholder,
+    className = "",
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    options: Array<{ value: string; label: string }>;
+    placeholder?: string;
+    className?: string;
+}) {
+    return (
+        <AutoComplete
+            className={className}
+            value={value}
+            placeholder={placeholder}
+            options={options}
+            onChange={onChange}
+            filterOption={(input, option) => (option?.label ?? "").toLowerCase().includes(input.trim().toLowerCase())}
+        />
+    );
+}
+
 /** 静态下拉框外观。 */
 export function FakeSelect({ text, className = "" }: { text: string; className?: string }) {
     return (
@@ -307,11 +358,17 @@ export function Table({
     rows,
     zebra = true,
     empty,
+    scrollY,
 }: {
     cols: Col[];
     rows: Row[];
     zebra?: boolean;
     empty?: ReactNode;
+    /**
+     * 纵向滚动高度（数字像素或 CSS 值如 "56vh"）。传了就让 antd 固定表头、表体内部滚动，
+     * 调用方不必再在外面包 `max-h-[…] overflow-auto`（外层 overflow 会连带算出 overflow-y，多出滚动条）。
+     */
+    scrollY?: number | string;
 }) {
     const toColumn = (c: Col): TableColumnsType<Row>[number] => ({
         key: c.key,
@@ -356,8 +413,7 @@ export function Table({
                 dataSource={dataRows}
                 rowKey={(r) => r.__key}
                 pagination={false}
-                size="small"
-                scroll={{ x: "max-content" }}
+                scroll={{ x: "max-content", ...(scrollY === undefined ? {} : { y: scrollY }) }}
                 rowClassName={(row) => row.__style ? "" : "transition-colors"}
                 locale={empty === undefined ? undefined : { emptyText: <div className="py-6">{empty}</div> }}
             />
@@ -373,7 +429,7 @@ export function Pager({ total = 0, count }: { total?: number; count?: number }) 
     const records = Math.max(total, count ?? 0);
     const pages = Math.max(1, Math.ceil(records / 20));
     return (
-        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-[12.5px] text-slate-500">
+        <div className="flex items-center justify-between px-4 py-3 text-[12.5px] text-slate-500">
             <span>
                 显示 {records ? 1 : 0} 到 {Math.min(records, 20)}，共 {records} 条
             </span>
@@ -398,56 +454,23 @@ export function Pager({ total = 0, count }: { total?: number; count?: number }) 
 /** 内容页工具行：左筛选、右按钮组。 */
 export function ToolRow({ left, right }: { left?: ReactNode; right?: ReactNode }) {
     return (
-        <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
+        <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 px-4 py-2.5">
             <div className="flex flex-wrap items-center gap-3">{left}</div>
             <div className="flex flex-wrap items-center gap-2">{right}</div>
         </div>
     );
 }
 
-/**
- * 页面容器：白色卡片（工具行 + 表格 + 页脚同属一张卡；圆角由 antd 全局主题统一控制）。
- * 传 title / icon 时额外渲染与既有实页一致的页头横幅。
- */
-export function Page({
-    children,
-    className = "",
-    title,
-    subtitle,
-    icon: Icon,
-    actions,
-}: {
-    children: ReactNode;
-    className?: string;
-    title?: ReactNode;
-    subtitle?: ReactNode;
-    icon?: React.ComponentType<{ className?: string }>;
-    actions?: ReactNode;
-}) {
+/** 页面容器：白色卡片（工具行 + 表格 + 页脚同属一张卡；圆角由 antd 全局主题统一控制）。 */
+export function Page({ children, className = "" }: { children: ReactNode; className?: string }) {
     return (
-        <div className="flex min-h-full flex-col gap-4">
-            {title != null &&
-                (Icon ? (
-                    <PageHeader icon={Icon} title={title} subtitle={subtitle} actions={actions} />
-                ) : (
-                    <section className="rounded-2xl bg-gradient-to-r from-[#e7f0ff] via-[#eef4ff] to-[#f6f9ff] px-6 py-5">
-                        <div className="flex flex-wrap items-center gap-4">
-                            <div className="min-w-0">
-                                <h1 className="text-[20px] font-bold text-slate-800">{title}</h1>
-                                {subtitle && <p className="mt-0.5 text-[12.5px] text-slate-500">{subtitle}</p>}
-                            </div>
-                            {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
-                        </div>
-                    </section>
-                ))}
-            <Card
-                className={className}
-                variant="borderless"
-                styles={{ root: { boxShadow: "0 1px 2px rgba(16,24,40,0.04)" }, body: { padding: 0 } }}
-            >
-                {children}
-            </Card>
-        </div>
+        <Card
+            className={className}
+            variant="borderless"
+            styles={{ root: { boxShadow: "0 1px 2px rgba(16,24,40,0.04)" }, body: { padding: 0 } }}
+        >
+            {children}
+        </Card>
     );
 }
 
@@ -519,7 +542,6 @@ export function Dialog({
 export function Toggle({ on = true, onClick }: { on?: boolean; onClick?: () => void }) {
     return (
         <Switch
-            size="small"
             checked={on}
             className={onClick ? "cursor-pointer" : "pointer-events-none"}
             onChange={() => onClick?.()}
@@ -541,18 +563,22 @@ export function LinkAction({
     disabled,
     title,
     onClick,
-}: {
+    ref,
+    ...rest
+}: Omit<ButtonProps, "type" | "children" | "onClick"> & {
     children: ReactNode;
     danger?: boolean;
     disabled?: boolean;
     title?: string;
     onClick?: () => void;
+    /** 同 Btn：Popconfirm / Tooltip 一类触发器靠 ref 拿真实 DOM 节点做弹层对齐，必须转发。 */
+    ref?: Ref<HTMLButtonElement>;
 }) {
     return (
         <Button
-            className="!px-0 !text-[13px]"
+            {...rest}
+            ref={ref}
             type="link"
-            size="small"
             danger={danger}
             disabled={disabled}
             title={title}
@@ -592,7 +618,7 @@ export function StateBar({ loading, error }: { loading?: boolean; error?: string
 /** 行内「建设中」小标：挂在尚未接后端的按钮/字段旁，避免用户误认为可用。 */
 export function WipTag({ text = "建设中", className = "" }: { text?: string; className?: string }) {
     return (
-        <span className={`bg-[#fef3c7] px-2 text-[11px] font-medium leading-5 text-[#b45309] ${className}`}>
+        <span className={`rounded bg-[#fef3c7] px-2 text-[11px] font-medium leading-5 text-[#b45309] ${className}`}>
             {text}
         </span>
     );

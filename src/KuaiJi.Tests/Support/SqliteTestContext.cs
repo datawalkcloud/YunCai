@@ -33,10 +33,10 @@ internal sealed class SqliteTestContext : IDisposable
     /// </summary>
     public void DetachAll() => Context.ChangeTracker.Clear();
 
-    public AccountSet AddAccountSet(string name, string? codingScheme = null)
+    public AccountSet AddAccountSet(string name, string? codingScheme = null, AccountingStandard standard = AccountingStandard.Enterprise)
     {
         var accountSet = AccountSet.Create(
-            name, name, AccountingStandard.Enterprise, TaxpayerType.General, "人民币", 2026, 1, codingScheme ?? AccountSet.DefaultCodingScheme);
+            name, name, standard, TaxpayerType.General, "人民币", 2026, 1, codingScheme ?? AccountSet.DefaultCodingScheme);
 
         Context.AccountSets.Add(accountSet);
         Context.SaveChanges();

@@ -125,18 +125,6 @@ function MultiColumnLedger({
     return (
         <LedgerPageShell
             page="multi-column"
-            title="多栏账"
-            hint="选定科目后其下级科目逐栏列示发生额，并结出逐笔滚动余额。"
-            actions={
-
-                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-
-                    打印
-
-                </Button>
-
-            }
-
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
@@ -147,12 +135,17 @@ function MultiColumnLedger({
                     accounts={accounts}
                     loading={query.loading}
                     extra={
-                        <LedgerExportButton
-                            kind="multi-column"
-                            accountSetId={accountSetId}
-                            token={token}
-                            conditions={query.committed}
-                        />
+                        <>
+                            <LedgerExportButton
+                                kind="multi-column"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
+                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                                打印
+                            </Button>
+                        </>
                     }
                     disabled={!accountSetId}
                 />

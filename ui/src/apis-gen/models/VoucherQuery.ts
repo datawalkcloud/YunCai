@@ -48,12 +48,6 @@ export interface VoucherQuery {
      * @type {boolean}
      * @memberof VoucherQuery
      */
-    reviewed?: boolean | null;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof VoucherQuery
-     */
     hasAssists?: boolean | null;
     /**
      * 
@@ -144,7 +138,6 @@ export function VoucherQueryFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'endDate': json['endDate'] == null ? undefined : (new Date(json['endDate'])),
         'word': json['word'] == null ? undefined : json['word'],
         'preparer': json['preparer'] == null ? undefined : json['preparer'],
-        'reviewed': json['reviewed'] == null ? undefined : json['reviewed'],
         'hasAssists': json['hasAssists'] == null ? undefined : json['hasAssists'],
         'summaryContains': json['summaryContains'] == null ? undefined : json['summaryContains'],
         'remarkContains': json['remarkContains'] == null ? undefined : json['remarkContains'],
@@ -175,7 +168,6 @@ export function VoucherQueryToJSONTyped(value?: VoucherQuery | null, ignoreDiscr
         'endDate': value['endDate'] == null ? value['endDate'] : value['endDate'].toISOString().substring(0,10),
         'word': value['word'],
         'preparer': value['preparer'],
-        'reviewed': value['reviewed'],
         'hasAssists': value['hasAssists'],
         'summaryContains': value['summaryContains'],
         'remarkContains': value['remarkContains'],

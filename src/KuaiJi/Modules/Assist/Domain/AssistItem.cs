@@ -81,7 +81,7 @@ namespace KuaiJi.Modules.Assist.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             Guard(code, name);
@@ -130,7 +130,7 @@ namespace KuaiJi.Modules.Assist.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("档案名称不能为空。", nameof(name));
+                throw new ArgumentException("档案名称不能为空。");
             }
 
             Name = name.Trim();
@@ -166,7 +166,7 @@ namespace KuaiJi.Modules.Assist.Domain
         {
             if (string.IsNullOrWhiteSpace(code))
             {
-                throw new ArgumentException("档案编码不能为空。", nameof(code));
+                throw new ArgumentException("档案编码不能为空。");
             }
 
             if (code.Trim().Length > MaxCodeLength)
@@ -176,7 +176,7 @@ namespace KuaiJi.Modules.Assist.Domain
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("档案名称不能为空。", nameof(name));
+                throw new ArgumentException("档案名称不能为空。");
             }
         }
     }

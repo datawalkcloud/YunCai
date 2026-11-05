@@ -9,6 +9,7 @@ Name | Type
 `code` | string
 `name` | string
 `rate` | number
+`convertType` | number
 `isBase` | boolean
 
 ## Example
@@ -21,6 +22,7 @@ const example = {
   "code": null,
   "name": null,
   "rate": null,
+  "convertType": null,
   "isBase": null,
 } satisfies SaveCurrencyRequest
 

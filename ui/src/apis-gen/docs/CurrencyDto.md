@@ -10,6 +10,7 @@ Name | Type
 `code` | string
 `name` | string
 `rate` | number
+`convertType` | number
 `convertText` | string
 `isBase` | boolean
 
@@ -24,6 +25,7 @@ const example = {
   "code": null,
   "name": null,
   "rate": null,
+  "convertType": null,
   "convertText": null,
   "isBase": null,
 } satisfies CurrencyDto

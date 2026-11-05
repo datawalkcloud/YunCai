@@ -490,7 +490,6 @@ export function PrintVoucherSheet({
                     打印制单人姓名
                 </Checkbox>
                 <Input
-                    size="small"
                     allowClear
                     className="w-40"
                     placeholder="默认取凭证制单人"
@@ -501,7 +500,6 @@ export function PrintVoucherSheet({
                     打印审核人姓名
                 </Checkbox>
                 <Input
-                    size="small"
                     allowClear
                     className="w-40"
                     placeholder="默认取凭证审核人"
@@ -516,19 +514,19 @@ export function PrintVoucherSheet({
                 <Checkbox checked={settings.signManager} onChange={(e) => update({ signManager: e.target.checked })}>
                     打印主管姓名
                 </Checkbox>
-                <Input size="small" allowClear className="w-52" placeholder="主管姓名" value={settings.managerText} onChange={(e) => update({ managerText: e.target.value })} />
+                <Input allowClear className="w-52" placeholder="主管姓名" value={settings.managerText} onChange={(e) => update({ managerText: e.target.value })} />
             </div>
             <div className="flex items-center gap-2">
                 <Checkbox checked={settings.signBookkeeper} onChange={(e) => update({ signBookkeeper: e.target.checked })}>
                     打印记账姓名
                 </Checkbox>
-                <Input size="small" allowClear className="w-52" placeholder="记账人姓名" value={settings.bookkeeperText} onChange={(e) => update({ bookkeeperText: e.target.value })} />
+                <Input allowClear className="w-52" placeholder="记账人姓名" value={settings.bookkeeperText} onChange={(e) => update({ bookkeeperText: e.target.value })} />
             </div>
             <div className="flex items-center gap-2">
                 <Checkbox checked={settings.signCashier} onChange={(e) => update({ signCashier: e.target.checked })}>
                     打印出纳姓名
                 </Checkbox>
-                <Input size="small" allowClear className="w-52" placeholder="出纳姓名" value={settings.cashierText} onChange={(e) => update({ cashierText: e.target.value })} />
+                <Input allowClear className="w-52" placeholder="出纳姓名" value={settings.cashierText} onChange={(e) => update({ cashierText: e.target.value })} />
             </div>
             <Checkbox checked={settings.showFx} disabled onChange={(e) => update({ showFx: e.target.checked })}>
                 在摘要中打印显示原币、汇率（需外币核算，暂未启用）
@@ -578,7 +576,6 @@ export function PrintVoucherSheet({
             ) : voucher ? (
                 <>
                     <Tabs
-                        size="small"
                         items={[
                             { key: "base", label: "基础设置", children: baseForm },
                             { key: "more", label: "更多设置", children: moreForm },

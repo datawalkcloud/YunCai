@@ -36,6 +36,18 @@ export interface TrialBalanceRowDto {
      * @type {number}
      * @memberof TrialBalanceRowDto
      */
+    level?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof TrialBalanceRowDto
+     */
+    parentCode?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof TrialBalanceRowDto
+     */
     openingDebit?: number;
     /**
      * 
@@ -88,6 +100,8 @@ export function TrialBalanceRowDtoFromJSONTyped(json: any, ignoreDiscriminator: 
         
         'code': json['code'] == null ? undefined : json['code'],
         'name': json['name'] == null ? undefined : json['name'],
+        'level': json['level'] == null ? undefined : json['level'],
+        'parentCode': json['parentCode'] == null ? undefined : json['parentCode'],
         'openingDebit': json['openingDebit'] == null ? undefined : json['openingDebit'],
         'openingCredit': json['openingCredit'] == null ? undefined : json['openingCredit'],
         'periodDebit': json['periodDebit'] == null ? undefined : json['periodDebit'],
@@ -110,6 +124,8 @@ export function TrialBalanceRowDtoToJSONTyped(value?: TrialBalanceRowDto | null,
         
         'code': value['code'],
         'name': value['name'],
+        'level': value['level'],
+        'parentCode': value['parentCode'],
         'openingDebit': value['openingDebit'],
         'openingCredit': value['openingCredit'],
         'periodDebit': value['periodDebit'],

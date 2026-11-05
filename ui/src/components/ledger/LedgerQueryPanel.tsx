@@ -273,7 +273,7 @@ export function LedgerQueryPanel({
             {extra}
 
             <div className="ml-auto flex items-center gap-2">
-                {loading && <Spin size="small" />}
+                {loading && <Spin />}
                 <Button type="primary" htmlType="submit" disabled={disabled} icon={<SearchOutlined />}>
                     查询
                 </Button>

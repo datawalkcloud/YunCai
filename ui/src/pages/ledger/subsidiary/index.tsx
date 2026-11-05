@@ -91,18 +91,6 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
     return (
         <LedgerPageShell
             page="subsidiary"
-            title="明细账"
-            hint="按科目分段逐笔列示发生额与滚动余额，每月末结出本月合计，末尾结出本年累计。"
-            actions={
-
-                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-
-                    打印
-
-                </Button>
-
-            }
-
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
@@ -113,12 +101,17 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
                     switches={SWITCHES}
                     loading={query.loading}
                     extra={
-                        <LedgerExportButton
-                            kind="subsidiary"
-                            accountSetId={accountSetId}
-                            token={token}
-                            conditions={query.committed}
-                        />
+                        <>
+                            <LedgerExportButton
+                                kind="subsidiary"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
+                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                                打印
+                            </Button>
+                        </>
                     }
                     disabled={!accountSetId}
                 />

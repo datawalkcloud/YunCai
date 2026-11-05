@@ -65,7 +65,7 @@ namespace KuaiJi.Modules.AccountSets.Domain
         {
             if (string.IsNullOrWhiteSpace(word))
             {
-                throw new ArgumentException("凭证字不能为空。", nameof(word));
+                throw new ArgumentException("凭证字不能为空。");
             }
 
             if (word.Trim().Length > MaxWordLength)
@@ -78,7 +78,7 @@ namespace KuaiJi.Modules.AccountSets.Domain
         {
             if (string.IsNullOrWhiteSpace(printTitle))
             {
-                throw new ArgumentException("打印标题不能为空。", nameof(printTitle));
+                throw new ArgumentException("打印标题不能为空。");
             }
 
             if (printTitle.Trim().Length > MaxPrintTitleLength)

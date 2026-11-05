@@ -110,7 +110,7 @@ namespace KuaiJi.Modules.Reports.Application
                              ?? throw new ReportException("指定的账套不存在。");
             var accountsById = (await _accountRepository.GetAllAsync(accountSetId, cancellationToken))
                 .ToDictionary(a => a.Id, a => a);
-            // 报表只统计已过账凭证（口径 §0.1）：草稿与已审核未过账的凭证不影响损益。
+            // 报表只统计已过账凭证（口径 §0.1）：反过账退回的草稿不影响损益。
             var vouchers = (await _voucherRepository.GetAllAsync(accountSetId, cancellationToken))
                 .Where(v => v.Status == VoucherStatus.Posted)
                 .ToList();

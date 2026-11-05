@@ -2,89 +2,125 @@
  * 智能报税 · 税费缴纳（下载完税证明）。
  *
  * 页面结构与税局一致：按开具日期查询已开具的完税证明，勾选后打包下载。
- * 完税证明由税局开具后返回，数据需税务助手登录电子税务局取回，当前尚未接入，
- * 列表保持空态；「下载」只做勾选校验，不产生真实文件。
+ * 列表数据由服务器上的税局会话直连数字账户「证明信息查询」接口取回；登录态过期时弹窗补一次短信验证码，
+ * 成功后自动重取。证明原文的下载仍在电子税务局办理，「下载」只做勾选校验。
  */
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Key } from "react";
 import { App, Button, ConfigProvider, DatePicker, InputNumber, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
     LeftOutlined,
+    LoginOutlined,
     ReloadOutlined,
     RightOutlined,
     StepBackwardOutlined,
     StepForwardOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
+import { useParams } from "react-router";
 
-interface CertificateRow {
-    key: string;
-    /** 原凭证号（税局缴款书号） */
-    voucherNo: string;
-    periodStart: string;
-    periodEnd: string;
-    /** 入（退）库日期 */
-    paidOn: string;
-    /** 正数为实缴，负数为退还 */
-    amount: number;
-    /** 开具日期 */
-    issuedOn: string;
-    /** 开具格式：表格式 / 文书式 */
-    format: string;
-}
+import { useAuth } from "@/auth/AuthContext";
+import { fetchTaxCertificates, type TaxCertificateRow } from "@/lib/tax-portal";
+import { TAX_THEME } from "@/lib/tax-theme";
+
+import { TaxLoginPrompt } from "./TaxLoginPrompt";
+
+type CertificateRow = TaxCertificateRow;
 
 const fmtMoney = (value: number) =>
     value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const columns: TableColumnsType<CertificateRow> = [
-    { title: "原凭证号", dataIndex: "voucherNo", key: "voucherNo", width: "34%" },
-    { title: "税款所属期起", dataIndex: "periodStart", key: "periodStart", width: "10%" },
-    { title: "税款所属期止", dataIndex: "periodEnd", key: "periodEnd", width: "10%" },
-    { title: "入（退）库日期", dataIndex: "paidOn", key: "paidOn", width: "11%" },
+    { title: "证明名称", dataIndex: "name", key: "name", width: "18%" },
+    { title: "开具日期", dataIndex: "issuedOn", key: "issuedOn", width: "11%" },
     {
-        title: "实缴（退）金额",
+        title: "开具金额",
         dataIndex: "amount",
         key: "amount",
         width: "11%",
         align: "right",
         render: (value: number) => fmtMoney(value),
     },
-    { title: "开具日期", dataIndex: "issuedOn", key: "issuedOn", width: "10%" },
-    { title: "开具格式", dataIndex: "format", key: "format", width: "14%" },
+    { title: "证明样式", dataIndex: "format", key: "format", width: "18%" },
+    { title: "票证号码", dataIndex: "voucherNo", key: "voucherNo", width: "18%" },
+    { title: "开具税务机关", dataIndex: "authority", key: "authority", width: "24%" },
 ];
 
 export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertificate: () => void }) {
+    const { accountSetId = "" } = useParams();
     const { message } = App.useApp();
+    const { token } = useAuth();
 
     const [range, setRange] = useState<[Dayjs, Dayjs]>(() => [dayjs().startOf("year"), dayjs().startOf("day")]);
+    const [rows, setRows] = useState<CertificateRow[]>([]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [querying, setQuerying] = useState(false);
     const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+    const [needLogin, setNeedLogin] = useState(false);
+    const [loginOpen, setLoginOpen] = useState(false);
+    const [hint, setHint] = useState<string | null>(null);
 
-    /** 税局取数未接入前列表恒为空；接入后按开具日期区间查询。 */
-    const rows: CertificateRow[] = [];
+    const requestId = useRef(0);
+
+    const load = useCallback(
+        async (target: [Dayjs, Dayjs], opts: { promptLogin?: boolean } = {}) => {
+            if (!accountSetId) return;
+            const id = ++requestId.current;
+            setQuerying(true);
+            try {
+                const result = await fetchTaxCertificates(
+                    accountSetId,
+                    token,
+                    target[0].format("YYYY-MM-DD"),
+                    target[1].format("YYYY-MM-DD"),
+                );
+                if (id !== requestId.current) return;
+
+                if (result.needLogin) {
+                    setRows([]);
+                    setNeedLogin(true);
+                    setHint(result.message ?? "税局登录状态已过期，请重新登录电子税务局。");
+                    if (opts.promptLogin) setLoginOpen(true);
+                    return;
+                }
+
+                const list = result.rows ?? [];
+                setRows(list);
+                setNeedLogin(false);
+                setHint(list.length === 0 ? result.message ?? "您所选的期间内查无数据。" : null);
+                setPage(1);
+                setSelectedRowKeys([]);
+            } catch (err) {
+                if (id !== requestId.current) return;
+                setRows([]);
+                setHint(err instanceof Error && err.message ? err.message : "读取税局完税证明失败，请稍后重试。");
+            } finally {
+                if (id === requestId.current) setQuerying(false);
+            }
+        },
+        [accountSetId, token],
+    );
+
+    // 起止日期是两个独立选择器，改日期不立刻取数，等用户点「查询」再跑一次。
+    useEffect(() => {
+        void load([dayjs().startOf("year"), dayjs().startOf("day")]);
+    }, [load]);
 
     const total = rows.length;
-    const totalPages = Math.ceil(total / pageSize);
-    const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-    const to = Math.min(page * pageSize, total);
-
-    /** 税局取数耗时以一次短暂 loading 呈现，接入后替换为真实请求。 */
-    async function query() {
-        setQuerying(true);
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        setQuerying(false);
-        setPage(1);
-    }
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const current = Math.min(page, totalPages);
+    const paged = rows.slice((current - 1) * pageSize, current * pageSize);
+    const from = total === 0 ? 0 : (current - 1) * pageSize + 1;
+    const to = Math.min(current * pageSize, total);
 
     function download() {
         if (selectedRowKeys.length === 0) {
             message.warning("请先勾选需要下载的完税证明。");
             return;
         }
-        message.warning("完税证明原文需税务助手登录电子税务局后取回，当前尚未接入。");
+        message.info("已勾选完税证明；原文下载需在电子税务局「证明信息查询」中办理。");
     }
 
     return (
@@ -110,10 +146,20 @@ export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertif
                         if (value) setRange([range[0], value.startOf("day")]);
                     }}
                 />
-                <Button type="primary" autoInsertSpace={false} loading={querying} onClick={() => void query()}>
+                <Button
+                    type="primary"
+                    autoInsertSpace={false}
+                    loading={querying}
+                    onClick={() => void load(range, { promptLogin: true })}
+                >
                     查询
                 </Button>
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-2">
+                    {needLogin && (
+                        <Button icon={<LoginOutlined />} onClick={() => setLoginOpen(true)}>
+                            登录电子税务局
+                        </Button>
+                    )}
                     <Button type="primary" autoInsertSpace={false} onClick={download}>
                         下载
                     </Button>
@@ -121,24 +167,19 @@ export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertif
             </div>
 
             <div>
-                <ConfigProvider
-                    theme={{
-                        components: {
-                            Table: { headerBg: "#f4f7ff", headerColor: "#475569", borderColor: "#eef2f7", rowHoverBg: "#f6f9ff" },
-                        },
-                    }}
-                >
+                <ConfigProvider theme={TAX_THEME}>
                     <Table<CertificateRow>
                         columns={columns}
-                        dataSource={rows}
+                        dataSource={paged}
                         rowKey="key"
                         tableLayout="fixed"
                         rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+                        loading={querying}
                         pagination={false}
                         locale={{
                             emptyText: (
                                 <div className="flex min-h-[calc(100vh-300px)] flex-col items-center justify-center gap-1 text-[13px] leading-6 text-slate-500">
-                                    <div>您所选的期间内查无数据。</div>
+                                    <div>{hint ?? "您所选的期间内查无数据。"}</div>
                                     <div>
                                         如需开具完税证明，请前往{" "}
                                         <Button type="link" onClick={onOpenCertificate}>
@@ -169,23 +210,24 @@ export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertif
                         type="text"
                         icon={<StepBackwardOutlined />}
                         aria-label="首页"
-                        disabled
+                        disabled={current <= 1}
                         onClick={() => setPage(1)}
                     />
                     <Button
                         type="text"
                         icon={<LeftOutlined />}
                         aria-label="上一页"
-                        disabled
-                        onClick={() => setPage((current) => Math.max(1, current - 1))}
+                        disabled={current <= 1}
+                        onClick={() => setPage(Math.max(1, current - 1))}
                     />
                     <span className="px-1">第</span>
                     <InputNumber
                         controls={false}
                         min={1}
-                        value={page}
+                        max={totalPages}
+                        value={current}
                         className="w-[40px]"
-                        onChange={(value) => setPage(Number(value) || 1)}
+                        onChange={(value) => setPage(Math.min(Math.max(1, Number(value) || 1), totalPages))}
                     />
                     <span className="px-1">页</span>
                     <span className="px-1">共{totalPages}页</span>
@@ -193,24 +235,36 @@ export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertif
                         type="text"
                         icon={<RightOutlined />}
                         aria-label="下一页"
-                        disabled
-                        onClick={() => setPage((current) => current + 1)}
+                        disabled={current >= totalPages}
+                        onClick={() => setPage(Math.min(totalPages, current + 1))}
                     />
                     <Button
                         type="text"
                         icon={<StepForwardOutlined />}
                         aria-label="末页"
-                        disabled
-                        onClick={() => setPage(Math.max(1, totalPages))}
+                        disabled={current >= totalPages}
+                        onClick={() => setPage(totalPages)}
                     />
                     <Button
                         type="text"
                         icon={<ReloadOutlined />}
                         aria-label="刷新"
-                        onClick={() => void query()}
+                        loading={querying}
+                        onClick={() => void load(range, { promptLogin: true })}
                     />
                 </div>
             </div>
+
+            <TaxLoginPrompt
+                open={loginOpen}
+                accountSetId={accountSetId}
+                reason={hint ?? undefined}
+                onClose={() => setLoginOpen(false)}
+                onSuccess={() => {
+                    setLoginOpen(false);
+                    void load(range);
+                }}
+            />
         </div>
     );
 }

@@ -6,6 +6,8 @@ export interface ConfirmOptions {
     title?: string
     confirmText?: string
     cancelText?: string
+    /** 高危操作要求用户原样输入的文本（如账套名称）。 */
+    requireText?: string
 }
 
 export interface ConfirmHandle {
@@ -43,6 +45,7 @@ export function useConfirm(): ConfirmHandle {
                 title={pending.options.title}
                 confirmText={pending.options.confirmText}
                 cancelText={pending.options.cancelText}
+                requireText={pending.options.requireText}
                 onConfirm={() => settle(true)}
                 onCancel={() => settle(false)}
             />

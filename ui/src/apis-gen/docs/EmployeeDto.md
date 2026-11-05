@@ -15,6 +15,21 @@ Name | Type
 `email` | string
 `idTypeText` | string
 `idNo` | string
+`birthDate` | Date
+`bankName` | string
+`bankAccountNo` | string
+`post` | string
+`title` | string
+`education` | string
+`isDisabled` | boolean
+`isMartyrFamily` | boolean
+`isSoloElder` | boolean
+`isSeniorExpert` | boolean
+`employmentTypeText` | string
+`deductBasicExpense` | boolean
+`payStartDate` | Date
+`paysSocialInsurance` | boolean
+`insurances` | [Array&lt;EmployeeInsuranceDto&gt;](EmployeeInsuranceDto.md)
 `subjectAccountId` | string
 `subjectText` | string
 `statusText` | string
@@ -37,6 +52,21 @@ const example = {
   "email": null,
   "idTypeText": null,
   "idNo": null,
+  "birthDate": null,
+  "bankName": null,
+  "bankAccountNo": null,
+  "post": null,
+  "title": null,
+  "education": null,
+  "isDisabled": null,
+  "isMartyrFamily": null,
+  "isSoloElder": null,
+  "isSeniorExpert": null,
+  "employmentTypeText": null,
+  "deductBasicExpense": null,
+  "payStartDate": null,
+  "paysSocialInsurance": null,
+  "insurances": null,
   "subjectAccountId": null,
   "subjectText": null,
   "statusText": null,

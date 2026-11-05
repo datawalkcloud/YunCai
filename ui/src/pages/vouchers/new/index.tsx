@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react"
-import { App, Button, DatePicker, Dropdown, Empty, Input, InputNumber, Modal, Popconfirm, Select, Switch } from "antd"
+import { App, Button, DatePicker, Dropdown, Empty, Input, InputNumber, Modal, Popconfirm, Select, Switch, Table } from "antd"
 import type { InputRef, MenuProps } from "antd"
 import {
     ArrowLeftOutlined,
@@ -54,6 +54,26 @@ const DIGITS = ["亿", "千", "百", "十", "万", "千", "百", "十", "元", "
 const CELL_W = 22
 const GROUP_W = CELL_W * DIGITS.length
 
+/** 金额列表头：标题 + 11 位分位刻度（原表两行表头合并进一个单元格）。 */
+function AmountHeaderCell({ title, prefix }: { title: string; prefix: string }) {
+    return (
+        <div className="py-1">
+            <div>{title}</div>
+            <div className="flex border-t border-[#e6eaf2]">
+                {DIGITS.map((d, i) => (
+                    <span
+                        key={`${prefix}${i}`}
+                        className="h-5 text-center text-[10px] leading-5 text-slate-400"
+                        style={{ width: CELL_W }}
+                    >
+                        {d}
+                    </span>
+                ))}
+            </div>
+        </div>
+    )
+}
+
 /** 元位分界线：第 8 条竖线（亿 千 百 十 万 千 百 十 | 元 角 分）用红色，方便对位到分。 */
 const YUAN_X = CELL_W * 8
 
@@ -102,8 +122,8 @@ const AMOUNT_GRID_BG: CSSProperties = {
 
 /** 快捷键说明：[左功能, 左按键, 右功能, 右按键]。 */
 const SHORTCUTS: Array<[string, string, string, string]> = [
-    ["保存", "Ctrl + S", "上一行", "↑"],
-    ["保存并新增", "F12", "前一格", "←"],
+    ["保存入账", "Ctrl + S", "上一行", "↑"],
+    ["入账并新增", "F12", "前一格", "←"],
     ["新增", "Alt + N", "下一行", "↓"],
     ["前一张", "PgUp", "后一格", "→"],
     ["后一张", "PgDn", "余额反算", "F9"],
@@ -252,7 +272,6 @@ function AccountSelect({
                     <div className="border-t border-slate-100 py-1 text-center" onMouseDown={(e) => e.preventDefault()}>
                         <Button
                             type="link"
-                            size="small"
                             onClick={() => navigate(`/${accountSetId}/settings/accounts`)}
                         >
                             + 点击添加
@@ -859,7 +878,7 @@ export default function VoucherNewPage() {
         message.success(`已引入模板「${template.name}」`)
     }
 
-    /** 草稿：未审核的凭证（后端保存后即为草稿状态）。 */
+    /** 草稿：反过账退回或导入不平衡的凭证（保存即入账，正常制单不会留下草稿）。 */
     const drafts = useMemo(() => (allVouchers ?? []).filter((v) => v.status === 1), [allVouchers])
 
     const openDraft = () => {
@@ -975,7 +994,6 @@ export default function VoucherNewPage() {
     const moreItems: MenuProps["items"] = [
         { key: "save-template", label: "保存为模板" },
         { key: "load-template", label: "从模板中加载" },
-        { key: "save-draft", label: "保存为草稿" },
         { key: "load-draft", label: "从草稿中加载" },
         { key: "clear", label: "清空凭证" },
         { key: "options", label: "选项" },
@@ -984,7 +1002,6 @@ export default function VoucherNewPage() {
     const onMore: MenuProps["onClick"] = ({ key }) => {
         if (key === "save-template") openTemplateSave()
         else if (key === "load-template") openTemplateLoad()
-        else if (key === "save-draft") void save(false, "已保存为草稿")
         else if (key === "load-draft") openDraft()
         else if (key === "clear") {
             resetForm()
@@ -1138,8 +1155,39 @@ export default function VoucherNewPage() {
 
     /* ---------- 渲染 ---------- */
 
-    const th = "border border-[#e6eaf2] bg-[#fafbfd] px-2 py-1.5 text-[13px] font-normal text-slate-500"
-    const td = "border border-[#e6eaf2] p-0"
+    /** 金额单元格：底层铺分位网格线，上层是透明输入框（聚焦时显示蓝色选框）。 */
+    const renderAmountCell = (r: EntryRow, idx: number, side: "debit" | "credit") => {
+        const focused = focusedCell === `${r.key}:${side}`
+        return (
+            <div className="relative">
+                <div aria-hidden className="pointer-events-none absolute inset-0" style={AMOUNT_GRID_BG} />
+                <input
+                    data-nav={side}
+                    data-col={side}
+                    value={side === "debit" ? r.debit : r.credit}
+                    placeholder={focused ? "0.00" : ""}
+                    onFocus={() => {
+                        setActiveRow(idx ?? 0)
+                        setFocusedCell(`${r.key}:${side}`)
+                        setFocusInfo({ rowKey: r.key, col: side })
+                    }}
+                    onBlur={() => setFocusedCell(null)}
+                    onDoubleClick={() => autoBalance(r.key, side)}
+                    onKeyDown={onCellKeyDown}
+                    onChange={(e) =>
+                        patchRow(
+                            r.key,
+                            side === "debit"
+                                ? { debit: e.target.value.replace(/[^\d.]/g, ""), credit: "" }
+                                : { credit: e.target.value.replace(/[^\d.]/g, ""), debit: "" },
+                        )
+                    }
+                    className="relative w-full bg-transparent px-2 text-right text-[13px] tabular-nums text-slate-700 outline-none placeholder:text-slate-300"
+                    style={{ height: 44, boxShadow: focused ? "inset 0 0 0 1px #2f6bff" : undefined }}
+                />
+            </div>
+        )
+    }
 
     return (
         <div ref={sheetRef} className="flex flex-col bg-white">
@@ -1147,10 +1195,10 @@ export default function VoucherNewPage() {
             <div className="relative flex min-h-[56px] items-center border-b border-slate-100 px-4 py-2">
                 <div className="flex flex-1 items-center justify-center gap-3">
                     <Button type="primary" disabled={!canSave} loading={saving} onClick={() => void save(true)}>
-                        保存并新增
+                        入账并新增
                     </Button>
                     <Button type="primary" ghost disabled={!canSave} loading={saving} onClick={() => void save(false)}>
-                        保存
+                        保存入账
                     </Button>
                     <Button
                         icon={<PrinterOutlined />}
@@ -1165,27 +1213,32 @@ export default function VoucherNewPage() {
                     </Dropdown>
                 </div>
                 <div className="absolute right-4 flex items-center gap-5 text-[13px] text-slate-600">
-                    <button
-                        type="button"
-                        className="flex items-center gap-1 hover:text-[#2f6bff]"
+                    <Button
+                        type="text"
+                        className="!text-slate-600 hover:!text-[#2f6bff]"
+                        icon={<ControlOutlined />}
                         onClick={() => setShortcutOpen(true)}
                     >
-                        <ControlOutlined /> 快捷键
-                    </button>
-                    <button
-                        type="button"
-                        className="flex items-center gap-1 hover:text-[#2f6bff]"
+                        快捷键
+                    </Button>
+                    <Button
+                        type="text"
+                        className="!text-slate-600 hover:!text-[#2f6bff]"
+                        icon={<ArrowLeftOutlined />}
+                        iconPosition="end"
                         onClick={() => void loadSibling(-1)}
                     >
-                        上一页 <ArrowLeftOutlined />
-                    </button>
-                    <button
-                        type="button"
-                        className="flex items-center gap-1 hover:text-[#2f6bff]"
+                        上一页
+                    </Button>
+                    <Button
+                        type="text"
+                        className="!text-slate-600 hover:!text-[#2f6bff]"
+                        icon={<ArrowRightOutlined />}
+                        iconPosition="end"
                         onClick={() => void loadSibling(1)}
                     >
-                        下一页 <ArrowRightOutlined />
-                    </button>
+                        下一页
+                    </Button>
                 </div>
             </div>
 
@@ -1236,9 +1289,10 @@ export default function VoucherNewPage() {
                                 style={{ width: 56, textAlign: "center" }}
                             />
                             张
-                            <button
-                                type="button"
-                                className="flex items-center gap-1 text-[#2f6bff] hover:underline"
+                            <Button
+                                type="link"
+                                className="hover:!underline"
+                                icon={<PaperClipOutlined />}
                                 onClick={() => {
                                     if (!loadedId) {
                                         message.warning("请先保存凭证，再上传附件")
@@ -1248,13 +1302,13 @@ export default function VoucherNewPage() {
                                     void loadAttachments(loadedId)
                                 }}
                             >
-                                <PaperClipOutlined /> 附件
+                                附件
                                 {attachments.length > 0 && (
                                     <span className="rounded-full bg-[#2f6bff] px-1.5 text-[11px] leading-4 text-white">
                                         {attachments.length}
                                     </span>
                                 )}
-                            </button>
+                            </Button>
                             {remarkOpen ? (
                                 <Input
                                     autoFocus
@@ -1266,285 +1320,208 @@ export default function VoucherNewPage() {
                                     style={{ width: 200 }}
                                 />
                             ) : (
-                                <button
-                                    type="button"
-                                    className="flex items-center gap-1 text-[#2f6bff] hover:underline"
+                                <Button
+                                    type="link"
+                                    className="hover:!underline"
                                     title={remark || "添加凭证备注"}
                                     onClick={() => setRemarkOpen(true)}
                                 >
                                     备注 ⓘ
-                                </button>
+                                </Button>
                             )}
-                            <button
-                                type="button"
-                                className="flex items-center gap-1 text-[13px] hover:text-[#2f6bff]"
+                            <Button
+                                type="text"
+                                className="!text-slate-600 hover:!text-[#2f6bff]"
+                                icon={zoom ? <ZoomOutOutlined /> : <ZoomInOutlined />}
                                 onClick={() => setZoom((v) => !v)}
                             >
-                                {zoom ? <ZoomOutOutlined /> : <ZoomInOutlined />} {zoom ? "缩小" : "放大"}
-                            </button>
-                            <button
-                                type="button"
-                                className="flex items-center gap-1 text-[13px] hover:text-[#2f6bff]"
+                                {zoom ? "缩小" : "放大"}
+                            </Button>
+                            <Button
+                                type="text"
+                                className="!text-slate-600 hover:!text-[#2f6bff]"
+                                icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                                 onClick={() => void toggleFullscreen()}
                             >
-                                {fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                                 {fullscreen ? "退出全屏" : "全屏"}
-                            </button>
+                            </Button>
                         </div>
                     </div>
 
                     {/* 分录表格 */}
                     <div ref={gridRef}>
-                        <table className="w-full table-fixed border-collapse">
-                            <colgroup>
-                                <col style={{ width: 22 }} />
-                                <col style={{ width: 44 }} />
-                                <col style={{ width: 200 }} />
-                                <col />
-                                <col style={{ width: GROUP_W }} />
-                                <col style={{ width: GROUP_W }} />
-                                <col style={{ width: 28 }} />
-                            </colgroup>
-                            <thead>
-                                <tr>
-                                    <th className={cn(th, "border-0")} />
-                                    <th className={th}>序号</th>
-                                    <th className={th}>摘要</th>
-                                    <th className={th}>会计科目</th>
-                                    <th className={cn(th, "p-0")}>
-                                        <div className="py-1">借方金额</div>
-                                        <div className="flex border-t border-[#e6eaf2]">
-                                            {DIGITS.map((d, i) => (
-                                                <span
-                                                    key={`jd${i}`}
-                                                    className="h-5 text-center text-[10px] leading-5 text-slate-400"
-                                                    style={{ width: CELL_W }}
-                                                >
-                                                    {d}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </th>
-                                    <th className={cn(th, "p-0")}>
-                                        <div className="py-1">贷方金额</div>
-                                        <div className="flex border-t border-[#e6eaf2]">
-                                            {DIGITS.map((d, i) => (
-                                                <span
-                                                    key={`cd${i}`}
-                                                    className="h-5 text-center text-[10px] leading-5 text-slate-400"
-                                                    style={{ width: CELL_W }}
-                                                >
-                                                    {d}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </th>
-                                    <th className={cn(th, "border-0")} />
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((r, idx) => {
-                                    const active = idx === activeRow
-                                    return (
-                                        <tr
-                                            key={r.key}
-                                            className={cn("group h-[46px]", active ? "bg-[#f5f9ff]" : "bg-white")}
-                                            onMouseDown={() => setActiveRow(idx)}
-                                        >
-                                            {/* 行操作：插入 / 复制 */}
-                                            <td className="border-0 p-0 align-middle">
-                                                <div
-                                                    className={cn(
-                                                        "flex flex-col items-center gap-0.5",
-                                                        active ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                                                    )}
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        title="在下方插入一行"
-                                                        className="text-[13px] text-[#22c55e]"
-                                                        onClick={() => insertBelow(idx)}
-                                                    >
-                                                        <PlusCircleOutlined />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        title="复制本行"
-                                                        className="text-[12px] text-[#2f6bff]"
-                                                        onClick={() => duplicateRow(idx)}
-                                                    >
-                                                        <CopyOutlined />
-                                                    </button>
-                                                </div>
-                                            </td>
-
-                                            <td className={cn(td, "text-center text-[13px] text-slate-500 tabular-nums")}>
-                                                {idx + 1}
-                                            </td>
-
-                                            <td className={cn(td, "relative")}>
-                                                <Input
-                                                    data-nav="summary"
-                                                    data-col="summary"
-                                                    variant="borderless"
-                                                    value={r.summary}
-                                                    placeholder="摘要"
-                                                    onFocus={() => {
-                                                        setActiveRow(idx)
-                                                        setFocusInfo({ rowKey: r.key, col: "summary" })
-                                                        setSummaryPickRow(r.key)
-                                                    }}
-                                                    onBlur={() => {
-                                                        // 延迟收起，留出点击候选的时间
-                                                        window.setTimeout(() => setSummaryPickRow(null), 150)
-                                                    }}
-                                                    onKeyDown={onCellKeyDown}
-                                                    onChange={(e) => patchRow(r.key, { summary: e.target.value })}
-                                                    style={{ height: 44, fontSize: 13 }}
-                                                />
-                                                {summaryPickRow === r.key && summaryCandidates.length > 0 && (
-                                                    <div className="absolute left-0 top-full z-20 max-h-[220px] w-[300px] overflow-auto rounded border border-slate-200 bg-white py-1 shadow-lg">
-                                                        {summaryCandidates.map((item) => (
-                                                            <button
-                                                                key={item}
-                                                                type="button"
-                                                                className="block w-full px-3 py-1.5 text-left text-[13px] text-slate-700 hover:bg-[#f2f6ff]"
-                                                                onMouseDown={(e) => {
-                                                                    e.preventDefault()
-                                                                    patchRow(r.key, { summary: item })
-                                                                    setSummaryPickRow(null)
-                                                                }}
-                                                            >
-                                                                {item}
-                                                            </button>
-                                                        ))}
-                                                    </div>
+                        <Table<EntryRow>
+                            size="small"
+                            pagination={false}
+                            rowKey={(r) => r.key}
+                            dataSource={rows}
+                            onRow={(_, idx) => ({ onMouseDown: () => setActiveRow(idx ?? 0) })}
+                            rowClassName={(_, idx) =>
+                                cn("group", idx === activeRow ? "bg-[#f5f9ff]" : "bg-white")
+                            }
+                            columns={[
+                                {
+                                    title: "",
+                                    width: 22,
+                                    onCell: () => ({ style: { padding: 0, border: 0 } }),
+                                    render: (_, _r, idx) => {
+                                        const active = idx === activeRow
+                                        return (
+                                            <div
+                                                className={cn(
+                                                    "flex flex-col items-center gap-0.5",
+                                                    active ? "opacity-100" : "opacity-0 group-hover:opacity-100",
                                                 )}
-                                            </td>
-
-                                            <td className={td}>
-                                                <div
-                                                    data-nav="account"
-                                                    data-col="account"
-                                                    onKeyDown={onCellKeyDown}
-                                                >
-                                                    <AccountSelect
-                                                        value={r.accountId}
-                                                        accounts={accounts}
-                                                        balances={balances}
-                                                        accountSetId={accountSetId}
-                                                        onFocus={() => {
-                                                            setActiveRow(idx)
-                                                            setFocusInfo({ rowKey: r.key, col: "account" })
-                                                        }}
-                                                        onChange={(v) => patchRow(r.key, { accountId: v })}
-                                                    />
+                                            >
+                                                <Button
+                                                    type="text"
+                                                    title="在下方插入一行"
+                                                    className="!text-[#22c55e]"
+                                                    icon={<PlusCircleOutlined />}
+                                                    onClick={() => insertBelow(idx ?? 0)}
+                                                />
+                                                <Button
+                                                    type="text"
+                                                    title="复制本行"
+                                                    className="!text-[#2f6bff]"
+                                                    icon={<CopyOutlined />}
+                                                    onClick={() => duplicateRow(idx ?? 0)}
+                                                />
+                                            </div>
+                                        )
+                                    },
+                                },
+                                {
+                                    title: "序号",
+                                    width: 44,
+                                    onCell: () => ({ style: { padding: 0 } }),
+                                    render: (_, _r, idx) => (
+                                        <span className="text-center text-[13px] text-slate-500 tabular-nums">
+                                            {(idx ?? 0) + 1}
+                                        </span>
+                                    ),
+                                },
+                                {
+                                    title: "摘要",
+                                    width: 200,
+                                    onCell: () => ({ style: { padding: 0 }, className: "relative" }),
+                                    render: (_, r, idx) => (
+                                        <>
+                                            <Input
+                                                data-nav="summary"
+                                                data-col="summary"
+                                                variant="borderless"
+                                                value={r.summary}
+                                                placeholder="摘要"
+                                                onFocus={() => {
+                                                    setActiveRow(idx ?? 0)
+                                                    setFocusInfo({ rowKey: r.key, col: "summary" })
+                                                    setSummaryPickRow(r.key)
+                                                }}
+                                                onBlur={() => {
+                                                    // 延迟收起，留出点击候选的时间
+                                                    window.setTimeout(() => setSummaryPickRow(null), 150)
+                                                }}
+                                                onKeyDown={onCellKeyDown}
+                                                onChange={(e) => patchRow(r.key, { summary: e.target.value })}
+                                                style={{ height: 44, fontSize: 13 }}
+                                            />
+                                            {summaryPickRow === r.key && summaryCandidates.length > 0 && (
+                                                <div className="absolute left-0 top-full z-20 max-h-[220px] w-[300px] overflow-auto rounded border border-slate-200 bg-white py-1 shadow-lg">
+                                                    {summaryCandidates.map((item) => (
+                                                        <button
+                                                            key={item}
+                                                            type="button"
+                                                            className="block w-full px-3 py-1.5 text-left text-[13px] text-slate-700 hover:bg-[#f2f6ff]"
+                                                            onMouseDown={(e) => {
+                                                                e.preventDefault()
+                                                                patchRow(r.key, { summary: item })
+                                                                setSummaryPickRow(null)
+                                                            }}
+                                                        >
+                                                            {item}
+                                                        </button>
+                                                    ))}
                                                 </div>
-                                            </td>
-
-                                            {/* 借方金额 */}
-                                            <td className={cn(td, "relative")}>
-                                                <div aria-hidden className="pointer-events-none absolute inset-0" style={AMOUNT_GRID_BG} />
-                                                <input
-                                                    data-nav="debit"
-                                                    data-col="debit"
-                                                    value={r.debit}
-                                                    placeholder={focusedCell === `${r.key}:debit` ? "0.00" : ""}
-                                                    onFocus={() => {
-                                                        setActiveRow(idx)
-                                                        setFocusedCell(`${r.key}:debit`)
-                                                        setFocusInfo({ rowKey: r.key, col: "debit" })
-                                                    }}
-                                                    onBlur={() => setFocusedCell(null)}
-                                                    onDoubleClick={() => autoBalance(r.key, "debit")}
-                                                    onKeyDown={onCellKeyDown}
-                                                    onChange={(e) =>
-                                                        patchRow(r.key, {
-                                                            debit: e.target.value.replace(/[^\d.]/g, ""),
-                                                            credit: "",
-                                                        })
-                                                    }
-                                                    className="relative w-full bg-transparent px-2 text-right text-[13px] tabular-nums text-slate-700 outline-none placeholder:text-slate-300"
-                                                    style={{
-                                                        height: 44,
-                                                        boxShadow:
-                                                            focusedCell === `${r.key}:debit`
-                                                                ? "inset 0 0 0 1px #2f6bff"
-                                                                : undefined,
-                                                    }}
-                                                />
-                                            </td>
-
-                                            {/* 贷方金额 */}
-                                            <td className={cn(td, "relative")}>
-                                                <div aria-hidden className="pointer-events-none absolute inset-0" style={AMOUNT_GRID_BG} />
-                                                <input
-                                                    data-nav="credit"
-                                                    data-col="credit"
-                                                    value={r.credit}
-                                                    placeholder={focusedCell === `${r.key}:credit` ? "0.00" : ""}
-                                                    onFocus={() => {
-                                                        setActiveRow(idx)
-                                                        setFocusedCell(`${r.key}:credit`)
-                                                        setFocusInfo({ rowKey: r.key, col: "credit" })
-                                                    }}
-                                                    onBlur={() => setFocusedCell(null)}
-                                                    onDoubleClick={() => autoBalance(r.key, "credit")}
-                                                    onKeyDown={onCellKeyDown}
-                                                    onChange={(e) =>
-                                                        patchRow(r.key, {
-                                                            credit: e.target.value.replace(/[^\d.]/g, ""),
-                                                            debit: "",
-                                                        })
-                                                    }
-                                                    className="relative w-full bg-transparent px-2 text-right text-[13px] tabular-nums text-slate-700 outline-none placeholder:text-slate-300"
-                                                    style={{
-                                                        height: 44,
-                                                        boxShadow:
-                                                            focusedCell === `${r.key}:credit`
-                                                                ? "inset 0 0 0 1px #2f6bff"
-                                                                : undefined,
-                                                    }}
-                                                />
-                                            </td>
-
-                                            {/* 删除行 */}
-                                            <td className="border-0 p-0 align-middle">
-                                                <button
-                                                    type="button"
-                                                    title="删除本行"
-                                                    disabled={rows.length <= 1}
-                                                    className={cn(
-                                                        "text-[13px]",
-                                                        rows.length <= 1
-                                                            ? "cursor-not-allowed text-slate-200"
-                                                            : cn("text-[#ef4444]", active ? "opacity-100" : "opacity-0 group-hover:opacity-100"),
-                                                    )}
-                                                    onClick={() => removeRow(idx)}
-                                                >
-                                                    <CloseOutlined />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-
-                                {/* 合计 */}
-                                <tr className="h-[44px] bg-[#fafbfd]">
-                                    <td className="border-0" />
-                                    <td colSpan={3} className="border border-[#e6eaf2] px-3 text-[13px] font-medium text-slate-700">
+                                            )}
+                                        </>
+                                    ),
+                                },
+                                {
+                                    title: "会计科目",
+                                    onCell: () => ({ style: { padding: 0 } }),
+                                    render: (_, r, idx) => (
+                                        <div data-nav="account" data-col="account" onKeyDown={onCellKeyDown}>
+                                            <AccountSelect
+                                                value={r.accountId}
+                                                accounts={accounts}
+                                                balances={balances}
+                                                accountSetId={accountSetId}
+                                                onFocus={() => {
+                                                    setActiveRow(idx ?? 0)
+                                                    setFocusInfo({ rowKey: r.key, col: "account" })
+                                                }}
+                                                onChange={(v) => patchRow(r.key, { accountId: v })}
+                                            />
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    title: <AmountHeaderCell title="借方金额" prefix="jd" />,
+                                    width: GROUP_W,
+                                    onCell: () => ({ style: { padding: 0 } }),
+                                    render: (_, r, idx) => renderAmountCell(r, idx ?? 0, "debit"),
+                                },
+                                {
+                                    title: <AmountHeaderCell title="贷方金额" prefix="cd" />,
+                                    width: GROUP_W,
+                                    onCell: () => ({ style: { padding: 0 } }),
+                                    render: (_, r, idx) => renderAmountCell(r, idx ?? 0, "credit"),
+                                },
+                                {
+                                    title: "",
+                                    width: 28,
+                                    onCell: () => ({ style: { padding: 0, border: 0 } }),
+                                    render: (_, _r, idx) => {
+                                        const active = idx === activeRow
+                                        return (
+                                            <Button
+                                                type="text"
+                                                title="删除本行"
+                                                disabled={rows.length <= 1}
+                                                className={cn(
+                                                    rows.length <= 1
+                                                        ? "!text-slate-200"
+                                                        : cn(
+                                                              "!text-[#ef4444]",
+                                                              active
+                                                                  ? "opacity-100"
+                                                                  : "opacity-0 group-hover:opacity-100",
+                                                          ),
+                                                )}
+                                                onClick={() => removeRow(idx ?? 0)}
+                                                icon={<CloseOutlined />}
+                                            />
+                                        )
+                                    },
+                                },
+                            ]}
+                            summary={() => (
+                                <Table.Summary.Row>
+                                    <Table.Summary.Cell index={0} className="!border-0" />
+                                    <Table.Summary.Cell index={1} colSpan={3} className="px-3 text-[13px] font-medium text-slate-700">
                                         合计：{amountToChineseUppercase(totals.debit)}
-                                    </td>
-                                    <td className="border border-[#e6eaf2] px-2 text-right text-[13px] font-medium tabular-nums text-slate-700">
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={4} align="right" className="px-2 text-[13px] font-medium tabular-nums text-slate-700">
                                         {totals.debit > 0 ? totals.debit.toFixed(2) : ""}
-                                    </td>
-                                    <td className="border border-[#e6eaf2] px-2 text-right text-[13px] font-medium tabular-nums text-slate-700">
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={5} align="right" className="px-2 text-[13px] font-medium tabular-nums text-slate-700">
                                         {totals.credit > 0 ? totals.credit.toFixed(2) : ""}
-                                    </td>
-                                    <td className="border-0" />
-                                </tr>
-                            </tbody>
-                        </table>
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={6} className="!border-0" />
+                                </Table.Summary.Row>
+                            )}
+                        />
                     </div>
 
                     {/* 制单人 */}
@@ -1553,7 +1530,7 @@ export default function VoucherNewPage() {
                             <EditOutlined />
                             制单人：{user?.displayName || user?.username || "-"}
                         </span>
-                        {loadedId && <span className="text-slate-400">当前为已保存凭证，保存将更新原凭证</span>}
+                        {loadedId && <span className="text-slate-400">当前为已保存凭证，保存将更新原凭证并入账</span>}
                     </div>
                 </div>
             </div>
@@ -1581,26 +1558,28 @@ export default function VoucherNewPage() {
                         <div className="bg-[#eef4ff] py-2 text-center text-[14px] font-medium text-[#2f6bff]">
                             凭证快捷键
                         </div>
-                        <table className="w-full table-fixed border-collapse">
-                            <tbody>
-                                {SHORTCUTS.map(([leftLabel, leftKey, rightLabel, rightKey]) => (
-                                    <tr key={leftLabel} className="border-t border-slate-200">
-                                        <td className="w-[34%] border-r border-slate-200 px-4 py-1.5 text-slate-700">
-                                            {leftLabel}
-                                        </td>
-                                        <td className="w-[16%] whitespace-nowrap border-r border-slate-200 px-2 py-1.5 text-center font-mono text-[12px] text-slate-600">
-                                            {leftKey}
-                                        </td>
-                                        <td className="w-[34%] border-r border-slate-200 px-4 py-1.5 text-slate-700">
-                                            {rightLabel}
-                                        </td>
-                                        <td className="w-[16%] whitespace-nowrap px-2 py-1.5 text-center font-mono text-[12px] text-slate-600">
-                                            {rightKey}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <Table
+                            showHeader={false}
+                            pagination={false}
+                            rowKey={(r) => r.join("|")}
+                            columns={[
+                                { title: "操作", width: "34%", render: (_, r) => r[0] },
+                                {
+                                    title: "快捷键",
+                                    width: "16%",
+                                    align: "center",
+                                    render: (_, r) => <span className="font-mono text-[12px] text-slate-600">{r[1]}</span>,
+                                },
+                                { title: "操作", width: "34%", render: (_, r) => r[2] },
+                                {
+                                    title: "快捷键",
+                                    width: "16%",
+                                    align: "center",
+                                    render: (_, r) => <span className="font-mono text-[12px] text-slate-600">{r[3]}</span>,
+                                },
+                            ]}
+                            dataSource={SHORTCUTS}
+                        />
                     </div>
                     <div className="flex justify-center gap-4 py-4">
                         <Button icon={<DownloadOutlined />} onClick={downloadShortcuts}>
@@ -1757,34 +1736,36 @@ export default function VoucherNewPage() {
                             {attachments.map((a) => (
                                 <div key={a.id} className="flex items-center gap-2 px-3 py-2 text-[13px]">
                                     <FileTextOutlined className="text-slate-400" />
-                                    <button
-                                        type="button"
-                                        className="max-w-[280px] truncate text-left text-slate-700 hover:text-[#2f6bff]"
+                                    <Button
+                                        type="text"
+                                        className="max-w-[280px] !justify-start !px-0 text-left text-slate-700 hover:!text-[#2f6bff]"
                                         title={a.fileName}
                                         onClick={() => void openAttachment(a.id ?? "", a.fileName ?? "附件", false)}
                                     >
-                                        {a.fileName}
-                                    </button>
+                                        <span className="truncate">{a.fileName}</span>
+                                    </Button>
                                     <span className="ml-auto text-[12px] text-slate-400">
                                         {formatBytes(a.sizeBytes ?? 0)}
                                     </span>
-                                    <button
-                                        type="button"
-                                        className="text-slate-400 hover:text-[#2f6bff]"
+                                    <Button
+                                        type="text"
                                         title="下载"
+                                        className="!text-slate-400 hover:!text-[#2f6bff]"
+                                        icon={<DownloadOutlined />}
                                         onClick={() => void openAttachment(a.id ?? "", a.fileName ?? "附件", true)}
-                                    >
-                                        <DownloadOutlined />
-                                    </button>
+                                    />
                                     <Popconfirm
                                         title="删除该附件？"
                                         okText="删除"
                                         cancelText="取消"
                                         onConfirm={() => void removeAttachment(a.id ?? "")}
                                     >
-                                        <button type="button" className="text-slate-400 hover:text-[#ef4444]" title="删除">
-                                            <DeleteOutlined />
-                                        </button>
+                                        <Button
+                                            type="text"
+                                            title="删除"
+                                            className="!text-slate-400 hover:!text-[#ef4444]"
+                                            icon={<DeleteOutlined />}
+                                        />
                                     </Popconfirm>
                                 </div>
                             ))}

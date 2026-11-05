@@ -5,25 +5,16 @@
  * 费用单据（已接后端）、发票资金一览表（已接后端）、发票风险分析（建设中）。
  * 商品明细页签把发票列表接口返回的行明细直接摊平展示（真实数据）；
  * 暂不入账页签走发票列表接口 status=3（暂不入账），「入账」经状态变更端点恢复发票进入账流程。
- * 视觉遵循全站「云财蓝」设计语言：主色 #2f6bff、直角卡片、白卡 + slate 灰阶文字，
- * 页头统一由 Page 基元的渐变横幅渲染。
+ * 视觉遵循全站「云财蓝」设计语言：主色 #2f6bff、直角卡片、白卡 + slate 灰阶文字。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Button, Dropdown, Modal } from "antd";
 import {
-    AlertOutlined,
-    BankOutlined,
-    FileDoneOutlined,
-    FileTextOutlined,
-    KeyOutlined,
-    ProfileOutlined,
     QuestionCircleOutlined,
-    ReloadOutlined,
-    WalletOutlined,
 } from "@ant-design/icons";
 
-import { ICON_STYLE, type PillTone } from "@/components/page/styles";
+import { ICON_STYLE, type PillTone, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
 
 import {
     Btn,
@@ -142,13 +133,9 @@ const FETCH_POINTS = [
 
 export function LemonInvoiceFetch() {
     return (
-        <Page
-            title="一键取票"
-            subtitle="只需一次维护，即可直接获取进销项发票数据、数电发票电子文件，实现发票智能化"
-            icon={ReloadOutlined}
-        >
+        <Page>
             <WipNotice text="一键取票需对接税局发票取得服务，后端尚未提供端点，本页为功能介绍（建设中）。" />
-            <div className="flex flex-1 flex-col items-center justify-center py-16">
+            <div className="flex flex-1 flex-col items-center justify-center px-4 py-16">
                 <div className="flex w-[860px] max-w-full items-center gap-10">
                     {/* 左侧显示器插画（简化为示意框） */}
                     <div className="flex h-[220px] w-[300px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-[#fafbfd] text-[13px] text-slate-400">
@@ -528,7 +515,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
     ];
     const tabs = kind === "sales" ? ["销项发票", "商品明细"] : ["进项发票", "商品明细", "暂不入账发票"];
     return (
-        <Page title={kind === "sales" ? "销项发票" : "进项发票"} subtitle={kind === "sales" ? "销项发票的登记、开具与入账情况" : "进项发票的登记、认证与抵扣情况"} icon={kind === "sales" ? FileTextOutlined : FileDoneOutlined}>
+        <Page>
             <SubTabs tabs={tabs} active={tab} onChange={setTab} />
             <ToolRow
                 left={
@@ -568,7 +555,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                     </>
                 }
             />
-            <div className="flex-1">
+            <div className="flex-1 px-4">
                 {error2(data.error)}
                 {data.loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
                 <Table
@@ -649,16 +636,16 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                 >
                     <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
                         {([
-                            ["发票种类：", <Select key="t" className="w-[240px]" value={addForm.invoiceType} onChange={(v) => setAddForm({ ...addForm, invoiceType: v })} options={["增值税专用发票", "增值税普通发票", "电子发票"]} />],
-                            ["开票日期：", <DateInput key="d" className="w-[240px]" value={addForm.issueDate} onChange={(v) => setAddForm({ ...addForm, issueDate: v })} />],
-                            ["发票号码：", <TextInput key="n" className="w-[240px]" value={addForm.invoiceNo} onChange={(v) => setAddForm({ ...addForm, invoiceNo: v })} />],
-                            [kind === "sales" ? "客户名称：" : "供应商名称：", <TextInput key="p" className="w-[240px]" value={addForm.partnerName} onChange={(v) => setAddForm({ ...addForm, partnerName: v })} />],
-                            ["商品名称：", <TextInput key="g" className="w-[240px]" value={addForm.goodsName} onChange={(v) => setAddForm({ ...addForm, goodsName: v })} />],
-                            ["不含税金额：", <TextInput key="a" className="w-[240px] text-right tabular-nums" value={addForm.amount} onChange={(v) => setAddForm({ ...addForm, amount: v.replace(/[^\d.]/g, "") })} />],
-                            ["税率(%)：", <TextInput key="r" className="w-[240px] text-right tabular-nums" value={addForm.taxRate} onChange={(v) => setAddForm({ ...addForm, taxRate: v.replace(/[^\d.]/g, "") })} />],
+                            ["发票种类：", <Select key="t" className={FORM_CONTROL_W} value={addForm.invoiceType} onChange={(v) => setAddForm({ ...addForm, invoiceType: v })} options={["增值税专用发票", "增值税普通发票", "电子发票"]} />],
+                            ["开票日期：", <DateInput key="d" className={FORM_CONTROL_W} value={addForm.issueDate} onChange={(v) => setAddForm({ ...addForm, issueDate: v })} />],
+                            ["发票号码：", <TextInput key="n" className={FORM_CONTROL_W} value={addForm.invoiceNo} onChange={(v) => setAddForm({ ...addForm, invoiceNo: v })} />],
+                            [kind === "sales" ? "客户名称：" : "供应商名称：", <TextInput key="p" className={FORM_CONTROL_W} value={addForm.partnerName} onChange={(v) => setAddForm({ ...addForm, partnerName: v })} />],
+                            ["商品名称：", <TextInput key="g" className={FORM_CONTROL_W} value={addForm.goodsName} onChange={(v) => setAddForm({ ...addForm, goodsName: v })} />],
+                            ["不含税金额：", <TextInput key="a" className={`${FORM_CONTROL_W} text-right tabular-nums`} value={addForm.amount} onChange={(v) => setAddForm({ ...addForm, amount: v.replace(/[^\d.]/g, "") })} />],
+                            ["税率(%)：", <TextInput key="r" className={`${FORM_CONTROL_W} text-right tabular-nums`} value={addForm.taxRate} onChange={(v) => setAddForm({ ...addForm, taxRate: v.replace(/[^\d.]/g, "") })} />],
                         ] as Array<[string, ReactNode]>).map(([label, control]) => (
                             <label key={label} className="flex items-center gap-3">
-                                <span className="w-[110px] text-right">{label}</span>
+                                <span className={`${FORM_LABEL_W} text-right`}>{label}</span>
                                 {control}
                             </label>
                         ))}
@@ -684,7 +671,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                             支持 .xlsx；同一发票号码的多行商品会合并为一张发票的多条明细。已存在的发票号会被跳过。
                         </HintBox>
                         <div className="flex items-center gap-3">
-                            <span className="w-[110px] text-right">选择文件：</span>
+                            <span className={`${FORM_LABEL_W} text-right`}>选择文件：</span>
                             <input
                                 ref={importInputRef}
                                 type="file"
@@ -696,7 +683,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                             <span className="text-[12px] text-slate-500">{importFile ? importFile.name : "未选择文件"}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            <span className="w-[110px] text-right" />
+                            <span className={`${FORM_LABEL_W} text-right`} />
                             <LinkAction onClick={() => void downloadTemplate()}>下载导入模板</LinkAction>
                         </div>
                     </div>
@@ -726,7 +713,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                                 "对方科目：",
                                 <Select
                                     key="c"
-                                    className="w-[240px]"
+                                    className={FORM_CONTROL_W}
                                     value={voucherForm.counterAccountId}
                                     onChange={(v) => setVoucherForm({ ...voucherForm, counterAccountId: v })}
                                     options={[
@@ -739,7 +726,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                                 kind === "sales" ? "收入科目：" : "商品科目：",
                                 <Select
                                     key="s"
-                                    className="w-[240px]"
+                                    className={FORM_CONTROL_W}
                                     value={voucherForm.subjectAccountId}
                                     onChange={(v) => setVoucherForm({ ...voucherForm, subjectAccountId: v })}
                                     options={[
@@ -752,7 +739,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                                 "税额科目：",
                                 <Select
                                     key="t"
-                                    className="w-[240px]"
+                                    className={FORM_CONTROL_W}
                                     value={voucherForm.taxAccountId}
                                     onChange={(v) => setVoucherForm({ ...voucherForm, taxAccountId: v })}
                                     options={[
@@ -763,15 +750,15 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                             ],
                             [
                                 "凭证字：",
-                                <TextInput key="w" className="w-[240px]" value={voucherForm.word} onChange={(v) => setVoucherForm({ ...voucherForm, word: v })} />,
+                                <TextInput key="w" className={FORM_CONTROL_W} value={voucherForm.word} onChange={(v) => setVoucherForm({ ...voucherForm, word: v })} />,
                             ],
                             [
                                 "凭证日期：",
-                                <DateInput key="d" className="w-[240px]" value={voucherForm.date} onChange={(v) => setVoucherForm({ ...voucherForm, date: v })} />,
+                                <DateInput key="d" className={FORM_CONTROL_W} value={voucherForm.date} onChange={(v) => setVoucherForm({ ...voucherForm, date: v })} />,
                             ],
                         ] as Array<[string, ReactNode]>).map(([label, control]) => (
                             <label key={label} className="flex items-center gap-3">
-                                <span className="w-[110px] text-right">{label}</span>
+                                <span className={`${FORM_LABEL_W} text-right`}>{label}</span>
                                 {control}
                             </label>
                         ))}
@@ -1212,7 +1199,7 @@ export function LemonExpenseBill() {
     ];
 
     return (
-        <Page title="费用单据" subtitle="费用单据登记、导入导出与生成凭证" icon={ProfileOutlined}>
+        <Page>
             <ToolRow
                 left={
                     <>
@@ -1263,7 +1250,7 @@ export function LemonExpenseBill() {
                     }
                 }}
             />
-            <div className="flex-1">
+            <div className="flex-1 px-4">
                 {error2(error)}
                 {loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
                 <Table
@@ -1351,17 +1338,17 @@ export function LemonExpenseBill() {
                             单据编号留空时自动生成（FY-0001）。单据金额为含税总额，可抵扣税额需小于单据金额。
                         </HintBox>
                         {([
-                            ["单据编号：", <TextInput key="no" className="w-[240px]" value={form.billNo} placeholder="留空自动生成" onChange={(v) => setForm({ ...form, billNo: v })} />],
-                            ["单据日期：", <DateInput key="d" className="w-[240px]" value={form.billDate} onChange={(v) => setForm({ ...form, billDate: v })} />],
-                            ["费用事由：", <TextInput key="r" className="w-[240px]" value={form.reason} onChange={(v) => setForm({ ...form, reason: v })} />],
-                            ["费用类型：", <Select key="t" className="w-[240px]" value={form.expenseType} onChange={(v) => setForm({ ...form, expenseType: v })} options={["办公费", "差旅费", "业务招待费", "水电费", "房租", "通讯费", "运输费", "其他"]} />],
-                            ["收款人：", <TextInput key="p" className="w-[240px]" value={form.payee} onChange={(v) => setForm({ ...form, payee: v })} />],
-                            ["结算方式：", <Select key="s" className="w-[240px]" value={form.settleMethod} onChange={(v) => setForm({ ...form, settleMethod: v })} options={SETTLE_METHODS} />],
-                            ["单据金额：", <TextInput key="a" className="w-[240px] text-right tabular-nums" value={form.amount} placeholder="含税总额" onChange={(v) => setForm({ ...form, amount: v.replace(/[^\d.]/g, "") })} />],
-                            ["可抵扣税额：", <TextInput key="x" className="w-[240px] text-right tabular-nums" value={form.deductibleTax} placeholder="无进项税额填 0" onChange={(v) => setForm({ ...form, deductibleTax: v.replace(/[^\d.]/g, "") })} />],
+                            ["单据编号：", <TextInput key="no" className={FORM_CONTROL_W} value={form.billNo} placeholder="留空自动生成" onChange={(v) => setForm({ ...form, billNo: v })} />],
+                            ["单据日期：", <DateInput key="d" className={FORM_CONTROL_W} value={form.billDate} onChange={(v) => setForm({ ...form, billDate: v })} />],
+                            ["费用事由：", <TextInput key="r" className={FORM_CONTROL_W} value={form.reason} onChange={(v) => setForm({ ...form, reason: v })} />],
+                            ["费用类型：", <Select key="t" className={FORM_CONTROL_W} value={form.expenseType} onChange={(v) => setForm({ ...form, expenseType: v })} options={["办公费", "差旅费", "业务招待费", "水电费", "房租", "通讯费", "运输费", "其他"]} />],
+                            ["收款人：", <TextInput key="p" className={FORM_CONTROL_W} value={form.payee} onChange={(v) => setForm({ ...form, payee: v })} />],
+                            ["结算方式：", <Select key="s" className={FORM_CONTROL_W} value={form.settleMethod} onChange={(v) => setForm({ ...form, settleMethod: v })} options={SETTLE_METHODS} />],
+                            ["单据金额：", <TextInput key="a" className={`${FORM_CONTROL_W} text-right tabular-nums`} value={form.amount} placeholder="含税总额" onChange={(v) => setForm({ ...form, amount: v.replace(/[^\d.]/g, "") })} />],
+                            ["可抵扣税额：", <TextInput key="x" className={`${FORM_CONTROL_W} text-right tabular-nums`} value={form.deductibleTax} placeholder="无进项税额填 0" onChange={(v) => setForm({ ...form, deductibleTax: v.replace(/[^\d.]/g, "") })} />],
                         ] as Array<[string, ReactNode]>).map(([label, control]) => (
                             <label key={label} className="flex items-center gap-3">
-                                <span className="w-[110px] text-right">{label}</span>
+                                <span className={`${FORM_LABEL_W} text-right`}>{label}</span>
                                 {control}
                             </label>
                         ))}
@@ -1396,7 +1383,7 @@ export function LemonExpenseBill() {
                                 "费用科目：",
                                 <Select
                                     key="e"
-                                    className="w-[240px]"
+                                    className={FORM_CONTROL_W}
                                     value={voucherForm.expense}
                                     onChange={(v) => setVoucherForm({ ...voucherForm, expense: v })}
                                     options={accounts.map((a) => ({ value: a.id ?? "", label: `${a.code} ${a.name}` }))}
@@ -1406,7 +1393,7 @@ export function LemonExpenseBill() {
                                 "对方科目：",
                                 <Select
                                     key="c"
-                                    className="w-[240px]"
+                                    className={FORM_CONTROL_W}
                                     value={voucherForm.counter}
                                     onChange={(v) => setVoucherForm({ ...voucherForm, counter: v })}
                                     options={accounts.map((a) => ({ value: a.id ?? "", label: `${a.code} ${a.name}` }))}
@@ -1416,7 +1403,7 @@ export function LemonExpenseBill() {
                                 "税额科目：",
                                 <Select
                                     key="t"
-                                    className="w-[240px]"
+                                    className={FORM_CONTROL_W}
                                     value={voucherForm.tax}
                                     onChange={(v) => setVoucherForm({ ...voucherForm, tax: v })}
                                     options={[
@@ -1427,11 +1414,11 @@ export function LemonExpenseBill() {
                             ],
                             [
                                 "凭证字：",
-                                <TextInput key="w" className="w-[240px]" value={voucherForm.word} onChange={(v) => setVoucherForm({ ...voucherForm, word: v })} />,
+                                <TextInput key="w" className={FORM_CONTROL_W} value={voucherForm.word} onChange={(v) => setVoucherForm({ ...voucherForm, word: v })} />,
                             ],
                         ] as Array<[string, ReactNode]>).map(([label, control]) => (
                             <label key={label} className="flex items-center gap-3">
-                                <span className="w-[110px] text-right">{label}</span>
+                                <span className={`${FORM_LABEL_W} text-right`}>{label}</span>
                                 {control}
                             </label>
                         ))}
@@ -1550,7 +1537,7 @@ export function LemonInvoiceSummary() {
         ops: <WipTag text="核对建设中" />,
     }));
     return (
-        <Page title="发票资金一览表" subtitle="按往来单位比对发票与收付款差异" icon={WalletOutlined}>
+        <Page>
             <ToolRow
                 left={
                     <PeriodStepper
@@ -1566,7 +1553,7 @@ export function LemonInvoiceSummary() {
                     </>
                 }
             />
-            <div className="flex-1">
+            <div className="flex-1 px-4">
                 {error2(error)}
                 {loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
                 <Table cols={cols} rows={tableRows} empty={rows.length === 0 && !loading && !error ? <EmptyTip /> : undefined} />
@@ -1596,11 +1583,11 @@ const RISK_POINTS = [
 
 export function LemonInvoiceRisk() {
     return (
-        <Page title="发票风险分析" subtitle="多维度检测发票潜在风险与销售采购资金情况" icon={AlertOutlined}>
+        <Page>
             <WipNotice text="发票风险分析依赖一键取票取得的税局发票数据，后端尚未提供分析端点，本页为功能介绍（建设中）。" />
-            <div className="flex flex-1 items-center justify-center py-10">
+            <div className="flex flex-1 items-center justify-center px-4 py-10">
                 <div className="flex w-[1100px] max-w-full items-center gap-10 rounded-2xl border border-slate-100 bg-white px-10 py-12 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                    <div className="flex h-[240px] w-[320px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-[#fafbfd] text-[13px] text-slate-400">
+                    <div className={`${FORM_CONTROL_W} flex h-[240px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-[#fafbfd] text-[13px] text-slate-400`}>
                         风险分析插画
                     </div>
                     <div className="flex flex-1 flex-col items-center">
@@ -1696,7 +1683,7 @@ function InvoiceGoodsTable({
           ]
         : [];
     return (
-        <Page title={kind === "sales" ? "销项发票" : "进项发票"} subtitle="发票商品明细逐行摊示" icon={kind === "sales" ? FileTextOutlined : FileDoneOutlined}>
+        <Page>
             <SubTabs tabs={kind === "sales" ? ["销项发票", "商品明细"] : ["进项发票", "商品明细", "暂不入账发票"]} active={1} onChange={onTab} />
             <ToolRow
                 left={
@@ -1713,7 +1700,7 @@ function InvoiceGoodsTable({
                     </>
                 }
             />
-            <div className="flex-1">
+            <div className="flex-1 px-4">
                 {error2(error)}
                 {loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
                 <Table cols={cols} rows={rows} empty={<EmptyTip />} />
@@ -1881,7 +1868,7 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
         ),
     ];
     return (
-        <Page title="进项发票" subtitle="暂不入账发票可恢复入账流程" icon={FileDoneOutlined}>
+        <Page>
             <SubTabs tabs={["进项发票", "商品明细", "暂不入账发票"]} active={2} onChange={onTab} />
             <WipNotice text="「入账」把发票恢复为「未入账」状态，恢复后需回到销项 / 进项发票页勾选并生成凭证。" />
             <ToolRow
@@ -1910,7 +1897,7 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
                     </>
                 }
             />
-            <div className="flex-1">
+            <div className="flex-1 px-4">
                 {error2(data.error)}
                 {data.loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
                 <Table cols={cols} rows={rows} empty={<EmptyTip />} />
@@ -1924,8 +1911,8 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
 export function LemonSpb() {
     const [authOpen, setAuthOpen] = useState(false);
     return (
-        <Page title="收票宝" subtitle="员工收票交票，财务审批归档，企业电子档案管理好帮手" icon={ProfileOutlined}>
-            <div className="flex flex-1 flex-col items-center pt-10">
+        <Page>
+            <div className="flex flex-1 flex-col items-center px-4 pt-10">
                 <div className="text-[16px] text-slate-500">帮您智能收取票据，一键提交财务，解放双手之神器</div>
                 <div className="mt-8">
                     <Button type="primary" size="large" onClick={() => setAuthOpen(true)}>
@@ -1972,7 +1959,7 @@ export function LemonSpb() {
 function PhoneMock({ title, rows }: { title: string; rows: string[] }) {
     return (
         <div className="h-[200px] w-[104px] overflow-hidden rounded-[14px] border-4 border-slate-800 bg-white">
-            <div className="bg-[#10b981] px-2 py-1 text-center text-[10px] text-white">{title}</div>
+            <div className="rounded bg-[#10b981] px-2 py-1 text-center text-[10px] text-white">{title}</div>
             <div className="flex flex-col gap-1.5 p-1.5">
                 {rows.map((r) => (
                     <div key={r} className="rounded bg-slate-100 p-1 text-[8px] leading-3 text-slate-500">
@@ -1990,41 +1977,44 @@ const BANK_TABS = ["工商银行", "中国银行", "招商银行", "邮储银行
 export function LemonBankLink() {
     const [bank, setBank] = useState(1);
     return (
-        <Page title="银企互联" subtitle="实时同步对账单，自动生成凭证，银行级加密，安全可靠" icon={BankOutlined}>
+        <Page>
             <WipNotice text="银企互联需对接银行直连服务，后端尚未提供端点，本页为签约流程示意（建设中），表单内容不会提交。" />
             <SubTabs tabs={BANK_TABS} active={bank} onChange={setBank} />
-            <div className="mx-auto my-6 w-[1220px] max-w-full rounded-2xl border border-slate-200 bg-white p-8">
+            <div
+                className="mx-auto my-6 w-[1220px] rounded-2xl border border-slate-200 bg-white p-8"
+                style={{ maxWidth: "calc(100% - 32px)" }}
+            >
                 <div className="flex justify-end gap-1 text-[13px]">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2f6bff] text-[11px] text-white">?</span>
                     <span className="cursor-pointer text-[#2f6bff]">点此查看操作手册</span>
                 </div>
-                <div className="mt-4 flex gap-10">
+                <div className="mt-4 flex flex-wrap gap-10">
                     <div className="flex flex-1 flex-col gap-5">
                         <div className="flex items-center">
                             <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 公司名称：</span>
-                            <FakeInput className="w-[320px]" />
+                            <FakeInput className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
                             <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 统一社会信用代码：</span>
-                            <FakeInput className="w-[320px]" />
+                            <FakeInput className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
                             <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 银行账户：</span>
-                            <FakeSelect text="" className="w-[320px]" />
+                            <FakeSelect text="" className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
                             <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 银行账号：</span>
-                            <FakeInput className="w-[320px]" />
+                            <FakeInput className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
                             <span className="w-[170px] text-right text-[13px] text-slate-700">企业客户号：</span>
-                            <span className="inline-flex h-8 w-[320px] items-center rounded-lg border border-slate-200 px-2.5 text-[13px] text-slate-400">
+                            <span className={`${FORM_CONTROL_W} inline-flex h-8 items-center rounded-lg border border-slate-200 px-2.5 text-[13px] text-slate-400`}>
                                 若集团账号签约，请输入企业客户号
                                 <QuestionCircleOutlined className="ml-auto text-[14px]" style={ICON_STYLE.muted} />
                             </span>
                         </div>
                     </div>
-                    <div className="w-[370px] shrink-0 self-start rounded-xl bg-[#fafbfd] p-5 text-[13px] leading-6">
+                    <div className="w-[370px] max-w-full shrink-0 self-start rounded-xl bg-[#fafbfd] p-5 text-[13px] leading-6">
                         <div className="font-medium text-[#ef4444]">提示：</div>
                         <div className="text-slate-600">1、请确认公司名称和统一社会信用代码</div>
                         <div className="text-slate-600">2、选择对应的银行账户，并确认银行账号和名称正确</div>
@@ -2039,7 +2029,10 @@ export function LemonBankLink() {
                     如有疑问，请 <span className="cursor-pointer text-[#2f6bff]">咨询客服</span> ，咨询时间：周一至周日 8:30-12:00,13:30-20:30
                 </div>
             </div>
-            <div className="mx-auto mb-8 mt-8 flex h-[85px] w-[990px] max-w-full items-center justify-between rounded-2xl bg-[#eef4ff] px-10">
+            <div
+                className="mx-auto mb-8 mt-8 flex h-[85px] w-[990px] items-center justify-between rounded-2xl bg-[#eef4ff] px-10"
+                style={{ maxWidth: "calc(100% - 32px)" }}
+            >
                 <span className="text-[20px] font-bold">
                     <span className="text-slate-800">云财与各大银行 </span>
                     <span className="text-[#2f6bff]">携手研发</span>
@@ -2047,85 +2040,6 @@ export function LemonBankLink() {
                 <span className="text-[13px] text-slate-500">实时同步对账单，自动生成凭证，银行级加密，安全可靠</span>
                 <span className="text-[26px]">🏦</span>
             </div>
-        </Page>
-    );
-}
-
-/** 一键登录税局落地页（建设中：引导弹窗为示意，不提交任何数据）。 */
-export function LemonTaxLogin() {
-    /** 弹层默认不渲染，点「税局登录」打开、可关闭（修复无条件渲染导致遮罩常驻挡页）。 */
-    const [dialogOpen, setDialogOpen] = useState(false);
-    return (
-        <Page
-            title="一键登录税局"
-            subtitle="只需一次维护，即可直接登录电子税务局，进行取票、开票、报税、社保业务、征纳互动等操作"
-            icon={KeyOutlined}
-        >
-            <WipNotice text="一键登录税局需对接电子税务局免密登录服务，后端尚未提供端点，本页与弹窗均为流程示意（建设中）。" />
-            <div className="px-4 pb-8">
-                <Btn variant="primary" onClick={() => setDialogOpen(true)}>
-                    税局登录
-                </Btn>
-            </div>
-            {dialogOpen && (
-                <Dialog
-                    title="一键登录电子税局"
-                    width={900}
-                    onClose={() => setDialogOpen(false)}
-                    footer={
-                        <div className="flex justify-center gap-3">
-                            <Btn onClick={() => setDialogOpen(false)}>取消</Btn>
-                            <WipBtn title="一键登录税局建设中，后端未提供端点">下一步</WipBtn>
-                        </div>
-                    }
-                >
-                    <div className="rounded-xl bg-[#fafbfd] p-4 text-[13px] leading-6">
-                        <div className="flex items-start gap-2">
-                            <span className="text-[#b45309]">⚠</span>
-                            <div className="text-slate-600">
-                                <div>1.一键自动跳转登录电子税局，方便且高效</div>
-                                <div>
-                                    2.首次使用或<span className="text-[#ef4444]">税务信息填写不准确</span>，均需要认证税局登录账号后，才能使用一键登录电子税局功能；税务信息填写完成后，可前往
-                                    <span className="cursor-pointer text-[#2f6bff]">【设置-账套-税务信息】</span>中再次查看和修改
-                                </div>
-                                <div>
-                                    3.如您在使用过程中有任何疑问，请查看 <span className="cursor-pointer text-[#2f6bff]">帮助文档</span> 或联系
-                                    <span className="ml-1 inline-flex h-6 items-center rounded-md bg-[#2f6bff] px-2 text-[12px] text-white">在线客服</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="mt-5 flex items-center gap-3 text-[13px]">
-                        <span className="flex items-center gap-1.5">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2f6bff] text-[12px] text-white">1</span>
-                            <span className="text-[#2f6bff]">确认公司信息</span>
-                        </span>
-                        <span className="h-px w-16 bg-slate-200" />
-                        <span className="flex items-center gap-1.5">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-[12px] text-slate-400">2</span>
-                            <span className="text-slate-400">填写税局登录信息</span>
-                        </span>
-                    </div>
-                    <div className="mt-5 flex flex-col gap-4">
-                        <div className="flex items-center">
-                            <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 公司名称：</span>
-                            <FakeInput className="w-[320px]" />
-                        </div>
-                        <div className="flex items-center">
-                            <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 统一社会信用代码：</span>
-                            <FakeInput className="w-[320px]" />
-                        </div>
-                        <div className="flex items-center">
-                            <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 报税地区：</span>
-                            <FakeSelect text="" className="w-[320px]" />
-                        </div>
-                        <div className="flex items-center">
-                            <span className="w-[170px]" />
-                            <CheckBox label={<>我已阅读并同意 <span className="text-[#2f6bff]">《税局登录业务隐私政策》</span></>} />
-                        </div>
-                    </div>
-                </Dialog>
-            )}
         </Page>
     );
 }

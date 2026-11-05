@@ -136,8 +136,6 @@ export default function AssistCombinePage() {
     return (
         <LedgerPageShell
             page="assist-combine"
-            title="核算项目交叉表"
-            hint="按主、次两个辅助核算类别交叉列示区间内借贷发生额，每个主档案一组。注意：一条分录在同一类别下挂多个档案时，各档案分别计全额，所以主、次两维度的合计不必然相等。"
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}

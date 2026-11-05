@@ -145,12 +145,12 @@ namespace KuaiJi.Modules.Salary.Domain
             GuardAmounts(gross, deductible, personalDeduction, taxThreshold, tax, companyPart);
             if (period is < 100000 or > 999999)
             {
-                throw new ArgumentException("工资期间无效。", nameof(period));
+                throw new ArgumentException("工资期间无效。");
             }
 
             if (employeeId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定员工。", nameof(employeeId));
+                throw new ArgumentException("必须指定员工。");
             }
 
             return new SalaryBill(

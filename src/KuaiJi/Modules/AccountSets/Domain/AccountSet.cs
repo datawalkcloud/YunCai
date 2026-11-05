@@ -24,6 +24,9 @@ namespace KuaiJi.Modules.AccountSets.Domain
         /// <summary>默认凭证字列表（逗号分隔）。</summary>
         public const string DefaultVoucherWords = "记,收,付,转";
 
+        /// <summary>单价 / 数量 / 汇率的默认小数位数。</summary>
+        public const int DefaultUnitDecimalPlaces = 8;
+
         // EF Core 物化实体所需的无参构造函数。
         private AccountSet()
         {
@@ -118,6 +121,42 @@ namespace KuaiJi.Modules.AccountSets.Domain
         /// </summary>
         public string EnabledAssistTypes { get; private set; } = string.Empty;
 
+        /// <summary>所属行业（如「商业」「工业」），仅作为账套属性记录，不影响取数。</summary>
+        public string? Industry { get; private set; }
+
+        /// <summary>是否启用固定资产模块。</summary>
+        public bool AssetsModuleEnabled { get; private set; } = true;
+
+        /// <summary>是否启用资金出纳模块。</summary>
+        public bool FundsModuleEnabled { get; private set; } = true;
+
+        /// <summary>凭证是否需要审核后才能过账；关闭后制单即可直接过账。</summary>
+        public bool VoucherAuditRequired { get; private set; } = true;
+
+        /// <summary>资产负债表辅助核算余额的取值范围。</summary>
+        public BalanceAssistScope BalanceAssistScope { get; private set; } = BalanceAssistScope.All;
+
+        /// <summary>单价 / 数量 / 汇率的小数位数。</summary>
+        public int UnitDecimalPlaces { get; private set; } = DefaultUnitDecimalPlaces;
+
+        /// <summary>是否出口企业（影响免抵退等税务处理，作为账套属性记录）。</summary>
+        public bool IsExportEnterprise { get; private set; }
+
+        /// <summary>个税申报渠道（如「个税网页端」）。与税局页面文案一致，不做本地枚举收敛。</summary>
+        public string? IitChannel { get; private set; }
+
+        /// <summary>个税登录方式（如「实名账号登录」「扫码登录」）。</summary>
+        public string? IitLoginType { get; private set; }
+
+        /// <summary>个税实名登录账号（手机号或身份证号）。</summary>
+        public string? IitLoginAccount { get; private set; }
+
+        /// <summary>
+        /// 个税实名登录密码的密文，加密方式与 <see cref="TaxLoginPasswordCipher"/> 相同；
+        /// 不下发也不进日志，响应只暴露「是否已填写」。
+        /// </summary>
+        public string? IitLoginPasswordCipher { get; private set; }
+
         /// <summary>已结账至期间（yyyyMM 格式整数）；0 表示尚未结账。结账按月逐期顺序推进。</summary>
         public int ClosedPeriod { get; private set; }
 
@@ -145,7 +184,8 @@ namespace KuaiJi.Modules.AccountSets.Domain
             string baseCurrency,
             int startYear,
             int startMonth,
-            string accountCodingScheme = DefaultCodingScheme)
+            string accountCodingScheme = DefaultCodingScheme,
+            string? industry = null)
         {
             Guard(name, companyName, baseCurrency, startYear, startMonth);
             GuardCodingScheme(accountCodingScheme);
@@ -159,6 +199,7 @@ namespace KuaiJi.Modules.AccountSets.Domain
                 startYear,
                 startMonth,
                 accountCodingScheme);
+            accountSet.Industry = NullIfBlank(industry);
 
             // 默认税率按纳税人性质预置：一般纳税人 13%，小规模纳税人 3%；所得税默认 25%。
             accountSet.VatRate = taxpayerType == TaxpayerType.SmallScale ? 3m : 13m;
@@ -182,7 +223,8 @@ namespace KuaiJi.Modules.AccountSets.Domain
             string companyName,
             AccountingStandard standard,
             TaxpayerType taxpayerType,
-            string baseCurrency)
+            string baseCurrency,
+            string? industry = null)
         {
             if (string.IsNullOrWhiteSpace(companyName))
             {
@@ -198,10 +240,34 @@ namespace KuaiJi.Modules.AccountSets.Domain
             Standard = standard;
             TaxpayerType = taxpayerType;
             BaseCurrency = baseCurrency.Trim();
+            Industry = NullIfBlank(industry);
+        }
+
+        /// <summary>
+        /// 更新功能参数：模块开关、凭证审核、报表口径与小数位。
+        /// 开关只影响后续录入与展示口径，已登记的资产、流水与凭证照常保留。
+        /// </summary>
+        public void UpdateFunctionParams(
+            bool assetsModuleEnabled,
+            bool fundsModuleEnabled,
+            bool voucherAuditRequired,
+            BalanceAssistScope balanceAssistScope,
+            int unitDecimalPlaces)
+        {
+            if (unitDecimalPlaces is < 0 or > 10)
+            {
+                throw new ArgumentException("单价 / 数量 / 汇率小数位数必须在 0 到 10 之间。");
+            }
+
+            AssetsModuleEnabled = assetsModuleEnabled;
+            FundsModuleEnabled = fundsModuleEnabled;
+            VoucherAuditRequired = voucherAuditRequired;
+            BalanceAssistScope = balanceAssistScope;
+            UnitDecimalPlaces = unitDecimalPlaces;
         }
 
         /// <summary>更新涉税资料：纳税人识别号与税率。税率为百分比数值（0–100）。</summary>
-        public void UpdateTaxInfo(string? taxpayerNumber, decimal vatRate, decimal incomeTaxRate)
+        public void UpdateTaxInfo(string? taxpayerNumber, decimal vatRate, decimal incomeTaxRate, bool? isExportEnterprise = null)
         {
             if (vatRate < 0m || vatRate > 100m)
             {
@@ -216,6 +282,10 @@ namespace KuaiJi.Modules.AccountSets.Domain
             TaxpayerNumber = string.IsNullOrWhiteSpace(taxpayerNumber) ? null : taxpayerNumber.Trim();
             VatRate = vatRate;
             IncomeTaxRate = incomeTaxRate;
+            if (isExportEnterprise.HasValue)
+            {
+                IsExportEnterprise = isExportEnterprise.Value;
+            }
         }
 
         /// <summary>
@@ -230,6 +300,18 @@ namespace KuaiJi.Modules.AccountSets.Domain
             TaxIdentityType = NullIfBlank(identityType);
             TaxLoginAccount = NullIfBlank(account);
             TaxLoginPasswordCipher = NullIfBlank(passwordCipher);
+        }
+
+        /// <summary>
+        /// 更新个税（自然人电子税务局）登录资料。空值语义与 <see cref="UpdateTaxLoginInfo"/> 一致：
+        /// 传 null 保持原值，传空串清除；passwordCipher 必须是已加密的密文。
+        /// </summary>
+        public void UpdateIitLoginInfo(string? channel, string? loginType, string? account, string? passwordCipher)
+        {
+            IitChannel = NullIfBlank(channel);
+            IitLoginType = NullIfBlank(loginType);
+            IitLoginAccount = NullIfBlank(account);
+            IitLoginPasswordCipher = NullIfBlank(passwordCipher);
         }
 
         private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -416,8 +498,20 @@ namespace KuaiJi.Modules.AccountSets.Domain
                 throw new InvalidOperationException("尚未结转损益，无需撤销。");
             }
 
-            var year = CarriedPeriod / 100;
-            var month = CarriedPeriod % 100;
+            ClearCarriedTo(CarriedPeriod / 100, CarriedPeriod % 100);
+        }
+
+        /// <summary>
+        /// 撤销至指定期间之前：结转进度退到目标期间的上一个月；退到启用期间之前则清零。
+        /// 目标期间本身及其后的结转由调用方一并撤销。
+        /// </summary>
+        public void ClearCarriedTo(int year, int month)
+        {
+            if (CarriedPeriod == 0 || year * 100 + month > CarriedPeriod)
+            {
+                throw new InvalidOperationException("只能撤销已结转的期间。");
+            }
+
             var previous = month == 1 ? (year - 1) * 100 + 12 : year * 100 + (month - 1);
             CarriedPeriod = previous < StartYear * 100 + StartMonth ? 0 : previous;
         }

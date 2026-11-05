@@ -1,17 +1,17 @@
 /**
  * 智能报税 · 税费缴纳（缴款信息查询）。
  *
- * 表格字段与税局「缴款信息查询」一致；当前数据为本地模拟（buildMockPayments），
- * 仅用于页面演示与视觉验收。真实缴款信息需要税务助手登录电子税务局取回，
- * 接入前端到真实税局接口前，不要据此做账或对外导出。
+ * 表格字段与税局「缴款信息查询」一致。数据由服务器上的税局会话按缴款日期区间
+ * 直连数字账户接口取回，登录态过期时弹窗补一次短信验证码，成功后自动重取。
  */
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, ConfigProvider, DatePicker, InputNumber, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
     DownOutlined,
     InfoCircleOutlined,
     LeftOutlined,
+    LoginOutlined,
     ReloadOutlined,
     RightOutlined,
     VerticalLeftOutlined,
@@ -20,109 +20,86 @@ import {
 import dayjs, { type Dayjs } from "dayjs";
 import { useNavigate, useParams } from "react-router";
 
-interface PaymentRow {
-    key: string;
-    /** 征收项目，如增值税 */
-    project: string;
-    /** 征收品目，如销售货物(13%) */
-    item: string;
-    periodStart: string;
-    periodEnd: string;
-    amount: number;
-    /** 正税 / 滞纳金 / 罚款 */
-    taxKind: string;
-    paidOn: string;
-    method: string;
-    voucherKind: string;
-    voucherNo: string;
-    eTicketNo: string;
-}
+import { useAuth } from "@/auth/AuthContext";
+import { fetchTaxPayments, type TaxPaymentRow } from "@/lib/tax-portal";
+import { TAX_THEME } from "@/lib/tax-theme";
+
+import { TaxLoginPrompt } from "./TaxLoginPrompt";
+
+type PaymentRow = TaxPaymentRow;
 
 const fmtMoney = (value: number) =>
     value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const PAGE_SIZES = [20, 50, 100];
 
-const pad2 = (value: number) => String(value).padStart(2, "0");
-
-/** 模拟缴款记录：本年 1 月起，按月生成增值税及附加，按季生成印花税与企业所得税。 */
-function buildMockPayments(year: number): PaymentRow[] {
-    const rows: PaymentRow[] = [];
-    let seq = 0;
-
-    const push = (
-        periodMonth: number,
-        paidOn: Dayjs,
-        project: string,
-        item: string,
-        amount: number,
-        taxKind = "正税",
-    ) => {
-        seq += 1;
-        const periodStart = dayjs(`${year}-${pad2(periodMonth)}-01`);
-        rows.push({
-            key: `mock-${seq}`,
-            project,
-            item,
-            periodStart: periodStart.format("YYYY-MM-DD"),
-            periodEnd: periodStart.endOf("month").format("YYYY-MM-DD"),
-            amount: Math.round(amount * 100) / 100,
-            taxKind,
-            paidOn: paidOn.format("YYYY-MM-DD"),
-            method: seq % 3 === 0 ? "银行端查询缴税" : "三方协议",
-            voucherKind: "电子缴款书",
-            voucherNo: `${year}${pad2(periodMonth)}${String(seq).padStart(6, "0")}`,
-            eTicketNo: `${year}${pad2(periodMonth)}${paidOn.format("MMDD")}${String(100000 + seq)}`,
-        });
-    };
-
-    // 缴款日期取所属期次月 15 日；晚于查询截止日的记录会被默认区间（年初至今天）过滤掉。
-    for (let month = 1; month <= 12; month += 1) {
-        const paidOn = dayjs(`${year}-${pad2(month)}-01`).add(1, "month").date(15);
-        const vat = 12800 + month * 1375.5;
-        push(month, paidOn, "增值税", month % 2 === 1 ? "销售货物(13%)" : "提供劳务(6%)", vat);
-        push(month, paidOn, "城市维护建设税", "市区(7%)", vat * 0.07);
-        push(month, paidOn, "教育费附加", "教育费附加(3%)", vat * 0.03);
-        push(month, paidOn, "地方教育附加", "地方教育附加(2%)", vat * 0.02);
-
-        if (month % 3 === 0) {
-            const quarterStart = month - 2;
-            push(quarterStart, paidOn, "印花税", "购销合同(0.03%)", 1860 + month * 42.5);
-            push(quarterStart, paidOn, "企业所得税", "应纳税所得额(25%)", 18600 + month * 640);
-        }
-    }
-
-    return rows.sort((a, b) => a.paidOn.localeCompare(b.paidOn));
-}
-
 export function TaxPaymentPage() {
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { message } = App.useApp();
+    const { token } = useAuth();
 
-    const paymentRows = useMemo(() => buildMockPayments(dayjs().year()), []);
     const [range, setRange] = useState<[Dayjs, Dayjs]>(() => [dayjs().startOf("year"), dayjs().startOf("day")]);
+    const [rows, setRows] = useState<PaymentRow[]>([]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
-    const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [needLogin, setNeedLogin] = useState(false);
+    const [loginOpen, setLoginOpen] = useState(false);
+    const [hint, setHint] = useState<string | null>(null);
 
-    const rows = useMemo(() => {
-        const start = range[0].format("YYYY-MM-DD");
-        const end = range[1].format("YYYY-MM-DD");
-        return paymentRows.filter((row) => row.paidOn >= start && row.paidOn <= end);
-    }, [paymentRows, range]);
+    /** 改区间会连着发几次请求，只认最后发起的那一次。 */
+    const requestId = useRef(0);
 
-    const pageCount = Math.ceil(rows.length / pageSize);
+    const load = useCallback(
+        async (target: [Dayjs, Dayjs], opts: { promptLogin?: boolean } = {}) => {
+            if (!accountSetId) return;
+            const id = ++requestId.current;
+            setLoading(true);
+            try {
+                const result = await fetchTaxPayments(
+                    accountSetId,
+                    token,
+                    target[0].format("YYYY-MM-DD"),
+                    target[1].format("YYYY-MM-DD"),
+                );
+                if (id !== requestId.current) return;
+
+                if (result.needLogin) {
+                    setRows([]);
+                    setNeedLogin(true);
+                    setHint(result.message ?? "税局登录状态已过期，请重新登录电子税务局。");
+                    if (opts.promptLogin) setLoginOpen(true);
+                    return;
+                }
+
+                const list = result.rows ?? [];
+                setRows(list);
+                setNeedLogin(false);
+                setHint(list.length === 0 ? result.message ?? "所选缴款日期区间没有缴款记录。" : result.message ?? null);
+                setPage(1);
+            } catch (err) {
+                if (id !== requestId.current) return;
+                setRows([]);
+                setHint(err instanceof Error && err.message ? err.message : "读取税局缴款信息失败，请稍后重试。");
+            } finally {
+                if (id === requestId.current) setLoading(false);
+            }
+        },
+        [accountSetId, token],
+    );
+
+    useEffect(() => {
+        void load(range);
+    }, [load, range]);
+
+    const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
     const from = rows.length === 0 ? 0 : (page - 1) * pageSize + 1;
     const to = Math.min(page * pageSize, rows.length);
 
     async function refreshPayments() {
-        setRefreshing(true);
-        // 模拟税局取数耗时；接入真实接口后替换为一次请求。
-        await new Promise((resolve) => setTimeout(resolve, 400));
-        setRefreshing(false);
+        await load(range, { promptLogin: true });
         setPage(1);
-        message.success(`已更新缴款信息，共 ${rows.length} 条（演示数据）。`);
     }
 
     function exportCsv() {
@@ -204,7 +181,7 @@ export function TaxPaymentPage() {
     return (
         <div className="flex h-full flex-col px-6 pt-4">
             <div className="flex flex-wrap items-center gap-3" style={{ marginBottom: 16 }}>
-                <span className="inline-flex items-center rounded-[2px] bg-[#eef4ff] pr-1 text-[13px] text-[#2f6bff]">
+                <span className="inline-flex items-center rounded-md bg-[#eef4ff] pr-1 text-[13px] text-[#2f6bff]">
                     <DatePicker.RangePicker
                         variant="borderless"
                         allowClear={false}
@@ -225,7 +202,12 @@ export function TaxPaymentPage() {
                     温馨提示：如无数据，请点击【更新缴款信息】按钮进行更新
                 </span>
                 <div className="ml-auto flex items-center gap-2">
-                    <Button loading={refreshing} onClick={() => void refreshPayments()}>
+                    {needLogin && (
+                        <Button icon={<LoginOutlined />} onClick={() => setLoginOpen(true)}>
+                            登录电子税务局
+                        </Button>
+                    )}
+                    <Button loading={loading} onClick={() => void refreshPayments()}>
                         更新缴款信息
                     </Button>
                     <Button type="primary" onClick={exportCsv}>
@@ -235,20 +217,19 @@ export function TaxPaymentPage() {
             </div>
 
             <div>
-                <ConfigProvider
-                    theme={{
-                        components: {
-                            Table: { headerBg: "#f4f7ff", headerColor: "#475569", borderColor: "#eef2f7", rowHoverBg: "#f6f9ff" },
-                        },
-                    }}
-                >
+                <ConfigProvider theme={TAX_THEME}>
                     <Table<PaymentRow>
                         columns={columns}
                         dataSource={rows.slice((page - 1) * pageSize, page * pageSize)}
                         rowKey="key"
                         tableLayout="fixed"
                         scroll={{ x: 1400 }}
-                        locale={{ emptyText: <span className="block py-10 text-[13px] text-slate-400">暂无数据</span> }}
+                        loading={loading}
+                        locale={{
+                            emptyText: (
+                                <span className="block py-10 text-[13px] text-slate-400">{hint ?? "暂无数据"}</span>
+                            ),
+                        }}
                         pagination={false}
                         className="[&_.ant-table-placeholder>.ant-table-cell]:!h-[calc(100vh_-_370px)]"
                     />
@@ -318,7 +299,7 @@ export function TaxPaymentPage() {
                         icon={<ReloadOutlined />}
                         aria-label="刷新"
                         title="刷新"
-                        loading={refreshing}
+                        loading={loading}
                         onClick={() => void refreshPayments()}
                     />
                 </div>
@@ -334,8 +315,20 @@ export function TaxPaymentPage() {
                 </Button>
             </div>
             <p className="pb-5 text-[12.5px] leading-5 text-slate-400">
-                当前为本地演示数据；接入电子税务局取数后，此处展示按缴款日期查询到的真实缴款记录。
+                缴款记录取自电子税务局「缴款信息查询」，按缴款日期区间过滤。
+                {needLogin ? "税局登录态已过期，登录后点击「更新缴款信息」重新取数。" : ""}
             </p>
+
+            <TaxLoginPrompt
+                open={loginOpen}
+                accountSetId={accountSetId}
+                reason={hint ?? undefined}
+                onClose={() => setLoginOpen(false)}
+                onSuccess={() => {
+                    setLoginOpen(false);
+                    void load(range);
+                }}
+            />
         </div>
     );
 }

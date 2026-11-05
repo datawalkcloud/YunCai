@@ -4,8 +4,8 @@ namespace KuaiJi.Modules.Vouchers.Domain
 {
     /// <summary>
     /// 记账凭证聚合根。由凭证头（字/号、日期、附单据数）与若干会计分录组成。
-    /// 遵循「制单 → 审核 → 过账」工作流：草稿状态可增删改分录，审核或过账后锁定；
-    /// 审核与过账均要求借贷平衡且至少有一条分录。
+    /// 遵循「制单 → 过账」工作流：保存即登记入账并锁定；反过账退回草稿后可继续增删改分录。
+    /// 过账要求借贷平衡且至少有一条分录。
     /// </summary>
     public class Voucher
     {
@@ -81,27 +81,27 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             if (string.IsNullOrWhiteSpace(word))
             {
-                throw new ArgumentException("凭证字不能为空。", nameof(word));
+                throw new ArgumentException("凭证字不能为空。");
             }
 
             if (number <= 0)
             {
-                throw new ArgumentException("凭证号必须为正整数。", nameof(number));
+                throw new ArgumentException("凭证号必须为正整数。");
             }
 
             if (string.IsNullOrWhiteSpace(preparer))
             {
-                throw new ArgumentException("制单人不能为空。", nameof(preparer));
+                throw new ArgumentException("制单人不能为空。");
             }
 
             if (attachmentCount < 0)
             {
-                throw new ArgumentException("附单据数不能为负数。", nameof(attachmentCount));
+                throw new ArgumentException("附单据数不能为负数。");
             }
 
             return new Voucher(Guid.NewGuid(), accountSetId, word.Trim(), number, date, preparer.Trim(), attachmentCount)
@@ -125,7 +125,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         /// <summary>
         /// 从外部平台导入一张凭证头。相较于 <see cref="Create"/>，导入路径对字段做宽松处理：
         /// 缺失的凭证字/号/制单人用默认值兜底，以尽量保留原始数据；分录须通过
-        /// <see cref="AddImportedEntry"/> 追加。若给出审核人则直接置为已审核状态。
+        /// <see cref="AddImportedEntry"/> 追加。审核人仅作为来源平台的历史信息保留，不影响入账。
         /// </summary>
         public static Voucher Import(
             Guid accountSetId,
@@ -138,7 +138,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             var voucher = new Voucher(
@@ -153,7 +153,6 @@ namespace KuaiJi.Modules.Vouchers.Domain
             if (!string.IsNullOrWhiteSpace(reviewer))
             {
                 voucher.Reviewer = reviewer.Trim();
-                voucher.Status = VoucherStatus.Reviewed;
             }
 
             return voucher;
@@ -167,7 +166,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (accountId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定会计科目。", nameof(accountId));
+                throw new ArgumentException("必须指定会计科目。");
             }
 
             var entry = new VoucherEntry(Guid.NewGuid(), Id, summary?.Trim() ?? string.Empty, accountId, debit, credit);
@@ -221,7 +220,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
             EnsureDraft();
             if (attachmentCount < 0)
             {
-                throw new ArgumentException("附单据数不能为负数。", nameof(attachmentCount));
+                throw new ArgumentException("附单据数不能为负数。");
             }
 
             Date = date;
@@ -229,42 +228,15 @@ namespace KuaiJi.Modules.Vouchers.Domain
             Remark = NormalizeRemark(remark);
         }
 
-        /// <summary>审核：草稿 → 已审核。要求借贷平衡且至少一条分录。</summary>
-        public void Review(string reviewer)
+        /// <summary>
+        /// 过账：草稿 → 已过账（登记入账）。要求借贷平衡且至少一条分录。
+        /// 保存凭证时直接调用，因此制单即入账，不再有单独的审核环节。
+        /// </summary>
+        public void Post()
         {
             if (Status != VoucherStatus.Draft)
             {
-                throw new InvalidOperationException("只有草稿状态的凭证才能审核。");
-            }
-
-            if (string.IsNullOrWhiteSpace(reviewer))
-            {
-                throw new ArgumentException("审核人不能为空。", nameof(reviewer));
-            }
-
-            EnsurePostable();
-            Reviewer = reviewer.Trim();
-            Status = VoucherStatus.Reviewed;
-        }
-
-        /// <summary>反审核：已审核 → 草稿。</summary>
-        public void Unreview()
-        {
-            if (Status != VoucherStatus.Reviewed)
-            {
-                throw new InvalidOperationException("只有已审核未过账的凭证才能反审核。");
-            }
-
-            Reviewer = null;
-            Status = VoucherStatus.Draft;
-        }
-
-        /// <summary>过账：已审核 → 已过账。要求借贷平衡。</summary>
-        public void Post()
-        {
-            if (Status != VoucherStatus.Reviewed)
-            {
-                throw new InvalidOperationException("只有已审核的凭证才能过账。");
+                throw new InvalidOperationException("凭证已过账，不能重复过账。");
             }
 
             EnsurePostable();
@@ -272,8 +244,8 @@ namespace KuaiJi.Modules.Vouchers.Domain
         }
 
         /// <summary>
-        /// 反过账：已过账 → 已审核（撤销登记入账，保留审核人）。
-        /// 与过账互为逆操作，用于过账后发现错误时退回可修改状态。
+        /// 反过账：已过账 → 草稿（撤销登记入账，重新变为可修改状态）。
+        /// 与过账互为逆操作，用于入账后发现错误时退回修改。
         /// </summary>
         public void Unpost()
         {
@@ -282,7 +254,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
                 throw new InvalidOperationException("只有已过账的凭证才能反过账。");
             }
 
-            Status = VoucherStatus.Reviewed;
+            Status = VoucherStatus.Draft;
         }
 
         /// <summary>
@@ -332,7 +304,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (number <= 0)
             {
-                throw new ArgumentException("凭证号必须为正整数。", nameof(number));
+                throw new ArgumentException("凭证号必须为正整数。");
             }
 
             Number = number;
@@ -359,7 +331,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (Status != VoucherStatus.Draft)
             {
-                throw new InvalidOperationException("凭证已审核或已过账，不能修改。");
+                throw new InvalidOperationException("凭证已过账，请先反过账再修改。");
             }
         }
 
@@ -388,12 +360,12 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (string.IsNullOrWhiteSpace(summary))
             {
-                throw new ArgumentException("摘要不能为空。", nameof(summary));
+                throw new ArgumentException("摘要不能为空。");
             }
 
             if (accountId == Guid.Empty)
             {
-                throw new ArgumentException("必须选择会计科目。", nameof(accountId));
+                throw new ArgumentException("必须选择会计科目。");
             }
 
             // 每条分录必须且只能填写借方或贷方其一（允许负数，用于红字冲回）。

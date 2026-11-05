@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { EmployeeInsuranceDto } from './EmployeeInsuranceDto';
+import {
+    EmployeeInsuranceDtoFromJSON,
+    EmployeeInsuranceDtoFromJSONTyped,
+    EmployeeInsuranceDtoToJSON,
+    EmployeeInsuranceDtoToJSONTyped,
+} from './EmployeeInsuranceDto';
+
 /**
  * 
  * @export
@@ -75,6 +83,96 @@ export interface EmployeeDto {
     idNo?: string | null;
     /**
      * 
+     * @type {Date}
+     * @memberof EmployeeDto
+     */
+    birthDate?: Date | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EmployeeDto
+     */
+    bankName?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EmployeeDto
+     */
+    bankAccountNo?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EmployeeDto
+     */
+    post?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EmployeeDto
+     */
+    title?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EmployeeDto
+     */
+    education?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EmployeeDto
+     */
+    isDisabled?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EmployeeDto
+     */
+    isMartyrFamily?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EmployeeDto
+     */
+    isSoloElder?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EmployeeDto
+     */
+    isSeniorExpert?: boolean | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof EmployeeDto
+     */
+    employmentTypeText?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EmployeeDto
+     */
+    deductBasicExpense?: boolean;
+    /**
+     * 
+     * @type {Date}
+     * @memberof EmployeeDto
+     */
+    payStartDate?: Date | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EmployeeDto
+     */
+    paysSocialInsurance?: boolean;
+    /**
+     * 
+     * @type {Array<EmployeeInsuranceDto>}
+     * @memberof EmployeeDto
+     */
+    insurances?: Array<EmployeeInsuranceDto>;
+    /**
+     * 
      * @type {string}
      * @memberof EmployeeDto
      */
@@ -131,6 +229,21 @@ export function EmployeeDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'email': json['email'] == null ? undefined : json['email'],
         'idTypeText': json['idTypeText'] == null ? undefined : json['idTypeText'],
         'idNo': json['idNo'] == null ? undefined : json['idNo'],
+        'birthDate': json['birthDate'] == null ? undefined : (new Date(json['birthDate'])),
+        'bankName': json['bankName'] == null ? undefined : json['bankName'],
+        'bankAccountNo': json['bankAccountNo'] == null ? undefined : json['bankAccountNo'],
+        'post': json['post'] == null ? undefined : json['post'],
+        'title': json['title'] == null ? undefined : json['title'],
+        'education': json['education'] == null ? undefined : json['education'],
+        'isDisabled': json['isDisabled'] == null ? undefined : json['isDisabled'],
+        'isMartyrFamily': json['isMartyrFamily'] == null ? undefined : json['isMartyrFamily'],
+        'isSoloElder': json['isSoloElder'] == null ? undefined : json['isSoloElder'],
+        'isSeniorExpert': json['isSeniorExpert'] == null ? undefined : json['isSeniorExpert'],
+        'employmentTypeText': json['employmentTypeText'] == null ? undefined : json['employmentTypeText'],
+        'deductBasicExpense': json['deductBasicExpense'] == null ? undefined : json['deductBasicExpense'],
+        'payStartDate': json['payStartDate'] == null ? undefined : (new Date(json['payStartDate'])),
+        'paysSocialInsurance': json['paysSocialInsurance'] == null ? undefined : json['paysSocialInsurance'],
+        'insurances': json['insurances'] == null ? undefined : ((json['insurances'] as Array<any>).map(EmployeeInsuranceDtoFromJSON)),
         'subjectAccountId': json['subjectAccountId'] == null ? undefined : json['subjectAccountId'],
         'subjectText': json['subjectText'] == null ? undefined : json['subjectText'],
         'statusText': json['statusText'] == null ? undefined : json['statusText'],
@@ -159,6 +272,21 @@ export function EmployeeDtoToJSONTyped(value?: EmployeeDto | null, ignoreDiscrim
         'email': value['email'],
         'idTypeText': value['idTypeText'],
         'idNo': value['idNo'],
+        'birthDate': value['birthDate'] == null ? value['birthDate'] : value['birthDate'].toISOString().substring(0,10),
+        'bankName': value['bankName'],
+        'bankAccountNo': value['bankAccountNo'],
+        'post': value['post'],
+        'title': value['title'],
+        'education': value['education'],
+        'isDisabled': value['isDisabled'],
+        'isMartyrFamily': value['isMartyrFamily'],
+        'isSoloElder': value['isSoloElder'],
+        'isSeniorExpert': value['isSeniorExpert'],
+        'employmentTypeText': value['employmentTypeText'],
+        'deductBasicExpense': value['deductBasicExpense'],
+        'payStartDate': value['payStartDate'] == null ? value['payStartDate'] : value['payStartDate'].toISOString().substring(0,10),
+        'paysSocialInsurance': value['paysSocialInsurance'],
+        'insurances': value['insurances'] == null ? undefined : ((value['insurances'] as Array<any>).map(EmployeeInsuranceDtoToJSON)),
         'subjectAccountId': value['subjectAccountId'],
         'subjectText': value['subjectText'],
         'statusText': value['statusText'],

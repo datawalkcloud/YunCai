@@ -123,7 +123,8 @@ namespace KuaiJi.Modules.AccountSets.Api
                     request.BaseCurrency,
                     request.StartYear,
                     request.StartMonth,
-                    request.AccountCodingScheme ?? AccountSet.NewAccountSetCodingScheme);
+                    request.AccountCodingScheme ?? AccountSet.NewAccountSetCodingScheme,
+                    request.Industry);
             }
             catch (ArgumentException ex)
             {
@@ -179,11 +180,23 @@ namespace KuaiJi.Modules.AccountSets.Api
             try
             {
                 accountSet.Rename(request.Name);
-                accountSet.UpdateProfile(request.CompanyName, request.Standard, request.TaxpayerType, request.BaseCurrency);
+                accountSet.UpdateProfile(
+                    request.CompanyName,
+                    request.Standard,
+                    request.TaxpayerType,
+                    request.BaseCurrency,
+                    request.Industry ?? accountSet.Industry);
+                accountSet.UpdateFunctionParams(
+                    request.AssetsModuleEnabled ?? accountSet.AssetsModuleEnabled,
+                    request.FundsModuleEnabled ?? accountSet.FundsModuleEnabled,
+                    request.VoucherAuditRequired ?? accountSet.VoucherAuditRequired,
+                    request.BalanceAssistScope ?? accountSet.BalanceAssistScope,
+                    request.UnitDecimalPlaces ?? accountSet.UnitDecimalPlaces);
                 accountSet.UpdateTaxInfo(
                     request.TaxpayerNumber ?? accountSet.TaxpayerNumber,
                     request.VatRate ?? accountSet.VatRate,
-                    request.IncomeTaxRate ?? accountSet.IncomeTaxRate);
+                    request.IncomeTaxRate ?? accountSet.IncomeTaxRate,
+                    request.IsExportEnterprise ?? accountSet.IsExportEnterprise);
                 accountSet.UpdateTaxLoginInfo(
                     request.TaxRegion ?? accountSet.TaxRegion,
                     request.TaxLoginType ?? accountSet.TaxLoginType,
@@ -195,6 +208,15 @@ namespace KuaiJi.Modules.AccountSets.Api
                         : string.IsNullOrWhiteSpace(request.TaxLoginPassword)
                             ? null
                             : _taxCredentials.Encrypt(request.TaxLoginPassword));
+                accountSet.UpdateIitLoginInfo(
+                    request.IitChannel ?? accountSet.IitChannel,
+                    request.IitLoginType ?? accountSet.IitLoginType,
+                    request.IitLoginAccount ?? accountSet.IitLoginAccount,
+                    request.IitLoginPassword is null
+                        ? accountSet.IitLoginPasswordCipher
+                        : string.IsNullOrWhiteSpace(request.IitLoginPassword)
+                            ? null
+                            : _taxCredentials.Encrypt(request.IitLoginPassword));
                 if (request.VoucherWords is not null)
                 {
                     accountSet.SetVoucherWords(request.VoucherWords);
@@ -311,7 +333,7 @@ namespace KuaiJi.Modules.AccountSets.Api
 
         /// <summary>
         /// 月末结账：将下一个待结期间标记为已结账。要求该期间内全部凭证均已过账；
-        /// 已结期间内禁止新增、修改、删除与反审核凭证。
+        /// 已结期间内禁止新增、修改、删除与反过账凭证。
         /// </summary>
         [HttpPost("{id:guid}/close-period")]
         public async Task<ActionResult<AccountSetDto>> ClosePeriod(Guid id, [FromBody] ClosePeriodRequest request, CancellationToken cancellationToken)
@@ -328,7 +350,7 @@ namespace KuaiJi.Modules.AccountSets.Api
                 v.Date.Year == request.Year && v.Date.Month == request.Month && v.Status != VoucherStatus.Posted);
             if (pending > 0)
             {
-                return BadRequest(new { message = $"{request.Year:D4}-{request.Month:D2} 期间尚有 {pending} 张凭证未过账，请先完成审核与过账。" });
+                return BadRequest(new { message = $"{request.Year:D4}-{request.Month:D2} 期间尚有 {pending} 张凭证未过账，请先处理后再操作。" });
             }
 
             try

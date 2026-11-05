@@ -1,18 +1,14 @@
-import type { ComponentType, ReactNode } from "react"
+import type { ReactNode } from "react"
 
 import { Alert, Spin } from "antd"
 
 import { cn } from "@/lib/utils"
-import { PageHeader, SectionCard } from "@/components/page/section"
+import { SectionCard } from "@/components/page/section"
 import { SOFT_PANEL } from "@/components/page/styles"
 
 export interface ReportPageShellProps {
-    /** 页头图标。 */
-    icon: ComponentType<{ className?: string }>
-    /** 报表名：页头标题与卡片区顶端的打印标题共用。 */
+    /** 报表名：卡片区顶端的打印标题。 */
     title: string
-    /** 页头一句话说明。 */
-    subtitle?: ReactNode
     /** 卡片区右上角的表单模板角标，如「会企01表」。 */
     template?: ReactNode
     /** 期间选择区（工具条左段）。 */
@@ -33,13 +29,11 @@ export interface ReportPageShellProps {
 }
 
 /**
- * 报表页统一骨架：页头 + 白色卡片（打印标题 / 工具条 / 错误 / 正文 / 补充说明）。
+ * 报表页统一骨架：白色卡片（打印标题 / 工具条 / 错误 / 正文 / 补充说明）。
  * 取数与行次归集留在各报表页里，外壳只负责布局与状态占位。
  */
 export function ReportPageShell({
-    icon,
     title,
-    subtitle,
     template,
     period,
     actions,
@@ -52,8 +46,6 @@ export function ReportPageShell({
 }: ReportPageShellProps) {
     return (
         <div className="flex flex-col gap-4">
-            <PageHeader icon={icon} title={title} subtitle={subtitle} />
-
             <SectionCard bodyClassName="flex flex-col gap-4">
                 <div className="relative text-center">
                     <div className="text-[17px] font-bold text-slate-800">{title}</div>

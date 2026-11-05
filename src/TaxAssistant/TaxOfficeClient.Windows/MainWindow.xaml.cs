@@ -124,40 +124,19 @@ public partial class MainWindow : Window, IDisposable
 		}
 	}
 
-	private async void MainWindow_Closing(object sender, CancelEventArgs e)
+	/// <summary>
+	/// 点关闭只把窗口收进托盘，不退出进程。
+	/// 网页靠本机 41731 端口判断助手在不在，进程一退探测就失败，页面会把「没在运行」报成「没安装」。
+	/// </summary>
+	private void MainWindow_Closing(object sender, CancelEventArgs e)
 	{
-		if (_disposed)
+		if (_disposed || IsClosing)
 		{
 			return;
 		}
+		Logger.Info("MainWindow收到关闭请求，转为隐藏并保留托盘常驻");
 		e.Cancel = true;
-		if (IsClosing)
-		{
-			return;
-		}
-		try
-		{
-			Logger.Info("MainWindow正在关闭...");
-			await PrepareForShutdownAsync();
-		}
-		catch (Exception ex)
-		{
-			Logger.Warn("窗口关闭时清理资源出错: " + ex.Message);
-		}
-		finally
-		{
-			Closing -= MainWindow_Closing;
-			if (!Dispatcher.HasShutdownStarted)
-			{
-				Dispatcher.BeginInvoke((Action)(() =>
-				{
-					if (IsVisible && !Dispatcher.HasShutdownStarted)
-					{
-						Close();
-					}
-				}));
-			}
-		}
+		Hide();
 	}
 
 	public Task PrepareForShutdownAsync()
@@ -203,6 +182,7 @@ public partial class MainWindow : Window, IDisposable
 
 	private void ShowWindow()
 	{
+		Show();
 		Topmost = true;
 		WindowState = WindowState.Maximized;
 		Activate();
@@ -215,6 +195,25 @@ public partial class MainWindow : Window, IDisposable
 		if (!IsClosing)
 		{
 			ShowWindow();
+		}
+	}
+
+	private void TrayIcon_MouseDoubleClick(object sender, RoutedEventArgs e)
+	{
+		BringToFront();
+	}
+
+	private void TrayOpenMenuItem_Click(object sender, RoutedEventArgs e)
+	{
+		BringToFront();
+	}
+
+	/// <summary>托盘「退出」才走真正的关闭流程：清理标签页后结束进程，41731 监听随之停掉。</summary>
+	private async void TrayExitMenuItem_Click(object sender, RoutedEventArgs e)
+	{
+		if (Application.Current is App app)
+		{
+			await app.RequestShutdownAsync();
 		}
 	}
 

@@ -55,6 +55,39 @@ namespace KuaiJi.Modules.AccountSets.Application
         /// </summary>
         public bool TaxLoginPasswordSet { get; init; }
 
+        /// <summary>所属行业，未选择为 null。</summary>
+        public string? Industry { get; init; }
+
+        /// <summary>是否启用固定资产模块。</summary>
+        public bool AssetsModuleEnabled { get; init; }
+
+        /// <summary>是否启用资金出纳模块。</summary>
+        public bool FundsModuleEnabled { get; init; }
+
+        /// <summary>凭证是否需要审核后过账。</summary>
+        public bool VoucherAuditRequired { get; init; }
+
+        /// <summary>资产负债表辅助核算余额取值方式。</summary>
+        public BalanceAssistScope BalanceAssistScope { get; init; }
+
+        /// <summary>单价 / 数量 / 汇率的小数位数。</summary>
+        public int UnitDecimalPlaces { get; init; }
+
+        /// <summary>是否出口企业。</summary>
+        public bool IsExportEnterprise { get; init; }
+
+        /// <summary>个税申报渠道（如「个税网页端」）。</summary>
+        public string? IitChannel { get; init; }
+
+        /// <summary>个税登录方式（如「实名账号登录」）。</summary>
+        public string? IitLoginType { get; init; }
+
+        /// <summary>个税实名登录账号。</summary>
+        public string? IitLoginAccount { get; init; }
+
+        /// <summary>是否已保存个税实名密码；密码本身不下发，语义同 <see cref="TaxLoginPasswordSet"/>。</summary>
+        public bool IitLoginPasswordSet { get; init; }
+
         /// <summary>凭证字列表（逗号分隔，如 "记,收,付,转"）。</summary>
         public string VoucherWords { get; init; } = AccountSet.DefaultVoucherWords;
 
@@ -94,6 +127,18 @@ namespace KuaiJi.Modules.AccountSets.Application
                 TaxIdentityType = accountSet.TaxIdentityType,
                 TaxLoginAccount = accountSet.TaxLoginAccount,
                 TaxLoginPasswordSet = accountSet.TaxLoginPasswordCipher is not null,
+                Industry = accountSet.Industry,
+                AssetsModuleEnabled = accountSet.AssetsModuleEnabled,
+                FundsModuleEnabled = accountSet.FundsModuleEnabled,
+                VoucherAuditRequired = accountSet.VoucherAuditRequired,
+                BalanceAssistScope = accountSet.BalanceAssistScope,
+                UnitDecimalPlaces = accountSet.UnitDecimalPlaces,
+                IsExportEnterprise = accountSet.IsExportEnterprise,
+                IitChannel = accountSet.IitChannel,
+                IitLoginType = accountSet.IitLoginType,
+                IitLoginAccount = accountSet.IitLoginAccount,
+                IitLoginPasswordSet = accountSet.IitLoginPasswordCipher is not null,
+
                 VoucherWords = accountSet.VoucherWords,
                 ClosedPeriod = accountSet.ClosedPeriodText(),
                 CarriedPeriod = accountSet.CarriedPeriodText(),
@@ -125,6 +170,9 @@ namespace KuaiJi.Modules.AccountSets.Application
 
         /// <summary>科目编码方案，形如 "4-2-2-2"。不传则默认 "4-2-2-2"。</summary>
         public string? AccountCodingScheme { get; init; }
+
+        /// <summary>所属行业，可选。</summary>
+        public string? Industry { get; init; }
     }
 
     /// <summary>更新账套基础信息请求。</summary>
@@ -172,6 +220,39 @@ namespace KuaiJi.Modules.AccountSets.Application
         /// 不传表示保持原密码，传空串表示清除。响应里只回「是否已填写」。
         /// </summary>
         public string? TaxLoginPassword { get; init; }
+
+        /// <summary>所属行业；不传则不修改，传空串表示清除。</summary>
+        public string? Industry { get; init; }
+
+        /// <summary>是否启用固定资产模块；不传则不修改。</summary>
+        public bool? AssetsModuleEnabled { get; init; }
+
+        /// <summary>是否启用资金出纳模块；不传则不修改。</summary>
+        public bool? FundsModuleEnabled { get; init; }
+
+        /// <summary>凭证是否需要审核后过账；不传则不修改。</summary>
+        public bool? VoucherAuditRequired { get; init; }
+
+        /// <summary>资产负债表辅助核算余额取值方式；不传则不修改。</summary>
+        public BalanceAssistScope? BalanceAssistScope { get; init; }
+
+        /// <summary>单价 / 数量 / 汇率的小数位数；不传则不修改。</summary>
+        public int? UnitDecimalPlaces { get; init; }
+
+        /// <summary>是否出口企业；不传则不修改。</summary>
+        public bool? IsExportEnterprise { get; init; }
+
+        /// <summary>个税申报渠道（如「个税网页端」）；不传则不修改，传空串表示清除。</summary>
+        public string? IitChannel { get; init; }
+
+        /// <summary>个税登录方式（如「实名账号登录」）；不传则不修改。</summary>
+        public string? IitLoginType { get; init; }
+
+        /// <summary>个税实名登录账号；不传则不修改。</summary>
+        public string? IitLoginAccount { get; init; }
+
+        /// <summary>个税实名密码明文；不传保持原密码，传空串清除。</summary>
+        public string? IitLoginPassword { get; init; }
     }
 
     /// <summary>一次性税局密码票据：由登录态接口签发，本机助手凭票据匿名兑换密码。</summary>

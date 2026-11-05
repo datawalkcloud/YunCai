@@ -9,6 +9,12 @@ namespace KuaiJi.Modules.Reports.Application
         /// <summary>科目名称。</summary>
         public string Name { get; init; } = null!;
 
+        /// <summary>科目级次，从 1 开始（顶级为 1）。前端据此缩进并构建树。</summary>
+        public int Level { get; init; }
+
+        /// <summary>上级科目编码；一级科目为 null。前端按它把平表挂成树。</summary>
+        public string? ParentCode { get; init; }
+
         /// <summary>期初余额（借方）。</summary>
         public decimal OpeningDebit { get; init; }
 
@@ -40,7 +46,10 @@ namespace KuaiJi.Modules.Reports.Application
         /// <summary>期间显示文本，形如 2026-07-01 至 2026-07-31。</summary>
         public string PeriodText { get; init; } = null!;
 
-        /// <summary>各科目余额行（按科目编码排序，仅含有余额或本期发生额的科目）。</summary>
+        /// <summary>
+        /// 各科目余额行（按科目编码排序）。含余额或本期发生额的科目及其全部上级科目，
+        /// 上级行的金额是其下级科目合计；只有明细科目才有自身直接挂账的发生额。
+        /// </summary>
         public IReadOnlyList<TrialBalanceRowDto> Rows { get; init; } = [];
     }
 }

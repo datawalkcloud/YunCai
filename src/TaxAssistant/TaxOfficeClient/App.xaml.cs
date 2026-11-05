@@ -71,6 +71,8 @@ public partial class App : Application
 			}
 			// 免安装分发：每次启动都校正当前目录下的协议注册，移动安装目录后仍能唤起。
 			ProtocolRegistrar.EnsureRegistered();
+			// 用户装完没勾开机自启时，助手第一次启动就自己补上，之后网页才一直探测得到。
+			ProtocolRegistrar.EnsureAutoStart();
 			if (!CheckWebView2Runtime())
 			{
 				ShowErrorAndExit("WebView2运行时未安装或版本不兼容,应用程序无法启动。\n请安装最新的WebView2运行时。");

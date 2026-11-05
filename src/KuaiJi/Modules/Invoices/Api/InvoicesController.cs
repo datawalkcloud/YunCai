@@ -144,9 +144,14 @@ namespace KuaiJi.Modules.Invoices.Api
         [HttpPost]
         public async Task<ActionResult<InvoiceDto>> Create(Guid accountSetId, [FromQuery] int direction, [FromBody] SaveInvoiceRequest request, CancellationToken cancellationToken)
         {
+            if (!TryDirection(direction, out var dir))
+            {
+                return BadRequest(new { message = "发票方向只能是 1（销项）或 2（进项）。" });
+            }
+
             try
             {
-                return Ok(await _invoiceService.CreateAsync(accountSetId, (InvoiceDirection)direction, request, cancellationToken));
+                return Ok(await _invoiceService.CreateAsync(accountSetId, dir, request, cancellationToken));
             }
             catch (InvoiceException ex)
             {
@@ -191,13 +196,18 @@ namespace KuaiJi.Modules.Invoices.Api
                 return BadRequest(new { message = "请选择要导入的文件。" });
             }
 
+            if (!TryDirection(direction, out var dir))
+            {
+                return BadRequest(new { message = "发票方向只能是 1（销项）或 2（进项）。" });
+            }
+
             try
             {
                 await using var stream = file.OpenReadStream();
                 var rows = ReadImportRows(stream);
                 return Ok(await _invoiceService.ImportAsync(
                     accountSetId,
-                    (InvoiceDirection)direction,
+                    dir,
                     rows,
                     cancellationToken));
             }
@@ -467,5 +477,15 @@ namespace KuaiJi.Modules.Invoices.Api
 
         private static decimal? ParseDecimal(string? text)
             => decimal.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : null;
+
+        /// <summary>
+        /// ?direction= 缺失或写错时裸转枚举会得到 0，落库后既不是销项也不是进项，
+        /// 列表按方向查询永远看不到它，生成凭证还会静默按进项模板走（借贷方向相反）。
+        /// </summary>
+        private static bool TryDirection(int raw, out InvoiceDirection direction)
+        {
+            direction = (InvoiceDirection)raw;
+            return direction is InvoiceDirection.Sales or InvoiceDirection.Purchase;
+        }
     }
 }

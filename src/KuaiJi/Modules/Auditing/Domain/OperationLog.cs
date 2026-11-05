@@ -68,7 +68,7 @@ namespace KuaiJi.Modules.Auditing.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             var text = (log ?? string.Empty).Trim();

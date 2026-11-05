@@ -43,7 +43,7 @@ namespace KuaiJi.Modules.Reports.Application
                 .Select(a => a.Id)
                 .ToHashSet();
 
-            // 账簿只登记已过账凭证（口径 §0.1）：草稿与已审核未过账的凭证不参与日记账。
+            // 账簿只登记已过账凭证（口径 §0.1）：反过账退回的草稿不参与日记账。
             var vouchers = (await _voucherRepository.GetAllAsync(accountSetId, cancellationToken))
                 .Where(v => v.Status == VoucherStatus.Posted)
                 .ToList();

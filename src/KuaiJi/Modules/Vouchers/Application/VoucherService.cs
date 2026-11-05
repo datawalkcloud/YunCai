@@ -85,12 +85,6 @@ namespace KuaiJi.Modules.Vouchers.Application
                 filtered = filtered.Where(v => v.Preparer == preparer);
             }
 
-            if (query.Reviewed is { } reviewed)
-            {
-                // 已过账视同已审核：审核状态在过账后不再回退。
-                filtered = filtered.Where(v => (v.Status != VoucherStatus.Draft) == reviewed);
-            }
-
             if (query.HasAssists is { } hasAssists)
             {
                 filtered = filtered.Where(v => v.Entries.Any(e => e.Assists.Count > 0) == hasAssists);
@@ -194,7 +188,7 @@ namespace KuaiJi.Modules.Vouchers.Application
         }
 
         /// <summary>
-        /// 制单：校验分录、按需自动续号后创建一张草稿凭证并持久化。
+        /// 制单：校验分录、按需自动续号后创建一张凭证并直接过账入账。
         /// 每条分录须为借贷单边非零，科目须为该账套下已启用的末级科目，
         /// 且分录挂载的辅助核算取值须通过 <see cref="AccountAssistGuard"/> 的维度校验。
         /// </summary>
@@ -279,6 +273,16 @@ namespace KuaiJi.Modules.Vouchers.Application
                 throw new VoucherException(ex.Message);
             }
 
+            // 保存即入账：制单完成后直接过账登记入账。
+            try
+            {
+                voucher.Post();
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new VoucherException(ex.Message);
+            }
+
             await _voucherRepository.AddAsync(voucher, cancellationToken);
             await _voucherRepository.SaveChangesAsync(cancellationToken);
 
@@ -286,8 +290,8 @@ namespace KuaiJi.Modules.Vouchers.Application
         }
 
         /// <summary>
-        /// 编辑：仅草稿状态可改。凭证字与号保持不变，覆盖日期、附单据数并整体替换全部分录。
-        /// 每条分录须为借贷单边非零，且科目须为该账套下已启用的末级科目；凭证不存在时返回 null。
+        /// 编辑：仅草稿状态（反过账退回）可改。凭证字与号保持不变，覆盖日期、附单据数并整体替换全部分录，
+        /// 保存后重新过账入账。每条分录须为借贷单边非零，且科目须为该账套下已启用的末级科目；凭证不存在时返回 null。
         /// </summary>
         public async Task<VoucherDetailDto?> UpdateAsync(Guid accountSetId, Guid id, UpdateVoucherRequest request, CancellationToken cancellationToken = default)
         {
@@ -392,6 +396,16 @@ namespace KuaiJi.Modules.Vouchers.Application
                 throw new VoucherException(ex.Message);
             }
 
+            // 保存即入账：修改完成后重新过账。
+            try
+            {
+                voucher.Post();
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new VoucherException(ex.Message);
+            }
+
             await _voucherRepository.SaveChangesAsync(cancellationToken);
             return VoucherDetailDto.FromDomain(voucher, accountsById, assistItemsById);
         }
@@ -477,7 +491,7 @@ namespace KuaiJi.Modules.Vouchers.Application
             return deleted.Count;
         }
 
-        /// <summary>复制凭证：生成同凭证字下的新草稿，凭证号取当前最大号 +1；未指定日期时沿用原凭证日期。</summary>
+        /// <summary>复制凭证：生成同凭证字下的新凭证并直接入账，凭证号取当前最大号 +1；未指定日期时沿用原凭证日期。</summary>
         public async Task<VoucherDetailDto> CopyAsync(Guid accountSetId, Guid id, string preparer, DateOnly? date = null, CancellationToken cancellationToken = default)
         {
             var source = await _voucherRepository.GetByIdAsync(accountSetId, id, cancellationToken)
@@ -497,6 +511,11 @@ namespace KuaiJi.Modules.Vouchers.Application
 
             var number = await _voucherRepository.GetMaxNumberAsync(accountSetId, source.Word, cancellationToken) + 1;
             var copy = Voucher.Duplicate(source, number, targetDate, preparer);
+            if (copy.IsBalanced)
+            {
+                copy.Post();
+            }
+
             await _voucherRepository.AddAsync(copy, cancellationToken);
             await _voucherRepository.SaveChangesAsync(cancellationToken);
 
@@ -506,7 +525,7 @@ namespace KuaiJi.Modules.Vouchers.Application
         }
 
         /// <summary>
-        /// 红冲：生成一张金额取反的草稿凭证，摘要统一加「冲销&lt;期间&gt;&lt;凭证字&gt;-&lt;号&gt;_」前缀，
+        /// 红冲：生成一张金额取反的凭证并直接入账，摘要统一加「冲销&lt;期间&gt;&lt;凭证字&gt;-&lt;号&gt;_」前缀，
         /// 用于冲销原凭证的账务影响（原凭证保留，符合红字冲销的习惯做法）。
         /// </summary>
         public async Task<VoucherDetailDto> ReverseAsync(Guid accountSetId, Guid id, string preparer, DateOnly? date = null, CancellationToken cancellationToken = default)
@@ -529,6 +548,11 @@ namespace KuaiJi.Modules.Vouchers.Application
             var number = await _voucherRepository.GetMaxNumberAsync(accountSetId, source.Word, cancellationToken) + 1;
             var prefix = $"冲销{source.Date:yyyyMM}{source.Word}-{source.Number}_";
             var reversal = Voucher.Duplicate(source, number, targetDate, preparer, prefix, negateAmounts: true);
+            if (reversal.IsBalanced)
+            {
+                reversal.Post();
+            }
+
             await _voucherRepository.AddAsync(reversal, cancellationToken);
             await _voucherRepository.SaveChangesAsync(cancellationToken);
 
@@ -539,7 +563,7 @@ namespace KuaiJi.Modules.Vouchers.Application
 
         /// <summary>
         /// 整理凭证 / 凭证号重排：按凭证号或凭证日期重新顺次编号，并重新拼接断号。
-        /// 只处理草稿与已审核的凭证（已过账凭证号不允许变动）。
+        /// 只处理草稿（反过账退回）的凭证（已过账凭证号不允许变动）。
         /// </summary>
         public async Task<int> RenumberAsync(
             Guid accountSetId,
@@ -602,26 +626,8 @@ namespace KuaiJi.Modules.Vouchers.Application
             return changed;
         }
 
-        /// <summary>审核凭证：草稿 → 已审核。要求借贷平衡，审核人取当前登录用户显示名；不存在时返回 null。</summary>
-        public async Task<VoucherDetailDto?> ReviewAsync(Guid accountSetId, Guid id, string reviewer, CancellationToken cancellationToken = default)
-        {
-            return await TransitionAsync(accountSetId, id, v => v.Review(reviewer), cancellationToken);
-        }
-
-        /// <summary>反审核凭证：已审核 → 草稿，清空审核人；已结期间内的凭证不允许反审核；不存在时返回 null。</summary>
-        public async Task<VoucherDetailDto?> UnreviewAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
-        {
-            return await TransitionAsync(accountSetId, id, v => v.Unreview(), cancellationToken, forbidInClosedPeriod: true);
-        }
-
-        /// <summary>过账凭证：已审核 → 已过账（登记入账锁定）；不存在时返回 null。</summary>
-        public async Task<VoucherDetailDto?> PostAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
-        {
-            return await TransitionAsync(accountSetId, id, v => v.Post(), cancellationToken);
-        }
-
         /// <summary>
-        /// 反过账凭证：已过账 → 已审核（撤销登记入账，保留审核人）。
+        /// 反过账凭证：已过账 → 草稿（撤销登记入账，退回可修改状态）。
         /// 已结账期间内的凭证不允许反过账；不存在时返回 null。
         /// </summary>
         public async Task<VoucherDetailDto?> UnpostAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
@@ -643,7 +649,7 @@ namespace KuaiJi.Modules.Vouchers.Application
                 var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
                 if (accountSet.IsDateClosed(voucher.Date))
                 {
-                    throw new VoucherException($"凭证「{voucher.Word}-{voucher.Number}」所属期间已结账，不能反审核。");
+                    throw new VoucherException($"凭证「{voucher.Word}-{voucher.Number}」所属期间已结账，不能反过账。");
                 }
             }
 

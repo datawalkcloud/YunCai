@@ -2,28 +2,23 @@
  * 智能报税 · 税费缴纳（开具完税证明）。
  *
  * 页面结构与税局一致：开具格式、税款所属期区间、快捷入口、完税证明列表与开具 / 导出。
- * 完税证明按缴款记录开具，数据需税务助手登录电子税务局后取回，当前尚未接入，
- * 列表保持空态；开具 / 导出列表先给出提示，避免被误解为已经接通税局。
+ * 完税证明按缴款记录开具，列表数据由服务器上的税局会话从「缴款信息查询」取回；
+ * 登录态过期时弹窗补一次短信验证码，成功后自动重取。真正的开具动作仍在电子税务局办理。
  */
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Key } from "react";
 import { App, Button, DatePicker, Pagination, Select, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
-import { DownOutlined, QuestionCircleOutlined, ReloadOutlined } from "@ant-design/icons";
+import { DownOutlined, LoginOutlined, QuestionCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { useNavigate, useParams } from "react-router";
 
-interface CertificateRow {
-    key: string;
-    /** 原凭证号（税局缴款书号） */
-    voucherNo: string;
-    periodStart: string;
-    periodEnd: string;
-    /** 入（退）库日期 */
-    paidOn: string;
-    /** 正数为实缴，负数为退还 */
-    amount: number;
-}
+import { useAuth } from "@/auth/AuthContext";
+import { fetchTaxPayments, type TaxPaymentRow } from "@/lib/tax-portal";
+
+import { TaxLoginPrompt } from "./TaxLoginPrompt";
+
+type CertificateRow = TaxPaymentRow;
 
 const fmtMoney = (value: number) =>
     value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -48,22 +43,107 @@ export function TaxCertificatePage() {
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { message } = App.useApp();
+    const { token } = useAuth();
 
     const [format, setFormat] = useState<"table" | "document">("table");
     const [range, setRange] = useState<[Dayjs, Dayjs]>(() => [dayjs().startOf("year"), dayjs().startOf("day")]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+    const [rows, setRows] = useState<CertificateRow[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [needLogin, setNeedLogin] = useState(false);
+    const [loginOpen, setLoginOpen] = useState(false);
+    const [hint, setHint] = useState<string | null>(null);
 
-    /** 税局取数未接入前列表恒为空；接入后按缴款日期区间查询。 */
-    const rows: CertificateRow[] = [];
+    const requestId = useRef(0);
+
+    const load = useCallback(
+        async (target: [Dayjs, Dayjs], opts: { promptLogin?: boolean } = {}) => {
+            if (!accountSetId) return;
+            const id = ++requestId.current;
+            setLoading(true);
+            try {
+                const result = await fetchTaxPayments(
+                    accountSetId,
+                    token,
+                    target[0].format("YYYY-MM-DD"),
+                    target[1].format("YYYY-MM-DD"),
+                );
+                if (id !== requestId.current) return;
+
+                if (result.needLogin) {
+                    setRows([]);
+                    setNeedLogin(true);
+                    setHint(result.message ?? "税局登录状态已过期，请重新登录电子税务局。");
+                    if (opts.promptLogin) setLoginOpen(true);
+                    return;
+                }
+
+                const list = result.rows ?? [];
+                setRows(list);
+                setNeedLogin(false);
+                setHint(list.length === 0 ? result.message ?? "所选缴款日期区间没有可开具的缴款记录。" : null);
+                setPage(1);
+                setSelectedRowKeys([]);
+            } catch (err) {
+                if (id !== requestId.current) return;
+                setRows([]);
+                setHint(err instanceof Error && err.message ? err.message : "读取税局缴款记录失败，请稍后重试。");
+            } finally {
+                if (id === requestId.current) setLoading(false);
+            }
+        },
+        [accountSetId, token],
+    );
+
+    useEffect(() => {
+        void load(range);
+    }, [load, range]);
 
     const total = rows.length;
-    const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-    const to = Math.min(page * pageSize, total);
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+    const current = Math.min(page, pageCount);
+    const paged = rows.slice((current - 1) * pageSize, current * pageSize);
+    const from = total === 0 ? 0 : (current - 1) * pageSize + 1;
+    const to = Math.min(current * pageSize, total);
 
-    const notConnected = () =>
-        message.warning("完税证明数据需税务助手登录电子税务局后取回，请先前往【一键登录税局】。");
+    function issue() {
+        const picked = selectedRowKeys.length;
+        message.info(
+            picked > 0
+                ? `已勾选 ${picked} 条缴款记录；在线开具需在电子税务局办理，请点击「开具税收完税证明」进入税局。`
+                : "请先勾选需要开具完税证明的缴款记录，或点击「开具税收完税证明」进入电子税务局。",
+        );
+    }
+
+    function exportCsv() {
+        const target = selectedRowKeys.length > 0
+            ? rows.filter((row) => selectedRowKeys.includes(row.key))
+            : rows;
+        if (target.length === 0) {
+            message.warning("当前没有可导出的缴款记录。");
+            return;
+        }
+        const header = ["原凭证号", "税款所属期起", "税款所属期止", "入（退）库日期", "实缴（退）金额"];
+        const body = target.map((row) => [
+            row.voucherNo,
+            row.periodStart,
+            row.periodEnd,
+            row.paidOn,
+            fmtMoney(row.amount),
+        ]);
+        const csv = [header, ...body]
+            .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+            .join("\r\n");
+        const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `完税证明_缴款记录_${range[0].format("YYYYMMDD")}-${range[1].format("YYYYMMDD")}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
 
     return (
         <div className="flex h-full flex-col px-6 pt-4">
@@ -84,7 +164,7 @@ export function TaxCertificatePage() {
                     ]}
                     onChange={setFormat}
                 />
-                <span className="inline-flex items-center rounded-[2px] border border-[#2f6bff] bg-white pr-1">
+                <span className="inline-flex items-center rounded-md border border-[#2f6bff] bg-white pr-1">
                     <DatePicker.RangePicker
                         variant="borderless"
                         allowClear={false}
@@ -110,23 +190,31 @@ export function TaxCertificatePage() {
                     </Button>
                 </span>
                 <div className="ml-auto flex items-center gap-2">
-                    <Button type="primary" onClick={notConnected}>
+                    {needLogin && (
+                        <Button icon={<LoginOutlined />} onClick={() => setLoginOpen(true)}>
+                            登录电子税务局
+                        </Button>
+                    )}
+                    <Button type="primary" onClick={issue}>
                         开具
                     </Button>
-                    <Button onClick={notConnected}>导出列表</Button>
+                    <Button onClick={exportCsv}>导出列表</Button>
                 </div>
             </div>
 
             <div className="min-h-0 flex-1">
                 <Table<CertificateRow>
                     columns={columns}
-                    dataSource={rows}
+                    dataSource={paged}
                     rowKey="key"
                     tableLayout="fixed"
                     rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+                    loading={loading}
                     pagination={false}
                     locale={{
-                        emptyText: <span className="block py-10 text-[13px] text-slate-400">暂无数据</span>,
+                        emptyText: (
+                            <span className="block py-10 text-[13px] text-slate-400">{hint ?? "暂无数据"}</span>
+                        ),
                     }}
                 />
             </div>
@@ -135,7 +223,7 @@ export function TaxCertificatePage() {
                 <span>{`显示 ${from} 到 ${to}，共 ${total} 条记录`}</span>
                 <span className="flex items-center gap-1">
                     <Pagination
-                        current={page}
+                        current={current}
                         pageSize={pageSize}
                         total={total}
                         pageSizeOptions={[20, 50, 100]}
@@ -151,15 +239,28 @@ export function TaxCertificatePage() {
                             type="text"
                             icon={<ReloadOutlined />}
                             aria-label="刷新"
-                            onClick={notConnected}
+                            loading={loading}
+                            onClick={() => void load(range, { promptLogin: true })}
                         />
                     </Tooltip>
                 </span>
             </div>
 
             <p className="pb-5 text-[12.5px] leading-5 text-slate-400">
-                完税证明按缴款记录开具，支持表格式与文书式；数据需税务助手登录电子税务局后取回，当前尚未接入。
+                完税证明按缴款记录开具，支持表格式与文书式；列表取自电子税务局「缴款信息查询」，
+                开具与打印请在电子税务局办理。
             </p>
+
+            <TaxLoginPrompt
+                open={loginOpen}
+                accountSetId={accountSetId}
+                reason={hint ?? undefined}
+                onClose={() => setLoginOpen(false)}
+                onSuccess={() => {
+                    setLoginOpen(false);
+                    void load(range);
+                }}
+            />
         </div>
     );
 }

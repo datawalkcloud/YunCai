@@ -32,6 +32,18 @@ export interface BalanceSheetDto {
      * @type {number}
      * @memberof BalanceSheetDto
      */
+    standard?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof BalanceSheetDto
+     */
+    templateTitle?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof BalanceSheetDto
+     */
     year?: number;
     /**
      * 
@@ -76,6 +88,8 @@ export function BalanceSheetDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
     }
     return {
         
+        'standard': json['standard'] == null ? undefined : json['standard'],
+        'templateTitle': json['templateTitle'] == null ? undefined : json['templateTitle'],
         'year': json['year'] == null ? undefined : json['year'],
         'month': json['month'] == null ? undefined : json['month'],
         'endingDate': json['endingDate'] == null ? undefined : json['endingDate'],
@@ -95,6 +109,8 @@ export function BalanceSheetDtoToJSONTyped(value?: BalanceSheetDto | null, ignor
 
     return {
         
+        'standard': value['standard'],
+        'templateTitle': value['templateTitle'],
         'year': value['year'],
         'month': value['month'],
         'endingDate': value['endingDate'],

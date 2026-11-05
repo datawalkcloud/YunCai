@@ -29,7 +29,6 @@ public sealed class ReportPeriodResolverTests
         var voucher = Voucher.Create(Set.Id, "记", 1, new DateOnly(year, month, day), "测试制单人");
         voucher.AddEntry("收款", Cash.Id, 10m, 0m);
         voucher.AddEntry("收款", Revenue.Id, 0m, 10m);
-        voucher.Review("测试审核人");
         voucher.Post();
         return voucher;
     }

@@ -507,9 +507,7 @@ export default function FundReportPage() {
                 dataSource={[totalRow]}
                 rowKey="name"
                 pagination={false}
-                size="small"
-                bordered
-                showHeader={false}
+                               showHeader={false}
                 onRow={() => ({ style: { background: "#eef4ff", fontWeight: 600 } })}
                 locale={{ emptyText: " " }}
             />
@@ -524,7 +522,7 @@ export default function FundReportPage() {
         <div className="flex flex-col gap-3">
             {error && <div className="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
 
-            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 }, body: { padding: 0 } }}>
+            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 } }}>
                 <Tabs
                     className="lemon-sub-tabs"
                     activeKey={dimension}
@@ -534,11 +532,10 @@ export default function FundReportPage() {
                 />
 
                 {/* 工具栏 */}
-                <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
+                <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 px-4 py-2.5" style={{ marginBottom: 16 }}>
                     <Space size={10} wrap>
                         <DatePicker.RangePicker
-                            size="small"
-                            allowClear={false}
+                                                       allowClear={false}
                             value={[dayjs(draft.start), dayjs(draft.end)]}
                             style={{ width: 250 }}
                             onChange={(values: [Dayjs | null, Dayjs | null] | null) => {
@@ -547,13 +544,12 @@ export default function FundReportPage() {
                                 setDraft({ start: from.format("YYYY-MM-DD"), end: to.format("YYYY-MM-DD") })
                             }}
                         />
-                        <Button type="primary" size="small" loading={loading} autoInsertSpace={false} onClick={applyQuery}>
+                        <Button type="primary" loading={loading} autoInsertSpace={false} onClick={applyQuery}>
                             查询
                         </Button>
                         {dimension !== "account" && (
                             <Select
-                                size="small"
-                                className="min-w-[140px]"
+                                                               className="min-w-[140px]"
                                 value={journalId}
                                 onChange={(value) => {
                                     setJournalId(value)
@@ -564,8 +560,7 @@ export default function FundReportPage() {
                         )}
                         {dimension !== "account" && (
                             <Input
-                                size="small"
-                                allowClear
+                                                               allowClear
                                 className="w-[200px]"
                                 placeholder={dimension === "combo" ? `输入${nameLabel}或${secondaryLabel}搜索` : `输入${nameLabel}搜索`}
                                 prefix={<SearchOutlined className="text-slate-400" />}
@@ -582,8 +577,7 @@ export default function FundReportPage() {
                                 <span className="text-[13px] text-slate-700">{report?.primaryText ?? "收支类别"}</span>
                                 <span className="text-[12.5px] text-slate-500">次类别</span>
                                 <Select
-                                    size="small"
-                                    className="min-w-[110px]"
+                                                                       className="min-w-[110px]"
                                     value={secondary}
                                     onChange={(value: Secondary) => {
                                         setSecondary(value)
@@ -609,8 +603,7 @@ export default function FundReportPage() {
                             </Checkbox>
                         )}
                         <Button
-                            size="small"
-                            autoInsertSpace={false}
+                                                       autoInsertSpace={false}
                             disabled={!report}
                             onClick={() => {
                                 // 打印与页面/导出同口径：带上搜索过滤后的分段与合计。
@@ -619,21 +612,21 @@ export default function FundReportPage() {
                         >
                             打印
                         </Button>
-                        <Button size="small" autoInsertSpace={false} onClick={() => void exportReport()}>
+                        <Button autoInsertSpace={false} onClick={() => void exportReport()}>
                             导出
                         </Button>
                         {dimension !== "combo" && (
                             <>
-                                <Button size="small" onClick={() => setShareOpen(true)}>
+                                <Button onClick={() => setShareOpen(true)}>
                                     扫码分享
                                 </Button>
-                                <Button size="small" onClick={() => setSubscribeOpen(true)}>
+                                <Button onClick={() => setSubscribeOpen(true)}>
                                     报表订阅推送
                                 </Button>
                             </>
                         )}
                         <Tooltip title="刷新">
-                            <Button size="small" icon={<ReloadIcon spinning={loading} />} onClick={() => void load()} />
+                            <Button icon={<ReloadIcon spinning={loading} />} onClick={() => void load()} />
                         </Tooltip>
                     </Space>
                 </div>
@@ -651,9 +644,7 @@ export default function FundReportPage() {
                                         dataSource={rowsOf(section)}
                                         rowKey={(row) => `${row.code ?? ""}|${row.name ?? ""}|${row.secondaryName ?? ""}`}
                                         pagination={false}
-                                        size="small"
-                                        bordered
-                                        loading={loading}
+                                                                               loading={loading}
                                         summary={summaryOf(section)}
                                         onRow={(row) => ({ style: subtotalRowStyle(row) })}
                                         locale={{ emptyText: " " }}
@@ -664,13 +655,12 @@ export default function FundReportPage() {
                             {!singleSection && visibleSections.length > 0 && renderTotalRow(visibleSections[0])}
 
                             {singleSection && (
-                                <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-slate-500">
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
                                     <span>
                                         显示 {rowCount === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, rowCount)}，共 {rowCount} 条
                                     </span>
                                     <Pagination
-                                        size="small"
-                                        current={page}
+                                                                               current={page}
                                         pageSize={pageSize}
                                         total={rowCount}
                                         pageSizeOptions={PAGE_SIZE_OPTIONS}
@@ -730,8 +720,7 @@ export default function FundReportPage() {
                     <div className="break-all text-center text-[12px] text-slate-400">{shareUrl(dimension, range)}</div>
                     <div className="flex gap-2">
                         <Button
-                            size="small"
-                            autoInsertSpace={false}
+                                                       autoInsertSpace={false}
                             onClick={() => {
                                 void navigator.clipboard?.writeText(shareUrl(dimension, range))
                                 message.success("链接已复制")
@@ -739,7 +728,7 @@ export default function FundReportPage() {
                         >
                             复制链接
                         </Button>
-                        <Button autoInsertSpace={false} size="small" type="primary" onClick={() => setShareOpen(false)}>
+                        <Button autoInsertSpace={false} type="primary" onClick={() => setShareOpen(false)}>
                             完成
                         </Button>
                     </div>

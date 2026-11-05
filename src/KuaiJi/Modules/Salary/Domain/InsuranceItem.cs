@@ -46,7 +46,7 @@ namespace KuaiJi.Modules.Salary.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("险种名称不能为空。", nameof(name));
+                throw new ArgumentException("险种名称不能为空。");
             }
 
             if (name.Trim().Length > MaxNameLength)
@@ -56,12 +56,12 @@ namespace KuaiJi.Modules.Salary.Domain
 
             if (companyRate < 0m || companyRate > 100m)
             {
-                throw new ArgumentException("公司缴纳比例必须在 0-100 之间。", nameof(companyRate));
+                throw new ArgumentException("公司缴纳比例必须在 0-100 之间。");
             }
 
             if (personalRate is { } pr && (pr < 0m || pr > 100m))
             {
-                throw new ArgumentException("个人缴纳比例必须在 0-100 之间。", nameof(personalRate));
+                throw new ArgumentException("个人缴纳比例必须在 0-100 之间。");
             }
 
             Name = name.Trim();

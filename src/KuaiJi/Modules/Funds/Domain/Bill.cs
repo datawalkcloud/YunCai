@@ -162,14 +162,14 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             GuardAmount(amount);
             GuardDates(issueDate, dueDate);
             if (string.IsNullOrWhiteSpace(billNo))
             {
-                throw new ArgumentException("票据号码不能为空。", nameof(billNo));
+                throw new ArgumentException("票据号码不能为空。");
             }
 
             if (billNo.Trim().Length > MaxBillNoLength)
@@ -241,7 +241,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (string.IsNullOrWhiteSpace(billNo))
             {
-                throw new ArgumentException("票据号码不能为空。", nameof(billNo));
+                throw new ArgumentException("票据号码不能为空。");
             }
 
             if (billNo.Trim().Length > MaxBillNoLength)
@@ -257,7 +257,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (!Enum.IsDefined(status))
             {
-                throw new ArgumentException("票据状态无效。", nameof(status));
+                throw new ArgumentException("票据状态无效。");
             }
 
             if (Status == BillStatus.Voided)
@@ -273,7 +273,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (voucherId == Guid.Empty)
             {
-                throw new ArgumentException("凭证标识无效。", nameof(voucherId));
+                throw new ArgumentException("凭证标识无效。");
             }
 
             if (VoucherId is not null)
@@ -291,7 +291,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (amount <= 0m)
             {
-                throw new ArgumentException("票据金额必须大于零。", nameof(amount));
+                throw new ArgumentException("票据金额必须大于零。");
             }
         }
 
@@ -299,7 +299,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (dueDate is { } due && due < issueDate)
             {
-                throw new ArgumentException("汇票到期日不得早于出票日。", nameof(dueDate));
+                throw new ArgumentException("汇票到期日不得早于出票日。");
             }
         }
 

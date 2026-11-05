@@ -138,7 +138,7 @@ namespace KuaiJi.Modules.Expenses.Domain
         {
             if (string.IsNullOrWhiteSpace(billNo))
             {
-                throw new ArgumentException("单据编号不能为空。", nameof(billNo));
+                throw new ArgumentException("单据编号不能为空。");
             }
 
             BillNo = billNo.Trim();
@@ -186,7 +186,7 @@ namespace KuaiJi.Modules.Expenses.Domain
         {
             if (string.IsNullOrWhiteSpace(reason))
             {
-                throw new ArgumentException("费用事由不能为空。", nameof(reason));
+                throw new ArgumentException("费用事由不能为空。");
             }
 
             if (reason.Trim().Length > MaxTextLength)
@@ -196,22 +196,22 @@ namespace KuaiJi.Modules.Expenses.Domain
 
             if (string.IsNullOrWhiteSpace(expenseType))
             {
-                throw new ArgumentException("费用类型不能为空。", nameof(expenseType));
+                throw new ArgumentException("费用类型不能为空。");
             }
 
             if (amount <= 0m)
             {
-                throw new ArgumentException("单据金额必须大于零。", nameof(amount));
+                throw new ArgumentException("单据金额必须大于零。");
             }
 
             if (deductibleTax < 0m)
             {
-                throw new ArgumentException("可抵扣税额不能为负数。", nameof(deductibleTax));
+                throw new ArgumentException("可抵扣税额不能为负数。");
             }
 
             if (deductibleTax >= amount)
             {
-                throw new ArgumentException("可抵扣税额必须小于单据金额。", nameof(deductibleTax));
+                throw new ArgumentException("可抵扣税额必须小于单据金额。");
             }
         }
 

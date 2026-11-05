@@ -67,7 +67,6 @@ namespace KuaiJi.Modules.Vouchers.Application
         internal static string StatusTextOf(VoucherStatus status) => status switch
         {
             VoucherStatus.Draft => "草稿",
-            VoucherStatus.Reviewed => "已审核",
             VoucherStatus.Posted => "已过账",
             _ => status.ToString(),
         };

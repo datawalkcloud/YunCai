@@ -23,6 +23,44 @@ namespace KuaiJi.Modules.Salary.Application
 
         public string? IdNo { get; init; }
 
+        public DateOnly? BirthDate { get; init; }
+
+        public string? BankName { get; init; }
+
+        public string? BankAccountNo { get; init; }
+
+        public string? Post { get; init; }
+
+        public string? Title { get; init; }
+
+        public string? Education { get; init; }
+
+        /// <summary>是否残疾人。</summary>
+        public bool IsDisabled { get; init; }
+
+        /// <summary>是否烈属。</summary>
+        public bool IsMartyrFamily { get; init; }
+
+        /// <summary>是否孤老。</summary>
+        public bool IsSoloElder { get; init; }
+
+        /// <summary>是否高级专家；未选择时为 null。</summary>
+        public bool? IsSeniorExpert { get; init; }
+
+        public string EmploymentTypeText { get; init; } = null!;
+
+        /// <summary>是否扣除减除费用。</summary>
+        public bool DeductBasicExpense { get; init; }
+
+        /// <summary>工资始发日期。</summary>
+        public DateOnly? PayStartDate { get; init; }
+
+        /// <summary>是否缴纳五险一金。</summary>
+        public bool PaysSocialInsurance { get; init; }
+
+        /// <summary>各险种缴纳基数（未登记的险种不出现在列表里）。</summary>
+        public IReadOnlyList<EmployeeInsuranceDto> Insurances { get; init; } = [];
+
         public Guid? SubjectAccountId { get; init; }
 
         public string SubjectText { get; init; } = null!;
@@ -42,7 +80,24 @@ namespace KuaiJi.Modules.Salary.Application
             _ => "其他",
         };
 
+        public static string EmploymentTypeTextOf(EmployeeEmploymentType type) => type switch
+        {
+            EmployeeEmploymentType.Employee => "雇员",
+            EmployeeEmploymentType.InsuranceAgent => "保险营销员",
+            EmployeeEmploymentType.SecuritiesBroker => "证券经纪人",
+            EmployeeEmploymentType.LaborDispatch => "劳务派遣",
+            _ => "其他",
+        };
+
         public static string StatusTextOf(EmployeeStatus status) => status == EmployeeStatus.Active ? "在职" : "离职";
+    }
+
+    /// <summary>员工某险种的缴纳基数。</summary>
+    public sealed class EmployeeInsuranceDto
+    {
+        public Guid InsuranceItemId { get; init; }
+
+        public decimal InsuranceBase { get; init; }
     }
 
     /// <summary>新建 / 修改员工请求。</summary>
@@ -78,12 +133,49 @@ namespace KuaiJi.Modules.Salary.Application
 
         public string? Title { get; init; }
 
+        public string? Education { get; init; }
+
+        /// <summary>是否残疾人。</summary>
+        public bool IsDisabled { get; init; }
+
+        /// <summary>是否烈属。</summary>
+        public bool IsMartyrFamily { get; init; }
+
+        /// <summary>是否孤老。</summary>
+        public bool IsSoloElder { get; init; }
+
+        /// <summary>是否高级专家；null 表示未选择。</summary>
+        public bool? IsSeniorExpert { get; init; }
+
+        /// <summary>任职受雇从业类型（1 雇员 / 2 保险营销员 / 3 证券经纪人 / 4 劳务派遣 / 5 其他）。</summary>
+        public int EmploymentType { get; init; } = 1;
+
+        /// <summary>是否扣除减除费用。</summary>
+        public bool DeductBasicExpense { get; init; } = true;
+
+        /// <summary>工资始发日期。</summary>
+        public DateOnly? PayStartDate { get; init; }
+
+        /// <summary>是否缴纳五险一金。</summary>
+        public bool PaysSocialInsurance { get; init; } = true;
+
+        /// <summary>各险种缴纳基数；未缴五险一金或留空表示不登记。</summary>
+        public IReadOnlyList<SaveEmployeeInsuranceRequest>? Insurances { get; init; }
+
         public Guid? SubjectAccountId { get; init; }
 
         /// <summary>员工状态（1 在职 / 2 离职）。</summary>
         public int Status { get; init; }
 
         public string? Remark { get; init; }
+    }
+
+    /// <summary>员工缴纳基数请求行。</summary>
+    public sealed class SaveEmployeeInsuranceRequest
+    {
+        public Guid InsuranceItemId { get; init; }
+
+        public decimal InsuranceBase { get; init; }
     }
 
     /// <summary>五险一金配置 DTO。</summary>
@@ -315,6 +407,46 @@ namespace KuaiJi.Modules.Salary.Application
         public string? StatusText { get; init; }
 
         public string? Remark { get; init; }
+    }
+
+    /// <summary>
+    /// 个税「人员信息采集」同步进来的一行人员，字段口径与税局页面一致（全是文本）。
+    /// 税局没给的列留空：新建时按员工档案默认值补齐，更新时保留档案原值。
+    /// </summary>
+    public sealed class IitPersonnelSyncRow
+    {
+        public string? Name { get; init; }
+
+        /// <summary>税局侧编号；只在本地编号冲突规则允许时用于新建，不覆盖已有员工编号。</summary>
+        public string? Code { get; init; }
+
+        /// <summary>证件类型文本，如「居民身份证」。</summary>
+        public string? IdTypeText { get; init; }
+
+        /// <summary>证件号码；税局回的是脱敏号（含 *），只用于匹配，不写回档案。</summary>
+        public string? IdNo { get; init; }
+
+        public string? GenderText { get; init; }
+
+        public string? Phone { get; init; }
+
+        public string? Dept { get; init; }
+
+        /// <summary>任职受雇从业类型文本：雇员 / 保险营销员 / 证券经纪人 / 劳务派遣 / 实习学生 / 其他。</summary>
+        public string? EmployTypeText { get; init; }
+
+        /// <summary>人员状态文本：正常 / 非正常。</summary>
+        public string? StatusText { get; init; }
+
+        public string? HireDate { get; init; }
+
+        public string? LeaveDate { get; init; }
+    }
+
+    /// <summary>同步税局人员信息的请求。</summary>
+    public sealed class IitPersonnelSyncRequest
+    {
+        public IReadOnlyList<IitPersonnelSyncRow>? Rows { get; init; }
     }
 
     /// <summary>工资表导入行。</summary>

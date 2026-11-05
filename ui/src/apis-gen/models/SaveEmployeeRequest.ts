@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { SaveEmployeeInsuranceRequest } from './SaveEmployeeInsuranceRequest';
+import {
+    SaveEmployeeInsuranceRequestFromJSON,
+    SaveEmployeeInsuranceRequestFromJSONTyped,
+    SaveEmployeeInsuranceRequestToJSON,
+    SaveEmployeeInsuranceRequestToJSONTyped,
+} from './SaveEmployeeInsuranceRequest';
+
 /**
  * 
  * @export
@@ -108,6 +116,66 @@ export interface SaveEmployeeRequest {
      * @type {string}
      * @memberof SaveEmployeeRequest
      */
+    education?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SaveEmployeeRequest
+     */
+    isDisabled?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SaveEmployeeRequest
+     */
+    isMartyrFamily?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SaveEmployeeRequest
+     */
+    isSoloElder?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SaveEmployeeRequest
+     */
+    isSeniorExpert?: boolean | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof SaveEmployeeRequest
+     */
+    employmentType?: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SaveEmployeeRequest
+     */
+    deductBasicExpense?: boolean;
+    /**
+     * 
+     * @type {Date}
+     * @memberof SaveEmployeeRequest
+     */
+    payStartDate?: Date | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SaveEmployeeRequest
+     */
+    paysSocialInsurance?: boolean;
+    /**
+     * 
+     * @type {Array<SaveEmployeeInsuranceRequest>}
+     * @memberof SaveEmployeeRequest
+     */
+    insurances?: Array<SaveEmployeeInsuranceRequest> | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SaveEmployeeRequest
+     */
     subjectAccountId?: string | null;
     /**
      * 
@@ -154,6 +222,16 @@ export function SaveEmployeeRequestFromJSONTyped(json: any, ignoreDiscriminator:
         'bankAccountNo': json['bankAccountNo'] == null ? undefined : json['bankAccountNo'],
         'post': json['post'] == null ? undefined : json['post'],
         'title': json['title'] == null ? undefined : json['title'],
+        'education': json['education'] == null ? undefined : json['education'],
+        'isDisabled': json['isDisabled'] == null ? undefined : json['isDisabled'],
+        'isMartyrFamily': json['isMartyrFamily'] == null ? undefined : json['isMartyrFamily'],
+        'isSoloElder': json['isSoloElder'] == null ? undefined : json['isSoloElder'],
+        'isSeniorExpert': json['isSeniorExpert'] == null ? undefined : json['isSeniorExpert'],
+        'employmentType': json['employmentType'] == null ? undefined : json['employmentType'],
+        'deductBasicExpense': json['deductBasicExpense'] == null ? undefined : json['deductBasicExpense'],
+        'payStartDate': json['payStartDate'] == null ? undefined : (new Date(json['payStartDate'])),
+        'paysSocialInsurance': json['paysSocialInsurance'] == null ? undefined : json['paysSocialInsurance'],
+        'insurances': json['insurances'] == null ? undefined : ((json['insurances'] as Array<any>).map(SaveEmployeeInsuranceRequestFromJSON)),
         'subjectAccountId': json['subjectAccountId'] == null ? undefined : json['subjectAccountId'],
         'status': json['status'] == null ? undefined : json['status'],
         'remark': json['remark'] == null ? undefined : json['remark'],
@@ -185,6 +263,16 @@ export function SaveEmployeeRequestToJSONTyped(value?: SaveEmployeeRequest | nul
         'bankAccountNo': value['bankAccountNo'],
         'post': value['post'],
         'title': value['title'],
+        'education': value['education'],
+        'isDisabled': value['isDisabled'],
+        'isMartyrFamily': value['isMartyrFamily'],
+        'isSoloElder': value['isSoloElder'],
+        'isSeniorExpert': value['isSeniorExpert'],
+        'employmentType': value['employmentType'],
+        'deductBasicExpense': value['deductBasicExpense'],
+        'payStartDate': value['payStartDate'] == null ? value['payStartDate'] : value['payStartDate'].toISOString().substring(0,10),
+        'paysSocialInsurance': value['paysSocialInsurance'],
+        'insurances': value['insurances'] == null ? undefined : ((value['insurances'] as Array<any>).map(SaveEmployeeInsuranceRequestToJSON)),
         'subjectAccountId': value['subjectAccountId'],
         'status': value['status'],
         'remark': value['remark'],

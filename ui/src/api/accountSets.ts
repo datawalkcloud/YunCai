@@ -23,6 +23,10 @@ export interface AccountSetDto {
   taxLoginAccount?: string | null
   /** 是否已保存税局实名密码。 */
   taxLoginPasswordSet?: boolean
+  /** 个税（自然人电子税务局）实名账号；同样是只告知是否已保存密码。 */
+  iitLoginAccount?: string | null
+  /** 是否已保存个税实名密码。 */
+  iitLoginPasswordSet?: boolean
   /** 凭证字列表（逗号分隔，如 "记,收,付,转"），制单时只能从中选择。 */
   voucherWords?: string
   /** 启用期间（记账日期不得早于该月）。 */

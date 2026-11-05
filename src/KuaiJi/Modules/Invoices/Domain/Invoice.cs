@@ -141,7 +141,7 @@ namespace KuaiJi.Modules.Invoices.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             GuardText(invoiceType, "发票种类", 50);
@@ -183,8 +183,12 @@ namespace KuaiJi.Modules.Invoices.Domain
             Remark = Normalize(remark);
         }
 
-        /// <summary>整体替换商品明细行。行金额必须大于零，税率 0-100。</summary>
-        public void ReplaceLines(IReadOnlyList<(string goodsName, decimal amount, decimal taxRate, decimal taxAmount)> lines)
+        /// <summary>
+        /// 整体替换商品明细行。行金额必须非零（红冲发票由税局取票导入，允许负数），税率 0-100。
+        /// </summary>
+        public void ReplaceLines(
+            IReadOnlyList<(string goodsName, decimal amount, decimal taxRate, decimal taxAmount)> lines,
+            bool allowNegative = false)
         {
             if (lines.Count == 0)
             {
@@ -200,7 +204,7 @@ namespace KuaiJi.Modules.Invoices.Domain
                     throw new ArgumentException($"第 {i + 1} 行商品名称不能为空。");
                 }
 
-                if (amount <= 0m)
+                if (amount == 0m || (!allowNegative && amount < 0m))
                 {
                     throw new ArgumentException($"第 {i + 1} 行金额必须大于零。");
                 }
@@ -210,7 +214,7 @@ namespace KuaiJi.Modules.Invoices.Domain
                     throw new ArgumentException($"第 {i + 1} 行税率必须在 0-100 之间。");
                 }
 
-                if (taxAmount < 0m)
+                if (taxAmount < 0m && !allowNegative)
                 {
                     throw new ArgumentException($"第 {i + 1} 行税额不能为负数。");
                 }
@@ -239,7 +243,7 @@ namespace KuaiJi.Modules.Invoices.Domain
         {
             if (!Enum.IsDefined(status))
             {
-                throw new ArgumentException("发票状态无效。", nameof(status));
+                throw new ArgumentException("发票状态无效。");
             }
 
             Status = status;

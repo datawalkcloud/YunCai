@@ -5,7 +5,6 @@
  * 视觉遵循全站统一风格（云财蓝）：主色 #2f6bff、白卡 + slate 灰阶文字、收入 #10b981 / 支出与错误 #ef4444。
  */
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { WalletOutlined } from "@ant-design/icons";
 import { Alert, Popconfirm } from "antd";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
@@ -437,7 +436,7 @@ export function LemonAccountSettings() {
                   opsCol,
               ];
     return (
-        <Page title="账户设置" subtitle="现金与银行存款资金账户的启停用、编辑与新增" icon={WalletOutlined}>
+        <Page>
             <SubTabs tabs={["现金", "银行存款"]} active={tab} onChange={setTab} />
             {/* 银企互联属外部银行对接能力，不在账套复刻范围内；账户核心管理（编码/币别/期初/科目/启停用/增删改/查询）已全部接真实数据。 */}
             <WipNotice text="银企互联（绑定银行自动获取流水）为外部银行对接能力，未纳入账套复刻；账户设置的核心功能（编码 / 币别 / 期初余额 / 会计科目 / 启用停用 / 新增编辑删除 / 查询 / 模板下载与批量导入）均已接真实数据。" />

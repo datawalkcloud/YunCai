@@ -34,7 +34,7 @@ namespace KuaiJi.Modules.AccountSets.Application
             var currencies = await _currencyRepository.GetAllAsync(accountSetId, cancellationToken);
             if (currencies.Count == 0)
             {
-                var rmb = Currency.Create(accountSetId, "RMB", "人民币", 1m, true);
+                var rmb = Currency.Create(accountSetId, "RMB", "人民币", 1m, CurrencyConvertType.Multiply, true);
                 await _currencyRepository.AddAsync(rmb, cancellationToken);
                 await _currencyRepository.SaveChangesAsync(cancellationToken);
                 currencies = [rmb];
@@ -60,7 +60,7 @@ namespace KuaiJi.Modules.AccountSets.Application
             Currency currency;
             try
             {
-                currency = Currency.Create(accountSetId, code, request.Name, request.Rate, request.IsBase);
+                currency = Currency.Create(accountSetId, code, request.Name, request.Rate, request.ConvertType, request.IsBase);
             }
             catch (ArgumentException ex)
             {
@@ -94,7 +94,7 @@ namespace KuaiJi.Modules.AccountSets.Application
 
             try
             {
-                currency.Update(code, request.Name, request.Rate, request.IsBase);
+                currency.Update(code, request.Name, request.Rate, request.ConvertType, request.IsBase);
             }
             catch (ArgumentException ex)
             {
@@ -134,7 +134,7 @@ namespace KuaiJi.Modules.AccountSets.Application
             var all = await _currencyRepository.GetAllAsync(accountSetId, cancellationToken);
             foreach (var item in all.Where(c => c.IsBase && c.Id != excludeId))
             {
-                item.Update(item.Code, item.Name, item.Rate, false);
+                item.Update(item.Code, item.Name, item.Rate, item.ConvertType, false);
             }
         }
 

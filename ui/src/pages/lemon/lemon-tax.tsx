@@ -757,14 +757,13 @@ export function LemonTaxLogin() {
 
             {assistantMissingOpen && (
                 <Dialog
-                    title="未检测到云财税务助手"
+                    title="云财税务助手没有响应"
                     width={480}
                     onClose={() => setAssistantMissingOpen(false)}
                     footer={
                         <div className="flex justify-center gap-3">
                             <Btn onClick={() => setAssistantMissingOpen(false)}>取消</Btn>
                             <Btn
-                                variant="primary"
                                 onClick={() => {
                                     downloadAssistant();
                                     setAssistantMissingOpen(false);
@@ -773,13 +772,22 @@ export function LemonTaxLogin() {
                             >
                                 下载安装包
                             </Btn>
+                            <Btn
+                                variant="primary"
+                                onClick={() => {
+                                    setAssistantMissingOpen(false);
+                                    openEtaxInAssistant();
+                                }}
+                            >
+                                重新检测
+                            </Btn>
                         </div>
                     }
                 >
                     <div className="text-[13px] leading-6 text-slate-600">
-                        「一键登录电子税务局」由本机的云财税务助手打开税局页面。下载安装包并完成安装、启动助手后，回到本页再点一次即可。
+                        「一键登录电子税务局」由本机的云财税务助手打开税局页面。助手窗口关掉后会收进系统托盘继续待命，托盘图标双击或右键「打开助手」都能唤回来。
                     </div>
-                    <HintBox className="mt-3">已经安装过的话，请先启动助手；助手正在启动时稍等几秒再点。</HintBox>
+                    <HintBox className="mt-3">装过但一直没响应，多半是助手从托盘退出了——重新打开助手再点一次「重新检测」；从没装过才需要下载安装包。</HintBox>
                 </Dialog>
             )}
 

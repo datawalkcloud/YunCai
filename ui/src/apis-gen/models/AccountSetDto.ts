@@ -138,6 +138,72 @@ export interface AccountSetDto {
      * @type {string}
      * @memberof AccountSetDto
      */
+    industry?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AccountSetDto
+     */
+    assetsModuleEnabled?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AccountSetDto
+     */
+    fundsModuleEnabled?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AccountSetDto
+     */
+    voucherAuditRequired?: boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountSetDto
+     */
+    balanceAssistScope?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountSetDto
+     */
+    unitDecimalPlaces?: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AccountSetDto
+     */
+    isExportEnterprise?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    iitChannel?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    iitLoginType?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
+    iitLoginAccount?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AccountSetDto
+     */
+    iitLoginPasswordSet?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof AccountSetDto
+     */
     voucherWords?: string;
     /**
      * 
@@ -201,6 +267,17 @@ export function AccountSetDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'taxIdentityType': json['taxIdentityType'] == null ? undefined : json['taxIdentityType'],
         'taxLoginAccount': json['taxLoginAccount'] == null ? undefined : json['taxLoginAccount'],
         'taxLoginPasswordSet': json['taxLoginPasswordSet'] == null ? undefined : json['taxLoginPasswordSet'],
+        'industry': json['industry'] == null ? undefined : json['industry'],
+        'assetsModuleEnabled': json['assetsModuleEnabled'] == null ? undefined : json['assetsModuleEnabled'],
+        'fundsModuleEnabled': json['fundsModuleEnabled'] == null ? undefined : json['fundsModuleEnabled'],
+        'voucherAuditRequired': json['voucherAuditRequired'] == null ? undefined : json['voucherAuditRequired'],
+        'balanceAssistScope': json['balanceAssistScope'] == null ? undefined : json['balanceAssistScope'],
+        'unitDecimalPlaces': json['unitDecimalPlaces'] == null ? undefined : json['unitDecimalPlaces'],
+        'isExportEnterprise': json['isExportEnterprise'] == null ? undefined : json['isExportEnterprise'],
+        'iitChannel': json['iitChannel'] == null ? undefined : json['iitChannel'],
+        'iitLoginType': json['iitLoginType'] == null ? undefined : json['iitLoginType'],
+        'iitLoginAccount': json['iitLoginAccount'] == null ? undefined : json['iitLoginAccount'],
+        'iitLoginPasswordSet': json['iitLoginPasswordSet'] == null ? undefined : json['iitLoginPasswordSet'],
         'voucherWords': json['voucherWords'] == null ? undefined : json['voucherWords'],
         'closedPeriod': json['closedPeriod'] == null ? undefined : json['closedPeriod'],
         'carriedPeriod': json['carriedPeriod'] == null ? undefined : json['carriedPeriod'],
@@ -239,6 +316,17 @@ export function AccountSetDtoToJSONTyped(value?: AccountSetDto | null, ignoreDis
         'taxIdentityType': value['taxIdentityType'],
         'taxLoginAccount': value['taxLoginAccount'],
         'taxLoginPasswordSet': value['taxLoginPasswordSet'],
+        'industry': value['industry'],
+        'assetsModuleEnabled': value['assetsModuleEnabled'],
+        'fundsModuleEnabled': value['fundsModuleEnabled'],
+        'voucherAuditRequired': value['voucherAuditRequired'],
+        'balanceAssistScope': value['balanceAssistScope'],
+        'unitDecimalPlaces': value['unitDecimalPlaces'],
+        'isExportEnterprise': value['isExportEnterprise'],
+        'iitChannel': value['iitChannel'],
+        'iitLoginType': value['iitLoginType'],
+        'iitLoginAccount': value['iitLoginAccount'],
+        'iitLoginPasswordSet': value['iitLoginPasswordSet'],
         'voucherWords': value['voucherWords'],
         'closedPeriod': value['closedPeriod'],
         'carriedPeriod': value['carriedPeriod'],

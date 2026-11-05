@@ -496,23 +496,21 @@ export default function TransferPage() {
                 <Input
                     autoFocus
                     allowClear
-                    size="small"
-                    placeholder="输入关键字筛选"
+                                       placeholder="输入关键字筛选"
                     value={filters[key]}
                     onChange={(e) => setFilters((prev) => ({ ...prev, [key]: e.target.value }))}
                     onPressEnter={() => apply()}
                 />
                 <div className="mt-2 flex justify-end gap-2">
                     <Button
-                        size="small"
-                        onClick={() => {
+                                               onClick={() => {
                             setFilters((prev) => ({ ...prev, [key]: "" }))
                             apply()
                         }}
                     >
                         重置
                     </Button>
-                    <Button size="small" type="primary" onClick={() => apply()}>
+                    <Button type="primary" onClick={() => apply()}>
                         筛选
                     </Button>
                 </div>
@@ -532,8 +530,7 @@ export default function TransferPage() {
             render: (_, row) =>
                 row.kind === "draft" ? (
                     <DatePicker
-                        size="small"
-                        className="w-full"
+                                               className="w-full"
                         allowClear={false}
                         value={draft.date ? dayjs(draft.date) : null}
                         format="YYYY-MM-DD"
@@ -549,8 +546,7 @@ export default function TransferPage() {
             render: (_, row) =>
                 row.kind === "draft" ? (
                     <Input
-                        size="small"
-                        value={draft.summary}
+                                               value={draft.summary}
                         placeholder="资金内部调拨"
                         onChange={(e) => setDraft((prev) => ({ ...prev, summary: e.target.value }))}
                     />
@@ -568,8 +564,7 @@ export default function TransferPage() {
             render: (_, row) =>
                 row.kind === "draft" ? (
                     <Select
-                        size="small"
-                        className="w-full"
+                                               className="w-full"
                         value={draft.fromJournalId || undefined}
                         placeholder="选择账户"
                         options={journalOptions}
@@ -587,8 +582,7 @@ export default function TransferPage() {
             render: (_, row) =>
                 row.kind === "draft" ? (
                     <Select
-                        size="small"
-                        className="w-full"
+                                               className="w-full"
                         value={draft.toJournalId || undefined}
                         placeholder="选择账户"
                         options={journalOptions}
@@ -606,8 +600,7 @@ export default function TransferPage() {
             render: (_, row) =>
                 row.kind === "draft" ? (
                     <InputNumber
-                        size="small"
-                        className="w-full"
+                                               className="w-full"
                         min={0}
                         precision={2}
                         value={draft.amount ? Number(draft.amount) : null}
@@ -624,8 +617,7 @@ export default function TransferPage() {
             render: (_, row) =>
                 row.kind === "draft" ? (
                     <Input
-                        size="small"
-                        value={draft.remark}
+                                               value={draft.remark}
                         placeholder="备注"
                         onChange={(e) => setDraft((prev) => ({ ...prev, remark: e.target.value }))}
                     />
@@ -656,13 +648,12 @@ export default function TransferPage() {
                 if (row.kind === "draft") {
                     return (
                         <div className="flex items-center justify-center gap-1 text-[12.5px]">
-                            <Button type="link" size="small" loading={savingDraft} onClick={() => void saveDraft()}>
+                            <Button type="link" loading={savingDraft} onClick={() => void saveDraft()}>
                                 保存
                             </Button>
                             <Button
                                 type="link"
-                                size="small"
-                                onClick={() =>
+                                                               onClick={() =>
                                     setDraft({
                                         date: dayjs().format("YYYY-MM-DD"),
                                         summary: "资金内部调拨",
@@ -682,19 +673,18 @@ export default function TransferPage() {
                 const hasVoucher = Boolean(row.t.voucherId)
                 return (
                     <div className="flex items-center justify-center gap-1 text-[12.5px]">
-                        <Button type="link" size="small" disabled={hasVoucher} onClick={() => startEdit(row.t)}>
+                        <Button type="link" disabled={hasVoucher} onClick={() => startEdit(row.t)}>
                             编辑
                         </Button>
                         <Button
                             type="link"
-                            size="small"
-                            disabled={hasVoucher || busyId === row.t.id}
+                                                       disabled={hasVoucher || busyId === row.t.id}
                             loading={busyId === row.t.id}
                             onClick={() => void handleGenerateVoucher(row.t)}
                         >
                             生成凭证
                         </Button>
-                        <Button type="link" size="small" danger disabled={hasVoucher} onClick={() => void handleDelete(row.t)}>
+                        <Button type="link" danger disabled={hasVoucher} onClick={() => void handleDelete(row.t)}>
                             删除
                         </Button>
                     </div>
@@ -704,7 +694,7 @@ export default function TransferPage() {
     ]
 
     const toolbar = (
-        <Space size={8} wrap>
+        <Space size={8} wrap style={{ marginBottom: 16 }}>
             <DatePicker.RangePicker
                 allowClear={false}
                 value={period ? [dayjs(period[0]), dayjs(period[1])] : null}
@@ -788,7 +778,6 @@ export default function TransferPage() {
             <Card
                 styles={{
                     root: { border: "1px solid #f1f5f9", boxShadow: "0 1px 2px rgba(16,24,40,0.04)" },
-                    body: { padding: 16 },
                 }}
             >
                 <div className="mb-3 flex items-center justify-between gap-3">
@@ -802,11 +791,9 @@ export default function TransferPage() {
                 </div>
                 {toolbar}
 
-                <div className="mt-3 overflow-hidden rounded-lg border border-slate-100">
+                <div className="overflow-hidden rounded-lg">
                     <Table<TransferRow>
-                        bordered
-                        size="small"
-                        rowKey="key"
+                                               rowKey="key"
                         columns={columns}
                         dataSource={tableRows}
                         loading={loading && transfers.length === 0}
@@ -821,14 +808,13 @@ export default function TransferPage() {
                     />
                 </div>
 
-                <div className="mt-3 flex items-center justify-between text-[12.5px] text-slate-500">
+                <div className="flex items-center justify-between text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
                     <span>
                         显示 {filtered.length === 0 ? 0 : (current - 1) * pageSize + 1} 到{" "}
                         {Math.min(current * pageSize, filtered.length)}，共 {filtered.length} 条
                     </span>
                     <Pagination
-                        size="small"
-                        current={current}
+                                               current={current}
                         pageSize={pageSize}
                         total={filtered.length}
                         showSizeChanger
@@ -935,8 +921,7 @@ export default function TransferPage() {
                             (2) 下载模板，按照模板格式进行数据整理再导入
                             <Button
                                 type="link"
-                                size="small"
-                                onClick={() =>
+                                                               onClick={() =>
                                     void downloadFile(
                                         `/accountsets/${accountSetId}/transfers/import/template`,
                                         "内部转账导入模板.xlsx",

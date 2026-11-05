@@ -18,9 +18,6 @@ namespace KuaiJi.Modules.Vouchers.Application
         /// <summary>制单人，精确匹配；为空表示全部。</summary>
         public string? Preparer { get; init; }
 
-        /// <summary>是否审核：null 全部，true 已审核（含已过账），false 未审核。</summary>
-        public bool? Reviewed { get; init; }
-
         /// <summary>辅助核算：null 全部，true 有辅助核算，false 无辅助核算。</summary>
         public bool? HasAssists { get; init; }
 

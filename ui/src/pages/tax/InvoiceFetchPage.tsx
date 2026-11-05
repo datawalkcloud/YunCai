@@ -3,13 +3,14 @@
  *
  * 销项 / 进项 / 进项统计表三个页签。发票种类按税局的标准清单铺满：
  * 销项按开票日期归属期间，统计正常与红冲份数；进项按认证时登记的税款所属期
- * （未登记则按认证日期）归属期间，仅统计已认证发票，展示认证份数 / 金额 / 有效抵扣税额，
+ * （未登记则按认证日期，税局取票的发票按开票日期）归属期间，展示认证份数 / 金额 / 有效抵扣税额，
  * 有效抵扣税额取发票合计税额。进项统计表与进项页签同源，按附表二抵扣类型归集份数 / 金额 / 税额。
  * 状态条跟随服务器上的税局登录态：登录有效显示「已登录」，失效时可就地补一次短信验证码。
- * 税局自动取票与统计确认本身尚未接入，一键取票暂不触发取数。
+ * 「一键取票」由服务器上的无头浏览器登录税局查询发票并落库，页面只展示取票结果；
+ * 未登录时点击会先弹登录提示。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Button, Modal, Spin, Table, Tooltip } from "antd";
+import { Alert, App, Button, Modal, Spin, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { CheckCircleFilled, QuestionCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router";
@@ -19,11 +20,14 @@ import { InvoicesApi } from "@/apis-gen";
 import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { useAuth } from "@/auth/AuthContext";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
-import { resumeTaxPortalLogin } from "@/lib/tax-portal";
+import { resumeTaxPortalLogin, syncTaxInvoices } from "@/lib/tax-portal";
 import { cn } from "@/lib/utils";
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
 
 type TabKey = "sales" | "purchase" | "purchase-stats";
+
+/** 一键取票落库时写入的来源；本页只展示这个来源的发票，手工录入 / 导入的不混进来。 */
+const TAX_SOURCE = "一键取票";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
     { key: "sales", label: "销项发票" },
@@ -246,14 +250,18 @@ const inPeriod = (value: Date | string | null | undefined, period: AccountingPer
     return day !== "" && day >= period.startDate && day <= period.endDate;
 };
 
-/** 进项发票的抵扣归属期：优先取认证时登记的税款所属期，未登记时退回认证日期。 */
-const belongsToPeriod = (invoice: InvoiceDto, period: AccountingPeriod) =>
-    invoice.taxPeriod != null ? invoice.taxPeriod === period.period : inPeriod(invoice.authDate, period);
+/** 进项发票的抵扣归属期：优先取认证时登记的税款所属期，未登记时退回认证日期；
+ *  税局一键取票的发票没有认证信息，按开票日期归属。 */
+const belongsToPeriod = (invoice: InvoiceDto, period: AccountingPeriod) => {
+    if (invoice.taxPeriod != null) return invoice.taxPeriod === period.period;
+    return inPeriod(invoice.authDate ?? invoice.issueDate, period);
+};
 
 export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { token } = useAuth();
+    const { message } = App.useApp();
 
     const [tab, setTab] = useState<TabKey>("sales");
     const [sales, setSales] = useState<InvoiceDto[]>([]);
@@ -264,6 +272,7 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
     /** 税局登录态由服务器持有：进入本页先确认一次，失效时就地补一次短信验证码。 */
     const [portalState, setPortalState] = useState<"checking" | "valid" | "expired">("checking");
     const [loginOpen, setLoginOpen] = useState(false);
+    const [syncing, setSyncing] = useState(false);
 
     useEffect(() => {
         if (!accountSetId || !token) return;
@@ -294,8 +303,8 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                 // 进项按认证归属期统计：本期认证的发票可能是往月开具的，不能按开票日期截取。
                 api.accountsetsAccountSetIdInvoicesGet({ accountSetId, direction: 2 }),
             ]);
-            setSales(salesInvoices);
-            setPurchase(purchaseInvoices);
+            setSales(salesInvoices.filter((invoice) => invoice.source === TAX_SOURCE));
+            setPurchase(purchaseInvoices.filter((invoice) => invoice.source === TAX_SOURCE));
             setError(null);
         } catch (err) {
             setError(await apiErrorMessage(err, "加载发票失败。"));
@@ -557,8 +566,54 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
         return columns;
     }, [tab]);
 
-    /** 税局取票接口接入中：登录失效时先在页面里补一次短信验证码。 */
-    const handleFetchInvoices = () => setLoginOpen(true);
+    /**
+     * 一键取票：未登录先弹登录提示；已登录时提交后台取票任务，等税局查询与落库完成再刷新列表。
+     * 登录态在取票途中失效时，服务器会回 needLogin，这里把状态条切回未登录并重新弹登录框。
+     */
+    const handleFetchInvoices = async () => {
+        if (portalState !== "valid") {
+            setLoginOpen(true);
+            return;
+        }
+        if (syncing || !accountSetId) return;
+
+        setSyncing(true);
+        try {
+            const job = await syncTaxInvoices(accountSetId, token, period.startDate, period.endDate);
+            if (job.needLogin) {
+                setPortalState("expired");
+                setLoginOpen(true);
+                return;
+            }
+
+            if (job.status !== "success") {
+                message.error(job.message ?? "一键取票失败，请稍后重试。");
+                return;
+            }
+
+            const result = job.data;
+            if (!result) {
+                message.success("取票完成，请刷新列表查看。");
+                return;
+            }
+
+            if (result.fetched === 0) {
+                // 税局明确回 0 条：正常空结果，销项 / 进项保持空表，不写库。
+                message.info("税局本期没有返回发票，销项 / 进项保持为空。");
+            } else {
+                const skipped = result.skipped > 0 ? `，跳过 ${result.skipped} 张` : "";
+                message.success(`已取回 ${result.fetched} 张发票，新增 ${result.imported} 张${skipped}。`);
+                if (result.warnings?.length) {
+                    message.warning(result.warnings.join("；"));
+                }
+            }
+            await reload();
+        } catch (err) {
+            message.error(err instanceof Error ? err.message : "一键取票失败，请稍后重试。");
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     return (
         <div>
@@ -586,7 +641,7 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                 </div>
 
                 <div className="ml-auto flex flex-wrap items-center gap-2 py-2">
-                    <div className="flex items-center gap-1 rounded-[2px] border border-slate-200 px-3 py-[5px] text-[13px]">
+                    <div className="flex items-center gap-1 rounded-md border border-slate-200 px-3 py-[5px] text-[13px]">
                         <span className="text-slate-600">税局登录状态：</span>
                         {portalState === "checking" && (
                             <span className="flex items-center gap-1 text-slate-500">
@@ -612,11 +667,11 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                     <Button onClick={() => navigate(`/${accountSetId}/invoices/${tab === "sales" ? "sales" : "purchase"}`)}>
                         {tab === "sales" ? "记账销项" : "记账进项"}
                     </Button>
-                    <Tooltip title={portalState === "valid" ? "税局发票查询取数接入中" : "请先登录电子税务局"}>
+                    <Tooltip title={portalState === "valid" ? "从电子税务局获取本期的销项与进项发票" : "请先登录电子税务局"}>
                         <Button
                             type="primary"
-                            disabled={portalState !== "valid"}
-                            onClick={handleFetchInvoices}
+                            loading={syncing}
+                            onClick={() => void handleFetchInvoices()}
                         >
                             一键取票
                         </Button>
@@ -647,7 +702,7 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                             pagination={false}
                             tableLayout="fixed"
                         />
-                        <div className="mt-4 rounded-[2px] bg-[#f7f8fa] px-4 py-3 text-[12.5px] leading-6 text-slate-500">
+                        <div className="mt-4 rounded-lg bg-[#f7f8fa] px-4 py-3 text-[12.5px] leading-6 text-slate-500">
                             <div className="mb-1 font-medium text-slate-600">说明：</div>
                             <div>1、以上数据源自【发票获取--进项发票】已认证发票统计得出；</div>
                             <div>2、生成申报表时，附表二对应项目按此填充；</div>
@@ -675,9 +730,8 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                 </div>
                 {tab !== "purchase-stats" && (
                     <p className="pb-5 text-[12.5px] leading-5 text-slate-400">
-                        销项按开票日期归属本期；进项按认证时登记的税款所属期（未登记则按认证日期）归属本期，
-                        仅统计已认证发票，有效抵扣税额取发票合计税额。
-                        税局自动取票与统计确认尚未接入，当前数据来自本系统已录入 / 导入的发票。
+                        销项按开票日期归属本期；进项按认证时登记的税款所属期（未登记则按认证日期，税局取票的发票按开票日期）归属本期。
+                        本页只展示「一键取票」从电子税务局取回并落库的发票，手工录入 / 导入的发票请到「记账销项 / 记账进项」查看。
                     </p>
                 )}
             </div>
@@ -685,7 +739,7 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
             <TaxLoginPrompt
                 open={loginOpen}
                 accountSetId={accountSetId}
-                reason="税局登录状态已失效：服务器会用账套里保存的税局资料重新登录，你只需要填一次短信验证码。"
+                reason="取票前需要先登录电子税务局：服务器会用账套里保存的税局资料登录，只有税局发来短信时才需要你填写验证码。"
                 onClose={() => setLoginOpen(false)}
                 onSuccess={() => {
                     setLoginOpen(false);

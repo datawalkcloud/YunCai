@@ -11,6 +11,7 @@ import { App, Button, ConfigProvider, Input, Modal, Select, Tooltip } from "antd
 import { QuestionCircleOutlined } from "@ant-design/icons";
 
 import type { AccountSetDto } from "@/api/accountSets";
+import { TAX_THEME } from "@/lib/tax-theme";
 
 /** 尚未接入税局取数的字段占位。 */
 const NOT_SYNCED = "—";
@@ -117,9 +118,8 @@ export function CompanyInfoModal({
         message.info("公司登记信息由电子税务局返回，完成「一键登录税局」后自动同步；当前展示账套中已保存的资料。");
     };
 
-    // 圆角交给全局 antd 主题（borderRadius:6），不要再覆写 borderRadius 为 2，否则弹窗及内部控件会变近直角
     return (
-        <ConfigProvider theme={{ token: { colorPrimary: "#2f6bff" } }}>
+        <ConfigProvider theme={TAX_THEME}>
             <Modal
                 open={open}
                 onCancel={onClose}

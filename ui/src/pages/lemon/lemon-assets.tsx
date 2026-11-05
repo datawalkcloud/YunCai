@@ -5,19 +5,14 @@
  * 以及折旧凭证 / 变更凭证生成、资产导入导出与批量操作。
  * 视觉遵循全站云财蓝：主色 #2f6bff、直角卡片、白卡 + slate 灰阶文字。
  */
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { Dropdown } from "antd";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Dropdown, Table as AntTable } from "antd";
 import {
-    ApartmentOutlined,
-    AuditOutlined,
-    BankOutlined,
     DownOutlined,
-    FallOutlined,
-    PieChartOutlined,
     QuestionCircleOutlined,
 } from "@ant-design/icons";
 
-import { ICON_STYLE } from "@/components/page/styles";
+import { ICON_STYLE, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
 
 import {
     Btn,
@@ -165,7 +160,7 @@ function ImportResultDialog({
             onClose={onClose}
             footer={
                 <div className="flex justify-center">
-                    <Btn variant="primary" className="w-[96px]" onClick={onClose}>
+                    <Btn variant="primary" onClick={onClose}>
                         知道了
                     </Btn>
                 </div>
@@ -178,23 +173,18 @@ function ImportResultDialog({
                     <b className={failures.length ? "text-[#ef4444]" : ""}>{failures.length}</b> 条。
                 </div>
                 {failures.length > 0 && (
-                    <div className="mt-2 max-h-[240px] overflow-auto rounded-lg border border-slate-200">
-                        <table className="w-full border-collapse text-[12.5px]">
-                            <thead>
-                                <tr className="bg-[#f8fafc] text-slate-500">
-                                    <th className="w-[70px] border-b border-slate-200 px-3 py-2 text-left font-medium">行号</th>
-                                    <th className="border-b border-slate-200 px-3 py-2 text-left font-medium">失败原因</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {failures.map((f, i) => (
-                                    <tr key={i}>
-                                        <td className="border-b border-slate-100 px-3 py-1.5 text-slate-600">{f.row}</td>
-                                        <td className="border-b border-slate-100 px-3 py-1.5 text-slate-600">{f.reason}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    // 纵向交给外层 max-h 滚动，横向交给 antd（scroll.x）；overflow-y-auto + overflow-x-hidden
+                    // 避免外层 overflow-auto 把 overflow-x 也算成 auto，凭空多出一条横向滚动条。
+                    <div className="mt-2 max-h-[240px] overflow-y-auto overflow-x-hidden rounded-lg border border-slate-200">
+                        <AntTable
+                            pagination={false}
+                            scroll={{ x: "max-content" }}
+                            columns={[
+                                { title: "行号", dataIndex: "row", key: "row", width: 70, render: (v) => <span className="text-slate-600">{v}</span> },
+                                { title: "失败原因", dataIndex: "reason", key: "reason", render: (v) => <span className="text-slate-600">{v}</span> },
+                            ]}
+                            dataSource={failures.map((f, i) => ({ key: i, row: f.row, reason: f.reason }))}
+                        />
                     </div>
                 )}
             </div>
@@ -367,7 +357,7 @@ function AssetVoucherSettingDialog({ onClose }: { onClose: () => void }) {
                         <span className="flex items-center gap-3">
                             <span className="w-[130px] shrink-0 text-right">{label}</span>
                             <Select
-                                className="w-[260px]"
+                                className={FORM_CONTROL_W}
                                 value={form[key]}
                                 onChange={(v) => setForm({ ...form, [key]: v })}
                                 options={accountOptions}
@@ -490,47 +480,62 @@ function ChangeVoucherDialog({
         >
             <div className="flex flex-col gap-2 px-1 text-[13px] text-slate-700">
                 {preview?.hint && <HintBox>{preview.hint}</HintBox>}
-                <table className="w-full border-collapse text-[12.5px]">
-                    <thead>
-                        <tr className="bg-[#f8fafc] text-slate-500">
-                            <th className="px-2 py-2 text-left font-medium">摘要</th>
-                            <th className="px-2 py-2 text-left font-medium">会计科目</th>
-                            <th className="w-[100px] px-2 py-2 text-right font-medium">借方金额</th>
-                            <th className="w-[100px] px-2 py-2 text-right font-medium">贷方金额</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((r, i) => (
-                            <tr key={i} className="border-b border-slate-100">
-                                <td className="px-2 py-1.5">
-                                    <TextInput value={r.summary} onChange={(v) => setRow(i, { summary: v })} />
-                                </td>
-                                <td className="px-2 py-1.5">
-                                    <Select
-                                        className="w-full"
-                                        value={r.accountId}
-                                        onChange={(v) => setRow(i, { accountId: v })}
-                                        options={accountOptions}
-                                    />
-                                </td>
-                                <td className="px-2 py-1.5">
-                                    <TextInput
-                                        className="text-right"
-                                        value={r.debit}
-                                        onChange={(v) => setRow(i, { debit: v.replace(/[^\d.]/g, ""), credit: "" })}
-                                    />
-                                </td>
-                                <td className="px-2 py-1.5">
-                                    <TextInput
-                                        className="text-right"
-                                        value={r.credit}
-                                        onChange={(v) => setRow(i, { credit: v.replace(/[^\d.]/g, ""), debit: "" })}
-                                    />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <AntTable<ChangeEntryRow & { __i: number }>
+                    pagination={false}
+                    rowKey={(_, i) => String(i)}
+                    columns={[
+                        {
+                            title: "摘要",
+                            dataIndex: "summary",
+                            key: "summary",
+                            render: (_, r) => (
+                                <TextInput value={r.summary} onChange={(v) => setRow(r.__i, { summary: v })} />
+                            ),
+                        },
+                        {
+                            title: "会计科目",
+                            dataIndex: "accountId",
+                            key: "accountId",
+                            render: (_, r) => (
+                                <Select
+                                    className="w-full"
+                                    value={r.accountId}
+                                    onChange={(v) => setRow(r.__i, { accountId: v })}
+                                    options={accountOptions}
+                                />
+                            ),
+                        },
+                        {
+                            title: "借方金额",
+                            dataIndex: "debit",
+                            key: "debit",
+                            width: 120,
+                            align: "right",
+                            render: (_, r) => (
+                                <TextInput
+                                    className="text-right"
+                                    value={r.debit}
+                                    onChange={(v) => setRow(r.__i, { debit: v.replace(/[^\d.]/g, ""), credit: "" })}
+                                />
+                            ),
+                        },
+                        {
+                            title: "贷方金额",
+                            dataIndex: "credit",
+                            key: "credit",
+                            width: 120,
+                            align: "right",
+                            render: (_, r) => (
+                                <TextInput
+                                    className="text-right"
+                                    value={r.credit}
+                                    onChange={(v) => setRow(r.__i, { credit: v.replace(/[^\d.]/g, ""), debit: "" })}
+                                />
+                            ),
+                        },
+                    ]}
+                    dataSource={rows.map((r, i) => ({ ...r, __i: i }))}
+                />
                 <div className="flex justify-end gap-6 pr-1 text-[12.5px] text-slate-500">
                     <span>借方合计：{debitTotal.toFixed(2)}</span>
                     <span>贷方合计：{creditTotal.toFixed(2)}</span>
@@ -600,26 +605,26 @@ function CopyAssetDialog({
         >
             <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">原资产：</span>
+                    <span className={`${FORM_LABEL_W} text-right`}>原资产：</span>
                     <Select
-                        className="w-[260px]"
+                        className={FORM_CONTROL_W}
                         value={sourceId}
                         onChange={setSourceId}
                         options={assets.map((a) => ({ value: a.id ?? "", label: `${a.code ?? ""} ${a.name ?? ""}` }))}
                     />
                 </label>
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">新资产编号：</span>
+                    <span className={`${FORM_LABEL_W} text-right`}>新资产编号：</span>
                     <TextInput
-                        className="w-[260px]"
+                        className={FORM_CONTROL_W}
                         value={form.code}
                         onChange={(v) => setForm({ ...form, code: v })}
                         placeholder="留空自动追加序号"
                     />
                 </label>
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">新资产名称：</span>
-                    <TextInput className="w-[260px]" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+                    <span className={`${FORM_LABEL_W} text-right`}>新资产名称：</span>
+                    <TextInput className={FORM_CONTROL_W} value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
                 </label>
             </div>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
@@ -979,7 +984,7 @@ export function LemonAssetManage() {
     /* tab === 0 资产初始化 */
     if (tab === 0)
         return (
-            <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
+            <Page>
                 <SubTabs tabs={ASSET_TABS} active={0} onChange={setTab} />
                 <ToolRow
                     left={<span className="text-[13px] text-slate-400">资产启用期间：{periodLabel(period)}</span>}
@@ -1058,7 +1063,7 @@ export function LemonAssetManage() {
     /* tab === 2 变更记录及生成凭证 */
     if (tab === 2)
         return (
-            <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
+            <Page>
                 <SubTabs tabs={ASSET_TABS} active={2} onChange={setTab} />
                 <ToolRow
                     left={<PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />}
@@ -1115,7 +1120,7 @@ export function LemonAssetManage() {
     /* tab === 3 计提折旧及生成凭证 */
     if (tab === 3)
         return (
-            <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
+            <Page>
                 <SubTabs tabs={ASSET_TABS} active={3} onChange={setTab} />
                 <div className="mx-4 mt-2 rounded-lg bg-[#eef4ff] px-4 py-2.5 text-[13px] leading-5 text-[#2f6bff]">
                     亲，点击“计提折旧”即可生成当期折旧摊销明细；再点击“生成凭证”按资产属性汇总生成一张折旧 / 摊销凭证。
@@ -1221,7 +1226,7 @@ export function LemonAssetManage() {
         { key: "ops", title: "操作", width: "150px" },
     ];
     return (
-        <Page title="资产管理" subtitle="期初录入、资产列表、变更与计提折旧" icon={BankOutlined}>
+        <Page>
             <SubTabs tabs={ASSET_TABS} active={1} onChange={setTab} />
             <ToolRow
                 left={
@@ -1396,9 +1401,9 @@ export function LemonAssetManage() {
             >
                 <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
                     <label className="flex items-center gap-3">
-                        <span className="w-[110px] text-right">资产类别：</span>
+                        <span className={`${FORM_LABEL_W} text-right`}>资产类别：</span>
                         <Select
-                            className="w-[220px]"
+                            className={FORM_CONTROL_W}
                             value={addForm.categoryId}
                             onChange={(v) => setAddForm({ ...addForm, categoryId: v })}
                             options={[
@@ -1416,16 +1421,16 @@ export function LemonAssetManage() {
                         ["期初累计折旧：", "initialAccumulatedDepreciation", true, false],
                     ].map(([label, key, numeric, isDate]) => (
                         <label key={String(key)} className="flex items-center gap-3">
-                            <span className="w-[110px] text-right">{label}</span>
+                            <span className={`${FORM_LABEL_W} text-right`}>{label}</span>
                             {isDate ? (
                                 <DateInput
-                                    className="w-[220px]"
+                                    className={FORM_CONTROL_W}
                                     value={String(addForm[key as keyof typeof addForm] ?? "")}
                                     onChange={(v) => setAddForm({ ...addForm, [key as keyof typeof addForm]: v })}
                                 />
                             ) : (
                                 <TextInput
-                                    className={`w-[220px]${numeric ? " text-right" : ""}`}
+                                    className={`${FORM_CONTROL_W}${numeric ? " text-right" : ""}`}
                                     value={String(addForm[key as keyof typeof addForm] ?? "")}
                                     onChange={(v) =>
                                         setAddForm({
@@ -1452,10 +1457,10 @@ function InitDialog({ onClose, onConfirm }: { onClose: () => void; onConfirm: ()
             onClose={onClose}
             footer={
                 <div className="flex justify-center gap-3">
-                    <Btn variant="primary" className="w-[96px]" onClick={onConfirm}>
+                    <Btn variant="primary" onClick={onConfirm}>
                         去录入
                     </Btn>
-                    <Btn className="w-[96px]" onClick={onClose}>
+                    <Btn onClick={onClose}>
                         关闭
                     </Btn>
                 </div>
@@ -1536,7 +1541,7 @@ export function LemonAssetDepreciation() {
     ];
     const label = periodLabel(period);
     return (
-        <Page title="折旧摊销明细表" subtitle={`${label} 各资产本期与累计折旧明细`} icon={FallOutlined}>
+        <Page>
             <ToolRow
                 left={<PeriodStepper text={label} onPrev={() => step(-1)} onNext={() => step(1)} />}
                 right={
@@ -1661,7 +1666,7 @@ export function LemonAssetSummary() {
     });
     const label = periodLabel(period);
     return (
-        <Page title="资产汇总表" subtitle="期初、本期增减与期末数按部门/类别归集" icon={PieChartOutlined}>
+        <Page>
             <SubTabs tabs={["按使用部门汇总", "按资产类别汇总"]} active={tab} onChange={setTab} />
             <ToolRow
                 left={
@@ -1775,25 +1780,25 @@ function CategoryEditDialog({
         >
             <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">类别编码：</span>
-                    <TextInput className="w-[220px]" value={form.code} onChange={(v) => set({ code: v })} />
+                    <span className={`${FORM_LABEL_W} text-right`}>类别编码：</span>
+                    <TextInput className={FORM_CONTROL_W} value={form.code} onChange={(v) => set({ code: v })} />
                 </label>
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">类别名称：</span>
-                    <TextInput className="w-[220px]" value={form.name} onChange={(v) => set({ name: v })} />
+                    <span className={`${FORM_LABEL_W} text-right`}>类别名称：</span>
+                    <TextInput className={FORM_CONTROL_W} value={form.name} onChange={(v) => set({ name: v })} />
                 </label>
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">折旧方法：</span>
-                    <Select className="w-[220px]" value={form.method} onChange={(v) => set({ method: v })} options={CATEGORY_METHOD_OPTIONS} />
+                    <span className={`${FORM_LABEL_W} text-right`}>折旧方法：</span>
+                    <Select className={FORM_CONTROL_W} value={form.method} onChange={(v) => set({ method: v })} options={CATEGORY_METHOD_OPTIONS} />
                 </label>
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">资产属性：</span>
-                    <Select className="w-[220px]" value={form.attr} onChange={(v) => set({ attr: v })} options={CATEGORY_ATTR_OPTIONS} />
+                    <span className={`${FORM_LABEL_W} text-right`}>资产属性：</span>
+                    <Select className={FORM_CONTROL_W} value={form.attr} onChange={(v) => set({ attr: v })} options={CATEGORY_ATTR_OPTIONS} />
                 </label>
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">资产科目：</span>
+                    <span className={`${FORM_LABEL_W} text-right`}>资产科目：</span>
                     <Select
-                        className="w-[220px]"
+                        className={FORM_CONTROL_W}
                         value={form.subjectAccountId}
                         onChange={(v) => set({ subjectAccountId: v })}
                         options={[
@@ -1803,12 +1808,12 @@ function CategoryEditDialog({
                     />
                 </label>
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">使用月数：</span>
-                    <TextInput className="w-[220px] text-right" value={form.months} onChange={(v) => set({ months: v.replace(/[^\d]/g, "") })} />
+                    <span className={`${FORM_LABEL_W} text-right`}>使用月数：</span>
+                    <TextInput className={`${FORM_CONTROL_W} text-right`} value={form.months} onChange={(v) => set({ months: v.replace(/[^\d]/g, "") })} />
                 </label>
                 <label className="flex items-center gap-3">
-                    <span className="w-[110px] text-right">净残值率(%)：</span>
-                    <TextInput className="w-[220px] text-right" value={form.residualRate} onChange={(v) => set({ residualRate: v.replace(/[^\d.]/g, "") })} />
+                    <span className={`${FORM_LABEL_W} text-right`}>净残值率(%)：</span>
+                    <TextInput className={`${FORM_CONTROL_W} text-right`} value={form.residualRate} onChange={(v) => set({ residualRate: v.replace(/[^\d.]/g, "") })} />
                 </label>
             </div>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
@@ -1900,12 +1905,12 @@ export function LemonAssetCategory() {
         (c) => !kw || (c.code ?? "").toLowerCase().includes(kw) || (c.name ?? "").toLowerCase().includes(kw),
     );
     return (
-        <Page title="资产类别设置" subtitle="类别编码、折旧方法与资产科目默认值" icon={ApartmentOutlined}>
+        <Page>
             <ToolRow
                 left={<Btn onClick={() => setEditing("new")}>新增</Btn>}
                 right={
                     <>
-                        <TextInput className="w-[220px]" value={keyword} onChange={setKeyword} placeholder="输入编码或名称" />
+                        <TextInput className={FORM_CONTROL_W} value={keyword} onChange={setKeyword} placeholder="输入编码或名称" />
                         <Btn onClick={() => void exportCategories()} title="导出资产类别为 .xlsx">
                             导出
                         </Btn>
@@ -1996,79 +2001,95 @@ export function LemonAssetCheck() {
         }
     };
 
-    const th = "border-b border-slate-200 bg-[#f8fafc] px-3 py-2.5 text-[12.5px] font-medium text-slate-500";
-    const td = "border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-600 tabular-nums";
+    /** 对账行模型：▼ 前缀为分组行，其后的明细行挂在该分组下（分组前出现的明细行按原逻辑忽略）。 */
+    const checkRows = (() => {
+        const rows: Array<{ key: string; kind: "group" | "item"; groupName: string; item: FixedAssetCheckRowDto }> = [];
+        let groupName = "";
+        check.forEach((r, i) => {
+            const raw = r.item ?? "";
+            if (raw.startsWith("▼ ")) {
+                groupName = raw.slice(2);
+                rows.push({ key: `g-${i}`, kind: "group", groupName, item: r });
+            } else if (groupName) {
+                rows.push({ key: `r-${i}`, kind: "item", groupName, item: r });
+            }
+        });
+        return rows;
+    })();
     return (
-        <Page title="资产核对总账" subtitle="资产台账与总账科目余额逐行核对" icon={AuditOutlined}>
-            <ToolRow
-                left={<PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />}
-                right={
-                    <>
-                        <Btn onClick={() => window.print()}>打印</Btn>
-                        <Btn onClick={() => void exportCheck()} title="导出资产核对总账为 .xlsx">
-                            导出
-                        </Btn>
-                        <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
-                            <RefreshIcon />
-                        </span>
-                    </>
-                }
-            />
+        <Page>
+            <div style={{ marginBottom: 16 }}>
+                <ToolRow
+                    left={<PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />}
+                    right={
+                        <>
+                            <Btn onClick={() => window.print()}>打印</Btn>
+                            <Btn onClick={() => void exportCheck()} title="导出资产核对总账为 .xlsx">
+                                导出
+                            </Btn>
+                            <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
+                                <RefreshIcon />
+                            </span>
+                        </>
+                    }
+                />
+            </div>
             <StateBar loading={loading} error={error} />
-            <div className="flex-1 overflow-x-auto px-4">
-                <table className="w-full min-w-[640px] border-collapse text-[13px]">
-                    <thead>
-                        <tr>
-                            <th className={`${th} w-[140px] text-left`}>项目</th>
-                            <th className={`${th} text-left`}>名称</th>
-                            <th className={`${th} text-right`}>期初余额</th>
-                            <th className={`${th} text-right`}>借方</th>
-                            <th className={`${th} text-right`}>贷方</th>
-                            <th className={`${th} text-right`}>余额</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {check.length === 0 && (
-                            <tr>
-                                <td colSpan={6} className="py-10 text-center text-[13px] text-slate-400">
-                                    暂无数据
-                                </td>
-                            </tr>
-                        )}
-                        {(() => {
-                            const groups: Array<{ name: string; rows: FixedAssetCheckRowDto[] }> = [];
-                            for (const r of check) {
-                                const item = r.item ?? "";
-                                if (item.startsWith("▼ ")) {
-                                    groups.push({ name: item.slice(2), rows: [] });
-                                } else if (groups.length) {
-                                    groups[groups.length - 1].rows.push(r);
-                                }
-                            }
-                            return groups.map((g) => (
-                                <Fragment key={g.name}>
-                                    <tr>
-                                        <td colSpan={6} className={`${td} font-bold`}>
-                                            <span className="inline-flex items-center gap-1">
-                                                <DownOutlined className="text-[12px]" style={ICON_STYLE.muted} /> {g.name}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {g.rows.map((r, i) => (
-                                        <tr key={g.name + i}>
-                                            <td className={r.isDiff ? `${td} text-[#2f6bff]` : td}>{r.isDiff ? "差异" : r.item}</td>
-                                            <td className={td}>{r.name}</td>
-                                            <td className={`${td} text-right`}>{r.opening ? r.opening.toFixed(2) : ""}</td>
-                                            <td className={`${td} text-right`}>{r.debit ? r.debit.toFixed(2) : ""}</td>
-                                            <td className={`${td} text-right`}>{r.credit ? r.credit.toFixed(2) : ""}</td>
-                                            <td className={`${td} text-right`}>{r.balance ? r.balance.toFixed(2) : ""}</td>
-                                        </tr>
-                                    ))}
-                                </Fragment>
-                            ));
-                        })()}
-                    </tbody>
-                </table>
+            <div className="flex-1 px-4">
+                <AntTable
+                    pagination={false}
+                    rowKey={(r) => r.key}
+                    dataSource={checkRows}
+                    scroll={{ x: "max-content" }}
+                    locale={{ emptyText: "暂无数据" }}
+                    rowClassName={(r) => (r.kind === "group" ? "font-bold" : "")}
+                    columns={[
+                        {
+                            title: "项目",
+                            width: 140,
+                            render: (_, r) =>
+                                r.kind === "group" ? (
+                                    <span className="inline-flex items-center gap-1">
+                                        <DownOutlined className="text-[12px]" style={ICON_STYLE.muted} /> {r.groupName}
+                                    </span>
+                                ) : (
+                                    <span className={r.item.isDiff ? "text-[#2f6bff]" : undefined}>
+                                        {r.item.isDiff ? "差异" : r.item.item}
+                                    </span>
+                                ),
+                            onCell: (r) => (r.kind === "group" ? { colSpan: 6 } : {}),
+                        },
+                        {
+                            title: "名称",
+                            render: (_, r) => r.item.name,
+                            onCell: (r) => (r.kind === "group" ? { colSpan: 0 } : {}),
+                        },
+                        {
+                            title: "期初余额",
+                            align: "right",
+                            render: (_, r) => (r.item.opening ? r.item.opening.toFixed(2) : ""),
+                            onCell: (r) => (r.kind === "group" ? { colSpan: 0 } : {}),
+                        },
+                        {
+                            title: "借方",
+                            align: "right",
+                            render: (_, r) => (r.item.debit ? r.item.debit.toFixed(2) : ""),
+                            onCell: (r) => (r.kind === "group" ? { colSpan: 0 } : {}),
+                        },
+                        {
+                            title: "贷方",
+                            align: "right",
+                            render: (_, r) => (r.item.credit ? r.item.credit.toFixed(2) : ""),
+                            onCell: (r) => (r.kind === "group" ? { colSpan: 0 } : {}),
+                        },
+                        {
+                            title: "余额",
+                            align: "right",
+                            render: (_, r) => (r.item.balance ? r.item.balance.toFixed(2) : ""),
+                            onCell: (r) => (r.kind === "group" ? { colSpan: 0 } : {}),
+                        },
+                    ]}
+                />
             </div>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Page>

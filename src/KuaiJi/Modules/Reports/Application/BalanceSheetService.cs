@@ -35,9 +35,10 @@ namespace KuaiJi.Modules.Reports.Application
             var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken)
                              ?? throw new ReportException("指定的账套不存在。");
 
+            var template = BalanceSheetTemplates.Resolve(accountSet.Standard);
             var accounts = await _accountRepository.GetAllAsync(accountSetId, cancellationToken);
             var accountsById = accounts.ToDictionary(a => a.Id, a => a);
-            // 报表只统计已过账凭证（口径 §0.1）：草稿与已审核未过账的凭证不得入账。
+            // 报表只统计已过账凭证（口径 §0.1）：反过账退回的草稿不得入账。
             var vouchers = (await _voucherRepository.GetAllAsync(accountSetId, cancellationToken))
                 .Where(v => v.Status == VoucherStatus.Posted)
                 .ToList();
@@ -94,6 +95,19 @@ namespace KuaiJi.Modules.Reports.Application
 
                 var endingDelta = endingNet.GetValueOrDefault(accountId); // 借-贷
                 var openingDelta = openingNet.GetValueOrDefault(accountId);
+
+                if (template == BalanceSheetTemplate.SmallBusiness)
+                {
+                    // 小企业版式：存货总计与明细行、固定资产原价/累计折旧分行归集。
+                    foreach (var (targetLine, sign) in MapSmallBusinessLines(account.Code, account.Category))
+                    {
+                        endingByLine[targetLine] = endingByLine.GetValueOrDefault(targetLine) + endingDelta * sign;
+                        openingByLine[targetLine] = openingByLine.GetValueOrDefault(targetLine) + openingDelta * sign;
+                    }
+
+                    continue;
+                }
+
                 var line = MapLine(account.Code, account.Category);
 
                 // 资产/成本类以借方为正方向；负债/权益/损益类以贷方为正方向。
@@ -118,6 +132,8 @@ namespace KuaiJi.Modules.Reports.Application
             var endingDay = periodEnd.AddDays(-1);
             return new BalanceSheetDto
             {
+                Standard = (int)accountSet.Standard,
+                TemplateTitle = BalanceSheetTemplates.Title(template),
                 Year = resolvedYear,
                 Month = resolvedMonth,
                 EndingDate = $"{endingDay.Year:D4}年{endingDay.Month:D2}月{endingDay.Day:D2}日",
@@ -300,6 +316,104 @@ namespace KuaiJi.Modules.Reports.Application
                 _ => $"行次{line}",
             };
         }
+
+        /// <summary>
+        /// 小企业会计准则（会小企01表）行次归集。每个科目返回一个或多个「行次 + 方向符号」：
+        /// 存货类同时计入主行 9 与明细行 10-13；固定资产原价、累计折旧分别落 18、19 两行。
+        /// </summary>
+        internal static IReadOnlyList<(int Line, decimal Sign)> MapSmallBusinessLines(string code, AccountCategory category)
+        {
+            var p = Prefix(code);
+            switch (category)
+            {
+                case AccountCategory.Asset:
+                    var assetLine = MapSmallBusinessAssetLine(p);
+                    // 累计折旧、固定资产减值准备是备抵科目，贷方余额在「减：累计折旧」行以正数展示。
+                    var sign = p is "1602" or "1603" ? -1m : 1m;
+                    if (assetLine == 9)
+                    {
+                        var detail = MapSmallBusinessInventoryDetail(p);
+                        return detail is null ? [(9, sign)] : [(9, sign), (detail.Value, sign)];
+                    }
+
+                    return [(assetLine, sign)];
+
+                case AccountCategory.Cost:
+                    // 生产成本、制造费用等余额属在产品：计入存货总额，并列入「在产品」明细行。
+                    return [(9, 1m), (11, 1m)];
+
+                case AccountCategory.Liability:
+                    return [(MapSmallBusinessLiabilityLine(p), -1m)];
+
+                case AccountCategory.Equity:
+                    return [(MapSmallBusinessEquityLine(p), -1m)];
+
+                default:
+                    return [(51, -1m)]; // 损益类 → 未分配利润
+            }
+        }
+
+        private static int MapSmallBusinessAssetLine(string p) => p switch
+        {
+            "1001" or "1002" or "1012" => 1,   // 货币资金
+            "1101" => 2,                       // 短期投资
+            "1121" => 3,                       // 应收票据
+            "1122" or "1231" => 4,             // 应收账款（含坏账准备备抵）
+            "1123" => 5,                       // 预付账款
+            "1131" => 6,                       // 应收股利
+            "1132" => 7,                       // 应收利息
+            "1221" => 8,                       // 其他应收款
+            "1401" or "1402" or "1403" or "1404" or "1405" or "1406"
+                or "1407" or "1408" or "1411" or "1421" or "1471" => 9, // 存货
+            "1501" or "1502" or "1503" => 16,  // 长期债券投资
+            "1511" or "1512" => 17,            // 长期股权投资
+            "1601" => 18,                      // 固定资产原价
+            "1602" or "1603" => 19,            // 减：累计折旧（含固定资产减值准备）
+            "1604" => 21,                      // 在建工程
+            "1605" => 22,                      // 工程物资
+            "1606" => 23,                      // 固定资产清理
+            "1621" or "1622" or "1623" => 24,  // 生产性生物资产
+            "1701" or "1702" or "1703" => 25,  // 无形资产
+            "1801" => 27,                      // 长期待摊费用
+            "1711" or "1811" or "1521" or "1531" or "1532" => 28, // 其他非流动资产
+            _ => 14,                           // 其他流动资产（兜底，保证资产侧合计）
+        };
+
+        private static int? MapSmallBusinessInventoryDetail(string p) => p switch
+        {
+            "1403" => 10, // 原材料
+            "1405" => 12, // 库存商品
+            "1411" => 13, // 周转材料
+            _ => null,
+        };
+
+        private static int MapSmallBusinessLiabilityLine(string p) => p switch
+        {
+            "2001" => 31,
+            "2201" => 32,
+            "2202" => 33,
+            "2203" => 34,
+            "2211" => 35,
+            "2221" => 36,
+            "2231" => 37,
+            "2232" => 38,
+            "2241" => 39,
+            "2101" => 40,
+            "2501" => 42,
+            "2502" or "2701" or "2711" => 43,
+            "2401" => 44,
+            "2801" or "2901" => 45,
+            _ => 40, // 其他流动负债（兜底）
+        };
+
+        private static int MapSmallBusinessEquityLine(string p) => p switch
+        {
+            "4001" or "3001" => 48, // 实收资本
+            "4002" or "4003" or "4004" or "4005" or "3002" or "4105" => 49, // 资本公积
+            "4101" or "4102" or "3101" => 50, // 盈余公积
+            "4103" or "4104" or "3103" or "3104" => 51, // 未分配利润
+            _ => 51, // 未识别权益（含库存股）并入未分配利润
+        };
 
         /// <summary>取科目编码前 4 位作为一级科目归集键（明细科目以一级编码为前缀）。</summary>
         private static string Prefix(string code)

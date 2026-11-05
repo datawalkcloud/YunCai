@@ -46,13 +46,13 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             GuardName(name);
             if (!Enum.IsDefined(type))
             {
-                throw new ArgumentException("模板类型无效。", nameof(type));
+                throw new ArgumentException("模板类型无效。");
             }
 
             return new VoucherTemplate(Guid.NewGuid(), accountSetId, name.Trim(), type);
@@ -64,7 +64,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
             GuardName(name);
             if (!Enum.IsDefined(type))
             {
-                throw new ArgumentException("模板类型无效。", nameof(type));
+                throw new ArgumentException("模板类型无效。");
             }
 
             Name = name.Trim();
@@ -110,7 +110,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("模板名称不能为空。", nameof(name));
+                throw new ArgumentException("模板名称不能为空。");
             }
 
             if (name.Trim().Length > MaxNameLength)

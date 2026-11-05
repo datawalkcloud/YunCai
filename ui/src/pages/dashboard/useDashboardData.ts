@@ -13,10 +13,9 @@ import { useAuth } from "@/auth/AuthContext"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet"
 
-/** 凭证状态：草稿 1 / 已审核 2 / 已过账 3（与后端 VoucherStatus 对齐）。 */
+/** 凭证状态：草稿 1 / 已过账 3（与后端 VoucherStatus 对齐；保存即入账，没有审核态）。 */
 export const V_STATUS = {
     draft: 1,
-    reviewed: 2,
     posted: 3,
 } as const
 
@@ -95,12 +94,10 @@ export function findRow(summary: FinancialSummaryDto | null, item: string) {
 /** 凭证状态计数。 */
 export function countByStatus(vouchers: VoucherListItemDto[]) {
     let draft = 0
-    let reviewed = 0
     let posted = 0
     for (const v of vouchers) {
         if (v.status === V_STATUS.draft) draft++
-        else if (v.status === V_STATUS.reviewed) reviewed++
         else if (v.status === V_STATUS.posted) posted++
     }
-    return { draft, reviewed, posted, unposted: draft + reviewed, total: vouchers.length }
+    return { draft, posted, unposted: draft, total: vouchers.length }
 }

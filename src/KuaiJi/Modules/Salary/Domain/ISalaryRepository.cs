@@ -17,6 +17,17 @@ namespace KuaiJi.Modules.Salary.Domain
         Task AddInsuranceAsync(InsuranceItem item, CancellationToken cancellationToken = default);
         void RemoveInsurance(InsuranceItem item);
 
+        // —— 员工缴纳基数 ——
+
+        /// <summary>取账套内全部员工缴纳基数（列表回显用，不跟踪）。</summary>
+        Task<IReadOnlyList<EmployeeInsurance>> GetEmployeeInsurancesAsync(Guid accountSetId, CancellationToken cancellationToken = default);
+
+        /// <summary>取某员工的全部缴纳基数（跟踪实例，保存时整批替换）。</summary>
+        Task<IReadOnlyList<EmployeeInsurance>> GetEmployeeInsurancesForUpdateAsync(Guid accountSetId, Guid employeeId, CancellationToken cancellationToken = default);
+
+        Task AddEmployeeInsuranceAsync(EmployeeInsurance item, CancellationToken cancellationToken = default);
+        void RemoveEmployeeInsurance(EmployeeInsurance item);
+
         /// <summary>取可修改的员工（跟踪实例）；AsNoTracking 的读取实例改后不落库，写路径必须走这里。</summary>
         Task<Employee?> GetEmployeeForUpdateAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default);
 

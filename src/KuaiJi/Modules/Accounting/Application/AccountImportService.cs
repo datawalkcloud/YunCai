@@ -8,6 +8,7 @@ namespace KuaiJi.Modules.Accounting.Application
     /// 所有科目均归属于指定账套，无法脱离账套独立导入。顶级科目须给出类别；明细科目类别继承上级，
     /// 方向留空时亦继承上级，编码须以上级编码为前缀（由领域模型强制校验）。
     /// 当行未显式指定上级编码时，依据当前账套编码方案自动拆分编码层级，并自动创建缺失的上级科目。
+    /// 助记码留空时按科目名称的拼音首字母生成，明细科目再加「上级助记码_」前缀。
     /// </summary>
     public sealed class AccountImportService
     {
@@ -63,8 +64,10 @@ namespace KuaiJi.Modules.Accounting.Application
                     continue;
                 }
 
-                if (knownAccounts.ContainsKey(code))
+                if (knownAccounts.TryGetValue(code, out var existing))
                 {
+                    // 已存在的科目不覆盖任何字段，只给缺少助记码的存量科目补上，重导一次即可修复历史数据。
+                    BackfillMnemonic(existing, knownAccounts);
                     skipped++;
                     warnings.Add($"第 {row.RowNumber} 行科目「{code} {name}」编码已存在，已跳过。");
                     continue;
@@ -99,7 +102,7 @@ namespace KuaiJi.Modules.Accounting.Application
                     try
                     {
                         var child = parent.AddChild(code, name, ParseDirection(row.Direction));
-                        AccountAutoCreateService.FinalizeAccount(child, row.Mnemonic, row.IsEnabled);
+                        AccountAutoCreateService.FinalizeAccount(child, row.Mnemonic, row.IsEnabled, parent);
                         await _accountRepository.AddAsync(child, cancellationToken);
                         knownAccounts[code] = child;
                         imported++;
@@ -136,6 +139,18 @@ namespace KuaiJi.Modules.Accounting.Application
                 SkippedAccounts = skipped,
                 Warnings = warnings,
             };
+        }
+
+        /// <summary>给缺少助记码的存量科目补生成，已有助记码（含用户手工填写）保持不动。</summary>
+        private static void BackfillMnemonic(Account account, IReadOnlyDictionary<string, Account> knownAccounts)
+        {
+            if (!string.IsNullOrWhiteSpace(account.Mnemonic))
+                return;
+
+            var parent = account.ParentId is { } parentId
+                ? knownAccounts.Values.FirstOrDefault(a => a.Id == parentId)
+                : null;
+            account.SetMnemonic(AccountMnemonic.Resolve(null, account.Name, parent?.Mnemonic, parent?.Name));
         }
 
         private static int[] BuildCumLengths(int[] scheme)

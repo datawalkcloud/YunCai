@@ -18,6 +18,7 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdSalaryEmployeesImportPost**](SalariesApi.md#accountsetsaccountsetidsalaryemployeesimportpost) | **POST** /accountsets/{accountSetId}/salary/employees/import |  |
 | [**accountsetsAccountSetIdSalaryEmployeesImportTemplateGet**](SalariesApi.md#accountsetsaccountsetidsalaryemployeesimporttemplateget) | **GET** /accountsets/{accountSetId}/salary/employees/import-template |  |
 | [**accountsetsAccountSetIdSalaryEmployeesPost**](SalariesApi.md#accountsetsaccountsetidsalaryemployeespost) | **POST** /accountsets/{accountSetId}/salary/employees |  |
+| [**accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost**](SalariesApi.md#accountsetsaccountsetidsalaryemployeessyncfromiitpost) | **POST** /accountsets/{accountSetId}/salary/employees/sync-from-iit |  |
 | [**accountsetsAccountSetIdSalaryGenerateAccruePost**](SalariesApi.md#accountsetsaccountsetidsalarygenerateaccruepost) | **POST** /accountsets/{accountSetId}/salary/generate-accrue |  |
 | [**accountsetsAccountSetIdSalaryGeneratePayPost**](SalariesApi.md#accountsetsaccountsetidsalarygeneratepaypost) | **POST** /accountsets/{accountSetId}/salary/generate-pay |  |
 | [**accountsetsAccountSetIdSalaryInsuranceGet**](SalariesApi.md#accountsetsaccountsetidsalaryinsuranceget) | **GET** /accountsets/{accountSetId}/salary/insurance |  |
@@ -962,6 +963,74 @@ example().catch(console.error);
 ### Return type
 
 [**EmployeeDto**](EmployeeDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost
+
+> EmployeeImportResultDto accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost(accountSetId, iitPersonnelSyncRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  SalariesApi,
+} from '';
+import type { AccountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new SalariesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // IitPersonnelSyncRequest
+    iitPersonnelSyncRequest: ...,
+  } satisfies AccountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **iitPersonnelSyncRequest** | [IitPersonnelSyncRequest](IitPersonnelSyncRequest.md) |  | |
+
+### Return type
+
+[**EmployeeImportResultDto**](EmployeeImportResultDto.md)
 
 ### Authorization
 

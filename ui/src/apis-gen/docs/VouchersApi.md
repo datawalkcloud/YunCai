@@ -15,14 +15,11 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdVouchersIdDelete**](VouchersApi.md#accountsetsaccountsetidvouchersiddelete) | **DELETE** /accountsets/{accountSetId}/Vouchers/{id} |  |
 | [**accountsetsAccountSetIdVouchersIdGet**](VouchersApi.md#accountsetsaccountsetidvouchersidget) | **GET** /accountsets/{accountSetId}/Vouchers/{id} |  |
 | [**accountsetsAccountSetIdVouchersIdPdfGet**](VouchersApi.md#accountsetsaccountsetidvouchersidpdfget) | **GET** /accountsets/{accountSetId}/Vouchers/{id}/pdf |  |
-| [**accountsetsAccountSetIdVouchersIdPostPost**](VouchersApi.md#accountsetsaccountsetidvouchersidpostpost) | **POST** /accountsets/{accountSetId}/Vouchers/{id}/post |  |
 | [**accountsetsAccountSetIdVouchersIdPurgeDelete**](VouchersApi.md#accountsetsaccountsetidvouchersidpurgedelete) | **DELETE** /accountsets/{accountSetId}/Vouchers/{id}/purge |  |
 | [**accountsetsAccountSetIdVouchersIdPut**](VouchersApi.md#accountsetsaccountsetidvouchersidput) | **PUT** /accountsets/{accountSetId}/Vouchers/{id} |  |
 | [**accountsetsAccountSetIdVouchersIdRestorePost**](VouchersApi.md#accountsetsaccountsetidvouchersidrestorepost) | **POST** /accountsets/{accountSetId}/Vouchers/{id}/restore |  |
 | [**accountsetsAccountSetIdVouchersIdReversePost**](VouchersApi.md#accountsetsaccountsetidvouchersidreversepost) | **POST** /accountsets/{accountSetId}/Vouchers/{id}/reverse |  |
-| [**accountsetsAccountSetIdVouchersIdReviewPost**](VouchersApi.md#accountsetsaccountsetidvouchersidreviewpost) | **POST** /accountsets/{accountSetId}/Vouchers/{id}/review |  |
 | [**accountsetsAccountSetIdVouchersIdUnpostPost**](VouchersApi.md#accountsetsaccountsetidvouchersidunpostpost) | **POST** /accountsets/{accountSetId}/Vouchers/{id}/unpost |  |
-| [**accountsetsAccountSetIdVouchersIdUnreviewPost**](VouchersApi.md#accountsetsaccountsetidvouchersidunreviewpost) | **POST** /accountsets/{accountSetId}/Vouchers/{id}/unreview |  |
 | [**accountsetsAccountSetIdVouchersImportPost**](VouchersApi.md#accountsetsaccountsetidvouchersimportpost) | **POST** /accountsets/{accountSetId}/Vouchers/import |  |
 | [**accountsetsAccountSetIdVouchersPdfPost**](VouchersApi.md#accountsetsaccountsetidvoucherspdfpost) | **POST** /accountsets/{accountSetId}/Vouchers/pdf |  |
 | [**accountsetsAccountSetIdVouchersPost**](VouchersApi.md#accountsetsaccountsetidvoucherspost) | **POST** /accountsets/{accountSetId}/Vouchers |  |
@@ -167,7 +164,7 @@ No authorization required
 
 ## accountsetsAccountSetIdVouchersGet
 
-> Array&lt;VoucherListItemDto&gt; accountsetsAccountSetIdVouchersGet(accountSetId, startDate, endDate, word, preparer, reviewed, hasAssists, summary, remark, accountId, direction, amountFrom, amountTo, numberFrom, numberTo, sortBy, sortDesc, deleted)
+> Array&lt;VoucherListItemDto&gt; accountsetsAccountSetIdVouchersGet(accountSetId, startDate, endDate, word, preparer, hasAssists, summary, remark, accountId, direction, amountFrom, amountTo, numberFrom, numberTo, sortBy, sortDesc, deleted)
 
 
 
@@ -195,8 +192,6 @@ async function example() {
     word: word_example,
     // string (optional)
     preparer: preparer_example,
-    // boolean (optional)
-    reviewed: true,
     // boolean (optional)
     hasAssists: true,
     // string (optional)
@@ -245,7 +240,6 @@ example().catch(console.error);
 | **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
 | **word** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **preparer** | `string` |  | [Optional] [Defaults to `undefined`] |
-| **reviewed** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **hasAssists** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **summary** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **remark** | `string` |  | [Optional] [Defaults to `undefined`] |
@@ -861,74 +855,6 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## accountsetsAccountSetIdVouchersIdPostPost
-
-> VoucherDetailDto accountsetsAccountSetIdVouchersIdPostPost(accountSetId, id)
-
-
-
-### Example
-
-```ts
-import {
-  Configuration,
-  VouchersApi,
-} from '';
-import type { AccountsetsAccountSetIdVouchersIdPostPostRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new VouchersApi();
-
-  const body = {
-    // string
-    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // string
-    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-  } satisfies AccountsetsAccountSetIdVouchersIdPostPostRequest;
-
-  try {
-    const data = await api.accountsetsAccountSetIdVouchersIdPostPost(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **accountSetId** | `string` |  | [Defaults to `undefined`] |
-| **id** | `string` |  | [Defaults to `undefined`] |
-
-### Return type
-
-[**VoucherDetailDto**](VoucherDetailDto.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: `text/plain`, `application/json`, `text/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | OK |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
 ## accountsetsAccountSetIdVouchersIdPurgeDelete
 
 > accountsetsAccountSetIdVouchersIdPurgeDelete(accountSetId, id)
@@ -1207,74 +1133,6 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## accountsetsAccountSetIdVouchersIdReviewPost
-
-> VoucherDetailDto accountsetsAccountSetIdVouchersIdReviewPost(accountSetId, id)
-
-
-
-### Example
-
-```ts
-import {
-  Configuration,
-  VouchersApi,
-} from '';
-import type { AccountsetsAccountSetIdVouchersIdReviewPostRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new VouchersApi();
-
-  const body = {
-    // string
-    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // string
-    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-  } satisfies AccountsetsAccountSetIdVouchersIdReviewPostRequest;
-
-  try {
-    const data = await api.accountsetsAccountSetIdVouchersIdReviewPost(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **accountSetId** | `string` |  | [Defaults to `undefined`] |
-| **id** | `string` |  | [Defaults to `undefined`] |
-
-### Return type
-
-[**VoucherDetailDto**](VoucherDetailDto.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: `text/plain`, `application/json`, `text/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | OK |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
 ## accountsetsAccountSetIdVouchersIdUnpostPost
 
 > VoucherDetailDto accountsetsAccountSetIdVouchersIdUnpostPost(accountSetId, id)
@@ -1303,74 +1161,6 @@ async function example() {
 
   try {
     const data = await api.accountsetsAccountSetIdVouchersIdUnpostPost(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **accountSetId** | `string` |  | [Defaults to `undefined`] |
-| **id** | `string` |  | [Defaults to `undefined`] |
-
-### Return type
-
-[**VoucherDetailDto**](VoucherDetailDto.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: `text/plain`, `application/json`, `text/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | OK |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
-## accountsetsAccountSetIdVouchersIdUnreviewPost
-
-> VoucherDetailDto accountsetsAccountSetIdVouchersIdUnreviewPost(accountSetId, id)
-
-
-
-### Example
-
-```ts
-import {
-  Configuration,
-  VouchersApi,
-} from '';
-import type { AccountsetsAccountSetIdVouchersIdUnreviewPostRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new VouchersApi();
-
-  const body = {
-    // string
-    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // string
-    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-  } satisfies AccountsetsAccountSetIdVouchersIdUnreviewPostRequest;
-
-  try {
-    const data = await api.accountsetsAccountSetIdVouchersIdUnreviewPost(body);
     console.log(data);
   } catch (error) {
     console.error(error);

@@ -20,6 +20,16 @@ Name | Type
 `bankAccountNo` | string
 `post` | string
 `title` | string
+`education` | string
+`isDisabled` | boolean
+`isMartyrFamily` | boolean
+`isSoloElder` | boolean
+`isSeniorExpert` | boolean
+`employmentType` | number
+`deductBasicExpense` | boolean
+`payStartDate` | Date
+`paysSocialInsurance` | boolean
+`insurances` | [Array&lt;SaveEmployeeInsuranceRequest&gt;](SaveEmployeeInsuranceRequest.md)
 `subjectAccountId` | string
 `status` | number
 `remark` | string
@@ -45,6 +55,16 @@ const example = {
   "bankAccountNo": null,
   "post": null,
   "title": null,
+  "education": null,
+  "isDisabled": null,
+  "isMartyrFamily": null,
+  "isSoloElder": null,
+  "isSeniorExpert": null,
+  "employmentType": null,
+  "deductBasicExpense": null,
+  "payStartDate": null,
+  "paysSocialInsurance": null,
+  "insurances": null,
   "subjectAccountId": null,
   "status": null,
   "remark": null,

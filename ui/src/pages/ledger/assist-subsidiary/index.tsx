@@ -113,18 +113,6 @@ export default function AssistSubsidiaryPage() {
     return (
         <LedgerPageShell
             page="assist-subsidiary"
-            title="核算项目明细账"
-            hint="按「科目 × 档案」分段逐笔列示发生额与滚动余额，行结构与明细账一致。点击逐笔行可查看凭证。"
-            actions={
-
-                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-
-                    打印
-
-                </Button>
-
-            }
-
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
@@ -137,12 +125,17 @@ export default function AssistSubsidiaryPage() {
                     assistItems={assistItems}
                     loading={query.loading}
                     extra={
-                        <LedgerExportButton
-                            kind="assist-subsidiary"
-                            accountSetId={accountSetId}
-                            token={token}
-                            conditions={query.committed}
-                        />
+                        <>
+                            <LedgerExportButton
+                                kind="assist-subsidiary"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
+                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                                打印
+                            </Button>
+                        </>
                     }
                     disabled={!accountSetId}
                 />

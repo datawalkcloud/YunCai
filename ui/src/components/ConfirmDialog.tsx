@@ -1,5 +1,6 @@
+import { useState } from "react"
 import { ExclamationCircleFilled } from "@ant-design/icons"
-import { Modal } from "antd"
+import { Input, Modal } from "antd"
 
 export interface ConfirmDialogProps {
     open: boolean
@@ -8,6 +9,8 @@ export interface ConfirmDialogProps {
     title?: string
     confirmText?: string
     cancelText?: string
+    /** 高危操作要求用户原样输入的文本（如账套名称）；不传则无需输入。 */
+    requireText?: string
     onConfirm: () => void
     onCancel: () => void
 }
@@ -22,9 +25,13 @@ export function ConfirmDialog({
     title = "操作确认",
     confirmText = "确定",
     cancelText = "取消",
+    requireText,
     onConfirm,
     onCancel,
 }: ConfirmDialogProps) {
+    const [typed, setTyped] = useState("")
+    const matched = !requireText || typed.trim() === requireText
+
     return (
         <Modal
             open={open}
@@ -37,11 +44,25 @@ export function ConfirmDialog({
             }
             okText={confirmText}
             cancelText={cancelText}
-            okButtonProps={{ danger: true }}
+            okButtonProps={{ danger: true, disabled: !matched }}
             onOk={onConfirm}
             onCancel={onCancel}
         >
-            {message}
+            <div className="flex flex-col gap-3">
+                <span>{message}</span>
+                {requireText && (
+                    <Input
+                        autoFocus
+                        value={typed}
+                        onChange={(e) => setTyped(e.target.value)}
+                        onPressEnter={() => {
+                            if (matched) onConfirm()
+                        }}
+                        placeholder={`请输入「${requireText}」`}
+                        aria-label="确认文本"
+                    />
+                )}
+            </div>
         </Modal>
     )
 }

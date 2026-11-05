@@ -271,8 +271,22 @@ namespace KuaiJi.Modules.Accounting.Api
                 return BadRequest(new { message = "该科目下仍有明细科目，请先删除下级科目。" });
             }
 
+            var parentId = account.ParentId;
+
             _accountRepository.Remove(account);
             await _accountRepository.SaveChangesAsync(cancellationToken);
+
+            // 删掉最后一个下级后，上级要退回末级，否则它会被「非末级不可记账」永久挡住。
+            if (parentId is { } pid && !await _accountRepository.HasChildrenAsync(accountSetId, pid, cancellationToken))
+            {
+                var parent = await _accountRepository.GetByIdAsync(accountSetId, pid, cancellationToken);
+                if (parent is { IsLeaf: false })
+                {
+                    parent.RestoreLeaf();
+                    await _accountRepository.SaveChangesAsync(cancellationToken);
+                }
+            }
+
             return NoContent();
         }
 

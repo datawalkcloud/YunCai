@@ -11,7 +11,14 @@ namespace KuaiJi.Modules.Tax.Infrastructure
     /// 各省电子税务局的接口字段名并不统一（有的用拼音缩写 zsxm/sbzl，有的用中文键），
     /// 所以这里按「字段名语义 + 取值特征」做启发式映射，而不是绑定某省的固定 DTO。
     /// 解析不到时把候选数组的字段名回传，便于按真实响应补充规则。
+    /// 除认定行外还顺带找页头的「征收类型」——它按户认定、不在表格列里，所以整棵响应都要扫。
     /// </summary>
+    /// <summary>税费种报文的解析结果：认定行、页头的征收类型，以及没解析出行时的抓包摘要。</summary>
+    internal sealed record TaxKindParseResult(
+        IReadOnlyList<TaxKindRowDto> Rows,
+        string? LevyType,
+        IReadOnlyList<string> Diagnostics);
+
     internal static class TaxKindPayloadParser
     {
         private const int MaxRows = 500;
@@ -27,7 +34,7 @@ namespace KuaiJi.Modules.Tax.Infrastructure
             ["sbzl", "sblx", "sbzlmc", "declare", "declaration", "申报种类", "申报表", "申报项目"];
 
         private static readonly string[] PeriodHints =
-            ["sbqx", "sbzq", "zq", "period", "申报期限", "申报周期", "征收周期", "纳税期限"];
+            ["nsqx", "sbzq", "申报周期", "征收周期", "纳税期限", "sbqx", "申报期限", "zq", "period"];
 
         private static readonly string[] OptionHints =
             ["sbxx", "sbxz", "declareoption", "申报选项", "申报方式", "征收方式"];
@@ -40,12 +47,19 @@ namespace KuaiJi.Modules.Tax.Infrastructure
 
         private static readonly string[] RateHints = ["sl", "rate", "shuilv", "税率", "征收率"];
 
-        public static IReadOnlyList<TaxKindRowDto> Parse(
-            IReadOnlyList<CapturedJsonPayload> payloads,
-            out IReadOnlyList<string> diagnostics)
+        /// <summary>页头「征收类型」的字段名，按户认定，不属于认定行的某一列。</summary>
+        private static readonly string[] LevyTypeHints =
+            ["zslx", "zslxmc", "zslb", "qslx", "levytype", "collectiontype", "征收类型", "征收类别", "认定类型"];
+
+        /// <summary>没有字段名可依据时，只认这几个税局实际会用到的取值，避免把别的「××型」字段当成征收类型。</summary>
+        private static readonly string[] LevyTypeValues =
+            ["服务型", "货物型", "工业型", "商贸型", "建筑型", "运输型", "劳务型"];
+
+        public static TaxKindParseResult Parse(IReadOnlyList<CapturedJsonPayload> payloads)
         {
             var rows = new List<TaxKindRowDto>();
             var notes = new List<string>();
+            string? levyType = null;
 
             foreach (var payload in payloads)
             {
@@ -63,6 +77,8 @@ namespace KuaiJi.Modules.Tax.Infrastructure
                 {
                     continue;
                 }
+
+                levyType ??= FindLevyType(root, 0);
 
                 var arrays = new List<JsonArray>();
                 CollectArrays(root, arrays, 0);
@@ -87,8 +103,87 @@ namespace KuaiJi.Modules.Tax.Infrastructure
             }
 
             var deduped = Dedup(rows);
-            diagnostics = deduped.Count > 0 ? Array.Empty<string>() : notes.Take(20).ToList();
-            return deduped;
+            IReadOnlyList<string> diagnostics = deduped.Count > 0 ? Array.Empty<string>() : notes.Take(20).ToList();
+            return new TaxKindParseResult(deduped, levyType, diagnostics);
+        }
+
+        /// <summary>
+        /// 找页头展示的征收类型。税局有时把它放在认定数组外的另一个对象里，所以整棵响应都要走一遍；
+        /// 只回代码（如「1」）时不猜文字，直接当没取到。
+        /// </summary>
+        private static string? FindLevyType(JsonNode node, int depth)
+        {
+            if (depth > 8)
+            {
+                return null;
+            }
+
+            if (node is JsonArray array)
+            {
+                foreach (var item in array)
+                {
+                    if (item is not null && FindLevyType(item, depth + 1) is { } hit)
+                    {
+                        return hit;
+                    }
+                }
+
+                return null;
+            }
+
+            if (node is not JsonObject obj)
+            {
+                return null;
+            }
+
+            foreach (var pair in obj)
+            {
+                var key = NormalizeKey(pair.Key);
+                if (!LevyTypeHints.Any(key.Contains) || !IsLevyType(TextOf(pair.Value), requireLabel: true))
+                {
+                    continue;
+                }
+
+                return TextOf(pair.Value)!.Trim();
+            }
+
+            foreach (var pair in obj)
+            {
+                if (IsLevyType(TextOf(pair.Value), requireLabel: false))
+                {
+                    return TextOf(pair.Value)!.Trim();
+                }
+            }
+
+            foreach (var pair in obj)
+            {
+                if (pair.Value is not null && FindLevyType(pair.Value, depth + 1) is { } hit)
+                {
+                    return hit;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 是不是一个能直接展示的征收类型。带「征收类型」字段名时放宽到任何「××型」，
+        /// 只按取值找时必须命中已知词表。
+        /// </summary>
+        private static bool IsLevyType(string? raw, bool requireLabel)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return false;
+            }
+
+            var text = raw.Trim();
+            if (text.Length is < 2 or > 10 || !text.EndsWith('型'))
+            {
+                return false;
+            }
+
+            return requireLabel || LevyTypeValues.Contains(text, StringComparer.Ordinal);
         }
 
         private static void CollectArrays(JsonNode node, List<JsonArray> arrays, int depth)
@@ -156,7 +251,8 @@ namespace KuaiJi.Modules.Tax.Infrastructure
         {
             var project = FieldText(obj, ProjectHints, ItemNameHints)
                 ?? FindByValue(obj, value => value.Length <= 20 && (value.EndsWith('税') || value.EndsWith('费')) && !value.Contains("申报"));
-            if (string.IsNullOrWhiteSpace(project))
+            // 只剩代码的行是税局的代码字典或「待办事项」网格，不是认定信息。
+            if (string.IsNullOrWhiteSpace(project) || IsCodeValue(project))
             {
                 return null;
             }
@@ -205,7 +301,7 @@ namespace KuaiJi.Modules.Tax.Infrastructure
                     }
 
                     var name = FieldText(itemObj, ItemNameHints, ProjectHints);
-                    if (string.IsNullOrWhiteSpace(name))
+                    if (string.IsNullOrWhiteSpace(name) || IsCodeValue(name))
                     {
                         continue;
                     }
@@ -232,7 +328,7 @@ namespace KuaiJi.Modules.Tax.Infrastructure
 
             // 一行里直接带征收品目的情况：把当前对象当成单条品目。
             var inlineName = FieldText(obj, ItemNameHints, ProjectHints);
-            if (!string.IsNullOrWhiteSpace(inlineName))
+            if (inlineName is { Length: > 0 } && !IsCodeValue(inlineName))
             {
                 items.Add(new TaxKindItemDto
                 {
@@ -254,29 +350,62 @@ namespace KuaiJi.Modules.Tax.Infrastructure
                 .ToList();
         }
 
+        /// <summary>
+        /// 按提示词找字段值。同一个语义税局常常同时给两列——代码列 ZsxmDm 和名称列 Zsxmmc，
+        /// 谁排在前面只是接口排版，按出现顺序取会把「30218」当成征收项目。所以逐条提示词找，
+        /// 同一批命中里按语义打分：名称列优先，纯数字的代码列垫后。
+        /// </summary>
         private static string? FieldText(JsonObject obj, string[] hints, string[]? excludes = null)
         {
-            foreach (var pair in obj)
+            foreach (var hint in hints)
             {
-                var key = NormalizeKey(pair.Key);
-                if (excludes is not null && excludes.Any(key.Contains))
+                string? best = null;
+                var bestScore = int.MinValue;
+                foreach (var pair in obj)
                 {
-                    continue;
+                    var key = NormalizeKey(pair.Key);
+                    if (!key.Contains(hint, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    if (excludes is not null && excludes.Any(item => key.Contains(item, StringComparison.Ordinal)))
+                    {
+                        continue;
+                    }
+
+                    var text = TextOf(pair.Value);
+                    if (string.IsNullOrWhiteSpace(text))
+                    {
+                        continue;
+                    }
+
+                    var value = text.Trim();
+                    var isName = key.Contains("mc", StringComparison.Ordinal)
+                        || key.Contains("名称", StringComparison.Ordinal)
+                        || key.Contains("种类", StringComparison.Ordinal);
+                    var score = (isName ? 2 : 0) - (IsCodeValue(value) ? 3 : 0);
+
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        best = value;
+                    }
                 }
 
-                if (!hints.Any(key.Contains))
+                if (best is not null)
                 {
-                    continue;
-                }
-
-                var text = TextOf(pair.Value);
-                if (!string.IsNullOrWhiteSpace(text))
-                {
-                    return text.Trim();
+                    return best;
                 }
             }
 
             return null;
+        }
+
+        /// <summary>纯数字：税局的代码列长这样（30218、101017490），不是给纳税人看的名称。</summary>
+        private static bool IsCodeValue(string text)
+        {
+            return text.Length >= 2 && text.All(char.IsDigit);
         }
 
         private static string? FindByValue(JsonObject obj, Func<string, bool> predicate)
@@ -295,6 +424,8 @@ namespace KuaiJi.Modules.Tax.Infrastructure
 
         private static string RateOf(JsonObject obj)
         {
+            string? zeroRate = null;
+
             foreach (var pair in obj)
             {
                 var key = NormalizeKey(pair.Key);
@@ -303,20 +434,39 @@ namespace KuaiJi.Modules.Tax.Infrastructure
                     continue;
                 }
 
-                // 受理日期(slrq)、税率单位(sldw) 这类字段不是税率本身。
-                if (key.Contains("rq") || key.Contains("sj") || key.Contains("date") || key.Contains("dw"))
+                // 字段名里都含「sl」，但受理日期(slrq)、税率单位(sldw)、征收类型(zslx) 不是税率本身；
+                // 「税率或单位税额」(slhdwse) 不以 dw 结尾，正是税局放税率的那一列。
+                if (key.Contains("rq") || key.Contains("sj") || key.Contains("date")
+                    || key.EndsWith("dw", StringComparison.Ordinal)
+                    || key.Contains("lx") || key.Contains("lb") || key.Contains("type") || key.Contains("code"))
                 {
                     continue;
                 }
 
                 var text = TextOf(pair.Value);
-                if (!string.IsNullOrWhiteSpace(text))
+                if (string.IsNullOrWhiteSpace(text))
                 {
-                    return text.Trim();
+                    continue;
                 }
+
+                var value = text.Trim();
+                // 主税那一列「税率」经常是 0（真实比例挂在「税率或单位税额」），有非零的优先用非零。
+                if (IsZeroRate(value))
+                {
+                    zeroRate ??= value;
+                    continue;
+                }
+
+                return value;
             }
 
-            return "";
+            return zeroRate ?? "";
+        }
+
+        private static bool IsZeroRate(string text)
+        {
+            return double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var number)
+                && Math.Abs(number) < 1e-9;
         }
 
         private static string? TextOf(JsonNode? node)

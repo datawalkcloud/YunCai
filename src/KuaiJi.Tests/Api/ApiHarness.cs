@@ -84,10 +84,21 @@ internal sealed class ApiHarness : IDisposable
     public static string ResourcePath(Guid accountSetId, string controller) => $"/accountsets/{accountSetId}/{controller}";
 
     /// <summary>
-    /// 经 HTTP 制一张草稿凭证（走 VouchersController，制单人取令牌 displayName）。
+    /// 经 HTTP 制一张草稿凭证（制单即过账，这里再反过账退回草稿），制单人取令牌 displayName。
     /// 分录按「科目 + 借 + 贷」给，日期用 yyyy-MM-dd 字面量，与前端实际发出的 JSON 形态一致。
     /// </summary>
     public async Task<VoucherStub> CreateDraftVoucherAsync(
+        Guid accountSetId,
+        string date,
+        params (Guid AccountId, decimal Debit, decimal Credit)[] entries)
+    {
+        var voucher = await CreatePostedVoucherAsync(accountSetId, date, entries);
+        await UnpostVoucherAsync(accountSetId, voucher.Id);
+        return voucher;
+    }
+
+    /// <summary>经 HTTP 制一张凭证（保存即过账），分录按「科目 + 借 + 贷」给。</summary>
+    public async Task<VoucherStub> CreatePostedVoucherAsync(
         Guid accountSetId,
         string date,
         params (Guid AccountId, decimal Debit, decimal Credit)[] entries)
@@ -112,24 +123,11 @@ internal sealed class ApiHarness : IDisposable
         return (await response.Content.ReadFromJsonAsync<VoucherStub>())!;
     }
 
-    /// <summary>把草稿走完审核 + 过账。账簿与报表只认已过账凭证，所以做报表用例必须先过账。</summary>
-    public async Task PostVoucherAsync(Guid accountSetId, Guid voucherId)
+    /// <summary>反过账：已过账 → 草稿（编辑前的必经步骤）。</summary>
+    public async Task UnpostVoucherAsync(Guid accountSetId, Guid voucherId)
     {
-        var review = await Client.PostAsync($"{ResourcePath(accountSetId, "Vouchers")}/{voucherId}/review", null);
-        review.EnsureSuccessStatusCode();
-        var post = await Client.PostAsync($"{ResourcePath(accountSetId, "Vouchers")}/{voucherId}/post", null);
-        post.EnsureSuccessStatusCode();
-    }
-
-    /// <summary>制单并过账一张平衡凭证，返回其标识与凭证号。</summary>
-    public async Task<VoucherStub> CreatePostedVoucherAsync(
-        Guid accountSetId,
-        string date,
-        params (Guid AccountId, decimal Debit, decimal Credit)[] entries)
-    {
-        var voucher = await CreateDraftVoucherAsync(accountSetId, date, entries);
-        await PostVoucherAsync(accountSetId, voucher.Id);
-        return voucher;
+        var unpost = await Client.PostAsync($"{ResourcePath(accountSetId, "Vouchers")}/{voucherId}/unpost", null);
+        unpost.EnsureSuccessStatusCode();
     }
 
     public void Dispose() => _factory.Dispose();

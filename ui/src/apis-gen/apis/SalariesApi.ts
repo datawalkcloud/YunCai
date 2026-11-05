@@ -20,6 +20,7 @@ import type {
   EmployeeImportResultDto,
   GenerateCountDto,
   GenerateSalaryVoucherRequest,
+  IitPersonnelSyncRequest,
   InsuranceItemDto,
   SalaryBillDto,
   SalaryBillImportResultDto,
@@ -43,6 +44,8 @@ import {
     GenerateCountDtoToJSON,
     GenerateSalaryVoucherRequestFromJSON,
     GenerateSalaryVoucherRequestToJSON,
+    IitPersonnelSyncRequestFromJSON,
+    IitPersonnelSyncRequestToJSON,
     InsuranceItemDtoFromJSON,
     InsuranceItemDtoToJSON,
     SalaryBillDtoFromJSON,
@@ -134,6 +137,11 @@ export interface AccountsetsAccountSetIdSalaryEmployeesImportTemplateGetRequest 
 export interface AccountsetsAccountSetIdSalaryEmployeesPostRequest {
     accountSetId: string;
     saveEmployeeRequest: SaveEmployeeRequest;
+}
+
+export interface AccountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequest {
+    accountSetId: string;
+    iitPersonnelSyncRequest: IitPersonnelSyncRequest;
 }
 
 export interface AccountsetsAccountSetIdSalaryGenerateAccruePostRequest {
@@ -518,6 +526,29 @@ export interface SalariesApiInterface {
     /**
      */
     accountsetsAccountSetIdSalaryEmployeesPost(requestParameters: AccountsetsAccountSetIdSalaryEmployeesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EmployeeDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost without sending the request
+     * @param {string} accountSetId 
+     * @param {IitPersonnelSyncRequest} iitPersonnelSyncRequest 
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {IitPersonnelSyncRequest} iitPersonnelSyncRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SalariesApiInterface
+     */
+    accountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EmployeeImportResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost(requestParameters: AccountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EmployeeImportResultDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdSalaryGenerateAccruePost without sending the request
@@ -1497,6 +1528,59 @@ export class SalariesApi extends runtime.BaseAPI implements SalariesApiInterface
      */
     async accountsetsAccountSetIdSalaryEmployeesPost(requestParameters: AccountsetsAccountSetIdSalaryEmployeesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EmployeeDto> {
         const response = await this.accountsetsAccountSetIdSalaryEmployeesPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost without sending the request
+     */
+    async accountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequestOpts(requestParameters: AccountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost().'
+            );
+        }
+
+        if (requestParameters['iitPersonnelSyncRequest'] == null) {
+            throw new runtime.RequiredError(
+                'iitPersonnelSyncRequest',
+                'Required parameter "iitPersonnelSyncRequest" was null or undefined when calling accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/salary/employees/sync-from-iit`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: IitPersonnelSyncRequestToJSON(requestParameters['iitPersonnelSyncRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRaw(requestParameters: AccountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EmployeeImportResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EmployeeImportResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdSalaryEmployeesSyncFromIitPost(requestParameters: AccountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EmployeeImportResultDto> {
+        const response = await this.accountsetsAccountSetIdSalaryEmployeesSyncFromIitPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -6,6 +6,8 @@
 
 Name | Type
 ------------ | -------------
+`standard` | number
+`templateTitle` | string
 `year` | number
 `month` | number
 `endingDate` | string
@@ -19,6 +21,8 @@ import type { BalanceSheetDto } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "standard": null,
+  "templateTitle": null,
   "year": null,
   "month": null,
   "endingDate": null,

@@ -47,6 +47,7 @@ import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSet
 import { useAuth } from "@/auth/AuthContext"
 import {
     AccountsApi,
+    VoucherTemplatesApi,
     VoucherWordsApi,
     VouchersApi,
     type AccountDto,
@@ -70,7 +71,7 @@ const PAGE_SIZE_OPTIONS = [20, 50, 200, 500, 1000]
 /** 原型默认每页 20 条。 */
 const DEFAULT_PAGE_SIZE = 20
 
-/** 三态筛选（全部 / 是 / 否），与柠檬云下拉的「全部 / 已审核 / 未审核」一一对应。 */
+/** 三态筛选（全部 / 是 / 否）。 */
 type TriState = "all" | "yes" | "no"
 
 /**
@@ -84,7 +85,6 @@ interface VoucherFilters {
     periodTo: string | null
     word: string | null
     preparer: string | null
-    reviewed: TriState
     hasAssists: TriState
     summary: string
     remark: string
@@ -105,7 +105,6 @@ const EMPTY_FILTERS: VoucherFilters = {
     periodTo: null,
     word: null,
     preparer: null,
-    reviewed: "all",
     hasAssists: "all",
     summary: "",
     remark: "",
@@ -138,7 +137,6 @@ function toQueryParams(filters: VoucherFilters, deleted: boolean) {
         endDate: monthRange(filters.periodTo, "end"),
         word: filters.word ?? undefined,
         preparer: filters.preparer ?? undefined,
-        reviewed: triToParam(filters.reviewed),
         hasAssists: triToParam(filters.hasAssists),
         summary: filters.summary.trim() || undefined,
         remark: filters.remark.trim() || undefined,
@@ -171,7 +169,6 @@ function activeFilterCount(filters: VoucherFilters): number {
     if (filters.periodFrom || filters.periodTo) count++
     if (filters.word) count++
     if (filters.preparer) count++
-    if (filters.reviewed !== "all") count++
     if (filters.hasAssists !== "all") count++
     if (filters.summary.trim()) count++
     if (filters.remark.trim()) count++
@@ -259,7 +256,6 @@ function FilterPanel({
             <FilterRow label="会计期间：">
                 <DatePicker
                     picker="month"
-                    size="small"
                     allowClear
                     placeholder="开始"
                     value={value.periodFrom ? dayjs(`${value.periodFrom}-01`) : null}
@@ -269,7 +265,6 @@ function FilterPanel({
                 <span className="text-[12px] text-slate-400">至</span>
                 <DatePicker
                     picker="month"
-                    size="small"
                     allowClear
                     placeholder="结束"
                     value={value.periodTo ? dayjs(`${value.periodTo}-01`) : null}
@@ -279,7 +274,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="凭证字：">
                 <Select
-                    size="small"
                     style={{ width: "100%" }}
                     value={value.word ?? "__all__"}
                     onChange={(v) => patch({ word: v === "__all__" ? null : v })}
@@ -288,7 +282,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="制单人：">
                 <Select
-                    size="small"
                     style={{ width: "100%" }}
                     showSearch
                     value={value.preparer ?? "__all__"}
@@ -296,22 +289,8 @@ function FilterPanel({
                     options={[{ value: "__all__", label: "全部" }, ...preparers.map((p) => ({ value: p, label: p }))]}
                 />
             </FilterRow>
-            <FilterRow label="是否审核：">
-                <Select
-                    size="small"
-                    style={{ width: "100%" }}
-                    value={value.reviewed}
-                    onChange={(v) => patch({ reviewed: v })}
-                    options={[
-                        { value: "all", label: "全部" },
-                        { value: "yes", label: "已审核" },
-                        { value: "no", label: "未审核" },
-                    ]}
-                />
-            </FilterRow>
             <FilterRow label="辅助核算：">
                 <Select
-                    size="small"
                     style={{ width: "100%" }}
                     value={value.hasAssists}
                     onChange={(v) => patch({ hasAssists: v })}
@@ -324,7 +303,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="摘要：">
                 <Input
-                    size="small"
                     allowClear
                     placeholder="包含关键字"
                     value={value.summary}
@@ -333,7 +311,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="备注：">
                 <Input
-                    size="small"
                     allowClear
                     placeholder="包含关键字"
                     value={value.remark}
@@ -342,7 +319,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="科目：">
                 <Select
-                    size="small"
                     style={{ width: "100%" }}
                     showSearch
                     allowClear
@@ -355,7 +331,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="借贷方向：">
                 <Select
-                    size="small"
                     style={{ width: "100%" }}
                     value={value.direction}
                     onChange={(v) => patch({ direction: v })}
@@ -368,7 +343,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="金额：">
                 <InputNumber
-                    size="small"
                     style={{ flex: 1 }}
                     placeholder="从"
                     value={value.amountFrom ?? undefined}
@@ -376,7 +350,6 @@ function FilterPanel({
                 />
                 <span className="text-[12px] text-slate-400">至</span>
                 <InputNumber
-                    size="small"
                     style={{ flex: 1 }}
                     placeholder="到"
                     value={value.amountTo ?? undefined}
@@ -385,7 +358,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="凭证号：">
                 <InputNumber
-                    size="small"
                     style={{ flex: 1 }}
                     placeholder="从"
                     value={value.numberFrom ?? undefined}
@@ -393,7 +365,6 @@ function FilterPanel({
                 />
                 <span className="text-[12px] text-slate-400">至</span>
                 <InputNumber
-                    size="small"
                     style={{ flex: 1 }}
                     placeholder="到"
                     value={value.numberTo ?? undefined}
@@ -402,7 +373,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="排序依据：">
                 <Radio.Group
-                    size="small"
                     value={value.sortBy}
                     onChange={(e) => patch({ sortBy: e.target.value })}
                     options={[
@@ -413,7 +383,6 @@ function FilterPanel({
             </FilterRow>
             <FilterRow label="排序方式：">
                 <Radio.Group
-                    size="small"
                     value={value.sortDesc ? "desc" : "asc"}
                     onChange={(e) => patch({ sortDesc: e.target.value === "desc" })}
                     options={[
@@ -432,17 +401,14 @@ function VoucherCard({
     checked,
     openingId,
     deletingId,
-    workflowId,
     onCheck,
     onEdit,
     onDelete,
-    onReview,
-    onUnreview,
-    onPost,
-    onUnpost,
+    onInsert,
     onPrint,
     onCopy,
     onReverse,
+    onSaveTemplate,
     recycleMode,
     onRestore,
     onPurge,
@@ -451,17 +417,14 @@ function VoucherCard({
     checked: boolean
     openingId: string | null
     deletingId: string | null
-    workflowId: string | null
     onCheck: (checked: boolean) => void
     onEdit: (v: VoucherListItemDto) => void
     onDelete: (v: VoucherListItemDto) => void
-    onReview: (v: VoucherListItemDto) => void
-    onUnreview: (v: VoucherListItemDto) => void
-    onPost: (v: VoucherListItemDto) => void
-    onUnpost: (v: VoucherListItemDto) => void
+    onInsert: (v: VoucherListItemDto) => void
     onPrint: (v: VoucherListItemDto) => void
     onCopy: (v: VoucherListItemDto) => void
     onReverse: (v: VoucherListItemDto) => void
+    onSaveTemplate: (v: VoucherListItemDto) => void
     /** 回收站视图：行内操作换成「还原 / 彻底删除」。 */
     recycleMode: boolean
     onRestore: (v: VoucherListItemDto) => void
@@ -496,58 +459,36 @@ function VoucherCard({
                 <Space size={0}>
                     {recycleMode ? (
                         <>
-                            <Button type="link" size="small" onClick={() => onRestore(record)}>
+                            <Button type="link" onClick={() => onRestore(record)}>
                                 还原
                             </Button>
-                            <Button type="link" size="small" danger onClick={() => onPurge(record)}>
+                            <Button type="link" danger onClick={() => onPurge(record)}>
                                 彻底删除
                             </Button>
                         </>
                     ) : (
                         <>
-                            {record.status === 1 && (
-                                <Button type="link" size="small" loading={openingId === record.id} onClick={() => onEdit(record)}>
-                                    修改
-                                </Button>
-                            )}
-                            {record.status === 1 && (
-                                <Button type="link" size="small" loading={workflowId === record.id} onClick={() => onReview(record)}>
-                                    审核
-                                </Button>
-                            )}
-                            {record.status === 2 && (
-                                <Button type="link" size="small" loading={workflowId === record.id} onClick={() => onUnreview(record)}>
-                                    反审核
-                                </Button>
-                            )}
-                            {record.status === 2 && (
-                                <Tooltip title="过账后凭证登记入账并锁定，不可再修改或删除">
-                                    <Button type="link" size="small" loading={workflowId === record.id} onClick={() => onPost(record)}>
-                                        过账
-                                    </Button>
-                                </Tooltip>
-                            )}
-                            {record.status === 3 && (
-                                <Tooltip title="反过账后凭证退回已审核状态，可再次修改或删除">
-                                    <Button type="link" size="small" loading={workflowId === record.id} onClick={() => onUnpost(record)}>
-                                        反过账
-                                    </Button>
-                                </Tooltip>
-                            )}
-                            <Button type="link" size="small" onClick={() => onCopy(record)}>
+                            <Button type="link" loading={openingId === record.id} onClick={() => onEdit(record)}>
+                                修改
+                            </Button>
+                            <Button type="link" onClick={() => onCopy(record)}>
                                 复制
                             </Button>
-                            <Button type="link" size="small" onClick={() => onReverse(record)}>
+                            <Button type="link" danger loading={deletingId === record.id} onClick={() => onDelete(record)}>
+                                删除
+                            </Button>
+                            <Button type="link" onClick={() => onInsert(record)}>
+                                插入
+                            </Button>
+                            <Button type="link" onClick={() => onReverse(record)}>
                                 红冲
                             </Button>
-                            <Button type="link" size="small" onClick={() => onPrint(record)}>
+                            <Button type="link" onClick={() => onSaveTemplate(record)}>
+                                存为模板
+                            </Button>
+                            <Button type="link" onClick={() => onPrint(record)}>
                                 打印
                             </Button>
-                            {record.status !== 3 && (
-                                <Button type="link" size="small" danger loading={deletingId === record.id} onClick={() => onDelete(record)}>
-                                    删除
-                                </Button>
-                            )}
                         </>
                     )}
                 </Space>
@@ -613,7 +554,13 @@ export default function VoucherManagePage() {
     const [editing, setEditing] = useState<VoucherDetailDto | null>(null)
     const [openingId, setOpeningId] = useState<string | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
-    const [workflowId, setWorkflowId] = useState<string | null>(null)
+    /** 插入凭证：新增抽屉预设的日期与凭证字。 */
+    const [insertSeed, setInsertSeed] = useState<{ date: string; word: string } | null>(null)
+    /** 存为模板弹窗的目标凭证与表单值。 */
+    const [templateTarget, setTemplateTarget] = useState<VoucherListItemDto | null>(null)
+    const [templateName, setTemplateName] = useState("")
+    const [templateType, setTemplateType] = useState(1)
+    const [templateSaving, setTemplateSaving] = useState(false)
     const [printVoucherId, setPrintVoucherId] = useState<string | null>(null)
     /** 连续打印的凭证清单（打印「直接打印」用），为空表示只打印单张。 */
     const [printVoucherIds, setPrintVoucherIds] = useState<string[] | null>(null)
@@ -691,7 +638,12 @@ export default function VoucherManagePage() {
         setDeletingId(v.id)
         setError(null)
         try {
-            await new VouchersApi(apiConfig(token)).accountsetsAccountSetIdVouchersIdDelete({
+            const api = new VouchersApi(apiConfig(token))
+            // 已过账凭证先反过账再删除；所属期间已结账时由后端拦下。
+            if (v.status === 3) {
+                await api.accountsetsAccountSetIdVouchersIdUnpostPost({ accountSetId, id: v.id })
+            }
+            await api.accountsetsAccountSetIdVouchersIdDelete({
                 accountSetId,
                 id: v.id,
             })
@@ -705,7 +657,7 @@ export default function VoucherManagePage() {
         }
     }
 
-    /** 复制凭证：生成同凭证字下的新草稿，成功后刷新列表。 */
+    /** 复制凭证：生成同凭证字下的新凭证并直接入账，成功后刷新列表。 */
     async function handleCopy(v: VoucherListItemDto) {
         if (!v.id) return
         try {
@@ -713,20 +665,20 @@ export default function VoucherManagePage() {
                 accountSetId,
                 id: v.id,
             })
-            message.success(`已复制为 ${created.voucherNo}（草稿）`)
+            message.success(`已复制为 ${created.voucherNo}（已入账）`)
             void load()
         } catch (err) {
             setError(await apiErrorMessage(err, "复制失败，请重试。"))
         }
     }
 
-    /** 红冲凭证：生成金额取反的草稿，摘要带「冲销…」前缀。 */
+    /** 红冲凭证：生成金额取反的凭证并直接入账，摘要带「冲销…」前缀。 */
     async function handleReverse(v: VoucherListItemDto) {
         if (!v.id) return
         const ok = await new Promise<boolean>((resolve) =>
             modal.confirm({
                 title: `红冲凭证「${v.voucherNo}」？`,
-                content: "将生成一张借贷金额取反的草稿凭证，原凭证保留不动。",
+                content: "将生成一张借贷金额取反的凭证并直接入账，原凭证保留不动。",
                 okText: "红冲",
                 cancelText: "取消",
                 onOk: () => resolve(true),
@@ -739,7 +691,7 @@ export default function VoucherManagePage() {
                 accountSetId,
                 id: v.id,
             })
-            message.success(`已生成红字凭证 ${created.voucherNo}`)
+            message.success(`已生成红字凭证 ${created.voucherNo}（已入账）`)
             void load()
         } catch (err) {
             setError(await apiErrorMessage(err, "红冲失败，请重试。"))
@@ -927,6 +879,10 @@ export default function VoucherManagePage() {
                 const failed: string[] = []
                 for (const id of ids) {
                     try {
+                        // 已过账凭证先反过账再删除。
+                        if (vouchers.find((v) => v.id === id)?.status === 3) {
+                            await api.accountsetsAccountSetIdVouchersIdUnpostPost({ accountSetId, id })
+                        }
                         await api.accountsetsAccountSetIdVouchersIdDelete({ accountSetId, id })
                         done++
                     } catch (err) {
@@ -964,75 +920,56 @@ export default function VoucherManagePage() {
 
     function handleCreate() {
         setEditing(null)
+        setInsertSeed(null)
         setOpen(true)
     }
 
-    /** 凭证状态流转（审核/反审核/过账/反过账）：成功后就地更新该张凭证的状态与审核人。 */
-    async function handleWorkflow(v: VoucherListItemDto, action: "review" | "unreview" | "post" | "unpost") {
-        if (workflowId || !v.id) return
-        if (action === "post" || action === "unpost") {
-            const isPost = action === "post"
-            const ok = await new Promise<boolean>((resolve) =>
-                modal.confirm({
-                    title: isPost ? `确定过账凭证「${v.voucherNo}」吗？` : `确定反过账凭证「${v.voucherNo}」吗？`,
-                    content: isPost
-                        ? "过账后凭证将登记入账并锁定，不可再修改或删除。"
-                        : "反过账后凭证退回已审核状态，可再次修改或删除。",
-                    okText: isPost ? "过账" : "反过账",
-                    cancelText: "取消",
-                    onOk: () => resolve(true),
-                    onCancel: () => resolve(false),
-                }),
-            )
-            if (!ok) return
+    /** 插入：以该凭证的日期与凭证字新建一张凭证（凭证号由后端续号）。 */
+    function handleInsert(v: VoucherListItemDto) {
+        setEditing(null)
+        setInsertSeed({ date: toISODate(v.date), word: v.word ?? "记" })
+        setOpen(true)
+    }
+
+    /** 存为模板：把该凭证的摘要与科目（不记金额）保存成凭证模板。 */
+    function handleSaveTemplate(v: VoucherListItemDto) {
+        setTemplateTarget(v)
+        setTemplateName(`${v.voucherNo} 模板`)
+        setTemplateType(1)
+    }
+
+    async function confirmSaveTemplate() {
+        if (!templateTarget?.id || templateSaving) return
+        if (!templateName.trim()) {
+            message.warning("请填写模板名称")
+            return
         }
-        setWorkflowId(v.id)
-        setError(null)
+        setTemplateSaving(true)
         try {
             const api = new VouchersApi(apiConfig(token))
-            const params = { accountSetId, id: v.id }
-            const updated =
-                action === "review"
-                    ? await api.accountsetsAccountSetIdVouchersIdReviewPost(params)
-                    : action === "unreview"
-                        ? await api.accountsetsAccountSetIdVouchersIdUnreviewPost(params)
-                        : action === "post"
-                            ? await api.accountsetsAccountSetIdVouchersIdPostPost(params)
-                            : await api.accountsetsAccountSetIdVouchersIdUnpostPost(params)
-            setVouchers((prev) =>
-                prev.map((x) =>
-                    x.id === v.id
-                        ? { ...x, status: updated.status, statusText: updated.statusText, reviewer: updated.reviewer }
-                        : x,
-                ),
-            )
-            message.success(
-                action === "review"
-                    ? "凭证已审核"
-                    : action === "unreview"
-                        ? "凭证已退回草稿"
-                        : action === "post"
-                            ? "凭证已过账"
-                            : "凭证已反过账",
-            )
+            const detail = await api.accountsetsAccountSetIdVouchersIdGet({ accountSetId, id: templateTarget.id })
+            const lines = (detail.entries ?? []).map((e) => ({
+                summary: e.summary ?? "",
+                accountId: e.accountId ?? "",
+                isDebit: (e.debit ?? 0) > 0,
+            }))
+            await new VoucherTemplatesApi(apiConfig(token)).accountsetsAccountSetIdVouchertemplatesPost({
+                accountSetId,
+                saveVoucherTemplateRequest: { name: templateName.trim(), type: templateType, lines },
+            })
+            message.success("已保存为凭证模板")
+            setTemplateTarget(null)
         } catch (err) {
-            const fallback =
-                action === "review"
-                    ? "审核失败，请重试。"
-                    : action === "unreview"
-                        ? "反审核失败，请重试。"
-                        : action === "post"
-                            ? "过账失败，请重试。"
-                            : "反过账失败，请重试。"
-            setError(await apiErrorMessage(err, fallback))
+            setError(await apiErrorMessage(err, "保存模板失败，请重试。"))
         } finally {
-            setWorkflowId(null)
+            setTemplateSaving(false)
         }
     }
 
     function handleSaved() {
         setOpen(false)
         setEditing(null)
+        setInsertSeed(null)
         void load()
     }
 
@@ -1099,7 +1036,7 @@ export default function VoucherManagePage() {
     const confirmDelete = (v: VoucherListItemDto) => {
         modal.confirm({
             title: `确认删除凭证「${v.voucherNo}」？`,
-            content: `${toISODate(v.date)} · 删除后不可恢复。`,
+            content: `${toISODate(v.date)} · 删除后移入回收站，可以还原。`,
             okText: "删除",
             okButtonProps: { danger: true },
             cancelText: "取消",
@@ -1117,7 +1054,6 @@ export default function VoucherManagePage() {
                         border: "1px solid #f1f5f9",
                         boxShadow: "0 1px 2px rgba(16,24,40,0.04)",
                     },
-                    body: { padding: 16 },
                 }}
             >
                 {/* 第一行：筛选条件入口（点开与柠檬云一致的下拉筛选面板） */}
@@ -1143,7 +1079,6 @@ export default function VoucherManagePage() {
                                 <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-100 pt-2">
                                 <Button
                                     type="link"
-                                    size="small"
                                     style={{ paddingInline: 0 }}
                                     onClick={() => {
                                         setDraftFilters(EMPTY_FILTERS)
@@ -1155,11 +1090,10 @@ export default function VoucherManagePage() {
                                     恢复默认排序
                                 </Button>
                                 <Space size={8}>
-                                    <Button size="small" onClick={() => setFilterOpen(false)}>
+                                    <Button onClick={() => setFilterOpen(false)}>
                                         取消
                                     </Button>
                                     <Button
-                                        size="small"
                                         onClick={() => {
                                             setDraftFilters(EMPTY_FILTERS)
                                         }}
@@ -1167,7 +1101,6 @@ export default function VoucherManagePage() {
                                         重置
                                     </Button>
                                     <Button
-                                        size="small"
                                         type="primary"
                                         onClick={() => {
                                             setFilters(draftFilters)
@@ -1201,7 +1134,7 @@ export default function VoucherManagePage() {
                 </Flex>
 
                 {/* 第二行：工具栏（与柠檬云一致的按钮顺序） */}
-                <Flex justify="flex-end" align="center" gap={8} wrap style={{ marginBottom: 12 }}>
+                <Flex justify="flex-end" align="center" gap={8} wrap style={{ marginBottom: 16 }}>
                     {recycleMode ? (
                         <>
                             <Button onClick={() => setRecycleMode(false)}>返回</Button>
@@ -1346,17 +1279,14 @@ export default function VoucherManagePage() {
                                         checked={selectedKeys.includes(v.id ?? "")}
                                         openingId={openingId}
                                         deletingId={deletingId}
-                                        workflowId={workflowId}
                                         onCheck={(checked) => toggleSelect(v.id ?? "", checked)}
                                         onEdit={handleEdit}
                                         onDelete={confirmDelete}
-                                        onReview={(r) => void handleWorkflow(r, "review")}
-                                        onUnreview={(r) => void handleWorkflow(r, "unreview")}
-                                        onPost={(r) => void handleWorkflow(r, "post")}
-                                        onUnpost={(r) => void handleWorkflow(r, "unpost")}
+                                        onInsert={handleInsert}
                                         onPrint={(r) => setPrintVoucherId(r.id ?? null)}
                                         onCopy={(r) => void handleCopy(r)}
                                         onReverse={(r) => void handleReverse(r)}
+                                        onSaveTemplate={handleSaveTemplate}
                                         recycleMode={recycleMode}
                                         onRestore={(r) => void handleRestore(r)}
                                         onPurge={(r) => void handlePurge(r)}
@@ -1367,7 +1297,7 @@ export default function VoucherManagePage() {
                     )}
                 </Spin>
 
-                <Flex justify="space-between" align="center" gap={16} wrap style={{ marginTop: 12 }}>
+                <Flex justify="space-between" align="center" gap={16} wrap style={{ marginTop: 16 }}>
                     <Typography.Text type="secondary">
                         显示 {from} 到 {to}，共 {vouchers.length} 条
                     </Typography.Text>
@@ -1397,25 +1327,63 @@ export default function VoucherManagePage() {
                 onClose={() => {
                     setOpen(false)
                     setEditing(null)
+                    setInsertSeed(null)
                 }}
                 styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
             >
                 {open && (
                     <VoucherForm
-                        key={editing?.id ?? "new"}
+                        key={editing?.id ?? (insertSeed ? `insert-${insertSeed.date}-${insertSeed.word}` : "new")}
                         accountSetId={accountSetId}
                         accounts={accounts}
                         preparer={user?.displayName}
                         token={token ?? undefined}
                         initial={editing ?? undefined}
+                        initialDate={insertSeed?.date}
+                        initialWord={insertSeed?.word}
                         onSaved={handleSaved}
                         onCancel={() => {
                             setOpen(false)
                             setEditing(null)
+                            setInsertSeed(null)
                         }}
                     />
                 )}
             </Drawer>
+
+            {/* 存为模板 */}
+            <Modal
+                open={!!templateTarget}
+                title={`存为模板${templateTarget ? `（${templateTarget.voucherNo}）` : ""}`}
+                width={440}
+                confirmLoading={templateSaving}
+                onCancel={() => setTemplateTarget(null)}
+                onOk={() => void confirmSaveTemplate()}
+                okText="保存"
+                cancelText="取消"
+            >
+                <div className="flex flex-col gap-4 py-2">
+                    <div className="flex items-center gap-3">
+                        <span className="w-[72px] text-right text-[13px] text-slate-500">模板名称：</span>
+                        <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="请输入模板名称" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="w-[72px] text-right text-[13px] text-slate-500">模板类型：</span>
+                        <Select
+                            style={{ width: 160 }}
+                            value={templateType}
+                            onChange={setTemplateType}
+                            options={[
+                                { value: 1, label: "日常支出" },
+                                { value: 2, label: "采购" },
+                                { value: 3, label: "销售" },
+                                { value: 4, label: "其他" },
+                            ]}
+                        />
+                    </div>
+                    <div className="text-[12px] text-slate-400">模板只记录摘要、科目与借贷方向，不记金额。</div>
+                </div>
+            </Modal>
 
             {/* 凭证打印 */}
             <PrintVoucherSheet

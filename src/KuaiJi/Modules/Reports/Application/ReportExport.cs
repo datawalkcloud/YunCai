@@ -56,7 +56,6 @@ namespace KuaiJi.Modules.Reports.Application
     {
         private readonly IAccountSetRepository _accountSetRepository;
         private readonly TrialBalanceService _trialBalanceService;
-        private readonly BalanceSheetService _balanceSheetService;
         private readonly IncomeStatementService _incomeStatementService;
         private readonly CashFlowService _cashFlowService;
         private readonly CashFlowSupplementService _cashFlowSupplementService;
@@ -69,7 +68,6 @@ namespace KuaiJi.Modules.Reports.Application
         public ReportExportService(
             IAccountSetRepository accountSetRepository,
             TrialBalanceService trialBalanceService,
-            BalanceSheetService balanceSheetService,
             IncomeStatementService incomeStatementService,
             CashFlowService cashFlowService,
             CashFlowSupplementService cashFlowSupplementService,
@@ -81,7 +79,6 @@ namespace KuaiJi.Modules.Reports.Application
         {
             _accountSetRepository = accountSetRepository;
             _trialBalanceService = trialBalanceService;
-            _balanceSheetService = balanceSheetService;
             _incomeStatementService = incomeStatementService;
             _cashFlowService = cashFlowService;
             _cashFlowSupplementService = cashFlowSupplementService;
@@ -108,7 +105,8 @@ namespace KuaiJi.Modules.Reports.Application
             FlatWorkbook book = kind switch
             {
                 ReportExportKind.TrialBalance => await TrialBalanceAsync(accountSetId, setName, year, month, cancellationToken),
-                ReportExportKind.BalanceSheet => await BalanceSheetAsync(accountSetId, setName, year, month, cancellationToken),
+                // 资产负债表按账套准则导出两栏 .xls，由 BalanceSheetXlsExportService 处理。
+                ReportExportKind.BalanceSheet => throw new ReportException("资产负债表导出使用专用 .xls 版式。"),
                 ReportExportKind.IncomeStatement => await IncomeAsync(accountSetId, setName, false, year, month, quarter, cancellationToken),
                 ReportExportKind.IncomeQuarter => await IncomeAsync(accountSetId, setName, true, year, month, quarter, cancellationToken),
                 ReportExportKind.CashFlow => await CashFlowAsync(accountSetId, setName, false, year, month, quarter, cancellationToken),
@@ -156,6 +154,12 @@ namespace KuaiJi.Modules.Reports.Application
             foreach (var r in dto.Rows ?? [])
             {
                 rows.Add(new object?[] { r.Code, r.Name, r.OpeningDebit, r.OpeningCredit, r.PeriodDebit, r.PeriodCredit, r.EndingDebit, r.EndingCredit });
+                // 上级行已含下级合计，合计只累加一级科目，否则会重复计入。
+                if (r.ParentCode is not null)
+                {
+                    continue;
+                }
+
                 totals[0] += r.OpeningDebit; totals[1] += r.OpeningCredit;
                 totals[2] += r.PeriodDebit; totals[3] += r.PeriodCredit;
                 totals[4] += r.EndingDebit; totals[5] += r.EndingCredit;
@@ -163,37 +167,6 @@ namespace KuaiJi.Modules.Reports.Application
 
             rows.Add(new object?[] { "", "合计", totals[0], totals[1], totals[2], totals[3], totals[4], totals[5] });
             return Wrap("科目余额表", dto.PeriodText ?? "", setName, columns, rows, $"{dto.StartDate} 至 {dto.EndDate}，仅统计已过账凭证");
-        }
-
-        private async Task<FlatWorkbook> BalanceSheetAsync(Guid accountSetId, string setName, int? year, int? month, CancellationToken ct)
-        {
-            var dto = await _balanceSheetService.GetAsync(accountSetId, year, month, ct);
-            var columns = new[] { "行次", "项目", "期末余额", "年初余额" };
-            var rows = new List<IReadOnlyList<object?>>();
-            decimal assetEnd = 0, assetOpen = 0, liabEnd = 0, liabOpen = 0, eqEnd = 0, eqOpen = 0;
-            foreach (var l in dto.Lines ?? [])
-            {
-                var name = BalanceSheetService.LineName(l.Line);
-                rows.Add(new object?[] { l.Line, name, l.Ending, l.Opening });
-                if (l.Line is >= 1 and <= 16)
-                {
-                    assetEnd += l.Ending; assetOpen += l.Opening;
-                }
-                else if (l.Line is >= 31 and <= 44)
-                {
-                    liabEnd += l.Ending; liabOpen += l.Opening;
-                }
-                else
-                {
-                    eqEnd += l.Ending; eqOpen += l.Opening;
-                }
-            }
-
-            rows.Add(new object?[] { "", "资产总计", assetEnd, assetOpen });
-            rows.Add(new object?[] { "", "负债合计", liabEnd, liabOpen });
-            rows.Add(new object?[] { "", "所有者权益合计", eqEnd, eqOpen });
-            rows.Add(new object?[] { "", "负债和所有者权益总计", liabEnd + eqEnd, liabOpen + eqOpen });
-            return Wrap("资产负债表", dto.EndingDate ?? "", setName, columns, rows, "金额已按报表方向净额列示；未结转损益并入未分配利润");
         }
 
         private async Task<FlatWorkbook> IncomeAsync(Guid accountSetId, string setName, bool quarter, int? year, int? month, int? quarterNo, CancellationToken ct)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { FundOutlined, ReloadOutlined } from "@ant-design/icons"
+import { ReloadOutlined } from "@ant-design/icons";
 import { Button, Table } from "antd"
 import type { TableColumnsType } from "antd"
 import dayjs from "dayjs"
@@ -264,14 +264,7 @@ export default function IncomeStatementPage() {
 
     return (
         <ReportPageShell
-            icon={FundOutlined}
             title="利润表"
-            subtitle={
-                <>
-                    账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                    。按《企业会计准则》会企02表格式编制，金额由凭证实时汇总。
-                </>
-            }
             template="会企02表"
             period={
                 <>
@@ -309,8 +302,6 @@ export default function IncomeStatementPage() {
                 dataSource={rows}
                 rowKey={(_, i) => String(i)}
                 pagination={false}
-                size="small"
-                bordered
                 scroll={{ x: 560 }}
             />
         </ReportPageShell>

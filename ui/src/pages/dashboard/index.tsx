@@ -17,7 +17,7 @@ import {
     UploadOutlined,
     WarningFilled,
 } from "@ant-design/icons"
-import { Button, Skeleton } from "antd"
+import { Button, Segmented, Skeleton } from "antd"
 
 import { fmtAmount } from "@/components/ledger/format"
 import {
@@ -69,8 +69,8 @@ function buildNotice(data: DashboardData, counts: ReturnType<typeof countByStatu
     if (counts.unposted > 0) {
         return {
             tone: "warn",
-            text: `账簿与报表只统计已过账凭证，当前还有 ${counts.unposted} 张凭证未过账，首页指标可能偏低。`,
-            cta: "去审核过账",
+            text: `账簿与报表只统计已入账凭证，当前还有 ${counts.unposted} 张草稿凭证未入账，首页指标可能偏低。`,
+            cta: "去查看凭证",
             to: `${base}/vouchers/manage`,
         }
     }
@@ -99,14 +99,16 @@ function NoticeStrip({ data, counts }: { data: DashboardData; counts: ReturnType
         <div className={"flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-[12.5px] " + style.wrap}>
             <Icon className="shrink-0 text-[15px]" />
             <span className="min-w-0 flex-1 leading-5">{notice.text}</span>
-            <button
-                type="button"
+            <Button
+                type="text"
+                size="small"
                 onClick={() => navigate(notice.to)}
-                className="flex shrink-0 items-center gap-1 font-medium transition-opacity hover:opacity-70"
+                className="!font-medium !text-inherit hover:!opacity-70"
+                icon={<RightOutlined className="text-[10px]" />}
+                iconPosition="end"
             >
                 {notice.cta}
-                <RightOutlined className="text-[10px]" />
-            </button>
+            </Button>
         </div>
     )
 }
@@ -341,24 +343,15 @@ function MetricsCard({
             <footer className="mt-2 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
                 <span className="truncate text-[11.5px] text-slate-400">口径：财务概要 · 仅统计已过账凭证</span>
                 <div className="flex shrink-0 items-center gap-0.5 bg-slate-100 p-0.5">
-                    {(
-                        [
-                            { key: "month", label: "月度指标" },
-                            { key: "year", label: "年度指标" },
-                        ] as { key: MetricMode; label: string }[]
-                    ).map((o) => (
-                        <button
-                            key={o.key}
-                            type="button"
-                            onClick={() => onModeChange(o.key)}
-                            className={
-                                "px-3 py-1 text-[12px] transition-colors " +
-                                (mode === o.key ? "bg-white font-medium text-[#2f6bff] shadow-sm" : "text-slate-500 hover:text-slate-700")
-                            }
-                        >
-                            {o.label}
-                        </button>
-                    ))}
+                    <Segmented
+                        size="small"
+                        value={mode}
+                        options={[
+                            { label: "月度指标", value: "month" },
+                            { label: "年度指标", value: "year" },
+                        ]}
+                        onChange={(value) => onModeChange(value as MetricMode)}
+                    />
                 </div>
             </footer>
         </section>
@@ -382,7 +375,7 @@ function ImportBanner() {
                 <div className="min-w-0">
                     <h3 className="text-[15px] font-semibold text-slate-800">凭证一张张敲太慢？</h3>
                     <p className="mt-0.5 text-[12.5px] leading-5 text-slate-500">
-                        支持从其他平台导出的 .xls / .xlsx 凭证文件批量导入，自动补建缺失科目，导入后统一审核过账。
+                        支持从其他平台导出的 .xls / .xlsx 凭证文件批量导入，自动补建缺失科目；借贷平衡的凭证直接入账。
                     </p>
                 </div>
             </div>
@@ -412,8 +405,8 @@ function EmptyNotice() {
             </span>
             <h3 className="text-[15px] font-semibold text-slate-800">这个账套还没有数据</h3>
             <p className="max-w-lg text-[13px] leading-relaxed text-slate-500">
-                报表与首页指标只统计<b className="text-slate-700">已过账</b>的凭证。先在
-                <b className="text-slate-700">设置 · 期初</b>录入期初余额，再录入凭证并审核过账，首页指标就会实时更新。
+                报表与首页指标只统计<b className="text-slate-700">已入账</b>的凭证。先在
+                <b className="text-slate-700">设置 · 期初</b>录入期初余额，再录入凭证（保存即入账），首页指标就会实时更新。
             </p>
             <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
                 <Button onClick={() => navigate(`/${accountSetId}/settings/opening-balances`)}>录入期初</Button>

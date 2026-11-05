@@ -3,6 +3,19 @@
  * 页头按钮、行内图标按钮、状态标签在这里统一，避免各页各写一份。
  */
 
+/**
+ * 表单栅格列宽。
+ *
+ * antd 的 token 只覆盖颜色 / 字体 / 字号 / 圆角 / 控件高度，没有宽度 token，
+ * 宽度属于布局层，所以集中在这里定义：全站标准表单的控件列统一一个宽度，
+ * 不再各页各写一份 w-[220px] / w-[240px] / w-[260px]。
+ *
+ * 标签列宽度不统一收口：标签文字长度差异大（"统一社会信用代码：" 与 "类别名称："），
+ * 固定窄列会导致换行，故各表单按自身文案长度保留，只把最常见的 110px 提为常量。
+ */
+export const FORM_LABEL_W = "w-[110px]";
+export const FORM_CONTROL_W = "w-[240px]";
+
 /** 页头操作按钮：白底直角按钮。 */
 export const PAGE_BTN_GHOST =
     "h-9 rounded-xl border-white/80 bg-white/85 px-3.5 text-[13px] text-slate-600 shadow-[0_2px_8px_rgba(16,24,40,0.05)] hover:bg-white hover:text-slate-800"
@@ -39,14 +52,12 @@ export const PILL: Record<PillTone, { bg: string; fg: string }> = {
     gray: { bg: "#eef1f6", fg: "#64748b" },
 }
 
-/** 凭证状态 → 标签档位：已过账绿、已审核紫、草稿蓝；借贷不平衡一律红。 */
+/** 凭证状态 → 标签档位：已过账绿、草稿蓝；借贷不平衡一律红。 */
 export function voucherStatusTone(status?: number, isBalanced?: boolean): PillTone {
     if (isBalanced === false) return "red"
     switch (status) {
         case 3:
             return "green"
-        case 2:
-            return "purple"
         default:
             return "blue"
     }

@@ -1,41 +1,32 @@
 /**
  * 智能报税 · 税费缴纳（缴税）。
  *
- * 按税款所属期列出当期应缴的申报记录，支持勾选批量缴款与跳转税局缴款。
- * 申报结果与应缴税额需要税务助手登录电子税务局后取回，当前尚未接入，
- * 因此表格为空；批量缴款只做校验提示，不产生真实扣款。
+ * 按税款所属期列出当期应缴的税款，支持勾选批量缴款与跳转税局缴款。
+ * 数据取自税局申报记录的应补（退）税额，缴款状态与滞纳金以电子税务局为准。
+ * 登录态过期时弹窗补一次短信验证码，成功后自动重取。
+ * 在线扣款仍需三方协议，批量缴款只做校验提示，不产生真实扣款。
  */
-import { useMemo, useState, type Key } from "react";
+import { useCallback, useEffect, useMemo, useState, type Key } from "react";
 import { App, Button, ConfigProvider, DatePicker, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
     CalendarOutlined,
     DownOutlined,
     ExclamationCircleFilled,
+    InfoCircleOutlined,
+    LoginOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { useNavigate, useParams } from "react-router";
 
 import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
+import { useAuth } from "@/auth/AuthContext";
+import { fetchTaxPayables, type TaxPayableRow } from "@/lib/tax-portal";
+import { TAX_THEME } from "@/lib/tax-theme";
 
-type PayStatus = "未缴款" | "已缴款";
+import { TaxLoginPrompt } from "./TaxLoginPrompt";
 
-interface PayRow {
-    key: string;
-    /** 申报种类，如增值税及附加税费 */
-    kind: string;
-    periodStart: string;
-    periodEnd: string;
-    /** 申报期限 */
-    deadline: string;
-    /** 应补（退）税额，负数表示应退 */
-    refund: number;
-    /** 应缴税额 */
-    payable: number;
-    /** 滞纳金、利息、违约金 */
-    surcharge: number;
-    status: PayStatus;
-}
+type PayRow = TaxPayableRow;
 
 const STATUS_OPTIONS = [
     { value: "all", label: "全部" },
@@ -50,15 +41,61 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { message } = App.useApp();
+    const { token } = useAuth();
 
-    /** 申报结果尚未从税局取回，接入后替换为按期间查询的接口数据。 */
-    const [rows] = useState<PayRow[]>([]);
+    const [rows, setRows] = useState<PayRow[]>([]);
     const [month, setMonth] = useState<Dayjs>(() => dayjs(period.startDate));
     const [status, setStatus] = useState("all");
     const [selectedKeys, setSelectedKeys] = useState<Key[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [needLogin, setNeedLogin] = useState(false);
+    const [loginOpen, setLoginOpen] = useState(false);
+    const [hint, setHint] = useState<string | null>(null);
+
+    const monthKey = month.format("YYYYMM");
+
+    const load = useCallback(
+        async (targetMonth: string, opts: { promptLogin?: boolean } = {}) => {
+            if (!accountSetId) return;
+            setLoading(true);
+            try {
+                const result = await fetchTaxPayables(accountSetId, token, targetMonth);
+                if (result.needLogin) {
+                    setRows([]);
+                    setNeedLogin(true);
+                    setHint(result.message ?? "税局登录状态已过期，请重新登录电子税务局。");
+                    if (opts.promptLogin) setLoginOpen(true);
+                    return;
+                }
+
+                const list = result.rows ?? [];
+                setRows(list);
+                setNeedLogin(false);
+                // 取自申报记录时税局不说缴款状态，这句提示要留在页面上。
+                setHint(result.message ?? null);
+                setSelectedKeys([]);
+            } catch (err) {
+                setRows([]);
+                setHint(err instanceof Error && err.message ? err.message : "读取税局应缴税款失败，请稍后重试。");
+            } finally {
+                setLoading(false);
+            }
+        },
+        [accountSetId, token],
+    );
+
+    useEffect(() => {
+        void load(monthKey);
+    }, [load, monthKey]);
 
     const filtered = useMemo(
-        () => rows.filter((row) => status === "all" || (status === "paid" ? row.status === "已缴款" : row.status === "未缴款")),
+        () =>
+            rows.filter((row) => {
+                if (status === "all") return true;
+                const paid = row.status.includes("已缴");
+                // 状态为空的记录取自申报表，缴款与否税局没给，按「未缴款」展示。
+                return status === "paid" ? paid : !paid;
+            }),
         [rows, status],
     );
 
@@ -66,9 +103,7 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
 
     function search() {
         setSelectedKeys([]);
-        if (filtered.length === 0) {
-            message.info("申报结果需登录电子税务局后取回，当前没有可缴税的申报记录。");
-        }
+        void load(monthKey, { promptLogin: true });
     }
 
     function paySelected() {
@@ -115,7 +150,13 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
             align: "right",
             render: (value: number) => fmtMoney(value),
         },
-        { title: "缴税状态", dataIndex: "status", key: "status", width: 100 },
+        {
+            title: "缴税状态",
+            dataIndex: "status",
+            key: "status",
+            width: 100,
+            render: (value: string) => value || "未确认",
+        },
         {
             title: "操作",
             key: "op",
@@ -123,7 +164,7 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
             render: (_, row) => (
                 <Button
                     type="link"
-                    disabled={row.status === "已缴款"}
+                    disabled={row.status.includes("已缴")}
                     onClick={() => {
                         setSelectedKeys([row.key]);
                         paySelected();
@@ -168,10 +209,15 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
                         }}
                     />
                 </span>
-                <Button type="primary" onClick={search}>
+                {needLogin && (
+                    <Button icon={<LoginOutlined />} onClick={() => setLoginOpen(true)}>
+                        登录电子税务局
+                    </Button>
+                )}
+                <Button type="primary" loading={loading} onClick={search}>
                     搜索
                 </Button>
-                <span className="flex items-center gap-1.5 rounded-[2px] border border-slate-200 px-3 py-1 text-[12.5px] text-slate-500">
+                <span className="flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1 text-[12.5px] text-slate-500">
                     <ExclamationCircleFilled style={{ color: "#faad14" }} />
                     仅支持当期税种进行缴税，往期或未开通三方协议的请前往税局缴款
                 </span>
@@ -183,19 +229,15 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
                 </div>
             </div>
 
+            {hint && rows.length > 0 && (
+                <div className="mb-2 flex items-center gap-1.5 text-[12.5px] text-slate-500">
+                    <InfoCircleOutlined className="text-[#2f6bff]" />
+                    {hint}
+                </div>
+            )}
+
             <div className="min-h-0 flex-1">
-                <ConfigProvider
-                    theme={{
-                        components: {
-                            Table: {
-                                headerBg: "#f4f7ff",
-                                headerColor: "#475569",
-                                borderColor: "#eef2f7",
-                                rowHoverBg: "#f6f9ff",
-                            },
-                        },
-                    }}
-                >
+                <ConfigProvider theme={TAX_THEME}>
                     <Table<PayRow>
                         rowSelection={{
                             selectedRowKeys: selectedKeys,
@@ -207,10 +249,26 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
                         tableLayout="fixed"
                         pagination={false}
                         scroll={{ x: 1330 }}
-                        locale={{ emptyText: <span className="block py-16 text-[13px] text-slate-400">暂无数据</span> }}
+                        loading={loading}
+                        locale={{
+                            emptyText: (
+                                <span className="block py-16 text-[13px] text-slate-400">{hint ?? "暂无数据"}</span>
+                            ),
+                        }}
                     />
                 </ConfigProvider>
             </div>
+
+            <TaxLoginPrompt
+                open={loginOpen}
+                accountSetId={accountSetId}
+                reason={hint ?? undefined}
+                onClose={() => setLoginOpen(false)}
+                onSuccess={() => {
+                    setLoginOpen(false);
+                    void load(monthKey);
+                }}
+            />
         </div>
     );
 }

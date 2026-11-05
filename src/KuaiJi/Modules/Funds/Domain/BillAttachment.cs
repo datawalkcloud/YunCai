@@ -46,12 +46,12 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (billId == Guid.Empty)
             {
-                throw new ArgumentException("附件必须归属某张票据。", nameof(billId));
+                throw new ArgumentException("附件必须归属某张票据。");
             }
 
             if (content is null || content.Length == 0)
             {
-                throw new ArgumentException("附件内容为空。", nameof(content));
+                throw new ArgumentException("附件内容为空。");
             }
 
             var name = string.IsNullOrWhiteSpace(fileName) ? "未命名附件" : fileName.Trim();

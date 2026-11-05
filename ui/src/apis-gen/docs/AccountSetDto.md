@@ -25,6 +25,17 @@ Name | Type
 `taxIdentityType` | string
 `taxLoginAccount` | string
 `taxLoginPasswordSet` | boolean
+`industry` | string
+`assetsModuleEnabled` | boolean
+`fundsModuleEnabled` | boolean
+`voucherAuditRequired` | boolean
+`balanceAssistScope` | number
+`unitDecimalPlaces` | number
+`isExportEnterprise` | boolean
+`iitChannel` | string
+`iitLoginType` | string
+`iitLoginAccount` | string
+`iitLoginPasswordSet` | boolean
 `voucherWords` | string
 `closedPeriod` | string
 `carriedPeriod` | string
@@ -57,6 +68,17 @@ const example = {
   "taxIdentityType": null,
   "taxLoginAccount": null,
   "taxLoginPasswordSet": null,
+  "industry": null,
+  "assetsModuleEnabled": null,
+  "fundsModuleEnabled": null,
+  "voucherAuditRequired": null,
+  "balanceAssistScope": null,
+  "unitDecimalPlaces": null,
+  "isExportEnterprise": null,
+  "iitChannel": null,
+  "iitLoginType": null,
+  "iitLoginAccount": null,
+  "iitLoginPasswordSet": null,
   "voucherWords": null,
   "closedPeriod": null,
   "carriedPeriod": null,

@@ -13,7 +13,7 @@ using Xunit;
 namespace KuaiJi.Tests.Tax;
 
 /// <summary>
-/// 税局登录态入库的测试：按「账套 + 用户」各存一行，库里只有加密后的密文，
+/// 税局登录态入库的测试：按「账套 + 用户 + 税局通道」各存一行，库里只有加密后的密文，
 /// 换过密钥（密文解不开）时按「没保存过」处理而不是抛异常，退出时能删干净。
 /// </summary>
 public sealed class TaxPortalSessionStoreTests : IDisposable
@@ -33,7 +33,7 @@ public sealed class TaxPortalSessionStoreTests : IDisposable
     public async Task SaveThenLoad_RoundTripsAndStoresOnlyCiphertext()
     {
         using var host = CreateHost("key-a");
-        var key = new TaxPortalSessionKey(AddAccountSet(host), "user-1");
+        var key = new TaxPortalSessionKey(AddAccountSet(host), "user-1", TaxPortalKind.Enterprise);
 
         await host.Store.SaveAsync(key, StorageState, HomeUrl, CancellationToken.None);
         var loaded = await host.Store.LoadAsync(key, CancellationToken.None);
@@ -51,7 +51,7 @@ public sealed class TaxPortalSessionStoreTests : IDisposable
     public async Task SaveAgain_UpdatesTheSameRow()
     {
         using var host = CreateHost("key-a");
-        var key = new TaxPortalSessionKey(AddAccountSet(host), "user-1");
+        var key = new TaxPortalSessionKey(AddAccountSet(host), "user-1", TaxPortalKind.Enterprise);
         const string refreshed = "{\"cookies\":[{\"name\":\"SESSION\",\"value\":\"refreshed\"}]}";
 
         await host.Store.SaveAsync(key, StorageState, HomeUrl, CancellationToken.None);
@@ -67,19 +67,41 @@ public sealed class TaxPortalSessionStoreTests : IDisposable
         using var host = CreateHost("key-a");
         var accountSetId = AddAccountSet(host);
         var otherAccountSetId = AddAccountSet(host);
-        var saved = new TaxPortalSessionKey(accountSetId, "user-1");
+        var saved = new TaxPortalSessionKey(accountSetId, "user-1", TaxPortalKind.Enterprise);
 
         await host.Store.SaveAsync(saved, StorageState, HomeUrl, CancellationToken.None);
 
-        Assert.Null(await host.Store.LoadAsync(new TaxPortalSessionKey(accountSetId, "user-2"), CancellationToken.None));
-        Assert.Null(await host.Store.LoadAsync(new TaxPortalSessionKey(otherAccountSetId, "user-1"), CancellationToken.None));
+        Assert.Null(await host.Store.LoadAsync(new TaxPortalSessionKey(accountSetId, "user-2", TaxPortalKind.Enterprise), CancellationToken.None));
+        Assert.Null(await host.Store.LoadAsync(new TaxPortalSessionKey(otherAccountSetId, "user-1", TaxPortalKind.Enterprise), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Save_ForEachPortalKind_KeepsSeparateRows()
+    {
+        using var host = CreateHost("key-a");
+        var accountSetId = AddAccountSet(host);
+        var enterprise = new TaxPortalSessionKey(accountSetId, "user-1", TaxPortalKind.Enterprise);
+        var iit = new TaxPortalSessionKey(accountSetId, "user-1", TaxPortalKind.Iit);
+        const string iitState = "{\"cookies\":[{\"name\":\"IIT\",\"value\":\"xyz789\"}],\"origins\":[]}";
+
+        await host.Store.SaveAsync(enterprise, StorageState, HomeUrl, CancellationToken.None);
+        await host.Store.SaveAsync(iit, iitState, "https://etax.chinatax.gov.cn/", CancellationToken.None);
+
+        // 同一账套同一用户的两套登录态必须各存一行，否则个税登录会把企业门户的存档顶掉。
+        Assert.Equal(2, host.WithDb(db => db.TaxPortalSessions.Count()));
+        Assert.Equal(StorageState, (await host.Store.LoadAsync(enterprise, CancellationToken.None))!.StorageState);
+        Assert.Equal(iitState, (await host.Store.LoadAsync(iit, CancellationToken.None))!.StorageState);
+
+        await host.Store.DeleteAsync(iit);
+        Assert.Null(await host.Store.LoadAsync(iit, CancellationToken.None));
+        Assert.NotNull(await host.Store.LoadAsync(enterprise, CancellationToken.None));
     }
 
     [Fact]
     public async Task Load_WithDifferentKey_ReturnsNullInsteadOfThrowing()
     {
         using var writer = CreateHost("key-old");
-        var key = new TaxPortalSessionKey(AddAccountSet(writer), "user-1");
+        var key = new TaxPortalSessionKey(AddAccountSet(writer), "user-1", TaxPortalKind.Enterprise);
         await writer.Store.SaveAsync(key, StorageState, HomeUrl, CancellationToken.None);
 
         // 换了 Jwt:Key 后旧密文解不开，应当按「没保存过」处理。
@@ -91,7 +113,7 @@ public sealed class TaxPortalSessionStoreTests : IDisposable
     public async Task Delete_RemovesPersistedState()
     {
         using var host = CreateHost("key-a");
-        var key = new TaxPortalSessionKey(AddAccountSet(host), "user-1");
+        var key = new TaxPortalSessionKey(AddAccountSet(host), "user-1", TaxPortalKind.Enterprise);
 
         await host.Store.SaveAsync(key, StorageState, HomeUrl, CancellationToken.None);
         await host.Store.DeleteAsync(key);

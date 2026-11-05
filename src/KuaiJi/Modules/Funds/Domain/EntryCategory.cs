@@ -66,7 +66,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             var normalizedCode = NormalizeCode(code);
@@ -84,7 +84,7 @@ namespace KuaiJi.Modules.Funds.Domain
         /// <summary>调整类别编码（须符合长度限制）。</summary>
         public void ChangeCode(string code)
         {
-            var normalized = NormalizeCode(code) ?? throw new ArgumentException("类别编码不能为空。", nameof(code));
+            var normalized = NormalizeCode(code) ?? throw new ArgumentException("类别编码不能为空。");
             Code = normalized;
         }
 
@@ -93,7 +93,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (parentId == Id)
             {
-                throw new ArgumentException("上级类别不能是自己。", nameof(parentId));
+                throw new ArgumentException("上级类别不能是自己。");
             }
 
             ParentId = parentId is null || parentId == Guid.Empty ? null : parentId;
@@ -163,7 +163,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("类别名称不能为空。", nameof(name));
+                throw new ArgumentException("类别名称不能为空。");
             }
 
             if (name.Trim().Length > MaxNameLength)

@@ -34,9 +34,9 @@ namespace KuaiJi.Shared.Infrastructure
             var sb = new StringBuilder();
             if (negative) sb.Append("负");
 
-            // 元位为零时只写角分（壹角 / 壹分），不额外带出「零元」
+            // 元位为零也要带出「零元」（0.01 → 零元壹分）
             var hasYuan = yuan > 0;
-            if (hasYuan) sb.Append(IntegerToChinese(yuan)).Append('元');
+            sb.Append(hasYuan ? IntegerToChinese(yuan) + "元" : "零元");
 
             if (fen == 0)
             {

@@ -15,56 +15,16 @@ import { RouterProvider } from "react-router/dom";
 dayjs.locale('zh-cn')
 
 /**
- * antd 主题：沿用项目既有设计 token，直角 + 紧凑密度统一由全局主题控制。
+ * antd 主题：沿用项目既有设计 token，圆角 + 紧凑密度统一由全局主题控制。
  * compactAlgorithm 把控件高度收到 28、间距收到 8/12、正文 12px；fontSizeSM 抬到 11 以免辅助文字过小。
  * motion: false 把动效时长统一归零，弹层/折叠/切换都即时呈现，操作反馈更快。
+ * borderRadius 显式声明为 6（即 antd 默认圆角），作为全站圆角基准；手写 Tailwind 容器在
+ * index.css 里用 --radius(0.5rem) 对齐到同一量级（rounded-lg≈antd 卡片 8 / rounded-md≈antd 控件 6）。
  */
 const antdTheme = {
   algorithm: theme.compactAlgorithm,
   token: {
-    motion: false,
-    colorPrimary: '#2f6bff',
-    colorLink: '#2f6bff',
-    colorBgLayout: '#f4f6fb',
-    colorText: '#1e293b',
-    colorTextSecondary: '#64748b',
-    colorBorder: '#e2e8f0',
-    colorBorderSecondary: '#eceff4',
-    colorSuccess: '#10b981',
-    colorWarning: '#f59e0b',
-    colorError: '#ef4444',
-    borderRadius: 0,
-    fontSizeSM: 11,
-    fontFamily: "'Inter Variable', sans-serif",
-  },
-  components: {
-    // 账页切换条：轨道透明（白卡自己就是轨道），选中项取主色实底。
-    Segmented: {
-      trackBg: 'transparent',
-      trackPadding: 2,
-      itemColor: '#64748b',
-      itemHoverBg: '#eef4ff',
-      itemHoverColor: '#2f6bff',
-      itemSelectedBg: '#2f6bff',
-      itemSelectedColor: '#ffffff',
-    },
-    // 侧边栏菜单：无描边、无左侧高亮条，选中态用浅蓝实底，字号与旧版菜单一致。
-    Menu: {
-      fontSize: 13,
-      itemHeight: 32,
-      itemBg: '#ffffff',
-      subMenuItemBg: '#ffffff',
-      itemColor: '#475569',
-      itemHoverBg: '#f6f8fb',
-      itemHoverColor: '#1e293b',
-      itemSelectedBg: '#e7f0ff',
-      itemSelectedColor: '#2f6bff',
-      itemBorderRadius: 0,
-      itemMarginInline: 8,
-      itemMarginBlock: 2,
-      activeBarBorderWidth: 0,
-      iconMarginInlineEnd: 8,
-    },
+    borderRadius: 6,
   },
 }
 

@@ -7,7 +7,7 @@ import {
     LogoutOutlined,
     QuestionCircleOutlined,
 } from "@ant-design/icons";
-import { App, Avatar, Dropdown, Tooltip } from "antd";
+import { App, Avatar, Button, Dropdown, Tooltip } from "antd";
 
 import { useAuth } from "@/auth/AuthContext";
 import { useAccountSets } from "@/accountSets/AccountSetsContext";
@@ -109,18 +109,19 @@ function AccountSetSwitcher() {
                 onClick: ({ key }) => void choose(key),
             }}
         >
-            <button
-                type="button"
+            <Button
                 disabled={busy}
                 title={current?.companyName}
-                className="flex h-8 w-[248px] shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-left transition-colors hover:border-[#2f6bff]/40 hover:bg-[#f8faff] disabled:cursor-wait disabled:opacity-60"
+                className="!w-[248px] !justify-start"
             >
-                <BankOutlined className="shrink-0 text-[14px]" style={ICON_STYLE.brand} />
-                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-800">
-                    {current?.name ?? "选择账套"}
+                <span className="flex w-full min-w-0 items-center gap-2">
+                    <BankOutlined className="shrink-0 text-[14px]" style={ICON_STYLE.brand} />
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-800">
+                        {current?.name ?? "选择账套"}
+                    </span>
+                    <DownOutlined className="shrink-0 text-[9px]" style={ICON_STYLE.muted} />
                 </span>
-                <DownOutlined className="shrink-0 text-[9px]" style={ICON_STYLE.muted} />
-            </button>
+            </Button>
         </Dropdown>
     );
 }
@@ -163,16 +164,15 @@ function UserMenu() {
                 items: [{ key: "logout", icon: <LogoutOutlined />, label: "退出登录", onClick: handleLogout }],
             }}
         >
-            <button
-                type="button"
-                className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-slate-50"
-            >
-                <Avatar size={26} style={{ background: "linear-gradient(135deg,#5b9bff,#2f6bff)", fontWeight: 500 }}>
-                    {name.slice(0, 1)}
-                </Avatar>
-                <span className="text-[13px] font-medium text-slate-700">{name}</span>
-                <DownOutlined className="text-[10px]" style={ICON_STYLE.muted} />
-            </button>
+            <Button type="text" className="hover:!bg-slate-50">
+                <span className="flex items-center gap-2">
+                    <Avatar size={26} style={{ background: "linear-gradient(135deg,#5b9bff,#2f6bff)", fontWeight: 500 }}>
+                        {name.slice(0, 1)}
+                    </Avatar>
+                    <span className="text-[13px] font-medium text-slate-700">{name}</span>
+                    <DownOutlined className="text-[10px]" style={ICON_STYLE.muted} />
+                </span>
+            </Button>
         </Dropdown>
     );
 }

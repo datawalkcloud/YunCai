@@ -1132,23 +1132,21 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 <Input
                     autoFocus
                     allowClear
-                    size="small"
-                    placeholder="输入关键字筛选"
+                                       placeholder="输入关键字筛选"
                     value={filters[key]}
                     onChange={(e) => setFilters((prev) => ({ ...prev, [key]: e.target.value }))}
                     onPressEnter={() => confirm()}
                 />
                 <div className="mt-2 flex justify-end gap-2">
                     <Button
-                        size="small"
-                        onClick={() => {
+                                               onClick={() => {
                             setFilters((prev) => ({ ...prev, [key]: "" }))
                             confirm()
                         }}
                     >
                         重置
                     </Button>
-                    <Button size="small" type="primary" onClick={() => confirm()}>
+                    <Button type="primary" onClick={() => confirm()}>
                         筛选
                     </Button>
                 </div>
@@ -1173,8 +1171,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 if (isFormRow(row)) {
                     return (
                         <DatePicker
-                            size="small"
-                            allowClear={false}
+                                                       allowClear={false}
                             suffixIcon={null}
                             className="w-full"
                             value={form.date ? dayjs(form.date) : null}
@@ -1198,8 +1195,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 if (isFormRow(row)) {
                     return (
                         <Input
-                            size="small"
-                            value={form.summary}
+                                                       value={form.summary}
                             placeholder="填写摘要"
                             style={{ borderColor: "#2f6bff" }}
                             onChange={(e) => patchForm({ summary: e.target.value })}
@@ -1222,8 +1218,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 if (isFormRow(row)) {
                     return (
                         <Select
-                            size="small"
-                            allowClear
+                                                       allowClear
                             showSearch
                             className="w-full"
                             placeholder="选择类别"
@@ -1245,8 +1240,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 if (isFormRow(row)) {
                     return (
                         <Input
-                            size="small"
-                            value={form.counterparty}
+                                                       value={form.counterparty}
                             placeholder="往来单位"
                             onChange={(e) => patchForm({ counterparty: e.target.value })}
                         />
@@ -1271,8 +1265,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 if (isFormRow(row)) {
                     return (
                         <Input
-                            size="small"
-                            className="text-right"
+                                                       className="text-right"
                             placeholder="0.00"
                             value={form.income}
                             onChange={(e) => patchForm({ income: e.target.value.replace(/[^\d.]/g, "") })}
@@ -1298,8 +1291,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 if (isFormRow(row)) {
                     return (
                         <Input
-                            size="small"
-                            className="text-right"
+                                                       className="text-right"
                             placeholder="0.00"
                             value={form.expense}
                             onChange={(e) => patchForm({ expense: e.target.value.replace(/[^\d.]/g, "") })}
@@ -1415,7 +1407,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                         </div>
                     )}
                 >
-                    <Button type="text" size="small" icon={<SettingOutlined />} title="设置列" />
+                    <Button type="text" icon={<SettingOutlined />} title="设置列" />
                 </Dropdown>
             ),
             width: 48,
@@ -1535,20 +1527,25 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 content={advancedPanel}
                 styles={{ content: { padding: 16 } }}
             >
-                <button
-                    type="button"
+                <Button
+                    type="primary"
                     title="高级筛选"
-                    className="flex h-8 shrink-0 items-center gap-2 rounded-lg bg-[#2f6bff] px-3 text-[13px] font-medium text-white shadow-[0_1px_2px_rgba(47,107,255,0.25)] transition-colors hover:bg-[#2458d6]"
+                    style={{
+                        background: "#2f6bff",
+                        borderColor: "#2f6bff",
+                        boxShadow: "0 1px 2px rgba(47,107,255,0.25)",
+                    }}
+                    className="flex items-center gap-[0.4em] hover:!bg-[#2458d6] hover:!border-[#2458d6]"
                 >
                     <span className="tabular-nums">{period ? `${period[0]} 至 ${period[1]}` : "全部时间"}</span>
-                    <span className="h-3.5 w-px bg-white/35" />
-                    <FilterFilled className="text-[12px]" />
+                    <span className="h-[1em] w-px bg-white/35" />
+                    <FilterFilled />
                     {advancedCount > 0 && (
-                        <span className="bg-white px-1.5 text-[11px] font-semibold leading-4 text-[#2f6bff]">
+                        <span className="rounded-[2px] bg-white px-1 text-[0.75em] font-semibold leading-[1.4] text-[#2f6bff]">
                             {advancedCount}
                         </span>
                     )}
-                </button>
+                </Button>
             </Popover>
             <Checkbox checked={period === null} onChange={(e) => setPeriod(e.target.checked ? null : dataRange)}>
                 显示全部
@@ -1733,10 +1730,9 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                         border: "1px solid #f1f5f9",
                         boxShadow: "0 1px 2px rgba(16,24,40,0.04)",
                     },
-                    body: { padding: 16 },
                 }}
             >
-                <Flex justify="space-between" align="center" gap={12} wrap style={{ marginBottom: 12 }}>
+                <Flex justify="space-between" align="center" gap={12} wrap style={{ marginBottom: 16 }}>
                     {toolbarLeft}
                     {toolbarRight}
                 </Flex>
@@ -1776,9 +1772,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                             }}
                         >
                             <Table<LedgerRow>
-                                bordered
-                                size="small"
-                                rowKey="key"
+                                                               rowKey="key"
                                 tableLayout="fixed"
                                 columns={columns}
                                 dataSource={rows}
@@ -1805,7 +1799,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 )}
 
                 {(
-                    <Flex justify="space-between" align="center" gap={16} wrap style={{ marginTop: 12 }}>
+                    <Flex justify="space-between" align="center" gap={16} wrap style={{ marginTop: 16 }}>
                         <Typography.Text type="secondary">
                             显示 {from} 到 {to}，共 {filtered.length} 条
                         </Typography.Text>

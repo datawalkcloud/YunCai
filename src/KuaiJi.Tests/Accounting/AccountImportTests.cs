@@ -19,6 +19,8 @@ namespace KuaiJi.Tests.Accounting;
 /// 2. 行填了上级编码时，先确保上级存在，再依次校验级次上限、编码位数（4-2-2-2 下二级须为 6 位），
 ///    最后由领域模型 Account.AddChild 校验「明细编码必须以上级编码为前缀」——位数校验先于前缀校验。
 /// 3. 明细科目的类别一律继承上级；方向留空继承上级、可显式覆盖；顶级科目方向按类别与名称兜底。
+/// 4. 助记码留空时按名称拼音首字母生成，明细科目加「上级助记码_」前缀；已有助记码不被覆盖，
+///    存量科目缺助记码时重导同一文件即可补全。
 /// </summary>
 public sealed class AccountImportTests : IDisposable
 {
@@ -103,6 +105,76 @@ public sealed class AccountImportTests : IDisposable
         Assert.Equal("KJXJ", account.Mnemonic);
         Assert.True(account.IsLeaf);
         Assert.False(account.IsPreset);
+    }
+
+    [Fact]
+    public async Task Import_MissingMnemonic_GeneratesPinyinInitials()
+    {
+        // 柠檬云导出的科目表没有「助记码」列，导入时按科目名称的拼音首字母补上。
+        await WithRows(Row(1, "1001", "库存现金"))
+            .ImportAsync(_accountSet.Id, Stream.Null);
+
+        var account = await FindByCodeAsync("1001");
+        Assert.NotNull(account);
+        Assert.Equal("kcxj", account!.Mnemonic);
+    }
+
+    [Fact]
+    public async Task Import_ChildMnemonic_PrefixedWithParentMnemonic()
+    {
+        var parent = _db.AddAccount(_accountSet, "1002", "银行存款");
+        parent.SetMnemonic("yxck");
+        _db.Context.SaveChanges();
+
+        await WithRows(Row(1, "100201", "工商银行", parentCode: "1002"))
+            .ImportAsync(_accountSet.Id, Stream.Null);
+
+        var child = await FindByCodeAsync("100201");
+        Assert.NotNull(child);
+        Assert.Equal("yxck_gsyh", child!.Mnemonic);
+    }
+
+    [Fact]
+    public async Task Import_AutoCreatedParent_SharesPrefixWithChild()
+    {
+        // 6602 由导入自动补建，名称从「营业外收入-政府补助」中提取；
+        // 子科目名称重复了上级名称时，生成前缀前先剥掉，得到 yywsr_zfbz 而不是 yywsr_yywsrzfbz。
+        await WithRows(Row(1, "660201", "营业外收入-政府补助"))
+            .ImportAsync(_accountSet.Id, Stream.Null);
+
+        var parent = await FindByCodeAsync("6602");
+        var child = await FindByCodeAsync("660201");
+        Assert.Equal("yywsr", parent!.Mnemonic);
+        Assert.Equal("yywsr_zfbz", child!.Mnemonic);
+    }
+
+    [Fact]
+    public async Task Import_ExistingAccountWithBlankMnemonic_IsBackfilled()
+    {
+        // 历史导入的科目没有助记码：重导同一份文件即可补全，但仍计入「跳过」。
+        _db.AddAccount(_accountSet, "1001", "库存现金");
+
+        var result = await WithRows(Row(1, "1001", "库存现金"))
+            .ImportAsync(_accountSet.Id, Stream.Null);
+
+        Assert.Equal(0, result.ImportedAccounts);
+        Assert.Equal(1, result.SkippedAccounts);
+        var account = await FindByCodeAsync("1001");
+        Assert.Equal("kcxj", account!.Mnemonic);
+    }
+
+    [Fact]
+    public async Task Import_ExistingAccountWithMnemonic_IsNotOverwritten()
+    {
+        var existing = _db.AddAccount(_accountSet, "1001", "库存现金");
+        existing.SetMnemonic("KEEP");
+        _db.Context.SaveChanges();
+
+        await WithRows(Row(1, "1001", "库存现金", mnemonic: "OTHER"))
+            .ImportAsync(_accountSet.Id, Stream.Null);
+
+        var account = await FindByCodeAsync("1001");
+        Assert.Equal("KEEP", account!.Mnemonic);
     }
 
     [Fact]

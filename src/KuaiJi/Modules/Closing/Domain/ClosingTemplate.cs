@@ -63,7 +63,7 @@ namespace KuaiJi.Modules.Closing.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             GuardName(name);
@@ -98,7 +98,7 @@ namespace KuaiJi.Modules.Closing.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("模板名称不能为空。", nameof(name));
+                throw new ArgumentException("模板名称不能为空。");
             }
 
             if (name.Trim().Length > MaxNameLength)
@@ -175,7 +175,7 @@ namespace KuaiJi.Modules.Closing.Domain
         {
             if (string.IsNullOrWhiteSpace(summary))
             {
-                throw new ArgumentException("摘要不能为空。", nameof(summary));
+                throw new ArgumentException("摘要不能为空。");
             }
 
             if (summary.Trim().Length > MaxSummaryLength)
@@ -185,12 +185,12 @@ namespace KuaiJi.Modules.Closing.Domain
 
             if (accountId == Guid.Empty)
             {
-                throw new ArgumentException("必须选择会计科目。", nameof(accountId));
+                throw new ArgumentException("必须选择会计科目。");
             }
 
             if (!Enum.IsDefined(direction))
             {
-                throw new ArgumentException("借贷方向不合法。", nameof(direction));
+                throw new ArgumentException("借贷方向不合法。");
             }
 
             Guid? source = null;
@@ -199,7 +199,7 @@ namespace KuaiJi.Modules.Closing.Domain
                 case ClosingTemplateSourceType.Fixed:
                     if (amount <= 0m)
                     {
-                        throw new ArgumentException("固定金额必须大于 0。", nameof(amount));
+                        throw new ArgumentException("固定金额必须大于 0。");
                     }
 
                     break;
@@ -209,7 +209,7 @@ namespace KuaiJi.Modules.Closing.Domain
                 case ClosingTemplateSourceType.Balance:
                     if (sourceAccountId is null || sourceAccountId == Guid.Empty)
                     {
-                        throw new ArgumentException("取数方式需要选择来源科目。", nameof(sourceAccountId));
+                        throw new ArgumentException("取数方式需要选择来源科目。");
                     }
 
                     source = sourceAccountId;
@@ -217,7 +217,7 @@ namespace KuaiJi.Modules.Closing.Domain
                     break;
 
                 default:
-                    throw new ArgumentException("取数方式不合法。", nameof(sourceType));
+                    throw new ArgumentException("取数方式不合法。");
             }
 
             return new ClosingTemplateLine(Guid.NewGuid(), summary.Trim(), accountId, direction, sourceType, source, amount);

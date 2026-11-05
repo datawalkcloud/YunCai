@@ -43,6 +43,24 @@ export interface ClosingCheckItemDto {
      * @memberof ClosingCheckItemDto
      */
     message?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ClosingCheckItemDto
+     */
+    group?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ClosingCheckItemDto
+     */
+    actionKey?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ClosingCheckItemDto
+     */
+    actionText?: string | null;
 }
 
 /**
@@ -66,6 +84,9 @@ export function ClosingCheckItemDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'title': json['title'] == null ? undefined : json['title'],
         'status': json['status'] == null ? undefined : json['status'],
         'message': json['message'] == null ? undefined : json['message'],
+        'group': json['group'] == null ? undefined : json['group'],
+        'actionKey': json['actionKey'] == null ? undefined : json['actionKey'],
+        'actionText': json['actionText'] == null ? undefined : json['actionText'],
     };
 }
 
@@ -84,6 +105,9 @@ export function ClosingCheckItemDtoToJSONTyped(value?: ClosingCheckItemDto | nul
         'title': value['title'],
         'status': value['status'],
         'message': value['message'],
+        'group': value['group'],
+        'actionKey': value['actionKey'],
+        'actionText': value['actionText'],
     };
 }
 

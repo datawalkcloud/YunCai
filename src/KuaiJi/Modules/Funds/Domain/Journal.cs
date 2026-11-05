@@ -89,17 +89,17 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (accountSetId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定所属账套。", nameof(accountSetId));
+                throw new ArgumentException("必须指定所属账套。");
             }
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("账簿名称不能为空。", nameof(name));
+                throw new ArgumentException("账簿名称不能为空。");
             }
 
             if (accountId == Guid.Empty)
             {
-                throw new ArgumentException("必须指定对应的会计科目。", nameof(accountId));
+                throw new ArgumentException("必须指定对应的会计科目。");
             }
 
             var journal = new Journal(
@@ -258,7 +258,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("账簿名称不能为空。", nameof(name));
+                throw new ArgumentException("账簿名称不能为空。");
             }
 
             Name = name.Trim();
@@ -285,7 +285,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (string.IsNullOrWhiteSpace(code))
             {
-                throw new ArgumentException("账户编码不能为空。", nameof(code));
+                throw new ArgumentException("账户编码不能为空。");
             }
 
             var trimmed = code.Trim();
@@ -323,7 +323,7 @@ namespace KuaiJi.Modules.Funds.Domain
         {
             if (string.IsNullOrWhiteSpace(summary))
             {
-                throw new ArgumentException("摘要不能为空。", nameof(summary));
+                throw new ArgumentException("摘要不能为空。");
             }
 
             if (income < 0m || expense < 0m)

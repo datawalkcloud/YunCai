@@ -69,7 +69,7 @@ const NAV = [
 ];
 
 const CAPABILITIES = [
-  { icon: FileTextOutlined, title: "凭证管理", desc: "录入 · 审核 · 过账" },
+  { icon: FileTextOutlined, title: "凭证管理", desc: "录入 · 入账 · 出表" },
   { icon: BookOutlined, title: "账簿查询", desc: "总账 · 明细 · 日记账" },
   { icon: BarChartOutlined, title: "财务报表", desc: "资产负债 · 利润 · 现金流" },
   { icon: WalletOutlined, title: "资金出纳", desc: "日记账 · 转账 · 出票" },
@@ -101,13 +101,13 @@ const STEPS = [
   { title: "创建账套", desc: "填写企业信息与启用期间，账套即刻可用。" },
   { title: "初始化科目", desc: "套用预置科目模板，按需增删、调整层级。" },
   { title: "录入凭证", desc: "手工录入或 Excel 批量导入，借贷自动校验。" },
-  { title: "审核过账出表", desc: "过账后账簿与报表实时归集，随点随出。" },
+  { title: "保存入账出表", desc: "保存凭证即入账，账簿与报表实时归集，随点随出。" },
 ];
 
 const FAQS = [
   { q: "需要安装客户端吗？", a: "不需要。云财是纯在线的财务系统，打开浏览器登录即可使用，换台设备也能接着做账。" },
   { q: "一个账号可以管理多家公司吗？", a: "可以。一个账号支持创建多个账套，账套之间数据完全隔离，在顶部随时切换，互不干扰。" },
-  { q: "历史凭证怎么迁移？", a: "在「凭证导入」中上传符合模板的 Excel（.xls / .xlsx）文件即可批量导入，系统会自动补建缺失科目，导入后统一审核过账。" },
+  { q: "历史凭证怎么迁移？", a: "在「凭证导入」中上传符合模板的 Excel（.xls / .xlsx）文件即可批量导入，系统会自动补建缺失科目，借贷平衡的凭证导入后直接入账。" },
   { q: "报表数据是实时的吗？", a: "是。科目余额表、资产负债表、利润表、现金流量表都从已过账凭证实时归集计算，期初余额一并参与，任意期间可即时切换。" },
   { q: "期末结转和结账怎么处理？", a: "系统提供一键结转损益与批量结账，自动生成本年利润结转凭证并直接过账；资产负债表会把损益并入未分配利润，保证结转前后口径一致。" },
 ];
@@ -506,10 +506,10 @@ type Tok = { t: string; c?: "kw" | "num" | "dim" };
 const SCENES = [
   {
     key: "voucher",
-    tab: "凭证录审",
-    title: "从录入到过账，",
-    titleMuted: "一条线走完",
-    desc: "结构化的分录录入，借贷平衡与金额大写实时校验；历史凭证可从 Excel 批量导入，导入后统一审核、一键过账。",
+    tab: "凭证录入",
+    title: "从录入到入账，",
+    titleMuted: "一步完成",
+    desc: "结构化的分录录入，借贷平衡与金额大写实时校验；保存即入账，账簿与报表立即取到数。历史凭证可从 Excel 批量导入，借贷平衡的直接入账。",
     points: ["借贷自动平衡校验", "金额大写自动生成", "Excel 批量导入历史凭证"],
     file: "记账凭证 记-0007",
     stateTag: "已过账",
@@ -519,13 +519,13 @@ const SCENES = [
       [{ t: "贷", c: "kw" }, { t: "  主营业务收入" }, { t: "       113,207.55", c: "num" }],
       [{ t: "贷", c: "kw" }, { t: "  应交税费—应交增值税" }, { t: "  6,792.45", c: "num" }],
       [{ t: "合计", c: "kw" }, { t: "  壹拾贰万元整" }, { t: "       120,000.00", c: "num" }],
-      [{ t: "借贷平衡，可提交审核", c: "dim" }],
+      [{ t: "借贷平衡，保存即入账", c: "dim" }],
     ] as Tok[][],
-    mockLabel: "审核队列",
+    mockLabel: "凭证状态",
     mockRows: [
       { name: "记-0007 银行收款", state: "已过账", ok: true },
-      { name: "记-0008 采购付款", state: "待审核", ok: false },
-      { name: "记-0009 计提工资", state: "待审核", ok: false },
+      { name: "记-0008 采购付款", state: "已过账", ok: true },
+      { name: "记-0009 计提工资", state: "草稿", ok: false },
     ],
   },
   {
@@ -721,7 +721,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
               <p className="mt-[24px] w-full max-w-[560px] text-[15px] font-light leading-[1.75] md:text-[16px]" style={{ color: C.ink }}>
                 云财把凭证、账簿、报表、出纳连成一条线。
                 <br className="hidden md:block" />
-                录入即入账，过账即出表，让财务工作回到它本来的样子。
+                录入即入账，入账即出表，让财务工作回到它本来的样子。
               </p>
             </Reveal>
 

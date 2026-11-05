@@ -1,18 +1,15 @@
 namespace KuaiJi.Modules.Vouchers.Domain
 {
     /// <summary>
-    /// 记账凭证状态。遵循「制单 → 审核 → 过账」工作流：
-    /// 草稿可自由修改，审核/过账后锁定不可改。
+    /// 记账凭证状态。遵循「制单 → 过账」工作流：保存即登记入账，
+    /// 只有反过账退回的凭证才是草稿，可自由修改后再次保存入账。
     /// </summary>
     public enum VoucherStatus
     {
-        /// <summary>草稿（已制单，未审核，可修改）。</summary>
+        /// <summary>草稿（反过账退回或导入不平衡，可修改；不计入账簿）。</summary>
         Draft = 1,
 
-        /// <summary>已审核（锁定，等待过账）。</summary>
-        Reviewed = 2,
-
-        /// <summary>已过账（登记入账，锁定）。</summary>
+        /// <summary>已过账（登记入账并锁定，账簿与报表据此取数）。</summary>
         Posted = 3,
     }
 }

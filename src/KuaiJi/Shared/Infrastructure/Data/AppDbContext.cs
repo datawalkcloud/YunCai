@@ -83,6 +83,8 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
 
         public DbSet<InsuranceItem> InsuranceItems { get; set; } = null!;
 
+        public DbSet<EmployeeInsurance> EmployeeInsurances { get; set; } = null!;
+
         public DbSet<SalaryBill> SalaryBills { get; set; } = null!;
 
         public DbSet<SalaryVoucherSetting> SalaryVoucherSettings { get; set; } = null!;
@@ -95,6 +97,9 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
 
         /// <summary>税局登录态（加密后的 Cookie / localStorage），按账套 + 用户保存。</summary>
         public DbSet<TaxPortalSessionRecord> TaxPortalSessions { get; set; } = null!;
+
+        /// <summary>任务中心：服务端每向税局办一次事留一行。</summary>
+        public DbSet<TaxTaskRecord> TaxTasks { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -132,10 +137,27 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.AccountCodingScheme).HasColumnName("account_coding_scheme").IsRequired().HasMaxLength(50).HasDefaultValue(AccountSet.DefaultCodingScheme);
                 entity.Property(e => e.TaxpayerNumber).HasColumnName("taxpayer_number").HasMaxLength(50);
                 entity.Property(e => e.TaxRegion).HasColumnName("tax_region").HasMaxLength(50);
+                entity.Property(e => e.Industry).HasColumnName("industry").HasMaxLength(50);
                 entity.Property(e => e.TaxLoginType).HasColumnName("tax_login_type").HasMaxLength(50);
                 entity.Property(e => e.TaxIdentityType).HasColumnName("tax_identity_type").HasMaxLength(50);
                 entity.Property(e => e.TaxLoginAccount).HasColumnName("tax_login_account").HasMaxLength(100);
                 entity.Property(e => e.TaxLoginPasswordCipher).HasColumnName("tax_login_password_cipher").HasMaxLength(500);
+                entity.Property(e => e.IitChannel).HasColumnName("iit_channel").HasMaxLength(50);
+                entity.Property(e => e.IitLoginType).HasColumnName("iit_login_type").HasMaxLength(50);
+                entity.Property(e => e.IitLoginAccount).HasColumnName("iit_login_account").HasMaxLength(100);
+                entity.Property(e => e.IitLoginPasswordCipher).HasColumnName("iit_login_password_cipher").HasMaxLength(500);
+                // 这几列带库默认值（存量行 ALTER TABLE 补列要用）。EF 对带默认值的列，
+                // 在「值等于哨兵」时按未设置处理、交给库默认，因此哨兵必须显式指向默认值本身，
+                // 否则新建账套时把开关关掉会被静默写回默认。
+                entity.Property(e => e.AssetsModuleEnabled).HasColumnName("assets_module_enabled").IsRequired().HasDefaultValue(true).HasSentinel(true);
+                entity.Property(e => e.FundsModuleEnabled).HasColumnName("funds_module_enabled").IsRequired().HasDefaultValue(true).HasSentinel(true);
+                entity.Property(e => e.VoucherAuditRequired).HasColumnName("voucher_audit_required").IsRequired().HasDefaultValue(true).HasSentinel(true);
+                // 库默认值供存量行 ALTER TABLE 补列用；哨兵显式指向 0（非法枚举值），
+                // 免得 EF 把「未设置」和「用户真的选了 1」混为一谈。
+                entity.Property(e => e.BalanceAssistScope).HasColumnName("balance_assist_scope").HasConversion<int>().IsRequired().HasDefaultValue(BalanceAssistScope.All).HasSentinel((BalanceAssistScope)0);
+                entity.Property(e => e.UnitDecimalPlaces).HasColumnName("unit_decimal_places").IsRequired().HasDefaultValue(AccountSet.DefaultUnitDecimalPlaces).HasSentinel(-1);
+                entity.Property(e => e.IsExportEnterprise).HasColumnName("is_export_enterprise").IsRequired().HasDefaultValue(false);
+
                 entity.Property(e => e.VatRate).HasColumnName("vat_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(13m);
                 entity.Property(e => e.IncomeTaxRate).HasColumnName("income_tax_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(25m);
                 entity.Property(e => e.VoucherWords).HasColumnName("voucher_words").IsRequired().HasMaxLength(100).HasDefaultValue(AccountSet.DefaultVoucherWords);
@@ -150,15 +172,43 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
             modelBuilder.Entity<TaxPortalSessionRecord>(entity =>
             {
                 entity.ToTable("tax_portal_sessions");
-                entity.HasKey(e => new { e.AccountSetId, e.UserId });
+                entity.HasKey(e => new { e.AccountSetId, e.UserId, e.PortalKind });
 
                 entity.Property(e => e.AccountSetId).HasColumnName("account_set_id");
                 entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.PortalKind).HasColumnName("portal_kind");
                 entity.Property(e => e.PayloadCipher).HasColumnName("payload_cipher").IsRequired().HasColumnType("text");
                 entity.Property(e => e.SavedAt).HasColumnName("saved_at").IsRequired();
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
 
                 // 登录态随账套删除一并清理，避免残留无法再使用的会话。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<TaxTaskRecord>(entity =>
+            {
+                entity.ToTable("tax_tasks");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.UserName).HasColumnName("user_name").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Period).HasColumnName("period").IsRequired();
+                entity.Property(e => e.Title).HasColumnName("title").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Suggestion).HasColumnName("suggestion").HasMaxLength(500);
+                // 时间列按 UTC DateTime 存取：域模型保留 DateTimeOffset 的偏移语义，查询侧（按东八区自然日过滤、排序）在 PostgreSQL 与测试用的 SQLite 上都能翻译。
+                entity.Property(e => e.SubmittedAt).HasColumnName("submitted_at").IsRequired()
+                    .HasConversion(v => v.UtcDateTime, v => new DateTimeOffset(v, TimeSpan.Zero));
+                entity.Property(e => e.FinishedAt).HasColumnName("finished_at").IsRequired()
+                    .HasConversion(v => v.UtcDateTime, v => new DateTimeOffset(v, TimeSpan.Zero));
+
+                // 任务中心只按「账套 + 提交时间区间」查，账套删除时台账一并清掉。
+                entity.HasIndex(e => new { e.AccountSetId, e.SubmittedAt });
                 entity.HasOne<AccountSet>()
                       .WithMany()
                       .HasForeignKey(e => e.AccountSetId)
@@ -528,6 +578,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(Currency.MaxCodeLength);
                 entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(Currency.MaxNameLength);
                 entity.Property(e => e.Rate).HasColumnName("rate").HasColumnType("numeric(18,6)").IsRequired();
+                entity.Property(e => e.ConvertType).HasColumnName("convert_type").HasConversion<int>().IsRequired().HasDefaultValue(CurrencyConvertType.Multiply).HasSentinel((CurrencyConvertType)0);
                 entity.Property(e => e.IsBase).HasColumnName("is_base").IsRequired();
 
                 entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
@@ -879,7 +930,16 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.BankAccountNo).HasColumnName("bank_account_no").HasMaxLength(50);
                 entity.Property(e => e.Post).HasColumnName("post").HasMaxLength(50);
                 entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(50);
+                entity.Property(e => e.Education).HasColumnName("education").HasMaxLength(20);
+                entity.Property(e => e.IsDisabled).HasColumnName("is_disabled").IsRequired();
+                entity.Property(e => e.IsMartyrFamily).HasColumnName("is_martyr_family").IsRequired();
+                entity.Property(e => e.IsSoloElder).HasColumnName("is_solo_elder").IsRequired();
+                entity.Property(e => e.IsSeniorExpert).HasColumnName("is_senior_expert");
+                entity.Property(e => e.EmploymentType).HasColumnName("employment_type").HasConversion<int>().IsRequired();
+                entity.Property(e => e.DeductBasicExpense).HasColumnName("deduct_basic_expense").IsRequired();
+                entity.Property(e => e.PayStartDate).HasColumnName("pay_start_date");
                 entity.Property(e => e.SubjectAccountId).HasColumnName("subject_account_id");
+                entity.Property(e => e.PaysSocialInsurance).HasColumnName("pays_social_insurance").IsRequired();
                 entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
                 entity.Property(e => e.Remark).HasColumnName("remark").HasMaxLength(500);
 
@@ -909,6 +969,30 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                       .WithMany()
                       .HasForeignKey(e => e.AccountSetId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<EmployeeInsurance>(entity =>
+            {
+                entity.ToTable("employee_insurances");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.EmployeeId).HasColumnName("employee_id").IsRequired();
+                entity.Property(e => e.InsuranceItemId).HasColumnName("insurance_item_id").IsRequired();
+                entity.Property(e => e.InsuranceBase).HasColumnName("insurance_base").HasColumnType("numeric(18,2)").IsRequired();
+
+                entity.HasIndex(e => new { e.EmployeeId, e.InsuranceItemId }).IsUnique();
+
+                entity.HasOne<Employee>()
+                      .WithMany()
+                      .HasForeignKey(e => e.EmployeeId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne<InsuranceItem>()
+                      .WithMany()
+                      .HasForeignKey(e => e.InsuranceItemId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<SalaryBill>(entity =>

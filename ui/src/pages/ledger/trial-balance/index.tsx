@@ -1,12 +1,11 @@
 import { PrinterOutlined } from "@ant-design/icons"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router"
-import { Button, Alert, Spin, Table } from "antd";
+import { Button, Alert, Checkbox, Spin, Table } from "antd";
 import type { TableColumnsType, TableColumnType } from "antd"
-import { AuditOutlined } from "@ant-design/icons"
 import dayjs from "dayjs"
 
-import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type TrialBalanceRowDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
@@ -15,7 +14,7 @@ import { DateRangeField, parseDate } from "@/components/fields/date-fields"
 import { AMOUNT_COL, SOFT_PANEL } from "@/components/page/styles"
 import { LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerTabs } from "@/components/ledger/LedgerTabs"
-import { PageHeader, SectionCard } from "@/components/page/section"
+import { SectionCard } from "@/components/page/section"
 
 /** 选定的日期范围。 */
 interface DateRange {
@@ -34,6 +33,9 @@ const AMOUNT_KEYS = [
 
 type AmountKey = (typeof AMOUNT_KEYS)[number]
 
+/** 树形行：后端给出 level / parentCode，这里按 parentCode 把平表挂成 children。 */
+type TreeRow = TrialBalanceRowDto & { children?: TreeRow[] }
+
 function fmt(value: number, force = false): string {
     if (value === 0 && !force) return ""
     return value.toLocaleString("zh-CN", {
@@ -43,7 +45,7 @@ function fmt(value: number, force = false): string {
 }
 
 /** 金额列（借贷方向）右对齐并使用等宽数字，表头与单元格一致。 */
-const amount = (dataIndex: AmountKey, title: string): TableColumnType<TrialBalanceRowDto> => ({
+const amount = (dataIndex: AmountKey, title: string): TableColumnType<TreeRow> => ({
     title,
     dataIndex,
     render: (v) => fmt(v ?? 0),
@@ -51,7 +53,7 @@ const amount = (dataIndex: AmountKey, title: string): TableColumnType<TrialBalan
 })
 
 /** 多级表头：编码、名称为单层列，三组余额各带借方/贷方两个子列。 */
-const columns: TableColumnsType<TrialBalanceRowDto> = [
+const columns: TableColumnsType<TreeRow> = [
     { title: "科目编码", dataIndex: "code" },
     { title: "科目名称", dataIndex: "name" },
     {
@@ -73,17 +75,17 @@ const columns: TableColumnsType<TrialBalanceRowDto> = [
 
 export default function TrialBalancePage() {
     const { token } = useAuth()
-    const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const { accountSetId: routeId } = useParams<{ accountSetId: string }>()
     const navigate = useNavigate()
-    const currentSet = accountSets.find((s) => s.id === accountSetId)
 
     const [dateRange, setDateRange] = useState<DateRange | null>(null)
     const [rows, setRows] = useState<TrialBalanceRowDto[]>([])
     const [periodText, setPeriodText] = useState("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [expandAll, setExpandAll] = useState(true)
+    const [expandedKeys, setExpandedKeys] = useState<string[]>([])
 
     const load = useCallback(async () => {
         if (!accountSetId) return
@@ -113,6 +115,52 @@ export default function TrialBalancePage() {
         void load()
     }, [load])
 
+    // 平表按 parentCode 挂成树；后端已按编码排序，子行天然有序。
+    const treeRows = useMemo(() => {
+        const nodes = new Map<string, TreeRow>()
+        for (const row of rows) nodes.set(row.code ?? "", { ...row })
+
+        const roots: TreeRow[] = []
+        for (const node of nodes.values()) {
+            const parent = node.parentCode ? nodes.get(node.parentCode) : undefined
+            if (parent) {
+                ;(parent.children ??= []).push(node)
+            } else {
+                roots.push(node)
+            }
+        }
+        return roots
+    }, [rows])
+
+    const allParentKeys = useMemo(() => {
+        const keys: string[] = []
+        const walk = (nodes: TreeRow[]) => {
+            for (const node of nodes) {
+                if (node.children?.length) {
+                    keys.push(node.code ?? "")
+                    walk(node.children)
+                }
+            }
+        }
+        walk(treeRows)
+        return keys
+    }, [treeRows])
+
+    useEffect(() => {
+        if (expandAll) setExpandedKeys(allParentKeys)
+    }, [allParentKeys, expandAll])
+
+    // 手动展开/收起后同步勾选态：全部展开才算勾上「展开所有级次」。
+    function setExpanded(code: string, expanded: boolean) {
+        const next = expanded
+            ? expandedKeys.includes(code)
+                ? expandedKeys
+                : [...expandedKeys, code]
+            : expandedKeys.filter((key) => key !== code)
+        setExpandedKeys(next)
+        setExpandAll(next.length === allParentKeys.length)
+    }
+
     const { totals, balanced } = useMemo(() => {
         const t = {
             openingDebit: 0,
@@ -123,6 +171,8 @@ export default function TrialBalancePage() {
             endingCredit: 0,
         }
         for (const row of rows) {
+            // 上级行已含下级合计，只累加一级科目，避免重复计入。
+            if (row.parentCode) continue
             for (const key of AMOUNT_KEYS) t[key] += row[key] ?? 0
         }
         // 金额以分为单位比较，规避浮点误差。
@@ -147,22 +197,6 @@ export default function TrialBalancePage() {
 
     return (
         <div className="flex flex-col gap-4">
-            <PageHeader
-                icon={AuditOutlined}
-                title="科目余额表"
-                subtitle={
-                    <>
-                        账套：{currentSet?.name ?? (accountSetId || "未指定")}
-                        。汇总各科目的期初余额、本期发生额与期末余额，用于试算平衡与结账核对。点击任一行可下钻该科目明细账。
-                    </>
-                }
-                actions={
-                    <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-                        打印
-                    </Button>
-                }
-            />
-
             <LedgerTabs current="trial-balance" />
 
             <SectionCard bodyClassName="flex flex-col gap-4">
@@ -193,10 +227,25 @@ export default function TrialBalancePage() {
                             disabled={!accountSetId}
                             allowClear
                         />
+                        <Checkbox
+                            className="ml-2 text-[12.5px]"
+                            checked={expandAll}
+                            disabled={allParentKeys.length === 0}
+                            onChange={(e) => {
+                                const on = e.target.checked
+                                setExpandAll(on)
+                                setExpandedKeys(on ? allParentKeys : [])
+                            }}
+                        >
+                            展开所有级次
+                        </Checkbox>
                     </div>
                     <div className="flex items-center gap-2">
-                        {loading && <Spin size="small" />}
+                        {loading && <Spin />}
                         <span className="text-[12.5px] text-slate-400">单位：元</span>
+                        <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                            打印
+                        </Button>
                     </div>
                 </div>
 
@@ -204,11 +253,23 @@ export default function TrialBalancePage() {
 
                 <LedgerTable
                     columns={columns}
-                    data={rows}
+                    data={treeRows}
                     loading={loading}
                     emptyText={accountSetId ? "该期间暂无科目余额数据。" : "请先选择账套。"}
                     rowKey={(row) => row.code ?? ""}
-                    onRowClick={(row) => goSubsidiary(row.code)}
+                    onRowClick={(row) => {
+                        // 上级行点行即展开/收起；明细行点行下钻该科目明细账。
+                        if (row.children?.length) {
+                            setExpanded(row.code ?? "", !expandedKeys.includes(row.code ?? ""))
+                        } else {
+                            goSubsidiary(row.code)
+                        }
+                    }}
+                    expandable={{
+                        expandedRowKeys: expandedKeys,
+                        indentSize: 18,
+                        onExpand: (expanded, row) => setExpanded(row.code ?? "", expanded),
+                    }}
                     footer={
                         <Table.Summary.Row>
                             <Table.Summary.Cell index={0} colSpan={2}>

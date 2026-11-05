@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: '24'
       - name: 覆盖率报告与门禁
-        run: node scripts/coverage-report.mjs --gate 17
+        run: node scripts/coverage-report.mjs --gate 40
       - name: 上传覆盖率原始文件
         if: always()
         uses: actions/upload-artifact@v4

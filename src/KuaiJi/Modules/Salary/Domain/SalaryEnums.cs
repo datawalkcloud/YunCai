@@ -32,4 +32,23 @@ namespace KuaiJi.Modules.Salary.Domain
         /// <summary>女。</summary>
         Female = 2,
     }
+
+    /// <summary>任职受雇从业类型（个税人员报送口径）。</summary>
+    public enum EmployeeEmploymentType
+    {
+        /// <summary>雇员。</summary>
+        Employee = 1,
+
+        /// <summary>保险营销员。</summary>
+        InsuranceAgent = 2,
+
+        /// <summary>证券经纪人。</summary>
+        SecuritiesBroker = 3,
+
+        /// <summary>劳务派遣。</summary>
+        LaborDispatch = 4,
+
+        /// <summary>其他。</summary>
+        Other = 5,
+    }
 }

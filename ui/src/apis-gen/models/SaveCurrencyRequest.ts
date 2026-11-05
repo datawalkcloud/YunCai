@@ -39,6 +39,12 @@ export interface SaveCurrencyRequest {
     rate?: number;
     /**
      * 
+     * @type {number}
+     * @memberof SaveCurrencyRequest
+     */
+    convertType?: number;
+    /**
+     * 
      * @type {boolean}
      * @memberof SaveCurrencyRequest
      */
@@ -65,6 +71,7 @@ export function SaveCurrencyRequestFromJSONTyped(json: any, ignoreDiscriminator:
         'code': json['code'] == null ? undefined : json['code'],
         'name': json['name'] == null ? undefined : json['name'],
         'rate': json['rate'] == null ? undefined : json['rate'],
+        'convertType': json['convertType'] == null ? undefined : json['convertType'],
         'isBase': json['isBase'] == null ? undefined : json['isBase'],
     };
 }
@@ -83,6 +90,7 @@ export function SaveCurrencyRequestToJSONTyped(value?: SaveCurrencyRequest | nul
         'code': value['code'],
         'name': value['name'],
         'rate': value['rate'],
+        'convertType': value['convertType'],
         'isBase': value['isBase'],
     };
 }

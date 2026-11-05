@@ -53,12 +53,15 @@ namespace KuaiJi.Modules.Salary.Application
 
         // —— 员工 ——
 
-        /// <summary>获取全部员工（按编号排列，附计提工资科目解析）。</summary>
+        /// <summary>获取全部员工（按编号排列，附计提工资科目解析与各险种缴纳基数）。</summary>
         public async Task<IReadOnlyList<EmployeeDto>> GetEmployeesAsync(Guid accountSetId, CancellationToken cancellationToken = default)
         {
             await EnsureAccountSetExistsAsync(accountSetId, cancellationToken);
             var employees = await _salaryRepository.GetEmployeesAsync(accountSetId, cancellationToken);
             var accountsById = await LoadAccountsByIdAsync(accountSetId, cancellationToken);
+            var basesByEmployee = (await _salaryRepository.GetEmployeeInsurancesAsync(accountSetId, cancellationToken))
+                .GroupBy(b => b.EmployeeId)
+                .ToDictionary(g => g.Key, g => (IReadOnlyList<EmployeeInsurance>)g.ToList());
             return employees
                 .OrderBy(e => e.Code)
                 .Select(e =>
@@ -75,6 +78,23 @@ namespace KuaiJi.Modules.Salary.Application
                         Email = e.Email,
                         IdTypeText = EmployeeDto.IdTypeTextOf(e.IdType),
                         IdNo = e.IdNo,
+                        BirthDate = e.BirthDate,
+                        BankName = e.BankName,
+                        BankAccountNo = e.BankAccountNo,
+                        Post = e.Post,
+                        Title = e.Title,
+                        Education = e.Education,
+                        IsDisabled = e.IsDisabled,
+                        IsMartyrFamily = e.IsMartyrFamily,
+                        IsSoloElder = e.IsSoloElder,
+                        IsSeniorExpert = e.IsSeniorExpert,
+                        EmploymentTypeText = EmployeeDto.EmploymentTypeTextOf(e.EmploymentType),
+                        DeductBasicExpense = e.DeductBasicExpense,
+                        PayStartDate = e.PayStartDate,
+                        PaysSocialInsurance = e.PaysSocialInsurance,
+                        Insurances = basesByEmployee.GetValueOrDefault(e.Id) is { } bases
+                            ? bases.Select(b => new EmployeeInsuranceDto { InsuranceItemId = b.InsuranceItemId, InsuranceBase = b.InsuranceBase }).ToList()
+                            : [],
                         SubjectAccountId = e.SubjectAccountId,
                         SubjectText = subject is null ? string.Empty : $"{subject.Code} {subject.Name}",
                         StatusText = EmployeeDto.StatusTextOf(e.Status),
@@ -97,6 +117,7 @@ namespace KuaiJi.Modules.Salary.Application
 
             var employee = BuildEmployee(accountSetId, request);
             await _salaryRepository.AddEmployeeAsync(employee, cancellationToken);
+            await ReplaceEmployeeInsurancesAsync(accountSetId, employee.Id, request, cancellationToken);
             await _salaryRepository.SaveChangesAsync(cancellationToken);
             return (await GetEmployeesAsync(accountSetId, cancellationToken)).First(e => e.Id == employee.Id);
         }
@@ -119,30 +140,14 @@ namespace KuaiJi.Modules.Salary.Application
 
             try
             {
-                employee.Update(
-                    code,
-                    request.Name,
-                    (EmployeeGender)request.Gender,
-                    (EmployeeIdType)request.IdType,
-                    request.IdNo,
-                    request.Dept,
-                    request.Phone,
-                    request.Email,
-                    request.BirthDate,
-                    request.HireDate,
-                    request.BankName,
-                    request.BankAccountNo,
-                    request.Post,
-                    request.Title,
-                    request.SubjectAccountId,
-                    (EmployeeStatus)request.Status,
-                    request.Remark);
+                employee.Update(BuildProfile(request));
             }
             catch (ArgumentException ex)
             {
                 throw new SalaryException(ex.Message);
             }
 
+            await ReplaceEmployeeInsurancesAsync(accountSetId, employee.Id, request, cancellationToken);
             await _salaryRepository.SaveChangesAsync(cancellationToken);
             return (await GetEmployeesAsync(accountSetId, cancellationToken)).First(e => e.Id == employee.Id);
         }
@@ -479,47 +484,49 @@ namespace KuaiJi.Modules.Salary.Application
                     if (existing.TryGetValue(code, out var current))
                     {
                         var tracked = await _salaryRepository.GetEmployeeForUpdateAsync(accountSetId, current.Id, cancellationToken);
-                        tracked?.Update(
-                            code,
-                            name,
-                            gender,
-                            idType,
-                            row.IdNo,
-                            row.Dept,
-                            row.Phone,
-                            row.Email,
-                            tracked.BirthDate,
-                            hireDate,
-                            tracked.BankName,
-                            tracked.BankAccountNo,
-                            row.Post,
-                            row.Title,
-                            subjectId ?? tracked.SubjectAccountId,
-                            status,
-                            row.Remark);
+                        if (tracked is not null)
+                        {
+                            // 模板只含基础列，个税档案列与银行/出生日期等保持档案原值。
+                            tracked.Update(ProfileOf(tracked) with
+                            {
+                                Code = code,
+                                Name = name,
+                                Gender = gender,
+                                IdType = idType,
+                                IdNo = row.IdNo,
+                                Dept = row.Dept,
+                                Phone = row.Phone,
+                                Email = row.Email,
+                                HireDate = hireDate,
+                                Post = row.Post,
+                                Title = row.Title,
+                                SubjectAccountId = subjectId ?? tracked.SubjectAccountId,
+                                Status = status,
+                                Remark = row.Remark,
+                            });
+                        }
+
                         updated++;
                     }
                     else
                     {
-                        var employee = Employee.Create(
-                            accountSetId,
-                            code,
-                            name,
-                            gender,
-                            idType,
-                            row.IdNo,
-                            row.Dept,
-                            row.Phone,
-                            row.Email,
-                            null,
-                            hireDate,
-                            null,
-                            null,
-                            row.Post,
-                            row.Title,
-                            subjectId,
-                            status,
-                            row.Remark);
+                        var employee = Employee.Create(accountSetId, new EmployeeProfile
+                        {
+                            Code = code,
+                            Name = name,
+                            Gender = gender,
+                            IdType = idType,
+                            IdNo = row.IdNo,
+                            Dept = row.Dept,
+                            Phone = row.Phone,
+                            Email = row.Email,
+                            HireDate = hireDate,
+                            Post = row.Post,
+                            Title = row.Title,
+                            SubjectAccountId = subjectId,
+                            Status = status,
+                            Remark = row.Remark,
+                        });
                         await _salaryRepository.AddEmployeeAsync(employee, cancellationToken);
                         existing[code] = employee;
                         imported++;
@@ -528,6 +535,152 @@ namespace KuaiJi.Modules.Salary.Application
                 catch (ArgumentException ex)
                 {
                     failures.Add(new SalaryImportFailureDto { Row = row.Row, Reason = ex.Message });
+                }
+            }
+
+            if (imported + updated > 0)
+            {
+                await _salaryRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            return new EmployeeImportResultDto
+            {
+                Imported = imported,
+                Updated = updated,
+                Skipped = failures.Count,
+                Failures = failures,
+            };
+        }
+
+        /// <summary>
+        /// 同步个税「人员信息采集」名单到员工档案。
+        ///
+        /// 匹配口径与个税页一致：先按证件号码、取不到再按姓名——税局回的是脱敏号
+        /// （3412************97），对不上本地完整号时只能靠姓名兜底。命中只覆盖税局给得到的列，
+        /// 脱敏的证件号/手机号不回写，员工编号也不动（工资表按编号匹配员工）；没命中则新建，
+        /// 税局没有的字段一律用员工档案的默认值。
+        /// </summary>
+        public async Task<EmployeeImportResultDto> SyncIitPersonnelAsync(
+            Guid accountSetId,
+            IReadOnlyList<IitPersonnelSyncRow> rows,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureAccountSetExistsAsync(accountSetId, cancellationToken);
+            var employees = await _salaryRepository.GetEmployeesAsync(accountSetId, cancellationToken);
+            var byIdNo = new Dictionary<string, Employee>(StringComparer.OrdinalIgnoreCase);
+            var byName = new Dictionary<string, Employee>(StringComparer.Ordinal);
+            foreach (var employee in employees)
+            {
+                if (IdKeyOf(employee.IdNo) is { Length: > 0 } idKey)
+                {
+                    byIdNo.TryAdd(idKey, employee);
+                }
+
+                byName.TryAdd(employee.Name, employee);
+            }
+
+            var usedCodes = employees.Select(e => e.Code).ToHashSet(StringComparer.Ordinal);
+            var nextCode = NextEmployeeCode(employees);
+            var claimed = new HashSet<Guid>();
+
+            // 税局只回脱敏证件号，同名两个人分不出谁是谁：一个本地员工只认一笔姓名匹配，
+            // 多出来的同名行按新人登记，免得把两个人并成一个档案。
+            Employee? FindByNameMatch(string personName)
+            {
+                var named = byName.GetValueOrDefault(personName);
+                return named is not null && !claimed.Contains(named.Id) ? named : null;
+            }
+
+            var failures = new List<SalaryImportFailureDto>();
+            var imported = 0;
+            var updated = 0;
+
+            for (var index = 0; index < rows.Count; index++)
+            {
+                var row = rows[index];
+                var name = row.Name?.Trim() ?? string.Empty;
+                if (name.Length == 0)
+                {
+                    failures.Add(new SalaryImportFailureDto { Row = index + 1, Reason = "姓名不能为空。" });
+                    continue;
+                }
+
+                var idNo = IdKeyOf(row.IdNo);
+                var hireDate = ParseDate(row.HireDate);
+                var leaveDate = ParseDate(row.LeaveDate);
+                var matched = byIdNo.GetValueOrDefault(idNo) ?? FindByNameMatch(name);
+                if (matched is not null)
+                {
+                    claimed.Add(matched.Id);
+                }
+
+                try
+                {
+                    if (matched is not null)
+                    {
+                        var tracked = await _salaryRepository.GetEmployeeForUpdateAsync(accountSetId, matched.Id, cancellationToken);
+                        if (tracked is not null)
+                        {
+                            var gender = row.GenderText?.Trim() ?? string.Empty;
+                            var idType = row.IdTypeText?.Trim() ?? string.Empty;
+                            var employType = row.EmployTypeText?.Trim() ?? string.Empty;
+                            tracked.Update(ProfileOf(tracked) with
+                            {
+                                Name = name,
+                                Gender = gender.Length == 0 ? tracked.Gender : ParseGender(gender),
+                                IdType = idType.Length == 0 ? tracked.IdType : ParseIdType(idType),
+                                EmploymentType = employType.Length == 0 ? tracked.EmploymentType : ParseEmploymentType(employType),
+                                IdNo = Writable(row.IdNo) ?? tracked.IdNo,
+                                Phone = Writable(row.Phone) ?? tracked.Phone,
+                                Dept = Writable(row.Dept) ?? tracked.Dept,
+                                HireDate = hireDate ?? tracked.HireDate,
+                                Status = leaveDate is null ? tracked.Status : EmployeeStatus.Resigned,
+                                LeaveDate = leaveDate ?? tracked.LeaveDate,
+                            });
+                        }
+
+                        updated++;
+                        continue;
+                    }
+
+                    var code = (row.Code ?? string.Empty).Trim();
+                    if (code.Length is 0 or > Employee.MaxCodeLength || usedCodes.Contains(code))
+                    {
+                        while (usedCodes.Contains(nextCode))
+                        {
+                            nextCode = (int.Parse(nextCode) + 1).ToString("D3");
+                        }
+
+                        code = nextCode;
+                    }
+
+                    var employee = Employee.Create(accountSetId, new EmployeeProfile
+                    {
+                        Code = code,
+                        Name = name,
+                        Gender = ParseGender(row.GenderText),
+                        IdType = ParseIdType(row.IdTypeText),
+                        EmploymentType = ParseEmploymentType(row.EmployTypeText),
+                        IdNo = Writable(row.IdNo),
+                        Phone = Writable(row.Phone),
+                        Dept = Writable(row.Dept),
+                        HireDate = hireDate,
+                        LeaveDate = leaveDate,
+                        Status = leaveDate is null ? EmployeeStatus.Active : EmployeeStatus.Resigned,
+                    });
+                    await _salaryRepository.AddEmployeeAsync(employee, cancellationToken);
+                    usedCodes.Add(code);
+                    byName.TryAdd(name, employee);
+                    if (IdKeyOf(employee.IdNo) is { Length: > 0 } addedKey)
+                    {
+                        byIdNo.TryAdd(addedKey, employee);
+                    }
+
+                    imported++;
+                }
+                catch (ArgumentException ex)
+                {
+                    failures.Add(new SalaryImportFailureDto { Row = index + 1, Reason = ex.Message });
                 }
             }
 
@@ -993,6 +1146,45 @@ namespace KuaiJi.Modules.Salary.Application
         private static EmployeeStatus ParseStatus(string? text)
             => string.Equals(text?.Trim(), "离职", StringComparison.Ordinal) ? EmployeeStatus.Resigned : EmployeeStatus.Active;
 
+        private static EmployeeEmploymentType ParseEmploymentType(string? text)
+            => text?.Trim() switch
+            {
+                "保险营销员" => EmployeeEmploymentType.InsuranceAgent,
+                "证券经纪人" => EmployeeEmploymentType.SecuritiesBroker,
+                "劳务派遣" => EmployeeEmploymentType.LaborDispatch,
+                "其他" or "实习学生（全日制学历教育）" => EmployeeEmploymentType.Other,
+                _ => EmployeeEmploymentType.Employee,
+            };
+
+        /// <summary>证件号码比对口径：去空格、转大写，两边大小写与空格不一致也能对上。</summary>
+        private static string IdKeyOf(string? text) => text?.Trim().ToUpperInvariant() ?? string.Empty;
+
+        /// <summary>脱敏值（含 *）与空白都不落档案，取不到就当作税局没给这一列。</summary>
+        private static string? Writable(string? text)
+            => string.IsNullOrWhiteSpace(text) || text.Contains('*') ? null : text.Trim();
+
+        /// <summary>新增员工的建议编号：现有编号末尾数字的最大值 +1，三位补零。</summary>
+        private static string NextEmployeeCode(IEnumerable<Employee> employees)
+        {
+            var max = 0;
+            foreach (var employee in employees)
+            {
+                var digits = employee.Code.TrimEnd();
+                var tail = 0;
+                while (tail < digits.Length && char.IsDigit(digits[digits.Length - 1 - tail]))
+                {
+                    tail++;
+                }
+
+                if (tail > 0 && int.TryParse(digits[(digits.Length - tail)..], out var value) && value > max)
+                {
+                    max = value;
+                }
+            }
+
+            return (max + 1).ToString("D3");
+        }
+
         private static DateOnly? ParseDate(string? text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -1044,29 +1236,104 @@ namespace KuaiJi.Modules.Salary.Application
         {
             try
             {
-                return Employee.Create(
-                    accountSetId,
-                    request.Code,
-                    request.Name,
-                    (EmployeeGender)request.Gender,
-                    (EmployeeIdType)request.IdType,
-                    request.IdNo,
-                    request.Dept,
-                    request.Phone,
-                    request.Email,
-                    request.BirthDate,
-                    request.HireDate,
-                    request.BankName,
-                    request.BankAccountNo,
-                    request.Post,
-                    request.Title,
-                    request.SubjectAccountId,
-                    (EmployeeStatus)request.Status,
-                    request.Remark);
+                return Employee.Create(accountSetId, BuildProfile(request));
             }
             catch (ArgumentException ex)
             {
                 throw new SalaryException(ex.Message);
+            }
+        }
+
+        /// <summary>保存请求 → 员工档案字段集合。</summary>
+        private static EmployeeProfile BuildProfile(SaveEmployeeRequest request) => new()
+        {
+            Code = request.Code,
+            Name = request.Name,
+            Gender = (EmployeeGender)request.Gender,
+            IdType = (EmployeeIdType)request.IdType,
+            IdNo = request.IdNo,
+            Dept = request.Dept,
+            Phone = request.Phone,
+            Email = request.Email,
+            BirthDate = request.BirthDate,
+            HireDate = request.HireDate,
+            BankName = request.BankName,
+            BankAccountNo = request.BankAccountNo,
+            Post = request.Post,
+            Title = request.Title,
+            Education = request.Education,
+            IsDisabled = request.IsDisabled,
+            IsMartyrFamily = request.IsMartyrFamily,
+            IsSoloElder = request.IsSoloElder,
+            IsSeniorExpert = request.IsSeniorExpert,
+            EmploymentType = (EmployeeEmploymentType)request.EmploymentType,
+            DeductBasicExpense = request.DeductBasicExpense,
+            PayStartDate = request.PayStartDate,
+            SubjectAccountId = request.SubjectAccountId,
+            PaysSocialInsurance = request.PaysSocialInsurance,
+            Status = (EmployeeStatus)request.Status,
+            Remark = request.Remark,
+        };
+
+        /// <summary>员工档案 → 可编辑字段集合（导入更新时保留模板未覆盖的列）。</summary>
+        private static EmployeeProfile ProfileOf(Employee employee) => new()
+        {
+            Code = employee.Code,
+            Name = employee.Name,
+            Gender = employee.Gender,
+            IdType = employee.IdType,
+            IdNo = employee.IdNo,
+            Dept = employee.Dept,
+            Phone = employee.Phone,
+            Email = employee.Email,
+            BirthDate = employee.BirthDate,
+            HireDate = employee.HireDate,
+            LeaveDate = employee.LeaveDate,
+            BankName = employee.BankName,
+            BankAccountNo = employee.BankAccountNo,
+            Post = employee.Post,
+            Title = employee.Title,
+            Education = employee.Education,
+            IsDisabled = employee.IsDisabled,
+            IsMartyrFamily = employee.IsMartyrFamily,
+            IsSoloElder = employee.IsSoloElder,
+            IsSeniorExpert = employee.IsSeniorExpert,
+            EmploymentType = employee.EmploymentType,
+            DeductBasicExpense = employee.DeductBasicExpense,
+            PayStartDate = employee.PayStartDate,
+            SubjectAccountId = employee.SubjectAccountId,
+            PaysSocialInsurance = employee.PaysSocialInsurance,
+            Status = employee.Status,
+            Remark = employee.Remark,
+        };
+
+        /// <summary>整批替换员工缴纳基数；不缴五险一金或未带行时清空。</summary>
+        private async Task ReplaceEmployeeInsurancesAsync(
+            Guid accountSetId,
+            Guid employeeId,
+            SaveEmployeeRequest request,
+            CancellationToken cancellationToken)
+        {
+            foreach (var existing in await _salaryRepository.GetEmployeeInsurancesForUpdateAsync(accountSetId, employeeId, cancellationToken))
+            {
+                _salaryRepository.RemoveEmployeeInsurance(existing);
+            }
+
+            if (!request.PaysSocialInsurance)
+            {
+                return;
+            }
+
+            foreach (var line in request.Insurances ?? [])
+            {
+                if (line.InsuranceItemId == Guid.Empty || line.InsuranceBase <= 0m)
+                {
+                    continue;
+                }
+
+                await _salaryRepository.AddEmployeeInsuranceAsync(
+                    new EmployeeInsurance(Guid.NewGuid(), accountSetId, employeeId, line.InsuranceItemId, line.InsuranceBase),
+                    cancellationToken);
             }
         }
 
