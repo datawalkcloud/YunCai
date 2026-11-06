@@ -1,0 +1,260 @@
+/* 停车平台主题（云中停·智慧停车 1:1 复刻）
+   配色与尺寸均从参考截图实测采样：主蓝 #273CF3、选中底 #EEF0FE、
+   页面底/分组头 #F3F5F9、正文 #1A1A1A、次要 #686868。
+   作用域限定在 .parking-shell 内，不影响全站 shadcn/antd 主题。 */
+
+.parking-shell {
+    --pk-brand: #273cf3;
+    --pk-brand-hover: #1e2fc4;
+    --pk-brand-soft: #eef0fe;
+    --pk-brand-tint: #dfe2fd;
+    --pk-brand-border: #ced3fc;
+    --pk-gray-bg: #f3f5f9;
+    --pk-border: #e8e9ee;
+    --pk-text: #1a1a1a;
+    --pk-text-2: #686868;
+    --pk-red: #f53f3f;
+    --pk-green: #21b05c;
+    --pk-orange: #fc820a;
+    --pk-purple: #b620e0;
+}
+
+.parking-shell {
+    font-family:
+        Inter,
+        "PingFang SC",
+        "Microsoft YaHei",
+        sans-serif;
+    color: var(--pk-text);
+    font-size: 13px;
+}
+
+/* ---------- 卡片 ---------- */
+
+.pk-card {
+    background: #fff;
+    border: 1px solid var(--pk-border);
+    border-radius: 6px;
+}
+
+/* 区块标题：左侧 4px 蓝色竖条 */
+.pk-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--pk-text);
+    padding-left: 10px;
+    position: relative;
+}
+
+.pk-title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 14px;
+    border-radius: 2px;
+    background: var(--pk-brand);
+}
+
+/* ---------- 标签 ---------- */
+
+.pk-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1;
+    border: 1px solid #e0e2e8;
+    color: #4a4f5c;
+    background: #fafbfc;
+    white-space: nowrap;
+}
+
+.pk-tag-blue {
+    border-color: var(--pk-brand-border);
+    color: var(--pk-brand);
+    background: #fff;
+}
+
+.pk-tag-blue-soft {
+    border-color: transparent;
+    color: var(--pk-brand);
+    background: var(--pk-brand-tint);
+}
+
+.pk-tag-red {
+    border-color: #ffd0d0;
+    color: var(--pk-red);
+    background: #fff5f5;
+}
+
+.pk-tag-green {
+    border-color: #bfe8d2;
+    color: var(--pk-green);
+    background: #f2fbf6;
+}
+
+.pk-tag-solid-red {
+    border-color: transparent;
+    color: #fff;
+    background: var(--pk-red);
+}
+
+.pk-tag-solid-purple {
+    border-color: transparent;
+    color: #fff;
+    background: var(--pk-purple);
+}
+
+.pk-tag-solid-orange {
+    border-color: transparent;
+    color: #fff;
+    background: var(--pk-orange);
+}
+
+.pk-tag-solid-blue {
+    border-color: transparent;
+    color: #fff;
+    background: var(--pk-brand);
+}
+
+.pk-tag-dark {
+    border-color: transparent;
+    color: #fff;
+    background: #1a1a1a;
+}
+
+/* ---------- 按钮 ---------- */
+
+.pk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 14px;
+    border-radius: 13px;
+    font-size: 12px;
+    border: 1px solid var(--pk-brand);
+    color: var(--pk-brand);
+    background: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.pk-btn:hover {
+    background: var(--pk-brand-soft);
+}
+
+.pk-btn-red {
+    border-color: transparent;
+    color: #fff;
+    background: var(--pk-red);
+}
+
+.pk-btn-red:hover {
+    background: #e32e2e;
+}
+
+.pk-btn-red-outline {
+    border-color: var(--pk-red);
+    color: var(--pk-red);
+    background: #fff;
+}
+
+.pk-btn-red-outline:hover {
+    background: #fff5f5;
+}
+
+/* ---------- 顶栏渐变 AI 按钮 ---------- */
+
+.pk-ai-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 12px;
+    border-radius: 13px;
+    background:
+        linear-gradient(#fff, #fff) padding-box,
+        linear-gradient(90deg, var(--pk-brand), var(--pk-purple)) border-box;
+    border: 1.5px solid transparent;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.pk-ai-pill .pk-ai-label {
+    background: linear-gradient(90deg, var(--pk-brand), var(--pk-purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 600;
+}
+
+/* ---------- 表格 ---------- */
+
+.pk-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.pk-table th {
+    text-align: left;
+    font-weight: 400;
+    color: var(--pk-text-2);
+    background: var(--pk-gray-bg);
+    height: 32px;
+    padding: 0 12px;
+    white-space: nowrap;
+}
+
+.pk-table td {
+    height: 40px;
+    padding: 0 12px;
+    border-top: 1px solid var(--pk-border);
+    white-space: nowrap;
+}
+
+/* ---------- 右侧时间线 ---------- */
+
+.pk-timeline-item {
+    position: relative;
+    display: flex;
+    gap: 10px;
+    padding-bottom: 18px;
+}
+
+.pk-timeline-item::before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 14px;
+    bottom: 2px;
+    width: 1px;
+    background: #d9dce3;
+}
+
+.pk-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.pk-timeline-item:last-child::before {
+    display: none;
+}
+
+.pk-timeline-dot {
+    width: 7px;
+    height: 7px;
+    margin-top: 4px;
+    border-radius: 50%;
+    background: #c3c7d0;
+    flex: none;
+}

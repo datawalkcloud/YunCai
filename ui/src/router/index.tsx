@@ -98,6 +98,12 @@ const router = createBrowserRouter([
         path: "/privacy",
         element: <PrivacyPage />,
     },
+    // 停车平台风格主题演示（云中停·智慧停车 1:1 复刻 layout），公开可访问。
+    {
+        path: "/parking-demo",
+        lazy: async () => ({ Component: (await import("@/pages/parking-demo")).default }),
+        errorElement: <RouteErrorElement />,
+    },
     // 受保护的应用区：登录后可访问，统一挂载账套上下文。
     // 外层 ErrorBoundary 是这一块的最后一道防线（路由级兜底之上的渲染异常）。
     {
