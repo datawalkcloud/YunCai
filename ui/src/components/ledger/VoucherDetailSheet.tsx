@@ -29,7 +29,7 @@ const ENTRY_COLUMNS: ColumnsType<VoucherEntryDto> = [
         title: "科目",
         render: (_, entry) => (
             <>
-                <span className="text-slate-400">{entry.accountCode} </span>
+                <span className="text-(--muted-foreground)">{entry.accountCode} </span>
                 {entry.accountName}
             </>
         ),
@@ -37,7 +37,7 @@ const ENTRY_COLUMNS: ColumnsType<VoucherEntryDto> = [
     {
         title: "辅助核算",
         render: (_, entry) => (
-            <span className="text-slate-400">
+            <span className="text-(--muted-foreground)">
                 {entry.assists?.map((a) => `${a.typeText}：${a.itemName}`).join("、") ?? ""}
             </span>
         ),
@@ -137,8 +137,8 @@ export function VoucherDetailSheet({
 
                     <span
                         className={cn(
-                            "text-[12.5px] text-slate-400",
-                            !detail.isBalanced && "text-[#ef4444]",
+                            "text-[12.5px] text-(--muted-foreground)",
+                            !detail.isBalanced && "text-(--danger)",
                         )}
                     >
                         {detail.isBalanced ? "借贷平衡" : "借贷不平衡，请核对凭证分录。"}

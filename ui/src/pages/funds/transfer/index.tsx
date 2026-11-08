@@ -20,6 +20,7 @@ import {
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtMoney, toISODate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { useConfirm } from "@/hooks/useConfirm"
 
 /** 每页条数候选，与账页页脚的分页器一致。 */
@@ -255,6 +256,12 @@ export default function TransferPage() {
     const pageRows = filtered.slice((current - 1) * pageSize, current * pageSize)
     const enabledIds = filtered.filter((t) => !t.voucherId && t.id).map((t) => t.id as string)
 
+    /** 当前筛选结果的笔数与金额合计，表头上方直接展示。 */
+    const summary = useMemo(() => {
+        const amount = filtered.reduce((sum, t) => sum + (t.amount ?? 0), 0)
+        return { count: filtered.length, amount, pending: filtered.filter((t) => !t.voucherId).length }
+    }, [filtered])
+
     /* ---------- 行内登记 ---------- */
 
     async function saveDraft() {
@@ -402,6 +409,15 @@ export default function TransferPage() {
             setError(selected.length > 0 ? "勾选的转账都已生成凭证。" : "当前没有可生成凭证的转账。")
             return
         }
+        // 未勾选时会对「全部未制证转账」出票，必须先说清影响范围再执行。
+        if (
+            !(await confirm(
+                selected.length > 0
+                    ? `确定为选中的 ${ids.length} 笔转账生成凭证吗？`
+                    : `未勾选转账，将为当前筛选结果中全部 ${ids.length} 笔未制证转账生成凭证，是否继续？`,
+            ))
+        )
+            return
         try {
             const created = await new TransfersApi(apiConfig(token)).accountsetsAccountSetIdTransfersVouchersPost({
                 accountSetId,
@@ -489,7 +505,7 @@ export default function TransferPage() {
     /* ---------- 列 ---------- */
 
     const textFilter = (key: FilterKey) => ({
-        filterIcon: <FilterFilled style={{ color: filters[key] ? "#2f6bff" : "#c0c4cc", fontSize: 11 }} />,
+        filterIcon: <FilterFilled style={{ color: filters[key] ? "var(--brand)" : "var(--muted-foreground)" }} />,
         filteredValue: filters[key] ? [filters[key]] : null,
         filterDropdown: ({ confirm: apply }: { confirm: () => void }) => (
             <div className="w-[200px] p-2" onKeyDown={(e) => e.stopPropagation()}>
@@ -551,7 +567,7 @@ export default function TransferPage() {
                         onChange={(e) => setDraft((prev) => ({ ...prev, summary: e.target.value }))}
                     />
                 ) : (
-                    <span className="cursor-pointer text-[#2f6bff] hover:underline" onClick={() => startEdit(row.t)}>
+                    <span className="cursor-pointer text-(--brand) hover:underline" onClick={() => startEdit(row.t)}>
                         {row.t.summary}
                     </span>
                 ),
@@ -571,7 +587,7 @@ export default function TransferPage() {
                         onChange={(v) => setDraft((prev) => ({ ...prev, fromJournalId: v }))}
                     />
                 ) : (
-                    <span className="text-slate-600">{row.t.fromJournalName}</span>
+                    <span className="text-(--foreground)">{row.t.fromJournalName}</span>
                 ),
         },
         {
@@ -589,7 +605,7 @@ export default function TransferPage() {
                         onChange={(v) => setDraft((prev) => ({ ...prev, toJournalId: v }))}
                     />
                 ) : (
-                    <span className="text-slate-600">{row.t.toJournalName}</span>
+                    <span className="text-(--foreground)">{row.t.toJournalName}</span>
                 ),
         },
         {
@@ -608,7 +624,7 @@ export default function TransferPage() {
                         onChange={(v: number | null) => setDraft((prev) => ({ ...prev, amount: v == null ? "" : String(v) }))}
                     />
                 ) : (
-                    <span className="font-medium text-slate-700">{fmtMoney(row.t.amount ?? 0)}</span>
+                    <span className="font-medium text-(--foreground)">{fmtMoney(row.t.amount ?? 0)}</span>
                 ),
         },
         {
@@ -622,7 +638,7 @@ export default function TransferPage() {
                         onChange={(e) => setDraft((prev) => ({ ...prev, remark: e.target.value }))}
                     />
                 ) : (
-                    <div className="truncate text-slate-500">{row.t.remark ?? ""}</div>
+                    <div className="truncate text-(--muted-foreground)">{row.t.remark ?? ""}</div>
                 ),
         },
         {
@@ -632,11 +648,11 @@ export default function TransferPage() {
             ...textFilter("voucher"),
             render: (_, row) =>
                 row.kind === "draft" ? (
-                    <span className="text-slate-300">—</span>
+                    <span className="text-(--muted-foreground)">—</span>
                 ) : row.t.voucherNo ? (
-                    <span className="text-[#2f6bff]">{row.t.voucherNo}</span>
+                    <span className="text-(--brand)">{row.t.voucherNo}</span>
                 ) : (
-                    <span className="text-slate-300">—</span>
+                    <span className="text-(--muted-foreground)">—</span>
                 ),
         },
         {
@@ -775,21 +791,35 @@ export default function TransferPage() {
             {error && <Alert type="error" showIcon closable title={error} onClose={() => setError(null)} />}
             {notice && <Alert type="success" showIcon closable title={notice} onClose={() => setNotice(null)} />}
 
-            <Card
-                styles={{
-                    root: { border: "1px solid #f1f5f9", boxShadow: "0 1px 2px rgba(16,24,40,0.04)" },
-                }}
-            >
+            <Card>
                 <div className="mb-3 flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2 text-[14px] font-semibold text-slate-800">
-                        <SwapOutlined className="text-[#2f6bff]" />
+                    <span className="flex items-center gap-2 text-[14px] font-semibold text-(--foreground)">
+                        <SwapOutlined className="text-(--brand)" />
                         内部转账
-                        <span className="text-[12px] font-normal text-slate-400">
+                        <span className="text-[12px] font-normal text-(--muted-foreground)">
                             {currentSet?.name ?? ""}
                         </span>
                     </span>
                 </div>
                 {toolbar}
+
+                <div className="mb-3 flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg bg-(--table-zebra-bg) px-4 py-2.5 text-[13px]">
+                    <span className="text-(--muted-foreground)">
+                        转账笔数 <span className="ml-1 font-medium tabular-nums text-(--foreground)">{summary.count}</span>
+                    </span>
+                    <span className="text-(--muted-foreground)">
+                        金额合计{" "}
+                        <span className="ml-1 font-semibold tabular-nums text-(--foreground)">
+                            {fmtMoney(summary.amount)}
+                        </span>
+                    </span>
+                    <span className="text-(--muted-foreground)">
+                        未生成凭证{" "}
+                        <span className={cn("ml-1 font-medium tabular-nums", summary.pending > 0 ? "text-(--warn-text)" : "text-(--foreground)")}>
+                            {summary.pending}
+                        </span>
+                    </span>
+                </div>
 
                 <div className="overflow-hidden rounded-lg">
                     <Table<TransferRow>
@@ -808,7 +838,7 @@ export default function TransferPage() {
                     />
                 </div>
 
-                <div className="flex items-center justify-between text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
+                <div className="flex items-center justify-between text-[12.5px] text-(--muted-foreground)" style={{ marginTop: 16 }}>
                     <span>
                         显示 {filtered.length === 0 ? 0 : (current - 1) * pageSize + 1} 到{" "}
                         {Math.min(current * pageSize, filtered.length)}，共 {filtered.length} 条
@@ -843,7 +873,7 @@ export default function TransferPage() {
             >
                 <div className="flex flex-col gap-4 py-1">
                     <div className="flex items-center gap-3 text-[13px]">
-                        <span className="w-[76px] shrink-0 text-right text-slate-600">打印方向：</span>
+                        <span className="w-[76px] shrink-0 text-right text-(--foreground)">打印方向：</span>
                         <Select
                             className="flex-1"
                             value={printSettings.orientation}
@@ -855,7 +885,7 @@ export default function TransferPage() {
                         />
                     </div>
                     <div className="flex items-start gap-3 text-[13px]">
-                        <span className="w-[76px] shrink-0 pt-1 text-right text-slate-600">页边距：</span>
+                        <span className="w-[76px] shrink-0 pt-1 text-right text-(--foreground)">页边距：</span>
                         <div className="grid flex-1 grid-cols-2 gap-2">
                             {(
                                 [
@@ -866,7 +896,7 @@ export default function TransferPage() {
                                 ] as const
                             ).map(([key, label]) => (
                                 <label key={key} className="flex items-center gap-2">
-                                    <span className="w-4 text-slate-600">{label}</span>
+                                    <span className="w-4 text-(--foreground)">{label}</span>
                                     <InputNumber
                                         className="flex-1"
                                         min={0}
@@ -880,7 +910,7 @@ export default function TransferPage() {
                         </div>
                     </div>
                     <div className="flex items-start gap-3 text-[13px]">
-                        <span className="w-[76px] shrink-0 text-right text-slate-600">其他选项：</span>
+                        <span className="w-[76px] shrink-0 text-right text-(--foreground)">其他选项：</span>
                         <div className="flex flex-col gap-1">
                             <Checkbox
                                 checked={printSettings.showPrintDate}
@@ -913,9 +943,9 @@ export default function TransferPage() {
                 cancelText="取消"
                 confirmLoading={importing}
             >
-                <div className="flex flex-col gap-3 py-1 text-[13px] text-slate-600">
+                <div className="flex flex-col gap-3 py-1 text-[13px] text-(--foreground)">
                     <span>1.选择以下任意一种方式导入内部转账</span>
-                    <div className="ps-3 text-[12.5px] leading-6 text-slate-500">
+                    <div className="ps-3 text-[12.5px] leading-6 text-(--muted-foreground)">
                         <div>(1) 在内部转账列表导出所需数据，确认后直接导入</div>
                         <div>
                             (2) 下载模板，按照模板格式进行数据整理再导入
@@ -933,14 +963,14 @@ export default function TransferPage() {
                         </div>
                     </div>
                     <span>2.选择文件导入</span>
-                    <label className="flex h-[120px] cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 text-[12.5px] text-slate-500 hover:border-[#2f6bff]">
+                    <label className="flex h-[120px] cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-(--border) bg-(--muted) text-[12.5px] text-(--muted-foreground) hover:border-(--brand)">
                         <input
                             type="file"
                             accept=".xls,.xlsx"
                             className="hidden"
                             onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
                         />
-                        <span className="text-[13px] text-[#2f6bff]">{importFile ? importFile.name : "点击选择文件"}</span>
+                        <span className="text-[13px] text-(--brand)">{importFile ? importFile.name : "点击选择文件"}</span>
                         <span>支持 .xls / .xlsx，表头需含 日期 / 转出账户 / 转入账户 / 金额</span>
                     </label>
                 </div>
@@ -963,7 +993,7 @@ export default function TransferPage() {
                 {editForm && (
                     <div className="flex flex-col gap-3 py-1 text-[13px]">
                         <label className="flex items-center gap-3">
-                            <span className="w-[76px] shrink-0 text-right text-slate-600">日期：</span>
+                            <span className="w-[76px] shrink-0 text-right text-(--foreground)">日期：</span>
                             <DatePicker
                                 className="flex-1"
                                 allowClear={false}
@@ -972,7 +1002,7 @@ export default function TransferPage() {
                             />
                         </label>
                         <label className="flex items-center gap-3">
-                            <span className="w-[76px] shrink-0 text-right text-slate-600">摘要：</span>
+                            <span className="w-[76px] shrink-0 text-right text-(--foreground)">摘要：</span>
                             <Input
                                 className="flex-1"
                                 value={editForm.summary}
@@ -980,7 +1010,7 @@ export default function TransferPage() {
                             />
                         </label>
                         <label className="flex items-center gap-3">
-                            <span className="w-[76px] shrink-0 text-right text-slate-600">转出账户：</span>
+                            <span className="w-[76px] shrink-0 text-right text-(--foreground)">转出账户：</span>
                             <Select
                                 className="flex-1"
                                 value={editForm.fromJournalId || undefined}
@@ -989,7 +1019,7 @@ export default function TransferPage() {
                             />
                         </label>
                         <label className="flex items-center gap-3">
-                            <span className="w-[76px] shrink-0 text-right text-slate-600">转入账户：</span>
+                            <span className="w-[76px] shrink-0 text-right text-(--foreground)">转入账户：</span>
                             <Select
                                 className="flex-1"
                                 value={editForm.toJournalId || undefined}
@@ -998,7 +1028,7 @@ export default function TransferPage() {
                             />
                         </label>
                         <label className="flex items-center gap-3">
-                            <span className="w-[76px] shrink-0 text-right text-slate-600">金额：</span>
+                            <span className="w-[76px] shrink-0 text-right text-(--foreground)">金额：</span>
                             <InputNumber
                                 className="flex-1"
                                 min={0}
@@ -1008,14 +1038,14 @@ export default function TransferPage() {
                             />
                         </label>
                         <label className="flex items-center gap-3">
-                            <span className="w-[76px] shrink-0 text-right text-slate-600">备注：</span>
+                            <span className="w-[76px] shrink-0 text-right text-(--foreground)">备注：</span>
                             <Input
                                 className="flex-1"
                                 value={editForm.remark}
                                 onChange={(e) => setEditForm({ ...editForm, remark: e.target.value })}
                             />
                         </label>
-                        <p className="ps-[88px] text-[12px] leading-5 text-slate-400">
+                        <p className="ps-[88px] text-[12px] leading-5 text-(--muted-foreground)">
                             保存后会重建两端账户的转出 / 转入流水；已生成凭证的转账不允许修改。
                         </p>
                     </div>

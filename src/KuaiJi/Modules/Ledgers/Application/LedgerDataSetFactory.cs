@@ -154,16 +154,17 @@ namespace KuaiJi.Modules.Ledgers.Application
             LedgerQueryOptions options,
             CancellationToken cancellationToken)
         {
+            var enabledStart = new DateOnly(accountSet.StartYear, accountSet.StartMonth, 1);
             if (options.StartDate is null && options.EndDate is null)
             {
+                // 与柠檬云一致：缺省区间从账套启用期间起算，启用后没有凭证的月份也占行；
+                // 同时仍覆盖全部凭证（含未过账草稿），避免录入日期落在账页之外。
                 var (first, last) = await _source.GetVoucherDateBoundsAsync(accountSet.Id, cancellationToken);
-                if (first is { } min && last is { } max)
-                {
-                    return (MonthStart(min), MonthEnd(max));
-                }
+                var startDate = first is { } min && min < enabledStart ? min : enabledStart;
+                var endDate = last is { } max && max > enabledStart ? max : enabledStart;
+                return (MonthStart(startDate), MonthEnd(endDate));
             }
 
-            var enabledStart = new DateOnly(accountSet.StartYear, accountSet.StartMonth, 1);
             var start = MonthStart(options.StartDate ?? (options.EndDate is { } onlyEnd ? onlyEnd : enabledStart));
             var end = MonthEnd(options.EndDate ?? options.StartDate ?? enabledStart);
             return (start, end);

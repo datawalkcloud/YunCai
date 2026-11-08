@@ -1,3 +1,4 @@
+using KuaiJi.Modules.Auditing.Application;
 using KuaiJi.Modules.Closing.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,11 +16,24 @@ namespace KuaiJi.Modules.Closing.Api
     {
         private readonly ClosingService _closingService;
         private readonly ClosingTemplateService _templateService;
+        private readonly OperationLogService _operationLogService;
 
-        public ClosingController(ClosingService closingService, ClosingTemplateService templateService)
+        public ClosingController(
+            ClosingService closingService,
+            ClosingTemplateService templateService,
+            OperationLogService operationLogService)
         {
             _closingService = closingService;
             _templateService = templateService;
+            _operationLogService = operationLogService;
+        }
+
+        /// <summary>写一条期末结转模块的操作日志（审计失败不影响主流程）。</summary>
+        private Task LogAsync(Guid accountSetId, string type, string log, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirst("sub")?.Value ?? User.FindFirst("nameid")?.Value ?? string.Empty;
+            var userName = User.FindFirst("displayName")?.Value ?? User.FindFirst("unique_name")?.Value ?? "未知";
+            return _operationLogService.RecordAsync(accountSetId, userId, userName, type, "期末结转", log, cancellationToken);
         }
 
         /// <summary>获取期末结转总体状态（含逐月状态卡片与下一步待处理期间）。</summary>
@@ -122,7 +136,9 @@ namespace KuaiJi.Modules.Closing.Api
                                ?? "未知";
             try
             {
-                return Ok(await _closingService.CarryForwardAsync(accountSetId, operatorName, request, cancellationToken));
+                var result = await _closingService.CarryForwardAsync(accountSetId, operatorName, request, cancellationToken);
+                await LogAsync(accountSetId, "结转", $"结转损益 {result.PeriodText}", cancellationToken);
+                return Ok(result);
             }
             catch (ClosingException ex)
             {
@@ -145,8 +161,15 @@ namespace KuaiJi.Modules.Closing.Api
                                ?? "未知";
             try
             {
-                return Ok(await _closingService.TransferRetainedEarningsAsync(
-                    accountSetId, operatorName, request.Year, request.Month, cancellationToken));
+                var result = await _closingService.TransferRetainedEarningsAsync(
+                    accountSetId, operatorName, request.Year, request.Month, cancellationToken);
+                if (result.Created)
+                {
+                    await LogAsync(
+                        accountSetId, "结转", $"补做结转未分配利润 {request.Year}-{request.Month:D2}", cancellationToken);
+                }
+
+                return Ok(result);
             }
             catch (ClosingException ex)
             {
@@ -163,7 +186,9 @@ namespace KuaiJi.Modules.Closing.Api
         {
             try
             {
-                return Ok(await _closingService.CloseAsync(accountSetId, request.Year, request.Month, cancellationToken));
+                var result = await _closingService.CloseAsync(accountSetId, request.Year, request.Month, cancellationToken);
+                await LogAsync(accountSetId, "结账", $"结账 {request.Year}-{request.Month:D2}", cancellationToken);
+                return Ok(result);
             }
             catch (ClosingException ex)
             {
@@ -181,7 +206,12 @@ namespace KuaiJi.Modules.Closing.Api
         {
             try
             {
-                return Ok(await _closingService.ReopenAsync(accountSetId, year, month, cancellationToken));
+                var result = await _closingService.ReopenAsync(accountSetId, year, month, cancellationToken);
+                var detail = year is { } y && month is { } m
+                    ? $"从 {y}-{m:D2} 起反结账"
+                    : "反结账（退回最近一次结账）";
+                await LogAsync(accountSetId, "反结账", detail, cancellationToken);
+                return Ok(result);
             }
             catch (ClosingException ex)
             {
@@ -199,6 +229,7 @@ namespace KuaiJi.Modules.Closing.Api
             try
             {
                 var message = await _closingService.CancelCarryAsync(accountSetId, request.Year, request.Month, cancellationToken);
+                await LogAsync(accountSetId, "撤销结转", $"撤销结转 {request.Year}-{request.Month:D2}", cancellationToken);
                 return Ok(new CancelCarryResultDto { Message = message });
             }
             catch (ClosingException ex)
@@ -300,7 +331,14 @@ namespace KuaiJi.Modules.Closing.Api
         {
             try
             {
-                return Ok(await _closingService.CloseBatchAsync(accountSetId, cancellationToken));
+                var result = await _closingService.CloseBatchAsync(accountSetId, cancellationToken);
+                if (result.ClosedPeriods.Count > 0)
+                {
+                    await LogAsync(
+                        accountSetId, "结账", $"批量结账：{string.Join("、", result.ClosedPeriods)}", cancellationToken);
+                }
+
+                return Ok(result);
             }
             catch (ClosingException ex)
             {
@@ -314,7 +352,14 @@ namespace KuaiJi.Modules.Closing.Api
         {
             try
             {
-                return Ok(await _closingService.CarryBatchAsync(accountSetId, cancellationToken));
+                var result = await _closingService.CarryBatchAsync(accountSetId, cancellationToken);
+                if (result.MarkedPeriods.Count > 0)
+                {
+                    await LogAsync(
+                        accountSetId, "结转", $"批量标记结转：{string.Join("、", result.MarkedPeriods)}", cancellationToken);
+                }
+
+                return Ok(result);
             }
             catch (ClosingException ex)
             {

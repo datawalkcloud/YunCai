@@ -47,6 +47,7 @@ import { useAuth } from "@/auth/AuthContext"
 import { BillsApi, type BillAttachmentInfo, type BillDto, type SaveBillRequest } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
+import { StatusPill } from "@/components/page/status-pill"
 
 /** 每页条数候选，与柠檬云分页器一致。 */
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200, 500, 1000]
@@ -488,7 +489,7 @@ export function BillLedgerPage() {
                     content: (
                         <div className="text-[13px] leading-6">
                             <div>{`共 ${payload.totalRows} 行，成功导入 ${payload.imported} 张，跳过 ${payload.skipped} 行。`}</div>
-                            <div className="mt-2 max-h-[220px] overflow-auto text-[12.5px] text-slate-500">
+                            <div className="mt-2 max-h-[220px] overflow-auto text-[12.5px] text-(--muted-foreground)">
                                 {warnings.map((w) => (
                                     <div key={w}>{w}</div>
                                 ))}
@@ -584,7 +585,7 @@ export function BillLedgerPage() {
     /* ---------- 列定义 ---------- */
 
     const filterIcon = (active: boolean) => (
-        <FilterFilled style={{ fontSize: 11, color: active ? "#2f6bff" : "#cbd5e1" }} />
+        <FilterFilled style={{ fontSize: 11, color: active ? "var(--brand)" : "var(--icon-placeholder)" }} />
     )
 
     const columns: TableColumnsType<BillRow> = [
@@ -595,7 +596,7 @@ export function BillLedgerPage() {
             filters: uniq(rows.map((r) => r.category ?? "")),
             filterSearch: true,
             filterIcon: filterIcon((filters.category ?? []).length > 0),
-            render: (value: string) => <span className="text-[13px] text-slate-700">{value || ""}</span>,
+            render: (value: string) => <span className="text-[13px] text-(--foreground)">{value || ""}</span>,
         },
         {
             title: "出票日",
@@ -614,7 +615,7 @@ export function BillLedgerPage() {
                 <Flex align="center" gap={6}>
                     <span className="text-[13px]">{value}</span>
                     {row.voucherNo && (
-                        <span className="rounded bg-[#eef4ff] px-1.5 py-0.5 text-[11px] text-[#2f6bff]">{row.voucherNo}</span>
+                        <span className="rounded bg-(--brand-soft) px-1.5 py-0.5 text-[11px] text-(--brand)">{row.voucherNo}</span>
                     )}
                 </Flex>
             ),
@@ -624,7 +625,7 @@ export function BillLedgerPage() {
             dataIndex: "amount",
             width: 104,
             align: "right",
-            render: (value: number) => <span className="text-[13px] tabular-nums text-slate-700">{fmtAmount(value)}</span>,
+            render: (value: number) => <span className="text-[13px] tabular-nums text-(--foreground)">{fmtAmount(value)}</span>,
         },
         {
             title: "票据种类",
@@ -664,6 +665,17 @@ export function BillLedgerPage() {
             onCell: () => ({ style: { whiteSpace: "nowrap" } }),
             filters: uniq(rows.map((r) => r.statusText ?? "")),
             filterIcon: filterIcon((filters.statusText ?? []).length > 0),
+            render: (value: string | null | undefined) => {
+                const text = value ?? ""
+                const tone = /逾期|拒付|退票/.test(text)
+                    ? "red"
+                    : /待|未/.test(text)
+                      ? "amber"
+                      : /结清|收款|贴现|已/.test(text)
+                        ? "green"
+                        : "blue"
+                return text ? <StatusPill tone={tone}>{text}</StatusPill> : ""
+            },
         },
         {
             title: "能否转让",
@@ -729,7 +741,7 @@ export function BillLedgerPage() {
     return (
         <div className="flex flex-col gap-3">
             {error && (
-                <div className="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>
+                <div className="rounded border border-(--danger-border) bg-(--table-neg-bg) px-3 py-2 text-[13px] text-(--danger)">{error}</div>
             )}
 
             <Card>
@@ -753,7 +765,7 @@ export function BillLedgerPage() {
                             }}
                         />
                         <Checkbox checked={showAll} onChange={(e) => setShowAll(e.target.checked)}>
-                            <span className="text-[13px] text-slate-600">显示所有信息</span>
+                            <span className="text-[13px] text-(--foreground)">显示所有信息</span>
                         </Checkbox>
                     </Space>
 
@@ -790,6 +802,27 @@ export function BillLedgerPage() {
                 </Flex>
 
                 <Spin spinning={loading}>
+                    <div className="mb-3 flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg bg-(--table-zebra-bg) px-4 py-2.5 text-[13px]">
+                        <span className="text-(--muted-foreground)">
+                            票据张数 <span className="ml-1 font-medium tabular-nums text-(--foreground)">{filtered.length}</span>
+                        </span>
+                        <span className="text-(--muted-foreground)">
+                            票面金额合计{" "}
+                            <span className="ml-1 font-semibold tabular-nums text-(--foreground)">
+                                ¥{fmtAmount(filtered.reduce((s, r) => s + (r.amount ?? 0), 0), true)}
+                            </span>
+                        </span>
+                        {[...new Set(filtered.map((r) => r.statusText ?? ""))]
+                            .filter(Boolean)
+                            .map((text) => (
+                                <span key={text} className="text-(--muted-foreground)">
+                                    {text}{" "}
+                                    <span className="ml-1 font-medium tabular-nums text-(--foreground)">
+                                        {filtered.filter((r) => (r.statusText ?? "") === text).length}
+                                    </span>
+                                </span>
+                            ))}
+                    </div>
                     <Table<BillRow>
                         rowKey={(row) => row.id ?? row.billNo ?? ""}
                         columns={columns}
@@ -809,7 +842,7 @@ export function BillLedgerPage() {
                     />
                 </Spin>
 
-                <Flex justify="end" align="center" gap={12} style={{ marginTop: 16 }} className="px-1 pb-1 text-[12.5px] text-slate-500">
+                <Flex justify="end" align="center" gap={12} style={{ marginTop: 16 }} className="px-1 pb-1 text-[12.5px] text-(--muted-foreground)">
                     <span>{`显示 ${filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 ${Math.min(page * pageSize, filtered.length)}，共 ${filtered.length} 条`}</span>
                     <Pagination
                         current={page}
@@ -840,7 +873,7 @@ export function BillLedgerPage() {
             >
                 <div className="grid grid-cols-3 gap-x-6 gap-y-3 py-2">
                     <div className="flex items-start gap-2">
-                        <span className="w-[104px] shrink-0 pt-1 text-right text-[13px] text-slate-600">上传票面：</span>
+                        <span className="w-[104px] shrink-0 pt-1 text-right text-[13px] text-(--foreground)">上传票面：</span>
                         <Upload
                             maxCount={1}
                             beforeUpload={() => false}
@@ -848,7 +881,7 @@ export function BillLedgerPage() {
                             onChange={({ fileList }) => setPendingFile(fileList[0] ?? null)}
                             onRemove={() => setPendingFile(null)}
                         >
-                            <div className="flex h-[70px] w-[104px] cursor-pointer flex-col items-center justify-center rounded border border-dashed border-slate-300 text-[12px] text-slate-400 hover:border-[#2f6bff] hover:text-[#2f6bff]">
+                            <div className="flex h-[70px] w-[104px] cursor-pointer flex-col items-center justify-center rounded border border-dashed border-(--border) text-[12px] text-(--muted-foreground) hover:border-(--brand) hover:text-(--brand)">
                                 <PlusOutlined />
                                 <span className="mt-1">上传票面</span>
                             </div>
@@ -984,10 +1017,10 @@ export function BillLedgerPage() {
                         {attachments.length === 0 ? (
                             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无附件" />
                         ) : (
-                            <div className="flex flex-col divide-y divide-slate-100 rounded border border-slate-200">
+                            <div className="flex flex-col divide-y divide-(--border) rounded border border-(--border)">
                                 {attachments.map((a) => (
                                     <Flex key={a.id} justify="space-between" align="center" className="px-3 py-2">
-                                        <span className="truncate text-[13px] text-slate-700">{a.fileName}</span>
+                                        <span className="truncate text-[13px] text-(--foreground)">{a.fileName}</span>
                                         <Space size={10}>
                                             <Typography.Link
                                                 style={{ fontSize: 13 }}
@@ -1001,7 +1034,7 @@ export function BillLedgerPage() {
                                                 下载
                                             </Typography.Link>
                                             <Typography.Link
-                                                style={{ fontSize: 13, color: "#ef4444" }}
+                                                style={{ fontSize: 13, color: "var(--tone-red)" }}
                                                 onClick={() => void deleteAttachment(a.id ?? "")}
                                             >
                                                 删除
@@ -1027,9 +1060,9 @@ export function BillLedgerPage() {
                 onCancel={() => setImportOpen(false)}
                 destroyOnHidden
             >
-                <div className="flex flex-col gap-3 py-1 text-[13px] text-slate-600">
+                <div className="flex flex-col gap-3 py-1 text-[13px] text-(--foreground)">
                     <span>1.选择以下任意一种方式导入票据</span>
-                    <div className="ps-3 text-[12.5px] leading-6 text-slate-500">
+                    <div className="ps-3 text-[12.5px] leading-6 text-(--muted-foreground)">
                         <div>(1) 在票据列表导出所需数据，确认后直接导入</div>
                         <div>
                             (2) 点击下载模板，按照模板格式进行数据整理再导入
@@ -1055,14 +1088,14 @@ export function BillLedgerPage() {
                         }}
                         onRemove={() => setImportFile(null)}
                     >
-                        <p className="text-[13px] text-slate-500">“点击”或“按 Ctrl + V 粘贴”或“拖拽至弹窗”上传</p>
+                        <p className="text-[13px] text-(--muted-foreground)">“点击”或“按 Ctrl + V 粘贴”或“拖拽至弹窗”上传</p>
                     </Upload.Dragger>
                 </div>
             </Modal>
 
             {/* 如何管理票据 */}
             <Modal open={helpOpen} title="如何管理票据" width={600} footer={null} onCancel={() => setHelpOpen(false)}>
-                <div className="flex flex-col gap-2 py-1 text-[13px] leading-6 text-slate-600">
+                <div className="flex flex-col gap-2 py-1 text-[13px] leading-6 text-(--foreground)">
                     <span>1.点击「新增」登记票据，必填项为票据号码、出票日、票据金额、承兑人全称与承兑人账号/行号。</span>
                     <span>2.票据到期收到款项后点击行内「收款」，票据状态变为「票据已结清」；需要背书转出时点击「转让」。</span>
                     <span>3.勾选票据后点「生成凭证」，可按收支类别自动生成收款或贴现凭证；已生成凭证、状态不符、未设置收支类别的票据会被跳过。</span>
@@ -1087,8 +1120,8 @@ function Field({
 }) {
     return (
         <div className="flex items-center gap-2">
-            <span className="shrink-0 text-right text-[13px] text-slate-600" style={{ width: labelWidth }}>
-                {required && <span className="me-0.5 text-[#ef4444]">*</span>}
+            <span className="shrink-0 text-right text-[13px] text-(--foreground)" style={{ width: labelWidth }}>
+                {required && <span className="me-0.5 text-(--danger)">*</span>}
                 {label}：
             </span>
             <div className="min-w-0 flex-1">{children}</div>

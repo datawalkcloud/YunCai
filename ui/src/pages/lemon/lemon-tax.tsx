@@ -5,12 +5,12 @@
  * 自动填表并触发短信；用户只把短信验证码填回本页，登录态留在服务器。
  * 因此不需要安装本机助手，也不会在浏览器里打开税局页面。
  *
- * 智能报税工作台（/tax/declare）是独立全屏页面，见 pages/tax/TaxWorkspace。
+ * 报税各功能页（/tax/*）与本页同一外壳，菜单在顶部「报税」分类下，见 pages/tax/*。
  *
  * 弹窗两步与柠檬云一致：① 确认公司信息（含报税地区）② 填写税局登录信息。
  * 已填过一次的话第二步整页预填，密码不回显、留空即沿用已保存的那份。
  */
-import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 
 import { CheckCircleFilled } from "@ant-design/icons";
 import { Input, Spin } from "antd";
@@ -60,12 +60,12 @@ const STEPS = [
 function FieldRow({ label, required, children, hint }: { label: string; required?: boolean; children: ReactNode; hint?: string }) {
     return (
         <div className="flex items-center">
-            <span className="w-[170px] shrink-0 text-right text-[13px] text-slate-700">
-                {required && <span className="text-[#ef4444]">* </span>}
+            <span className="w-[170px] shrink-0 text-right text-[13px] text-(--foreground)">
+                {required && <span className="text-(--danger)">* </span>}
                 {label}：
             </span>
             {children}
-            {hint && <span className="ml-2 text-[12px] text-slate-400">{hint}</span>}
+            {hint && <span className="ml-2 text-[12px] text-(--muted-foreground)">{hint}</span>}
         </div>
     );
 }
@@ -81,13 +81,13 @@ function StepBar({ step }: { step: 1 | 2 }) {
             {items.map((item, i) => {
                 const done = i === 0;
                 const active = step === item.no;
-                const tone = done || active ? "bg-[#2f6bff] text-white" : "border border-slate-300 text-slate-400";
+                const tone = done || active ? "bg-(--brand-fill) text-white" : "border border-(--border) text-(--muted-foreground)";
                 return (
                     <div key={item.no} className="flex items-center gap-3">
-                        {i > 0 && <span className="h-px w-16 bg-slate-200" />}
+                        {i > 0 && <span className="h-px w-16 bg-(--muted)" />}
                         <span className="flex items-center gap-1.5">
                             <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] ${tone}`}>{item.no}</span>
-                            <span className={active || done ? "text-[#2f6bff]" : "text-slate-400"}>{item.text}</span>
+                            <span className={active || done ? "text-(--brand)" : "text-(--muted-foreground)"}>{item.text}</span>
                         </span>
                     </div>
                 );
@@ -132,39 +132,24 @@ export function LemonTaxLogin() {
     const [etaxBusy, setEtaxBusy] = useState(false);
     const [assistantMissingOpen, setAssistantMissingOpen] = useState(false);
 
-    /** 进入本页先问后端登录态还能不能用；失效时自动弹窗补一次短信，用户不必自己点。 */
+    /** 进入本页只确认后端登录态还能不能用；失效时由用户自己点「税局登录」，不自动发起登录。 */
     const [sessionCheck, setSessionCheck] = useState<{ accountSetId: string; state: "valid" | "expired" } | null>(null);
     const [loginPromptOpen, setLoginPromptOpen] = useState(false);
-    /** 自动弹窗只弹一次：用户主动关掉后不再强行弹回来。 */
-    const autoPromptedRef = useRef(false);
     /** 换账套时旧结果作废，重新回到「确认中」。 */
     const sessionState = sessionCheck && sessionCheck.accountSetId === accountSetId ? sessionCheck.state : "checking";
 
     useEffect(() => {
         if (!accountSetId || !token) return;
         let cancelled = false;
-        autoPromptedRef.current = false;
         void resumeTaxPortalLogin(accountSetId, token)
             .then((result) => {
                 if (cancelled) return;
-                if (result.state === "success") {
-                    setSessionCheck({ accountSetId, state: "valid" });
-                    return;
-                }
-                setSessionCheck({ accountSetId, state: "expired" });
-                if (!autoPromptedRef.current) {
-                    autoPromptedRef.current = true;
-                    setLoginPromptOpen(true);
-                }
+                setSessionCheck({ accountSetId, state: result.state === "success" ? "valid" : "expired" });
             })
             .catch(() => {
+                // 确认请求本身失败（后端重启、网络抖动）也按未登录处理，点「税局登录」可以重来。
                 if (cancelled) return;
-                // 恢复请求本身失败（后端重启、网络抖动）也按未登录处理，弹窗里可以直接重试。
                 setSessionCheck({ accountSetId, state: "expired" });
-                if (!autoPromptedRef.current) {
-                    autoPromptedRef.current = true;
-                    setLoginPromptOpen(true);
-                }
             });
         return () => {
             cancelled = true;
@@ -503,10 +488,10 @@ export function LemonTaxLogin() {
         <Page>
             <WipNotice text="一键登录已接通：服务器用账套里保存的税局资料打开电子税务局并自动填表，账号密码加密存库且不再回显；收到短信后把验证码填到本页即可完成登录。需要自己进税局办理时，点「一键登录电子税务局」，本机助手会带着服务器上的登录态直接打开税局页面。" />
             <div className="px-4 pb-2">
-                <div className="flex flex-col gap-2 rounded-xl bg-[#fafbfd] p-4 text-[13px] leading-6 text-slate-600">
+                <div className="flex flex-col gap-2 rounded-xl bg-(--table-zebra-bg) p-4 text-[13px] leading-6 text-(--foreground)">
                     {STEPS.map((s, i) => (
                         <div key={s} className="flex items-start gap-2">
-                            <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-[#2f6bff] text-[11px] text-white">
+                            <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-(--brand-fill) text-[11px] text-white">
                                 {i + 1}
                             </span>
                             <span>{s}</span>
@@ -525,18 +510,18 @@ export function LemonTaxLogin() {
                     </Btn>
                 )}
                 {sessionState === "valid" && accountSetId && (
-                    <Btn onClick={() => navigate(`/${accountSetId}/tax/declare`)}>进入智能报税</Btn>
+                    <Btn onClick={() => navigate(`/${accountSetId}/tax/fetch`)}>进入智能报税</Btn>
                 )}
                 {sessionState === "checking" ? (
-                    <span className="flex items-center gap-2 text-[13px] text-slate-500">
+                    <span className="flex items-center gap-2 text-[13px] text-(--muted-foreground)">
                         <Spin size="small" /> 正在确认税局登录状态…
                     </span>
                 ) : sessionState === "valid" ? (
-                    <span className="flex items-center gap-2 text-[13px] text-[#15803d]">
+                    <span className="flex items-center gap-2 text-[13px] text-(--success)">
                         <CheckCircleFilled /> 税局登录状态有效，可以直接取数
                     </span>
                 ) : (
-                    <span className="text-[13px] text-[#b45309]">税局登录状态已失效，请重新登录</span>
+                    <span className="text-[13px] text-(--warn-text)">税局登录状态已失效，请重新登录</span>
                 )}
             </div>
 
@@ -589,18 +574,18 @@ export function LemonTaxLogin() {
                         </div>
                     }
                 >
-                    <div className="rounded-xl bg-[#fafbfd] p-4 text-[13px] leading-6">
+                    <div className="rounded-xl bg-(--table-zebra-bg) p-4 text-[13px] leading-6">
                         <div className="flex items-start gap-2">
-                            <span className="text-[#b45309]">⚠</span>
-                            <div className="text-slate-600">
+                            <span className="text-(--warn-text)">⚠</span>
+                            <div className="text-(--foreground)">
                                 <div>1.一键自动跳转登录电子税局，方便且高效</div>
                                 <div>
-                                    2.首次使用或<span className="text-[#ef4444]">税务信息填写不准确</span>，均需要认证税局登录账号后，才能使用一键登录电子税局功能；税务信息填写完成后，可前往
-                                    <span className="cursor-pointer text-[#2f6bff]">【设置-账套】</span>中再次查看和修改
+                                    2.首次使用或<span className="text-(--danger)">税务信息填写不准确</span>，均需要认证税局登录账号后，才能使用一键登录电子税局功能；税务信息填写完成后，可前往
+                                    <span className="cursor-pointer text-(--brand)">【设置-账套】</span>中再次查看和修改
                                 </div>
                                 <div>
-                                    3.如您在使用过程中有任何疑问，请查看 <span className="cursor-pointer text-[#2f6bff]">帮助文档</span> 或联系
-                                    <span className="ml-1 inline-flex h-6 items-center rounded-md bg-[#2f6bff] px-2 text-[12px] text-white">在线客服</span>
+                                    3.如您在使用过程中有任何疑问，请查看 <span className="cursor-pointer text-(--brand)">帮助文档</span> 或联系
+                                    <span className="ml-1 inline-flex h-6 items-center rounded-md bg-(--brand-fill) px-2 text-[12px] text-white">在线客服</span>
                                 </div>
                             </div>
                         </div>
@@ -626,7 +611,7 @@ export function LemonTaxLogin() {
                                 <CheckBox
                                     checked={agreed}
                                     onChange={setAgreed}
-                                    label={<>我已阅读并同意 <span className="text-[#2f6bff]">《税局登录业务隐私政策》</span></>}
+                                    label={<>我已阅读并同意 <span className="text-(--brand)">《税局登录业务隐私政策》</span></>}
                                 />
                             </div>
                         </div>
@@ -655,8 +640,8 @@ export function LemonTaxLogin() {
                                 </FieldRow>
                             </div>
                             {captchaRequired && captcha && (
-                                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                                    <div className="flex flex-wrap items-center gap-2 text-[13px] text-slate-700">
+                                <div className="rounded-xl border border-(--border) bg-(--card) p-3">
+                                    <div className="flex flex-wrap items-center gap-2 text-[13px] text-(--foreground)">
                                         <span>请依次点击：</span>
                                         {captcha.promptImage && (
                                             <img
@@ -666,7 +651,7 @@ export function LemonTaxLogin() {
                                                 draggable={false}
                                             />
                                         )}
-                                        <span className="ml-auto text-[12px] text-slate-400">
+                                        <span className="ml-auto text-[12px] text-(--muted-foreground)">
                                             按提示顺序点击下方图中文字
                                         </span>
                                     </div>
@@ -687,14 +672,14 @@ export function LemonTaxLogin() {
                                         {captchaClicks.map((point, index) => (
                                             <span
                                                 key={`${index}-${point.x.toFixed(4)}-${point.y.toFixed(4)}`}
-                                                className="pointer-events-none absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#2f6bff] text-[11px] text-white shadow"
+                                                className="pointer-events-none absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-(--brand-fill) text-[11px] text-white shadow"
                                                 style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
                                             >
                                                 {index + 1}
                                             </span>
                                         ))}
                                     </div>
-                                    <div className="mt-2 flex items-center gap-2 text-[12px] text-slate-400">
+                                    <div className="mt-2 flex items-center gap-2 text-[12px] text-(--muted-foreground)">
                                         <span>已点选 {captchaClicks.length} 个，点错了可以清空重选。</span>
                                         <Btn disabled={captchaClicks.length === 0} onClick={() => setCaptchaClicks([])}>
                                             清空
@@ -725,7 +710,7 @@ export function LemonTaxLogin() {
                             {flowMessage && (
                                 <div
                                     className={`rounded-lg px-3 py-2 text-[12.5px] leading-5 ${
-                                        flowState === "failed" ? "bg-[#fef2f2] text-[#b91c1c]" : "bg-[#eff6ff] text-[#1d4ed8]"
+                                        flowState === "failed" ? "bg-(--table-neg-bg) text-(--danger)" : "bg-(--brand-soft) text-(--brand)"
                                     }`}
                                 >
                                     {flowMessage}
@@ -784,7 +769,7 @@ export function LemonTaxLogin() {
                         </div>
                     }
                 >
-                    <div className="text-[13px] leading-6 text-slate-600">
+                    <div className="text-[13px] leading-6 text-(--foreground)">
                         「一键登录电子税务局」由本机的云财税务助手打开税局页面。助手窗口关掉后会收进系统托盘继续待命，托盘图标双击或右键「打开助手」都能唤回来。
                     </div>
                     <HintBox className="mt-3">装过但一直没响应，多半是助手从托盘退出了——重新打开助手再点一次「重新检测」；从没装过才需要下载安装包。</HintBox>

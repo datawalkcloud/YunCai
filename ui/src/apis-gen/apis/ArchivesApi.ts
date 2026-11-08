@@ -15,6 +15,7 @@
 
 import * as runtime from '../runtime';
 import type {
+  ArchiveCategoryDto,
   ArchiveIdsRequest,
   ArchiveItemDto,
   ArchiveUsageDto,
@@ -22,9 +23,12 @@ import type {
   GenerateVoucherFromArchivesRequest,
   LinkVoucherRequest,
   PaperArchiveRequest,
+  SaveArchiveCategoryRequest,
   SaveArchiveRequest,
 } from '../models/index';
 import {
+    ArchiveCategoryDtoFromJSON,
+    ArchiveCategoryDtoToJSON,
     ArchiveIdsRequestFromJSON,
     ArchiveIdsRequestToJSON,
     ArchiveItemDtoFromJSON,
@@ -39,6 +43,8 @@ import {
     LinkVoucherRequestToJSON,
     PaperArchiveRequestFromJSON,
     PaperArchiveRequestToJSON,
+    SaveArchiveCategoryRequestFromJSON,
+    SaveArchiveCategoryRequestToJSON,
     SaveArchiveRequestFromJSON,
     SaveArchiveRequestToJSON,
 } from '../models/index';
@@ -55,6 +61,26 @@ export interface AccountsetsAccountSetIdArchivesArchivedGetRequest {
 export interface AccountsetsAccountSetIdArchivesAuditPostRequest {
     accountSetId: string;
     auditArchiveRequest: AuditArchiveRequest;
+}
+
+export interface AccountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequest {
+    accountSetId: string;
+    categoryId: string;
+}
+
+export interface AccountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequest {
+    accountSetId: string;
+    categoryId: string;
+    saveArchiveCategoryRequest: SaveArchiveCategoryRequest;
+}
+
+export interface AccountsetsAccountSetIdArchivesCategoriesGetRequest {
+    accountSetId: string;
+}
+
+export interface AccountsetsAccountSetIdArchivesCategoriesPostRequest {
+    accountSetId: string;
+    saveArchiveCategoryRequest: SaveArchiveCategoryRequest;
 }
 
 export interface AccountsetsAccountSetIdArchivesGetRequest {
@@ -174,6 +200,98 @@ export interface ArchivesApiInterface {
     /**
      */
     accountsetsAccountSetIdArchivesAuditPost(requestParameters: AccountsetsAccountSetIdArchivesAuditPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete without sending the request
+     * @param {string} accountSetId 
+     * @param {string} categoryId 
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} categoryId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRaw(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesCategoriesCategoryIdPut without sending the request
+     * @param {string} accountSetId 
+     * @param {string} categoryId 
+     * @param {SaveArchiveCategoryRequest} saveArchiveCategoryRequest 
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} categoryId 
+     * @param {SaveArchiveCategoryRequest} saveArchiveCategoryRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesCategoriesCategoryIdPutRaw(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ArchiveCategoryDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdArchivesCategoriesCategoryIdPut(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveCategoryDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesCategoriesGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesCategoriesGetRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesCategoriesGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesCategoriesGetRaw(requestParameters: AccountsetsAccountSetIdArchivesCategoriesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<ArchiveCategoryDto>>>;
+
+    /**
+     */
+    accountsetsAccountSetIdArchivesCategoriesGet(requestParameters: AccountsetsAccountSetIdArchivesCategoriesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<ArchiveCategoryDto>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesCategoriesPost without sending the request
+     * @param {string} accountSetId 
+     * @param {SaveArchiveCategoryRequest} saveArchiveCategoryRequest 
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesCategoriesPostRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesCategoriesPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {SaveArchiveCategoryRequest} saveArchiveCategoryRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ArchivesApiInterface
+     */
+    accountsetsAccountSetIdArchivesCategoriesPostRaw(requestParameters: AccountsetsAccountSetIdArchivesCategoriesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ArchiveCategoryDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdArchivesCategoriesPost(requestParameters: AccountsetsAccountSetIdArchivesCategoriesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveCategoryDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdArchivesGet without sending the request
@@ -541,6 +659,213 @@ export class ArchivesApi extends runtime.BaseAPI implements ArchivesApiInterface
      */
     async accountsetsAccountSetIdArchivesAuditPost(requestParameters: AccountsetsAccountSetIdArchivesAuditPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number> {
         const response = await this.accountsetsAccountSetIdArchivesAuditPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete without sending the request
+     */
+    async accountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete().'
+            );
+        }
+
+        if (requestParameters['categoryId'] == null) {
+            throw new runtime.RequiredError(
+                'categoryId',
+                'Required parameter "categoryId" was null or undefined when calling accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/archives/categories/{categoryId}`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"categoryId"}}`, encodeURIComponent(String(requestParameters['categoryId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRaw(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesCategoriesCategoryIdPut without sending the request
+     */
+    async accountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdArchivesCategoriesCategoryIdPut().'
+            );
+        }
+
+        if (requestParameters['categoryId'] == null) {
+            throw new runtime.RequiredError(
+                'categoryId',
+                'Required parameter "categoryId" was null or undefined when calling accountsetsAccountSetIdArchivesCategoriesCategoryIdPut().'
+            );
+        }
+
+        if (requestParameters['saveArchiveCategoryRequest'] == null) {
+            throw new runtime.RequiredError(
+                'saveArchiveCategoryRequest',
+                'Required parameter "saveArchiveCategoryRequest" was null or undefined when calling accountsetsAccountSetIdArchivesCategoriesCategoryIdPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/archives/categories/{categoryId}`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"categoryId"}}`, encodeURIComponent(String(requestParameters['categoryId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveArchiveCategoryRequestToJSON(requestParameters['saveArchiveCategoryRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesCategoriesCategoryIdPutRaw(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ArchiveCategoryDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ArchiveCategoryDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesCategoriesCategoryIdPut(requestParameters: AccountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveCategoryDto> {
+        const response = await this.accountsetsAccountSetIdArchivesCategoriesCategoryIdPutRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesCategoriesGet without sending the request
+     */
+    async accountsetsAccountSetIdArchivesCategoriesGetRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesCategoriesGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdArchivesCategoriesGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/archives/categories`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesCategoriesGetRaw(requestParameters: AccountsetsAccountSetIdArchivesCategoriesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<ArchiveCategoryDto>>> {
+        const requestOptions = await this.accountsetsAccountSetIdArchivesCategoriesGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ArchiveCategoryDtoFromJSON));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesCategoriesGet(requestParameters: AccountsetsAccountSetIdArchivesCategoriesGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<ArchiveCategoryDto>> {
+        const response = await this.accountsetsAccountSetIdArchivesCategoriesGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdArchivesCategoriesPost without sending the request
+     */
+    async accountsetsAccountSetIdArchivesCategoriesPostRequestOpts(requestParameters: AccountsetsAccountSetIdArchivesCategoriesPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdArchivesCategoriesPost().'
+            );
+        }
+
+        if (requestParameters['saveArchiveCategoryRequest'] == null) {
+            throw new runtime.RequiredError(
+                'saveArchiveCategoryRequest',
+                'Required parameter "saveArchiveCategoryRequest" was null or undefined when calling accountsetsAccountSetIdArchivesCategoriesPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/archives/categories`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveArchiveCategoryRequestToJSON(requestParameters['saveArchiveCategoryRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesCategoriesPostRaw(requestParameters: AccountsetsAccountSetIdArchivesCategoriesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ArchiveCategoryDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdArchivesCategoriesPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ArchiveCategoryDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdArchivesCategoriesPost(requestParameters: AccountsetsAccountSetIdArchivesCategoriesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveCategoryDto> {
+        const response = await this.accountsetsAccountSetIdArchivesCategoriesPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

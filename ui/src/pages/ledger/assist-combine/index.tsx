@@ -135,14 +135,21 @@ export default function AssistCombinePage() {
 
     return (
         <LedgerPageShell
-            page="assist-combine"
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
                     onChange={query.patch}
                     onQuery={query.query}
+                    onCancel={query.cancel}
                     onReset={query.reset}
                     fields={FIELDS}
+                    caption={
+                        query.conditions.assistType && query.conditions.secondaryAssistType
+                            ? `类别：${assistTypeLabel(query.conditions.assistType)} × ${assistTypeLabel(
+                                  query.conditions.secondaryAssistType,
+                              )}`
+                            : "类别：未选择"
+                    }
                     enabledAssistTypes={enabledTypes}
                     loading={query.loading}
                     extra={

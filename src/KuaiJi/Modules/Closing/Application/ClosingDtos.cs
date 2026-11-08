@@ -298,6 +298,9 @@ namespace KuaiJi.Modules.Closing.Application
         public string Message { get; init; } = "";
 
         public CarryVoucherRefDto? Voucher { get; init; }
+
+        /// <summary>本次是否真的生成了凭证（已存在或无需结转时为 false，用于审计留痕判定）。</summary>
+        public bool Created { get; init; }
     }
 
     /// <summary>结账 / 撤销结转等按期间的请求体。</summary>

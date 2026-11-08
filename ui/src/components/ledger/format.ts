@@ -6,7 +6,7 @@ export { fmtAmount } from "@/lib/format"
 /** 期初 / 合计行与逐笔行区分开，避免误读成发生额；各分段账页共用此口径。 */
 export function kindRowClass(kind?: number): string | undefined {
     if (kind === ROW_KIND.opening) return "text-slate-400"
-    if (kind === ROW_KIND.yearTotal) return "bg-[#f1f5f9] font-medium"
+    if (kind === ROW_KIND.yearTotal) return "bg-(--muted) font-medium"
     if (kind === ROW_KIND.monthTotal) return "bg-muted"
     return undefined
 }

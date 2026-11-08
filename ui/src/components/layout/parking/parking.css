@@ -1,15 +1,21 @@
 /* 停车平台主题（云中停·智慧停车 1:1 复刻）
-   配色与尺寸均从参考截图实测采样：主蓝 #273CF3、选中底 #EEF0FE、
+   配色与尺寸均从参考截图实测采样：默认主题色 #273CF3、选中底 #EEF0FE、
    页面底/分组头 #F3F5F9、正文 #1A1A1A、次要 #686868。
+   品牌色六档全部走 index.css 的主题色派生变量，换「主题设置」里的主题色时一起跟随；
    作用域限定在 .parking-shell 内，不影响全站 shadcn/antd 主题。 */
 
 .parking-shell {
-    --pk-brand: #273cf3;
-    --pk-brand-hover: #1e2fc4;
-    --pk-brand-soft: #eef0fe;
-    --pk-brand-tint: #dfe2fd;
-    --pk-brand-border: #ced3fc;
+    --pk-brand: var(--brand-fill);
+    --pk-brand-hover: var(--brand-fill-hover);
+    /* 文字 / 图标用的品牌色：暗色下浅一档才看得清，填充色仍用 --pk-brand。 */
+    --pk-brand-text: var(--brand);
+    --pk-brand-soft: var(--brand-soft);
+    --pk-brand-tint: var(--brand-tint);
+    --pk-brand-border: var(--brand-border);
+    --pk-surface: #fff;
     --pk-gray-bg: #f3f5f9;
+    /* 内容区底色：亮色与分组头同色，暗色下退到 antd 的 colorBgLayout。 */
+    --pk-bg: #f3f5f9;
     --pk-border: #e8e9ee;
     --pk-text: #1a1a1a;
     --pk-text-2: #686868;
@@ -17,6 +23,21 @@
     --pk-green: #21b05c;
     --pk-orange: #fc820a;
     --pk-purple: #b620e0;
+}
+
+/* 暗色：中性灰直接取 antd darkAlgorithm 输出的 token（main.tsx 的主题算法），
+   外壳/页签/内容区与 antd 组件落在同一套灰阶上；品牌色档已由 .dark 的 --brand-* 切换深浅。 */
+.dark .parking-shell {
+    --pk-surface: #141414; /* colorBgContainer */
+    --pk-gray-bg: #1f1f1f; /* colorBgElevated */
+    --pk-bg: #000; /* colorBgLayout */
+    --pk-border: #303030; /* colorBorderSecondary */
+    --pk-text: rgba(255, 255, 255, 0.85); /* colorText */
+    --pk-text-2: rgba(255, 255, 255, 0.65); /* colorTextSecondary */
+    --pk-red: #dc4446; /* colorError */
+    --pk-green: #49aa19; /* colorSuccess */
+    --pk-orange: #d89614; /* colorWarning */
+    --pk-purple: #854eca; /* purple-7 */
 }
 
 .parking-shell {
@@ -31,10 +52,23 @@
 
 /* ---------- 卡片 ---------- */
 
+/* 圆角以实测采样值为底，再叠加主题设置里的圆角档位（默认档位 0，即原样）。 */
 .pk-card {
-    background: #fff;
+    background: var(--pk-surface);
     border: 1px solid var(--pk-border);
-    border-radius: 6px;
+    border-radius: calc(6px + var(--seed-radius) * 0.5);
+}
+
+/* 当前项卡片：品牌色描边 + 极淡的光圈，代替整块填色 */
+.pk-card-current {
+    border-color: var(--pk-brand-border);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--pk-brand) 6%, transparent);
+}
+
+/* 品牌淡底卡片：用于解读 / 审计等需要与普通白卡区分的区块 */
+.pk-card-soft {
+    background: var(--pk-brand-soft);
+    border-color: var(--pk-brand-border);
 }
 
 /* 区块标题：左侧 4px 蓝色竖条 */
@@ -58,7 +92,7 @@
     width: 4px;
     height: 14px;
     border-radius: 2px;
-    background: var(--pk-brand);
+    background: var(--pk-brand-text);
 }
 
 /* ---------- 标签 ---------- */
@@ -66,26 +100,27 @@
 .pk-tag {
     display: inline-flex;
     align-items: center;
+    gap: 4px;
     height: 22px;
     padding: 0 8px;
-    border-radius: 4px;
+    border-radius: calc(4px + var(--seed-radius) * 0.25);
     font-size: 12px;
     line-height: 1;
-    border: 1px solid #e0e2e8;
-    color: #4a4f5c;
-    background: #fafbfc;
+    border: 1px solid var(--pk-border);
+    color: var(--pk-text-2);
+    background: var(--pk-gray-bg);
     white-space: nowrap;
 }
 
 .pk-tag-blue {
     border-color: var(--pk-brand-border);
-    color: var(--pk-brand);
+    color: var(--pk-brand-text);
     background: #fff;
 }
 
 .pk-tag-blue-soft {
     border-color: transparent;
-    color: var(--pk-brand);
+    color: var(--pk-brand-text);
     background: var(--pk-brand-tint);
 }
 
@@ -131,6 +166,21 @@
     background: #1a1a1a;
 }
 
+/* 暗色下白底标签会亮成一块，改成深色表面 + 品牌/语义色的淡染 */
+.dark .parking-shell .pk-tag-blue {
+    background: var(--pk-brand-soft);
+}
+
+.dark .parking-shell .pk-tag-red {
+    border-color: color-mix(in srgb, var(--pk-red) 38%, var(--pk-surface));
+    background: color-mix(in srgb, var(--pk-red) 14%, var(--pk-surface));
+}
+
+.dark .parking-shell .pk-tag-green {
+    border-color: color-mix(in srgb, var(--pk-green) 38%, var(--pk-surface));
+    background: color-mix(in srgb, var(--pk-green) 14%, var(--pk-surface));
+}
+
 /* ---------- 按钮 ---------- */
 
 .pk-btn {
@@ -142,14 +192,88 @@
     border-radius: 13px;
     font-size: 12px;
     border: 1px solid var(--pk-brand);
-    color: var(--pk-brand);
-    background: #fff;
+    color: var(--pk-brand-text);
+    background: var(--pk-surface);
     cursor: pointer;
     white-space: nowrap;
 }
 
-.pk-btn:hover {
+.pk-btn:not(:disabled):hover {
     background: var(--pk-brand-soft);
+}
+
+.pk-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* 主操作：实心品牌色，与参考图的「新增日记账 / 生成凭证」一致 */
+.pk-btn-solid {
+    border-color: transparent;
+    color: #fff;
+    background: var(--pk-brand);
+}
+
+.pk-btn-solid:not(:disabled):hover {
+    background: var(--pk-brand-hover);
+}
+
+/* 卡片右上角的纯图标操作，悬停才出现底色 */
+.pk-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 13px;
+    color: var(--pk-text-2);
+    font-size: 13px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.pk-icon-btn:not(:disabled):hover {
+    background: var(--pk-gray-bg);
+    color: var(--pk-brand-text);
+}
+
+.pk-icon-btn-danger:not(:disabled):hover {
+    background: color-mix(in srgb, var(--pk-red) 8%, var(--pk-surface));
+    color: var(--pk-red);
+}
+
+.pk-icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* 页面级错误条：浅红底 + 红字，不抢主内容 */
+.pk-alert-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: calc(6px + var(--seed-radius) * 0.5);
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--pk-red);
+    background: color-mix(in srgb, var(--pk-red) 7%, var(--pk-surface));
+    border: 1px solid color-mix(in srgb, var(--pk-red) 22%, var(--pk-surface));
+}
+
+/* 页面级成功条：与错误条同构，只换色 */
+.pk-alert-success {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: calc(6px + var(--seed-radius) * 0.5);
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--pk-green);
+    background: color-mix(in srgb, var(--pk-green) 7%, var(--pk-surface));
+    border: 1px solid color-mix(in srgb, var(--pk-green) 22%, var(--pk-surface));
 }
 
 .pk-btn-red {
@@ -198,7 +322,209 @@
     font-weight: 600;
 }
 
+/* 暗色下的浅色硬编码控件：AI 描边胶囊与红色描边按钮不跟着变白 */
+.dark .parking-shell .pk-ai-pill {
+    background:
+        linear-gradient(var(--pk-surface), var(--pk-surface)) padding-box,
+        linear-gradient(90deg, var(--pk-brand-text), var(--pk-purple)) border-box;
+}
+
+.dark .parking-shell .pk-ai-pill .pk-ai-label {
+    background: linear-gradient(90deg, var(--pk-brand-text), var(--pk-purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.dark .parking-shell .pk-btn-red-outline {
+    background: var(--pk-surface);
+}
+
+.dark .parking-shell .pk-btn-red-outline:hover {
+    background: color-mix(in srgb, var(--pk-red) 12%, var(--pk-surface));
+}
+
 /* ---------- 表格 ---------- */
+
+/* 设置域 antd 桥接：作用域内的表格 / 按钮 / 输入 / 页签 / 弹窗都收敛到停车平台令牌，
+   设置页因此不必逐个控件改样式（antd v6 用 :where() 降权，这里能稳定覆盖）。 */
+
+.pk-scope .ant-table {
+    font-size: 12.5px;
+    color: var(--pk-text);
+}
+
+.pk-scope .ant-table-thead > tr > th {
+    height: 36px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--pk-text-2);
+    background: var(--pk-gray-bg);
+    border-bottom: 1px solid var(--pk-border);
+}
+
+.pk-scope .ant-table-thead > tr > th::before {
+    display: none;
+}
+
+.pk-scope .ant-table-tbody > tr > td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--pk-border);
+}
+
+.pk-scope .ant-table-tbody > tr.ant-table-row:hover > td {
+    background: color-mix(in srgb, var(--pk-brand) 4%, var(--pk-surface));
+}
+
+.pk-scope .ant-table-summary > tr > td,
+.pk-scope .ant-table-tbody > tr.ant-table-summary > td {
+    background: var(--pk-gray-bg);
+    border-top: 1px solid var(--pk-border);
+}
+
+.pk-scope .ant-table-placeholder > td {
+    padding: 0;
+    border-bottom: 0;
+}
+
+.pk-scope .ant-table-cell-fix-left,
+.pk-scope .ant-table-cell-fix-right {
+    background: var(--pk-surface);
+}
+
+/* 按钮：统一 26px 高的胶囊，主按钮走品牌实色 */
+.pk-scope .ant-btn:not(.ant-btn-link):not(.ant-btn-text) {
+    height: 26px;
+    padding: 0 14px;
+    border-radius: 13px;
+    font-size: 12px;
+    border-color: var(--pk-border);
+    color: var(--pk-text);
+    background: var(--pk-surface);
+    box-shadow: none;
+}
+
+.pk-scope .ant-btn:not(.ant-btn-link):not(.ant-btn-text):not(:disabled):hover {
+    border-color: var(--pk-brand-border) !important;
+    color: var(--pk-brand-text);
+    background: var(--pk-brand-soft);
+}
+
+.pk-scope .ant-btn-primary {
+    border-color: transparent !important;
+    color: #fff !important;
+    background: var(--pk-brand) !important;
+}
+
+.pk-scope .ant-btn-primary:not(:disabled):hover {
+    background: var(--pk-brand-hover) !important;
+}
+
+.pk-scope .ant-btn-link,
+.pk-scope .ant-btn-text {
+    color: var(--pk-brand-text);
+}
+
+.pk-scope .ant-btn-link:not(:disabled):hover,
+.pk-scope .ant-btn-text:not(:disabled):hover {
+    color: var(--pk-brand-hover);
+    background: var(--pk-brand-soft);
+}
+
+/* 输入类：与参考图一致的 28px 高、4px 圆角 */
+.pk-scope .ant-input,
+.pk-scope .ant-input-affix-wrapper,
+.pk-scope .ant-input-number,
+.pk-scope .ant-select-selector {
+    border-radius: 4px;
+    border-color: var(--pk-border);
+    font-size: 12.5px;
+}
+
+.pk-scope .ant-input-affix-wrapper > input.ant-input {
+    border-radius: 0;
+}
+
+.pk-scope .ant-input-affix-wrapper-focused,
+.pk-scope .ant-input:focus,
+.pk-scope .ant-input:hover,
+.pk-scope .ant-input-affix-wrapper:hover {
+    border-color: var(--pk-brand-border);
+}
+
+.pk-scope .ant-select-focused .ant-select-selector {
+    border-color: var(--pk-brand-border) !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--pk-brand) 10%, transparent) !important;
+}
+
+/* 页签：品牌色文字 + 2px 下划线 */
+.pk-scope .ant-tabs-tab {
+    padding: 10px 4px;
+    font-size: 13px;
+    color: var(--pk-text-2);
+}
+
+.pk-scope .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: var(--pk-brand-text) !important;
+    font-weight: 500;
+}
+
+.pk-scope .ant-tabs-ink-bar {
+    background: var(--pk-brand-text) !important;
+}
+
+.pk-scope .ant-tabs-top > .ant-tabs-nav::before {
+    border-bottom-color: var(--pk-border);
+}
+
+/* 勾选控件：单选/复选都走品牌色 */
+.pk-scope .ant-checkbox-checked .ant-checkbox-inner,
+.pk-scope .ant-checkbox-indeterminate .ant-checkbox-inner::after {
+    background-color: var(--pk-brand);
+    border-color: var(--pk-brand);
+}
+
+.pk-scope .ant-checkbox-wrapper:hover .ant-checkbox-inner,
+.pk-scope .ant-checkbox:hover .ant-checkbox-inner {
+    border-color: var(--pk-brand-border);
+}
+
+.pk-scope .ant-radio-checked .ant-radio-inner {
+    border-color: var(--pk-brand);
+}
+
+.pk-scope .ant-radio-checked .ant-radio-inner::after {
+    background-color: var(--pk-brand);
+}
+
+/* 反馈条 / 卡片 / 弹层 */
+.pk-scope .ant-alert {
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+
+.pk-scope .ant-card {
+    border-radius: 6px;
+}
+
+.pk-scope .ant-modal-content,
+.pk-scope .ant-drawer-content {
+    border-radius: 8px;
+}
+
+.pk-scope .ant-spin-dot-item {
+    background-color: var(--pk-brand-text);
+}
+
+.pk-scope .ant-pagination-item-active {
+    border-color: var(--pk-brand);
+}
+
+.pk-scope .ant-pagination-item-active a {
+    color: var(--pk-brand-text);
+}
+
+/* ---------- 展示表格（parking-demo 用） ---------- */
 
 .pk-table {
     width: 100%;

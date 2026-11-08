@@ -5,6 +5,7 @@ All URIs are relative to *http://localhost:5271*
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
 | [**accountsetsAccountSetIdClosingCancelCarryPost**](ClosingApi.md#accountsetsaccountsetidclosingcancelcarrypost) | **POST** /accountsets/{accountSetId}/closing/cancel-carry |  |
+| [**accountsetsAccountSetIdClosingCarryBatchPost**](ClosingApi.md#accountsetsaccountsetidclosingcarrybatchpost) | **POST** /accountsets/{accountSetId}/closing/carry-batch |  |
 | [**accountsetsAccountSetIdClosingCarryForwardPost**](ClosingApi.md#accountsetsaccountsetidclosingcarryforwardpost) | **POST** /accountsets/{accountSetId}/closing/carry-forward |  |
 | [**accountsetsAccountSetIdClosingCarryForwardPreviewPost**](ClosingApi.md#accountsetsaccountsetidclosingcarryforwardpreviewpost) | **POST** /accountsets/{accountSetId}/closing/carry-forward/preview |  |
 | [**accountsetsAccountSetIdClosingChecksGet**](ClosingApi.md#accountsetsaccountsetidclosingchecksget) | **GET** /accountsets/{accountSetId}/closing/checks |  |
@@ -14,6 +15,7 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdClosingPreCloseGeneratePost**](ClosingApi.md#accountsetsaccountsetidclosingpreclosegeneratepost) | **POST** /accountsets/{accountSetId}/closing/pre-close/generate |  |
 | [**accountsetsAccountSetIdClosingPreCloseGet**](ClosingApi.md#accountsetsaccountsetidclosingprecloseget) | **GET** /accountsets/{accountSetId}/closing/pre-close |  |
 | [**accountsetsAccountSetIdClosingReopenPost**](ClosingApi.md#accountsetsaccountsetidclosingreopenpost) | **POST** /accountsets/{accountSetId}/closing/reopen |  |
+| [**accountsetsAccountSetIdClosingRetainedEarningsPost**](ClosingApi.md#accountsetsaccountsetidclosingretainedearningspost) | **POST** /accountsets/{accountSetId}/closing/retained-earnings |  |
 | [**accountsetsAccountSetIdClosingTemplatesGet**](ClosingApi.md#accountsetsaccountsetidclosingtemplatesget) | **GET** /accountsets/{accountSetId}/closing/templates |  |
 | [**accountsetsAccountSetIdClosingTemplatesPost**](ClosingApi.md#accountsetsaccountsetidclosingtemplatespost) | **POST** /accountsets/{accountSetId}/closing/templates |  |
 | [**accountsetsAccountSetIdClosingTemplatesPreviewGet**](ClosingApi.md#accountsetsaccountsetidclosingtemplatespreviewget) | **GET** /accountsets/{accountSetId}/closing/templates/preview |  |
@@ -79,6 +81,71 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdClosingCarryBatchPost
+
+> CarryBatchResultDto accountsetsAccountSetIdClosingCarryBatchPost(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ClosingApi,
+} from '';
+import type { AccountsetsAccountSetIdClosingCarryBatchPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ClosingApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdClosingCarryBatchPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdClosingCarryBatchPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**CarryBatchResultDto**](CarryBatchResultDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `text/plain`, `application/json`, `text/json`
 
 
@@ -694,6 +761,74 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdClosingRetainedEarningsPost
+
+> TransferRetainedResultDto accountsetsAccountSetIdClosingRetainedEarningsPost(accountSetId, closingPeriodRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ClosingApi,
+} from '';
+import type { AccountsetsAccountSetIdClosingRetainedEarningsPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ClosingApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ClosingPeriodRequest
+    closingPeriodRequest: ...,
+  } satisfies AccountsetsAccountSetIdClosingRetainedEarningsPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdClosingRetainedEarningsPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **closingPeriodRequest** | [ClosingPeriodRequest](ClosingPeriodRequest.md) |  | |
+
+### Return type
+
+[**TransferRetainedResultDto**](TransferRetainedResultDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
 - **Accept**: `text/plain`, `application/json`, `text/json`
 
 

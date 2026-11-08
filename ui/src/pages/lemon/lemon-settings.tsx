@@ -9,10 +9,10 @@
  * - 备份恢复：备份数据包（整账套 JSON 导出 + 恢复）、归档Excel / 归档PDF（PaperSharp）、
  *   审计对接一键提取（多页签取数包）均已接后端；文件下载中心暂未接入文件存储，保留占位。
  * - 账套 / 科目 / 期初 / 辅助核算：能力引导页（真实管理走既有页面或后续迭代）。
- * 视觉遵循全站统一「云财蓝」：主色 #2f6bff、slate 灰阶文字、白卡，控件一律用 ./components/ui 基元。
+ * 视觉遵循全站统一「云财蓝」：主色 #273cf3、slate 灰阶文字、白卡，控件一律用 ./components/ui 基元。
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Table as AntTable } from "antd";
+import { Alert, Radio, Table as AntTable } from "antd";
 import { ExclamationCircleFilled } from "@ant-design/icons";
 
 import { useAuth } from "@/auth/AuthContext";
@@ -25,16 +25,20 @@ import {
     OperationLogsApi,
     ReinitApi,
     ReportsApi,
+    RolesApi,
     VoucherTemplatesApi,
     VoucherWordsApi,
     type AccountDto,
     type AccountSetMemberDto,
+    type AccountSetRoleDto,
     type BackupRestoreResultDto,
     type CurrencyDto,
     type FinancialSummaryDto,
     type OpeningBalanceImportResultDto,
     type OperationLogDto,
+    type PermissionModuleDto,
     type SaveAccountSetMemberRequest,
+    type SaveAccountSetRoleRequest,
     type SaveCurrencyRequest,
     type SaveVoucherTemplateLineRequest,
     type SaveVoucherWordRequest,
@@ -42,7 +46,6 @@ import {
     type VoucherTemplateImportResultDto,
     type VoucherWordDto,
 } from "@/apis-gen";
-import { SectionCard } from "@/components/page/section";
 import { StatusPill } from "@/components/page/status-pill";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 
@@ -126,12 +129,12 @@ const CONVERT_TYPES = [
 /** 汇率行情来源提示（弹窗底部）。 */
 function RateSourceHint() {
     return (
-        <div className="flex items-start gap-2 pt-1 text-[12.5px] leading-5 text-slate-500">
-            <ExclamationCircleFilled style={{ color: "#f59e0b" }} className="mt-[3px] shrink-0 text-[13px]" />
+        <div className="flex items-start gap-2 pt-1 text-[12.5px] leading-5 text-(--muted-foreground)">
+            <ExclamationCircleFilled style={{ color: "var(--warn-icon)" }} className="mt-[3px] shrink-0 text-[13px]" />
             <span>
                 1.中国外汇交易中心：
                 <a
-                    className="ml-1 text-[#2f6bff] hover:underline"
+                    className="ml-1 text-(--brand) hover:underline"
                     href="https://www.chinamoney.com.cn/chinese/bkccpr/?tab=2"
                     target="_blank"
                     rel="noreferrer"
@@ -240,7 +243,7 @@ export function LemonCurrency() {
                 const c = rows[i];
                 return (
                     <span className="flex gap-2">
-                        <span className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline" onClick={() => openEdit(c)}>编辑</span>
+                        <span className="cursor-pointer text-[13px] text-(--brand) hover:underline" onClick={() => openEdit(c)}>编辑</span>
                         <LinkAction danger onClick={() => remove(c)}>删除</LinkAction>
                     </span>
                 );
@@ -251,7 +254,7 @@ export function LemonCurrency() {
         <Page>
             <div className="mx-auto max-w-[1090px] w-full px-4">
                 <ToolRow left={<Btn variant="primary" onClick={openCreate}>新增</Btn>} right={<RefreshIcon onClick={() => void load()} />} />
-                {error && <div className="px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
+                {error && <div className="px-3 py-2 text-[13px] text-(--danger)">{error}</div>}
                 <Table cols={cols} rows={rows as unknown as Row[]} empty={loading ? undefined : <EmptyTip />} />
             </div>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
@@ -315,7 +318,7 @@ export function LemonCurrency() {
                         </>
                     }
                 >
-                    <div className="py-1 text-[13px] text-slate-700">确定删除币别「{pendingDelete.name}」吗？</div>
+                    <div className="py-1 text-[13px] text-(--foreground)">确定删除币别「{pendingDelete.name}」吗？</div>
                 </Dialog>
             )}
         </Page>
@@ -326,8 +329,8 @@ export function LemonCurrency() {
 function FormRow({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
     return (
         <div className="flex items-center gap-3">
-            <span className="w-[80px] shrink-0 text-right text-[13px] text-slate-700">
-                {label && (<>{required && <span className="text-[#ef4444]">*</span>} {label}：</>)}
+            <span className="w-[80px] shrink-0 text-right text-[13px] text-(--foreground)">
+                {label && (<>{required && <span className="text-(--danger)">*</span>} {label}：</>)}
             </span>
             {children}
         </div>
@@ -413,7 +416,7 @@ export function LemonVoucherWord() {
                 const w = rows[i];
                 return (
                     <span className="flex gap-2">
-                        <span className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline" onClick={() => openEdit(w)}>编辑</span>
+                        <span className="cursor-pointer text-[13px] text-(--brand) hover:underline" onClick={() => openEdit(w)}>编辑</span>
                         <LinkAction danger onClick={() => void remove(w)}>删除</LinkAction>
                     </span>
                 );
@@ -424,7 +427,7 @@ export function LemonVoucherWord() {
         <Page>
             <div className="mx-auto max-w-[1090px] w-full px-4">
                 <ToolRow left={<Btn variant="primary" onClick={openCreate}>新增</Btn>} right={<RefreshIcon />} />
-                {error && <div className="px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
+                {error && <div className="px-3 py-2 text-[13px] text-(--danger)">{error}</div>}
                 <Table
                     cols={cols}
                     rows={rows.map((w) => ({ word: w.word, title: w.printTitle, def: w.isDefault ? "是" : "否" }))}
@@ -445,11 +448,11 @@ export function LemonVoucherWord() {
                 >
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center">
-                            <span className="w-[120px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 凭证字：</span>
+                            <span className="w-[120px] text-right text-[13px] text-(--foreground)"><span className="text-(--danger)">*</span> 凭证字：</span>
                             <TextInput value={form.word ?? ""} onChange={(v) => setForm({ ...form, word: v })} placeholder="如 记、收、付" className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
-                            <span className="w-[120px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 打印标题：</span>
+                            <span className="w-[120px] text-right text-[13px] text-(--foreground)"><span className="text-(--danger)">*</span> 打印标题：</span>
                             <TextInput value={form.printTitle ?? ""} onChange={(v) => setForm({ ...form, printTitle: v })} placeholder="打印凭证时显示的标题" className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
@@ -471,9 +474,9 @@ const AMOUNT_SCALE = ["亿", "千", "百", "十", "万", "千", "百", "十", "�
 /** 11 位金额分位占位格（凭证模板预览用，金额录入尚未开放）。 */
 function AmountSlots() {
     return (
-        <div className="flex overflow-hidden rounded border border-slate-200">
+        <div className="flex overflow-hidden rounded border border-(--border)">
             {AMOUNT_SCALE.map((_, i) => (
-                <span key={i} className="h-[28px] w-[20px] border-r border-slate-200 last:border-r-0" />
+                <span key={i} className="h-[28px] w-[20px] border-r border-(--border) last:border-r-0" />
             ))}
         </div>
     );
@@ -484,7 +487,7 @@ function AmountHeader({ title }: { title: string }) {
     return (
         <span className="flex flex-col items-center leading-tight">
             <span>{title}</span>
-            <span className="text-[10px] font-normal text-slate-400">{AMOUNT_SCALE.join("")}</span>
+            <span className="text-[10px] font-normal text-(--muted-foreground)">{AMOUNT_SCALE.join("")}</span>
         </span>
     );
 }
@@ -630,9 +633,9 @@ export function LemonVoucherTemplate() {
                 <ToolRow
                     left={
                         <>
-                            <span className="text-[13px] text-slate-700">模板名称：</span>
+                            <span className="text-[13px] text-(--foreground)">模板名称：</span>
                             <TextInput value={name} onChange={setName} placeholder="请输入模板名称" className="w-[150px]" />
-                            <span className="text-[13px] text-slate-700">模板类型：</span>
+                            <span className="text-[13px] text-(--foreground)">模板类型：</span>
                             <FakeSelect text="日常支出" className="w-[130px]" />
                         </>
                     }
@@ -660,17 +663,17 @@ export function LemonVoucherTemplate() {
                             {
                                 title: "摘要",
                                 width: 220,
-                                render: () => <span className="block h-7 w-full rounded border border-slate-200" />,
+                                render: () => <span className="block h-7 w-full rounded border border-(--border)" />,
                             },
                             {
                                 title: "会计科目",
                                 render: (_, r) =>
                                     r.account ? (
-                                        <span className="block h-7 w-full truncate rounded border border-slate-200 px-2 text-[13px] leading-7 text-slate-700">
+                                        <span className="block h-7 w-full truncate rounded border border-(--border) px-2 text-[13px] leading-7 text-(--foreground)">
                                             {r.account}
                                         </span>
                                     ) : (
-                                        <span className="block h-7 w-full rounded border border-slate-200" />
+                                        <span className="block h-7 w-full rounded border border-(--border)" />
                                     ),
                             },
                             { title: <AmountHeader title="借方金额" />, render: () => <AmountSlots /> },
@@ -678,15 +681,15 @@ export function LemonVoucherTemplate() {
                         ]}
                         summary={() => (
                             <AntTable.Summary.Row>
-                                <AntTable.Summary.Cell index={0} colSpan={3} className="text-[13px] text-slate-700">
+                                <AntTable.Summary.Cell index={0} colSpan={3} className="text-[13px] text-(--foreground)">
                                     合计：零元整
                                 </AntTable.Summary.Cell>
-                                <AntTable.Summary.Cell index={3} className="bg-[#fafbfd]" />
-                                <AntTable.Summary.Cell index={4} className="bg-[#fafbfd]" />
+                                <AntTable.Summary.Cell index={3} className="bg-(--table-zebra-bg)" />
+                                <AntTable.Summary.Cell index={4} className="bg-(--table-zebra-bg)" />
                             </AntTable.Summary.Row>
                         )}
                     />
-                    <div className="py-4 text-[12px] leading-5 text-slate-400">
+                    <div className="py-4 text-[12px] leading-5 text-(--muted-foreground)">
                         提示：新建默认生成「日常支出」类型、首行取第一个末级科目的模板；行编辑与金额栏随迭代开放。
                     </div>
                 </div>
@@ -733,13 +736,13 @@ export function LemonVoucherTemplate() {
                     dataSource={templateRows}
                     scroll={{ x: "max-content" }}
                     locale={{ emptyText: loading ? "加载中…" : "暂无数据" }}
-                    rowClassName={(r) => (r.kind === "total" ? "bg-[#fafbfd]" : "")}
+                    rowClassName={(r) => (r.kind === "total" ? "bg-(--table-zebra-bg)" : "")}
                     columns={[
                         {
                             title: "模板名称",
                             render: (_, r) =>
                                 r.showTemplate ? (
-                                    <span className="text-[13px] text-slate-700">
+                                    <span className="text-[13px] text-(--foreground)">
                                         <span className="font-bold">{r.templateName}</span>
                                         <span className="ml-4 font-bold">模板类型:</span> {r.templateType}
                                         <span className="ml-4 inline-flex align-middle">
@@ -771,14 +774,14 @@ export function LemonVoucherTemplate() {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-2 px-1 py-1 text-[13px] text-slate-700">
+                    <div className="flex flex-col gap-2 px-1 py-1 text-[13px] text-(--foreground)">
                         <div>
                             新增 <b>{importResult.imported ?? 0}</b> 个模板，跳过同名 <b>{importResult.skipped ?? 0}</b> 个。
                         </div>
                         {(importResult.failures?.length ?? 0) > 0 && (
                             <div className="flex flex-col gap-1">
-                                <span className="text-slate-500">失败明细：</span>
-                                <ul className="ml-4 max-h-[220px] list-disc overflow-auto text-[12.5px] text-slate-600">
+                                <span className="text-(--muted-foreground)">失败明细：</span>
+                                <ul className="ml-4 max-h-[220px] list-disc overflow-auto text-[12.5px] text-(--foreground)">
                                     {(importResult.failures ?? []).map((f, i) => (
                                         <li key={i}>
                                             第 {f.row} 行：{f.reason}
@@ -801,41 +804,71 @@ export function LemonVoucherTemplate() {
     );
 }
 
-/* ---------- 权限设置（已接后端：账套成员与角色） ---------- */
+/* ---------- 权限设置（已接后端：账套角色 + 成员） ---------- */
 
-const MEMBER_ROLES: Array<{ value: string; label: string }> = [
-    { value: "0", label: "管理员" },
-    { value: "1", label: "会计" },
-    { value: "2", label: "出纳" },
-    { value: "3", label: "查看" },
-];
+/** 核心业务模块：权限汇总时排在最前，只勾「查看」的合并成一段。 */
+const CORE_MODULE_KEYS = new Set(["vouchers", "funds", "invoices", "salary", "assets", "tax", "closing", "ledgers", "reports"]);
 
-const ROLE_HINT: Record<string, string> = {
-    "0": "全部功能，含账套设置与成员管理",
-    "1": "凭证、账簿、报表、结账与单据",
-    "2": "资金日记账、银行对账与收付款",
-    "3": "只读查看，不能新增或修改",
-};
+/** 与后端 RolePermissionCatalog.BuildSummary 同口径，用于角色编辑弹窗的实时预览。 */
+function summarizePermissions(modules: PermissionModuleDto[], permissions: string[]): string {
+    const granted = new Set(permissions);
+    if (granted.size === 0) return "无权限";
 
-const emptyMemberForm = (): SaveAccountSetMemberRequest => ({ name: "", phone: "", email: "", role: 1 });
+    const parts: string[] = [];
+    const viewOnly: string[] = [];
+    for (const module of modules.filter((m) => CORE_MODULE_KEYS.has(m.key ?? ""))) {
+        const actions = (module.actions ?? []).filter((a) => granted.has(`${module.key}.${a.key}`));
+        if (actions.length === 0) continue;
+        if ((module.actions?.length ?? 0) > 1 && actions.length === 1 && actions[0].key === "view") {
+            viewOnly.push(module.name ?? "");
+        } else {
+            parts.push(module.name ?? "");
+        }
+    }
+    if (viewOnly.length > 0) {
+        parts.push(
+            viewOnly.length === 1
+                ? `查看${viewOnly[0]}`
+                : `查看${viewOnly.slice(0, -1).join("、")}和${viewOnly[viewOnly.length - 1]}`,
+        );
+    }
+    for (const module of modules.filter((m) => !CORE_MODULE_KEYS.has(m.key ?? ""))) {
+        if ((module.actions ?? []).some((a) => granted.has(`${module.key}.${a.key}`))) {
+            parts.push(module.name ?? "");
+        }
+    }
+    return parts.join(" | ");
+}
+
+type RoleDraft = { id: string; name: string; isSystem: boolean; isAdmin: boolean; permissions: string[] };
+
+const emptyRoleDraft = (): RoleDraft => ({ id: "", name: "", isSystem: false, isAdmin: false, permissions: [] });
+
+const emptyMemberForm = (roleId = ""): SaveAccountSetMemberRequest => ({ name: "", phone: "", email: "", roleId });
 
 export function LemonPermission() {
     const { accountSetId, token } = useAccountContext();
+    const accountSet = useCurrentAccountSet();
+    const [roles, setRoles] = useState<AccountSetRoleDto[]>([]);
+    const [catalog, setCatalog] = useState<PermissionModuleDto[]>([]);
     const [members, setMembers] = useState<AccountSetMemberDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
     const [editing, setEditing] = useState<AccountSetMemberDto | null>(null);
-    const [formOpen, setFormOpen] = useState(false);
     const [form, setForm] = useState<SaveAccountSetMemberRequest>(emptyMemberForm());
     const [saving, setSaving] = useState(false);
+    const [roleDraft, setRoleDraft] = useState<RoleDraft | null>(null);
+    const [roleSaving, setRoleSaving] = useState(false);
 
     const load = useCallback(async () => {
         if (!accountSetId) return;
         setLoading(true);
         try {
+            const roleList = await new RolesApi(apiConfig(token)).accountsetsAccountSetIdRolesGet({ accountSetId });
+            setRoles(roleList);
             setMembers(await new MembersApi(apiConfig(token)).accountsetsAccountSetIdMembersGet({ accountSetId }));
         } catch (err) {
-            setToast(await apiErrorMessage(err, "加载成员失败。"));
+            setToast(await apiErrorMessage(err, "加载成员与角色失败。"));
         } finally {
             setLoading(false);
         }
@@ -845,32 +878,71 @@ export function LemonPermission() {
         void load();
     }, [load]);
 
-    function openCreate() {
+    useEffect(() => {
+        if (!accountSetId) return;
+        let cancelled = false;
+        void (async () => {
+            try {
+                const list = await new RolesApi(apiConfig(token)).accountsetsAccountSetIdRolesCatalogGet({ accountSetId });
+                if (!cancelled) setCatalog(list);
+            } catch (err) {
+                if (!cancelled) setToast(await apiErrorMessage(err, "加载权限目录失败。"));
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [accountSetId, token]);
+
+    // 首次加载或角色被删除后，保证表单里选中的角色仍然有效；新增成员默认给第一个非管理员角色。
+    useEffect(() => {
+        if (roles.length === 0) return;
+        setForm((current) =>
+            roles.some((r) => r.id === current.roleId)
+                ? current
+                : { ...current, roleId: roles.find((r) => !r.isAdmin)?.id ?? roles[0].id ?? "" },
+        );
+    }, [roles]);
+
+    function resetForm() {
         setEditing(null);
-        setForm(emptyMemberForm());
-        setFormOpen(true);
+        setForm(emptyMemberForm(roles.find((r) => !r.isAdmin)?.id ?? roles[0]?.id ?? ""));
     }
 
-    function openEdit(m: AccountSetMemberDto) {
+    function startEdit(m: AccountSetMemberDto) {
         setEditing(m);
-        setForm({ name: m.name, phone: m.phone ?? "", email: m.email ?? "", role: m.role });
-        setFormOpen(true);
+        setForm({ name: m.name ?? "", phone: m.phone ?? "", email: m.email ?? "", roleId: m.roleId ?? "" });
     }
 
     async function save() {
-        if (!(form.name ?? "").trim()) {
+        const name = (form.name ?? "").trim();
+        const phone = (form.phone ?? "").trim();
+        if (!name) {
             setToast("请填写成员姓名。");
+            return;
+        }
+        if (!editing && !/^1\d{10}$/.test(phone)) {
+            setToast("请填写 11 位手机号。");
+            return;
+        }
+        if (phone && !/^1\d{10}$/.test(phone)) {
+            setToast("手机号需为 11 位数字且以 1 开头。");
+            return;
+        }
+        if (!form.roleId) {
+            setToast("请选择角色。");
             return;
         }
         setSaving(true);
         try {
             const api = new MembersApi(apiConfig(token));
+            const body: SaveAccountSetMemberRequest = { name, phone, email: (form.email ?? "").trim(), roleId: form.roleId };
             if (editing) {
-                await api.accountsetsAccountSetIdMembersIdPut({ accountSetId, id: editing.id ?? "", saveAccountSetMemberRequest: form });
+                await api.accountsetsAccountSetIdMembersIdPut({ accountSetId, id: editing.id ?? "", saveAccountSetMemberRequest: body });
             } else {
-                await api.accountsetsAccountSetIdMembersPost({ accountSetId, saveAccountSetMemberRequest: form });
+                await api.accountsetsAccountSetIdMembersPost({ accountSetId, saveAccountSetMemberRequest: body });
             }
-            setFormOpen(false);
+            resetForm();
             await load();
         } catch (err) {
             setToast(await apiErrorMessage(err, "保存成员失败。"));
@@ -902,105 +974,318 @@ export function LemonPermission() {
         }
     }
 
+    function openRoleEditor(role: AccountSetRoleDto) {
+        setRoleDraft({
+            id: role.id ?? "",
+            name: role.name ?? "",
+            isSystem: role.isSystem ?? false,
+            isAdmin: role.isAdmin ?? false,
+            permissions: [...(role.permissions ?? [])],
+        });
+    }
+
+    function togglePermission(key: string, checked: boolean) {
+        setRoleDraft(
+            (draft) =>
+                draft && {
+                    ...draft,
+                    permissions: checked
+                        ? Array.from(new Set([...draft.permissions, key]))
+                        : draft.permissions.filter((k) => k !== key),
+                },
+        );
+    }
+
+    function toggleModule(module: PermissionModuleDto, checked: boolean) {
+        const keys = (module.actions ?? []).map((a) => `${module.key}.${a.key}`);
+        setRoleDraft(
+            (draft) =>
+                draft && {
+                    ...draft,
+                    permissions: checked
+                        ? Array.from(new Set([...draft.permissions, ...keys]))
+                        : draft.permissions.filter((k) => !keys.includes(k)),
+                },
+        );
+    }
+
+    async function saveRole() {
+        if (!roleDraft) return;
+        const name = roleDraft.name.trim();
+        if (!name) {
+            setToast("请填写角色名称。");
+            return;
+        }
+        if (roleDraft.permissions.length === 0) {
+            setToast("请至少勾选一项权限。");
+            return;
+        }
+        setRoleSaving(true);
+        try {
+            const api = new RolesApi(apiConfig(token));
+            const body: SaveAccountSetRoleRequest = { name, permissions: roleDraft.permissions };
+            if (roleDraft.id) {
+                await api.accountsetsAccountSetIdRolesIdPut({ accountSetId, id: roleDraft.id, saveAccountSetRoleRequest: body });
+            } else {
+                await api.accountsetsAccountSetIdRolesPost({ accountSetId, saveAccountSetRoleRequest: body });
+            }
+            setRoleDraft(null);
+            await load();
+        } catch (err) {
+            setToast(await apiErrorMessage(err, "保存角色失败。"));
+        } finally {
+            setRoleSaving(false);
+        }
+    }
+
+    async function removeRole() {
+        if (!roleDraft?.id) return;
+        if (!window.confirm(`确定删除角色「${roleDraft.name}」吗？`)) return;
+        setRoleSaving(true);
+        try {
+            await new RolesApi(apiConfig(token)).accountsetsAccountSetIdRolesIdDelete({ accountSetId, id: roleDraft.id });
+            setRoleDraft(null);
+            await load();
+        } catch (err) {
+            setToast(await apiErrorMessage(err, "删除角色失败。"));
+        } finally {
+            setRoleSaving(false);
+        }
+    }
+
+    const accountSetName = accountSet?.companyName || accountSet?.name || "—";
+
     return (
         <Page>
-            <ToolRow
-                right={
-                    <>
-                        <Btn variant="primary" onClick={openCreate}>新增成员</Btn>
-                        <RefreshIcon onClick={() => void load()} />
-                    </>
-                }
-            />
-            <div className="mx-auto max-w-[980px] w-full px-4 pb-2">
-                <AntTable<AccountSetMemberDto>
-                    rowKey={(m) => m.id ?? ""}
-                    pagination={false}
-                    dataSource={members}
-                    locale={{ emptyText: loading ? "加载中…" : "暂无数据" }}
-                    columns={[
-                        {
-                            title: "用户",
-                            render: (_, m) => (
-                                <span>
-                                    <span className="font-medium text-slate-800">{m.name}</span>
-                                    {m.isOwner && <span className="ml-2 rounded bg-[#eef4ff] px-1.5 py-0.5 text-[11px] text-[#2f6bff]">创建者</span>}
-                                    {m.email && <span className="ml-2 text-[12px] text-slate-400">{m.email}</span>}
-                                </span>
-                            ),
-                        },
-                        { title: "手机号", render: (_, m) => m.phone || "—" },
-                        {
-                            title: "权限",
-                            render: (_, m) => (
-                                <span>
-                                    <span className="mr-2 text-slate-800">{m.roleText}</span>
-                                    <span className="text-[12px] text-slate-400">{m.permissionText ?? ROLE_HINT[String(m.role)] ?? ""}</span>
-                                </span>
-                            ),
-                        },
-                        {
-                            title: "状态",
-                            render: (_, m) => (
-                                <span className={m.enabled ? "text-[#10b981]" : "text-slate-400"}>{m.enabled ? "启用" : "停用"}</span>
-                            ),
-                        },
-                        {
-                            title: "操作",
-                            render: (_, m) =>
-                                m.isOwner ? (
-                                    <span className="text-[12px] text-slate-400">不可停用 / 删除</span>
+            <ToolRow right={<RefreshIcon onClick={() => void load()} />} />
+            <div className="mx-auto w-full max-w-[900px] px-4 pb-4">
+                <div className="rounded-xl border border-(--border) bg-(--card) px-6 py-5">
+                    <div className="mb-5 flex items-center justify-between">
+                        <span className="text-[13px] text-(--foreground)">
+                            当前账套：<span className="text-(--foreground)">{accountSetName}</span>
+                        </span>
+                        <span className="text-[12.5px] text-(--muted-foreground)">
+                            {editing ? `正在编辑：${editing.name ?? ""}` : "新增成员"}
+                        </span>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <label className="flex items-center gap-3">
+                            <span className="w-[88px] text-right text-[13px] text-(--muted-foreground)">成员姓名：</span>
+                            <TextInput
+                                value={form.name ?? ""}
+                                onChange={(v) => setForm({ ...form, name: v })}
+                                placeholder="请输入成员姓名"
+                                className="flex-1"
+                            />
+                        </label>
+                        <label className="flex items-center gap-3">
+                            <span className="w-[88px] text-right text-[13px] text-(--muted-foreground)">
+                                <span className="mr-0.5 text-(--danger)">*</span>手机用户：
+                            </span>
+                            <TextInput
+                                value={form.phone ?? ""}
+                                onChange={(v) => setForm({ ...form, phone: v })}
+                                placeholder="请输入 11 位手机号"
+                                className="flex-1"
+                            />
+                        </label>
+                        <label className="flex items-center gap-3">
+                            <span className="w-[88px] text-right text-[13px] text-(--muted-foreground)">邮箱：</span>
+                            <TextInput
+                                value={form.email ?? ""}
+                                onChange={(v) => setForm({ ...form, email: v })}
+                                placeholder="可留空"
+                                className="flex-1"
+                            />
+                        </label>
+                        <div className="flex items-start gap-3">
+                            <span className="mt-2 w-[88px] shrink-0 text-right text-[13px] text-(--muted-foreground)">角色权限：</span>
+                            <div className="min-w-0 flex-1">
+                                {roles.length === 0 ? (
+                                    <div className="py-2 text-[13px] text-(--muted-foreground)">{loading ? "加载中…" : "暂无角色"}</div>
                                 ) : (
-                                    <div className="flex items-center gap-3">
-                                        <LinkAction onClick={() => openEdit(m)}>编辑</LinkAction>
-                                        <LinkAction onClick={() => void toggle(m)}>{m.enabled ? "停用" : "启用"}</LinkAction>
-                                        <LinkAction danger onClick={() => void remove(m)}>删除</LinkAction>
-                                    </div>
+                                    <Radio.Group
+                                        className="flex w-full flex-col gap-1"
+                                        value={form.roleId}
+                                        onChange={(e) => setForm({ ...form, roleId: String(e.target.value) })}
+                                    >
+                                        {roles.map((role) => (
+                                            <div key={role.id} className="flex items-start gap-2">
+                                                <Radio
+                                                    value={role.id ?? ""}
+                                                    disabled={Boolean(editing?.isOwner) && !role.isAdmin}
+                                                >
+                                                    <span className="text-[13px] text-(--foreground)">{role.name}</span>
+                                                </Radio>
+                                                <span className="min-w-0 flex-1 pt-[5px] text-[12.5px] leading-5 text-(--muted-foreground)">
+                                                    {role.permissionText}
+                                                </span>
+                                                {!role.isAdmin && (
+                                                    <LinkAction className="shrink-0" onClick={() => openRoleEditor(role)}>
+                                                        编辑
+                                                    </LinkAction>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </Radio.Group>
+                                )}
+                                <div className="mt-1">
+                                    <LinkAction onClick={() => setRoleDraft(emptyRoleDraft())}>+ 新增角色</LinkAction>
+                                </div>
+                                {editing?.isOwner && (
+                                    <div className="mt-1 text-[12px] text-(--muted-foreground)">创建者固定为账套管理员，不能更换角色。</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center gap-3 pl-[100px]">
+                        <Btn variant="primary" onClick={() => void save()} disabled={saving}>
+                            {saving ? "保存中…" : "保存"}
+                        </Btn>
+                        <Btn onClick={resetForm}>取消</Btn>
+                    </div>
+                </div>
+
+                <div className="mt-6 rounded-xl border border-(--border) bg-(--card) px-4 py-3">
+                    <div className="mb-2 text-[13px] font-medium text-(--foreground)">已加入成员</div>
+                    <AntTable<AccountSetMemberDto>
+                        rowKey={(m) => m.id ?? ""}
+                        pagination={false}
+                        dataSource={members}
+                        locale={{ emptyText: loading ? "加载中…" : "暂无数据" }}
+                        columns={[
+                            {
+                                title: "用户",
+                                width: 200,
+                                render: (_, m) => (
+                                    <span>
+                                        <span className="font-medium text-(--foreground)">{m.name}</span>
+                                        {m.isOwner && (
+                                            <span className="ml-2 rounded bg-(--brand-soft) px-1.5 py-0.5 text-[11px] text-(--brand)">创建者</span>
+                                        )}
+                                        {m.email && <span className="ml-2 text-[12px] text-(--muted-foreground)">{m.email}</span>}
+                                    </span>
                                 ),
-                        },
-                    ]}
-                />
-                <div className="mt-6 flex items-center gap-2 rounded-xl bg-[#fafbfd] px-4 py-3 text-[13px] text-slate-500">
-                    <span className="text-[#f59e0b]">⚠</span>
-                    成员按角色共享同一账套数据；创建者固定为管理员，不可停用或删除。
+                            },
+                            { title: "手机号", width: 110, render: (_, m) => m.phone || "—" },
+                            {
+                                title: "权限",
+                                render: (_, m) => (
+                                    <span>
+                                        <span className="mr-2 text-(--foreground)">{m.roleName}</span>
+                                        <span className="text-[12px] text-(--muted-foreground)">{m.permissionText}</span>
+                                    </span>
+                                ),
+                            },
+                            {
+                                title: "状态",
+                                width: 70,
+                                render: (_, m) => (
+                                    <span className={m.enabled ? "text-(--success)" : "text-(--muted-foreground)"}>
+                                        {m.enabled ? "启用" : "停用"}
+                                    </span>
+                                ),
+                            },
+                            {
+                                title: "操作",
+                                width: 160,
+                                render: (_, m) =>
+                                    m.isOwner ? (
+                                        <span className="text-[12px] text-(--muted-foreground)">不可停用 / 删除</span>
+                                    ) : (
+                                        <div className="flex items-center gap-3">
+                                            <LinkAction onClick={() => startEdit(m)}>编辑</LinkAction>
+                                            <LinkAction onClick={() => void toggle(m)}>{m.enabled ? "停用" : "启用"}</LinkAction>
+                                            <LinkAction danger onClick={() => void remove(m)}>删除</LinkAction>
+                                        </div>
+                                    ),
+                            },
+                        ]}
+                    />
+                    <div className="mt-4 flex items-center gap-2 rounded-xl bg-(--table-zebra-bg) px-4 py-3 text-[13px] text-(--muted-foreground)">
+                        <span className="text-(--warn-icon)">⚠</span>
+                        成员按角色共享同一账套数据；创建者固定为账套管理员，不可停用或删除。
+                    </div>
                 </div>
             </div>
 
-            {formOpen && (
+            {roleDraft && (
                 <Dialog
-                    title={editing ? "编辑成员" : "新增成员"}
-                    width={480}
-                    onClose={() => setFormOpen(false)}
+                    title={roleDraft.id ? `编辑角色：${roleDraft.name}` : "新增角色"}
+                    width={720}
+                    onClose={() => setRoleDraft(null)}
                     footer={
-                        <>
-                            <Btn onClick={() => setFormOpen(false)}>取消</Btn>
-                            <Btn variant="primary" onClick={() => void save()} disabled={saving}>{saving ? "保存中…" : "保存"}</Btn>
-                        </>
+                        <div className="flex items-center justify-between">
+                            <span>
+                                {roleDraft.id && !roleDraft.isSystem && (
+                                    <LinkAction danger disabled={roleSaving} onClick={() => void removeRole()}>
+                                        删除角色
+                                    </LinkAction>
+                                )}
+                            </span>
+                            <span className="flex items-center gap-2">
+                                <Btn onClick={() => setRoleDraft(null)}>取消</Btn>
+                                <Btn variant="primary" disabled={roleSaving} onClick={() => void saveRole()}>
+                                    {roleSaving ? "保存中…" : "保存"}
+                                </Btn>
+                            </span>
+                        </div>
                     }
                 >
                     <div className="flex flex-col gap-3">
                         <label className="flex items-center gap-3">
-                            <span className="w-[70px] text-right text-[13px] text-slate-500">姓名：</span>
-                            <TextInput value={form.name ?? ""} onChange={(v) => setForm({ ...form, name: v })} placeholder="请输入成员姓名" className="flex-1" />
-                        </label>
-                        <label className="flex items-center gap-3">
-                            <span className="w-[70px] text-right text-[13px] text-slate-500">手机号：</span>
-                            <TextInput value={form.phone ?? ""} onChange={(v) => setForm({ ...form, phone: v })} placeholder="11 位手机号，可留空" className="flex-1" />
-                        </label>
-                        <label className="flex items-center gap-3">
-                            <span className="w-[70px] text-right text-[13px] text-slate-500">邮箱：</span>
-                            <TextInput value={form.email ?? ""} onChange={(v) => setForm({ ...form, email: v })} placeholder="可留空" className="flex-1" />
-                        </label>
-                        <label className="flex items-center gap-3">
-                            <span className="w-[70px] text-right text-[13px] text-slate-500">权限：</span>
-                            <Select
-                                value={String(form.role)}
-                                onChange={(v) => setForm({ ...form, role: Number(v) })}
-                                options={editing?.isOwner ? MEMBER_ROLES.slice(0, 1) : MEMBER_ROLES}
+                            <span className="w-[70px] text-right text-[13px] text-(--muted-foreground)">角色名称：</span>
+                            <TextInput
+                                value={roleDraft.name}
+                                onChange={(v) => setRoleDraft({ ...roleDraft, name: v })}
+                                placeholder="如：审核员"
+                                disabled={roleDraft.isSystem}
                                 className="flex-1"
                             />
                         </label>
-                        <div className="pl-[82px] text-[12px] text-slate-400">{ROLE_HINT[String(form.role)]}</div>
+                        {roleDraft.isSystem && (
+                            <div className="pl-[82px] text-[12px] text-(--muted-foreground)">预置角色名称不可修改，可调整权限。</div>
+                        )}
+                        <div className="rounded-lg bg-(--table-zebra-bg) px-3 py-2 text-[12.5px] leading-5 text-(--muted-foreground)">
+                            权限说明：{summarizePermissions(catalog, roleDraft.permissions)}
+                        </div>
+                        <div className="max-h-[380px] overflow-auto rounded-lg border border-(--border) px-3">
+                            {catalog.length === 0 ? (
+                                <div className="py-4 text-center text-[13px] text-(--muted-foreground)">权限目录加载中…</div>
+                            ) : (
+                                catalog.map((module) => {
+                                    const actions = module.actions ?? [];
+                                    const moduleKeys = actions.map((a) => `${module.key}.${a.key}`);
+                                    const allChecked = moduleKeys.length > 0 && moduleKeys.every((k) => roleDraft.permissions.includes(k));
+                                    return (
+                                        <div
+                                            key={module.key}
+                                            className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-(--border) py-2 last:border-b-0"
+                                        >
+                                            <span className="w-[92px] shrink-0 text-[13px] text-(--foreground)">{module.name}</span>
+                                            <CheckBox
+                                                label="全选"
+                                                checked={allChecked}
+                                                onChange={(checked) => toggleModule(module, checked)}
+                                            />
+                                            {actions.map((action) => {
+                                                const key = `${module.key}.${action.key}`;
+                                                return (
+                                                    <CheckBox
+                                                        key={key}
+                                                        label={action.name}
+                                                        checked={roleDraft.permissions.includes(key)}
+                                                        onChange={(checked) => togglePermission(key, checked)}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
                     </div>
                 </Dialog>
             )}
@@ -1072,10 +1357,10 @@ export function LemonBoss() {
     const cashOut = current("资金支付");
 
     const cards = [
-        { title: "本月营业收入", value: bossMoney(revenue), hint: `环比 ${bossPct(revenueMom)} · 同比 ${bossPct(revenueYoy)}`, color: "#2f6bff" },
-        { title: "本月净利润", value: bossMoney(netProfit), hint: `本年累计 ${bossMoney(profitYtd)}`, color: netProfit >= 0 ? "#10b981" : "#ef4444" },
-        { title: "本月资金收支", value: bossMoney(cashNet), hint: `收 ${bossMoney(cashIn)} · 付 ${bossMoney(cashOut)}`, color: cashNet >= 0 ? "#10b981" : "#ef4444" },
-        { title: "资产负债率", value: `${(debtRatio ?? 0).toFixed(2)}%`, hint: `资产 ${bossMoney(current("资产总额"))}`, color: "#2f6bff" },
+        { title: "本月营业收入", value: bossMoney(revenue), hint: `环比 ${bossPct(revenueMom)} · 同比 ${bossPct(revenueYoy)}`, color: "var(--brand)" },
+        { title: "本月净利润", value: bossMoney(netProfit), hint: `本年累计 ${bossMoney(profitYtd)}`, color: netProfit >= 0 ? "var(--tone-green)" : "var(--tone-red)" },
+        { title: "本月资金收支", value: bossMoney(cashNet), hint: `收 ${bossMoney(cashIn)} · 付 ${bossMoney(cashOut)}`, color: cashNet >= 0 ? "var(--tone-green)" : "var(--tone-red)" },
+        { title: "资产负债率", value: `${(debtRatio ?? 0).toFixed(2)}%`, hint: `资产 ${bossMoney(current("资产总额"))}`, color: "var(--brand)" },
     ];
 
     const verdict = [
@@ -1098,19 +1383,19 @@ export function LemonBoss() {
             <div className="mx-auto max-w-[1040px] w-full px-4 pb-6">
                 <div className="grid grid-cols-4 gap-4">
                     {cards.map((c) => (
-                        <div key={c.title} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
-                            <div className="text-[13px] text-slate-500">{c.title}</div>
+                        <div key={c.title} className="rounded-2xl border border-(--border) bg-(--card) p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+                            <div className="text-[13px] text-(--muted-foreground)">{c.title}</div>
                             <div className="mt-2 text-[22px] font-bold tabular-nums" style={{ color: c.color }}>{c.value}</div>
-                            <div className="mt-1 text-[12px] text-slate-400">{c.hint}</div>
+                            <div className="mt-1 text-[12px] text-(--muted-foreground)">{c.hint}</div>
                         </div>
                     ))}
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-4">
-                    <div className="col-span-2 rounded-2xl border border-slate-100 bg-white p-5">
+                    <div className="col-span-2 rounded-2xl border border-(--border) bg-(--card) p-5">
                         <div className="flex items-center justify-between">
-                            <span className="text-[14px] font-semibold text-slate-800">经营成果</span>
-                            <span className="text-[12px] text-slate-400">{data?.periodText ?? `${year}年${month}月`}</span>
+                            <span className="text-[14px] font-semibold text-(--foreground)">经营成果</span>
+                            <span className="text-[12px] text-(--muted-foreground)">{data?.periodText ?? `${year}年${month}月`}</span>
                         </div>
                         <div className="mt-3">
                         <AntTable
@@ -1129,34 +1414,34 @@ export function LemonBoss() {
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-100 bg-white p-5">
-                        <div className="text-[14px] font-semibold text-slate-800">财务状况（期末）</div>
+                    <div className="rounded-2xl border border-(--border) bg-(--card) p-5">
+                        <div className="text-[14px] font-semibold text-(--foreground)">财务状况（期末）</div>
                         <div className="mt-3 flex flex-col">
                             {BOSS_BALANCE_ITEMS.map((item) => (
-                                <div key={item} className="flex items-center justify-between border-b border-slate-100 py-2 last:border-b-0">
-                                    <span className="text-[13px] text-slate-500">{item}</span>
-                                    <span className="text-[13px] font-medium tabular-nums text-slate-800">{bossMoney(current(item))}</span>
+                                <div key={item} className="flex items-center justify-between border-b border-(--border) py-2 last:border-b-0">
+                                    <span className="text-[13px] text-(--muted-foreground)">{item}</span>
+                                    <span className="text-[13px] font-medium tabular-nums text-(--foreground)">{bossMoney(current(item))}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-[#d7e3fb] bg-[#eef4ff] p-6">
-                    <div className="text-[14px] font-semibold text-[#2f6bff]">本月经营解读</div>
-                    <div className="mt-3 flex flex-col gap-2 text-[13px] leading-6 text-slate-700">
+                <div className="mt-4 rounded-2xl border border-(--brand-border) bg-(--brand-soft) p-6">
+                    <div className="text-[14px] font-semibold text-(--brand)">本月经营解读</div>
+                    <div className="mt-3 flex flex-col gap-2 text-[13px] leading-6 text-(--foreground)">
                         {verdict.map((t) => (
                             <span key={t} className="flex gap-2">
-                                <span className="text-[#2f6bff]">•</span> {t}
+                                <span className="text-(--brand)">•</span> {t}
                             </span>
                         ))}
-                        <span className="mt-1 text-[12px] text-slate-500">
+                        <span className="mt-1 text-[12px] text-(--muted-foreground)">
                             本年累计收入 {bossMoney(revenueYtd)} 元，累计净利润 {bossMoney(profitYtd)} 元；以上数据均按已记账凭证实时计算。
                         </span>
                     </div>
                 </div>
 
-                {loading && <div className="mt-3 text-center text-[12px] text-slate-400">加载中…</div>}
+                {loading && <div className="mt-3 text-center text-[12px] text-(--muted-foreground)">加载中…</div>}
             </div>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Page>
@@ -1340,7 +1625,7 @@ export function LemonBackup() {
                         }
                         right={
                             <>
-                                <span className="text-[13px] text-slate-500">
+                                <span className="text-[13px] text-(--muted-foreground)">
                                     {lastBackup ? `上次备份：${lastBackup}` : "尚未备份"}
                                 </span>
                                 <RefreshIcon />
@@ -1361,7 +1646,7 @@ export function LemonBackup() {
                                 { title: "操作" },
                             ]}
                         />
-                        <div className="mt-8 flex flex-col gap-2 pb-8 text-[12px] leading-5 text-slate-400">
+                        <div className="mt-8 flex flex-col gap-2 pb-8 text-[12px] leading-5 text-(--muted-foreground)">
                             <span>备份数据包 → “备份”整个账套的数据（✅支持下载到本地和数据恢复，⚪不支持在线预览）</span>
                             <span>归档Excel和归档PDF → 将整个账套的核心账簿归档成 Excel 或 PDF 文件（✅支持下载到本地，⚪不支持数据恢复）</span>
                         </div>
@@ -1376,14 +1661,14 @@ export function LemonBackup() {
                                 <Btn variant="primary" onClick={() => void doArchive(tab === 1 ? "excel" : "pdf")} disabled={archiveBusy}>
                                     {archiveBusy ? "归档中…" : "开始归档"}
                                 </Btn>
-                                <span className="text-[12px] text-slate-400">
+                                <span className="text-[12px] text-(--muted-foreground)">
                                     {tab === 1 ? "导出多页签 Excel：归档说明 / 科目余额表 / 凭证清单 / 凭证分录" : "导出 PDF：封面 + 科目余额表 + 凭证分录总表"}
                                 </span>
                             </>
                         }
                         right={<RefreshIcon />}
                     />
-                    <div className="mx-auto max-w-[980px] w-full rounded-2xl bg-[#fafbfd] p-5 text-[13px] leading-7 text-slate-700">
+                    <div className="mx-auto max-w-[980px] w-full rounded-2xl bg-(--table-zebra-bg) p-5 text-[13px] leading-7 text-(--foreground)">
                         <div className="font-bold">归档说明:</div>
                         <div>① 归档范围：账套基本信息、全部末级科目余额（建档期初 + 全部凭证累计发生）、全部凭证清单与分录；</div>
                         <div>② 归档文件实时生成并下载到本地，不在服务器留存；</div>
@@ -1417,12 +1702,12 @@ export function LemonBackup() {
             )}
             {isAudit && (
                 <div className="mx-auto mt-6 max-w-[1000px] w-full px-4">
-                    <div className="flex min-h-[300px] items-center justify-between rounded-2xl border border-[#d7e3fb] bg-[#eef4ff] px-12 py-10">
+                    <div className="flex min-h-[300px] items-center justify-between rounded-2xl border border-(--brand-border) bg-(--brand-soft) px-12 py-10">
                         <div>
-                            <div className="text-[22px] font-bold text-slate-800">审计无忧，一键提取</div>
-                            <div className="mt-2 text-[13px] text-slate-500">按期间导出科目余额表、凭证清单与凭证分录，审计软件可直接取数。</div>
+                            <div className="text-[22px] font-bold text-(--foreground)">审计无忧，一键提取</div>
+                            <div className="mt-2 text-[13px] text-(--muted-foreground)">按期间导出科目余额表、凭证清单与凭证分录，审计软件可直接取数。</div>
                             <div className="mt-4 flex items-center gap-2">
-                                <span className="text-[13px] text-slate-500">审计软件：</span>
+                                <span className="text-[13px] text-(--muted-foreground)">审计软件：</span>
                                 <Select
                                     value={auditSoftware}
                                     onChange={setAuditSoftware}
@@ -1431,11 +1716,11 @@ export function LemonBackup() {
                                 />
                             </div>
                             <div className="mt-2 flex items-center gap-2">
-                                <span className="text-[13px] text-slate-500">取数期间：</span>
-                                <span className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[13px] text-slate-700">
+                                <span className="text-[13px] text-(--muted-foreground)">取数期间：</span>
+                                <span className="rounded-md border border-(--border) bg-(--card) px-3 py-1.5 text-[13px] text-(--foreground)">
                                     {period.year}年{String(period.month).padStart(2, "0")}月
                                 </span>
-                                <span className="text-[12px] text-slate-400">（期间取账套当前会计期间）</span>
+                                <span className="text-[12px] text-(--muted-foreground)">（期间取账套当前会计期间）</span>
                             </div>
                             <div className="mt-5">
                                 <Btn variant="primary" onClick={() => void doAuditExtract()} disabled={auditBusy}>
@@ -1443,7 +1728,7 @@ export function LemonBackup() {
                                 </Btn>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-2 text-right text-[13px] text-slate-500">
+                        <div className="flex flex-col gap-2 text-right text-[13px] text-(--muted-foreground)">
                             <span>安全授权，取数方便</span>
                             <span>科目余额表 / 凭证清单 / 凭证分录 / 取数说明</span>
                             <span>标准 xlsx，可直接导入 {auditSoftware}</span>
@@ -1466,10 +1751,10 @@ export function LemonBackup() {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] leading-6 text-slate-700">
+                    <div className="flex flex-col gap-3 px-1 text-[13px] leading-6 text-(--foreground)">
                         <div>
                             将从数据包 <b>{restoreFile.name}</b> 恢复账套数据：现有全部业务数据（凭证、发票、日记账、资产、费用单据、员工工资等）会被
-                            <b className="text-[#ef4444]"> 清空后写回备份内容</b>，操作不可撤销。
+                            <b className="text-(--danger)"> 清空后写回备份内容</b>，操作不可撤销。
                         </div>
                         <CheckBox
                             label="我已知晓恢复将覆盖账套现有数据，并确认数据包属于当前账套"
@@ -1493,7 +1778,7 @@ export function LemonBackup() {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-2 px-1 text-[13px] leading-6 text-slate-700">
+                    <div className="flex flex-col gap-2 px-1 text-[13px] leading-6 text-(--foreground)">
                         <div>
                             共恢复 <b>{restoreResult.totalRows ?? 0}</b> 行业务数据
                             {restoreResult.backedUpAt ? `（备份时间：${new Date(restoreResult.backedUpAt).toLocaleString("zh-CN")}）` : ""}。
@@ -1501,11 +1786,11 @@ export function LemonBackup() {
                         {Object.entries(restoreResult.restored ?? {})
                             .filter(([, n]) => n > 0)
                             .map(([k, n]) => (
-                                <div key={k} className="text-slate-500">
+                                <div key={k} className="text-(--muted-foreground)">
                                     {k}：{n} 行
                                 </div>
                             ))}
-                        <div className="text-slate-400">结账期间进度已随备份还原，刷新页面后生效。</div>
+                        <div className="text-(--muted-foreground)">结账期间进度已随备份还原，刷新页面后生效。</div>
                     </div>
                 </Dialog>
             )}
@@ -1566,7 +1851,7 @@ export function LemonLog() {
                 left={
                     <>
                         <DateInput value={start} onChange={setStart} className="w-[150px]" />
-                        <span className="text-slate-400">至</span>
+                        <span className="text-(--muted-foreground)">至</span>
                         <DateInput value={end} onChange={setEnd} className="w-[150px]" />
                         <TextInput value={keyword} onChange={setKeyword} placeholder="请输入日志的关键字搜索" className="w-[260px]" />
                         <Btn variant="primary" onClick={() => void load()}>查询</Btn>
@@ -1574,7 +1859,7 @@ export function LemonLog() {
                     </>
                 }
             />
-            {error && <div className="px-4 text-[13px] text-[#ef4444]">{error}</div>}
+            {error && <div className="px-4 text-[13px] text-(--danger)">{error}</div>}
             <div className="flex-1 px-4">
                 <Table
                     cols={cols}
@@ -1610,7 +1895,7 @@ function RelationTable({ cols2 }: { cols2: string }) {
                 { title: "关联状态", width: 130, render: () => <StatusPill tone="gray">未关联</StatusPill> },
                 { title: "财务软件账套", width: 240, dataIndex: "account" },
                 { title: cols2 },
-                { title: "操作", width: 100, render: () => <span className="text-[12px] text-slate-400">关联功能建设中 <WipTag /></span> },
+                { title: "操作", width: 100, render: () => <span className="text-[12px] text-(--muted-foreground)">关联功能建设中 <WipTag /></span> },
             ]}
         />
     );
@@ -1618,10 +1903,10 @@ function RelationTable({ cols2 }: { cols2: string }) {
 
 function StepCard({ title, desc }: { title: string; desc: string }) {
     return (
-        <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-5 text-center">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#eef4ff] text-[18px] text-[#2f6bff]">✓</div>
-            <div className="mt-3 text-[14px] font-bold text-slate-800">{title}</div>
-            <div className="mt-2 text-[12px] leading-5 text-slate-400">{desc}</div>
+        <div className="flex-1 rounded-2xl border border-(--border) bg-(--card) p-5 text-center">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-(--brand-soft) text-[18px] text-(--brand)">✓</div>
+            <div className="mt-3 text-[14px] font-bold text-(--foreground)">{title}</div>
+            <div className="mt-2 text-[12px] leading-5 text-(--muted-foreground)">{desc}</div>
         </div>
     );
 }
@@ -1631,22 +1916,22 @@ export function LemonEisRelation() {
         <Page>
             <WipNotice text="关联云发票界面复刻，尚未接入后端：发票关联与自动凭证能力待建设。" />
             <ToolRow
-                left={<span className="text-[13px] text-slate-400">查看帮助（建设中）</span>}
+                left={<span className="text-[13px] text-(--muted-foreground)">查看帮助（建设中）</span>}
                 right={<RefreshIcon />}
             />
             <div className="mx-auto max-w-[980px] w-full px-4 pb-8">
                 <RelationTable cols2="云发票企业" />
-                <div className="mt-8 mb-3 text-[14px] font-bold text-slate-800">操作指引:</div>
+                <div className="mt-8 mb-3 text-[14px] font-bold text-(--foreground)">操作指引:</div>
                 <div className="flex items-center gap-2">
                     <StepCard title="关联云发票企业" desc="拥有财务软件的关联云发票权限，且是云发票的系统管理员才有权限设置关联" />
-                    <span className="text-slate-300">›</span>
+                    <span className="text-(--muted-foreground)">›</span>
                     <StepCard title="开具发票" desc="云发票支持立即开票、批量开票、单据开票、复制开票等多种开票方式" />
-                    <span className="text-slate-300">›</span>
+                    <span className="text-(--muted-foreground)">›</span>
                     <StepCard title="自动生成凭证" desc="选择发票数据生成凭证" />
                 </div>
-                <div className="mt-8 mb-6 flex h-[120px] items-center justify-between rounded-2xl bg-[#eef4ff] px-10">
-                    <span className="text-[22px] font-bold text-[#2f6bff]">云财发票</span>
-                    <span className="text-[13px] text-slate-500">一站式数电发票服务平台</span>
+                <div className="mt-8 mb-6 flex h-[120px] items-center justify-between rounded-2xl bg-(--brand-soft) px-10">
+                    <span className="text-[22px] font-bold text-(--brand)">云财发票</span>
+                    <span className="text-[13px] text-(--muted-foreground)">一站式数电发票服务平台</span>
                     <WipBtn>立即使用 <WipTag /></WipBtn>
                 </div>
             </div>
@@ -1659,28 +1944,28 @@ export function LemonScmRelation() {
         <Page>
             <WipNotice text="关联进销存界面复刻，尚未接入后端：业财关联与凭证自动生成能力待建设。" />
             <ToolRow
-                left={<span className="text-[13px] text-slate-400">进销存+财务管理操作视频（建设中）</span>}
+                left={<span className="text-[13px] text-(--muted-foreground)">进销存+财务管理操作视频（建设中）</span>}
                 right={<RefreshIcon />}
             />
             <div className="mx-auto max-w-[980px] w-full px-4 pb-8">
                 <RelationTable cols2="进销存账套" />
-                <div className="mt-8 mb-3 text-[14px] font-bold text-slate-800">操作指引:</div>
+                <div className="mt-8 mb-3 text-[14px] font-bold text-(--foreground)">操作指引:</div>
                 <div className="flex items-center gap-2">
                     <StepCard title="关联进销存账套" desc="只有同时拥有财务软件和进销存的账套管理员才有权限设置关联" />
-                    <span className="text-slate-300">›</span>
+                    <span className="text-(--muted-foreground)">›</span>
                     <StepCard title="设置进销存核算参数" desc="检查确定进销存核算参数的设置" />
-                    <span className="text-slate-300">›</span>
+                    <span className="text-(--muted-foreground)">›</span>
                     <StepCard title="完善进销存基础资料" desc="设置进销存基础资料与财务软件账套的会计科目之间的对应关系" />
-                    <span className="text-slate-300">›</span>
+                    <span className="text-(--muted-foreground)">›</span>
                     <StepCard title="自动生成凭证" desc="选择进销存单据生成凭证" />
                 </div>
-                <div className="mt-8 mb-6 flex h-[120px] items-center gap-8 rounded-2xl bg-[#eef4ff] px-10">
+                <div className="mt-8 mb-6 flex h-[120px] items-center gap-8 rounded-2xl bg-(--brand-soft) px-10">
                     <span className="flex gap-2">
                         {["采购", "销售", "库存", "财务"].map((t) => (
-                            <span key={t} className="rounded bg-white px-3 py-1 text-[12px] text-[#2f6bff]">{t}</span>
+                            <span key={t} className="rounded bg-(--card) px-3 py-1 text-[12px] text-(--brand)">{t}</span>
                         ))}
                     </span>
-                    <span className="flex-1 text-[13px] leading-5 text-slate-500">
+                    <span className="flex-1 text-[13px] leading-5 text-(--muted-foreground)">
                         财务与业务数据不同步，核对数据费事费力，还总出错？您只需一个：云财业财
                         <br />
                         业财税完美融合，全面理顺企业内外部流程
@@ -1742,19 +2027,19 @@ export function LemonImportOld() {
                         {["选择导入方式", "下载模板并填写", "导入旧账数据"].map((t, i) => (
                             <div key={t} className="flex items-center">
                                 <span className="flex items-center gap-2">
-                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2f6bff] text-[13px] text-white">
+                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-(--brand-fill) text-[13px] text-white">
                                         {i + 1}
                                     </span>
-                                    <span className="text-[13px] text-[#2f6bff]">{t}</span>
+                                    <span className="text-[13px] text-(--brand)">{t}</span>
                                 </span>
-                                {i < 2 && <span className="mx-4 h-px w-24 bg-slate-200" />}
+                                {i < 2 && <span className="mx-4 h-px w-24 bg-(--muted)" />}
                             </div>
                         ))}
                     </div>
 
                     <div className="flex flex-col items-center gap-4">
-                        <div className="flex items-center gap-3 text-[13px] text-slate-600">
-                            <span className="rounded bg-[#eef4ff] px-2 py-1 text-[#2f6bff]">科目余额表导入</span>
+                        <div className="flex items-center gap-3 text-[13px] text-(--foreground)">
+                            <span className="rounded bg-(--brand-soft) px-2 py-1 text-(--brand)">科目余额表导入</span>
                             <span>按科目编码把旧账余额写入本账套期初，支持借贷两列或单列余额 + 方向列。</span>
                         </div>
                         <div className="flex items-center gap-3">
@@ -1774,23 +2059,23 @@ export function LemonImportOld() {
                                 }}
                             />
                         </div>
-                        {fileName && <div className="text-[12px] text-slate-400">已选择：{fileName}</div>}
+                        {fileName && <div className="text-[12px] text-(--muted-foreground)">已选择：{fileName}</div>}
                     </div>
 
                     {result && (
-                        <div className="mt-8 rounded-xl border border-slate-200 p-4">
+                        <div className="mt-8 rounded-xl border border-(--border) p-4">
                             <div className="flex flex-wrap items-center gap-6 text-[13px]">
-                                <span className="text-slate-600">新增录入 <b className="text-slate-800">{result.imported ?? 0}</b> 个科目</span>
-                                <span className="text-slate-600">覆盖原有余额 <b className="text-slate-800">{result.updated ?? 0}</b> 个科目</span>
-                                <span className="text-slate-600">借方合计 <b className="tabular-nums text-slate-800">{Number(result.totalDebit ?? 0).toFixed(2)}</b></span>
-                                <span className="text-slate-600">贷方合计 <b className="tabular-nums text-slate-800">{Number(result.totalCredit ?? 0).toFixed(2)}</b></span>
-                                <span className={result.balanced ? "text-[#10b981]" : "text-[#ef4444]"}>
+                                <span className="text-(--foreground)">新增录入 <b className="text-(--foreground)">{result.imported ?? 0}</b> 个科目</span>
+                                <span className="text-(--foreground)">覆盖原有余额 <b className="text-(--foreground)">{result.updated ?? 0}</b> 个科目</span>
+                                <span className="text-(--foreground)">借方合计 <b className="tabular-nums text-(--foreground)">{Number(result.totalDebit ?? 0).toFixed(2)}</b></span>
+                                <span className="text-(--foreground)">贷方合计 <b className="tabular-nums text-(--foreground)">{Number(result.totalCredit ?? 0).toFixed(2)}</b></span>
+                                <span className={result.balanced ? "text-(--success)" : "text-(--danger)"}>
                                     {result.balanced ? "✓ 试算平衡" : "✗ 试算不平衡"}
                                 </span>
                             </div>
                             {(result.failures ?? []).length > 0 && (
                                 <div className="mt-4">
-                                    <div className="mb-2 text-[13px] font-medium text-[#ef4444]">未导入 {result.failures?.length} 行：</div>
+                                    <div className="mb-2 text-[13px] font-medium text-(--danger)">未导入 {result.failures?.length} 行：</div>
                                     <AntTable
                                         pagination={false}
                                         rowKey={(f, i) => `${f.row}-${i}`}
@@ -1806,14 +2091,14 @@ export function LemonImportOld() {
                         </div>
                     )}
 
-                    <div className="mt-8 flex justify-center gap-6 text-[12px] text-slate-400">
+                    <div className="mt-8 flex justify-center gap-6 text-[12px] text-(--muted-foreground)">
                         <span>在线导入旧账数据（需对接旧系统接口，暂未开放）</span>
                         <span>导账工具一键导入（暂未开放）</span>
                         <span>科目余额表导账（已开放）</span>
                     </div>
                 </div>
 
-                <div className="mx-auto w-full max-w-[640px] rounded-2xl bg-[#fafbfd] p-5 text-[13px] leading-7 text-slate-700">
+                <div className="mx-auto w-full max-w-[640px] rounded-2xl bg-(--table-zebra-bg) p-5 text-[13px] leading-7 text-(--foreground)">
                     <div className="font-bold">导入说明:</div>
                     <div>① 仅迁移科目期初余额，历史凭证与明细账不随本次导入迁移；</div>
                     <div>② 科目编码必须与本账套一致，编码不存在或非末级科目的行会被跳过并在结果中列出；</div>
@@ -1872,34 +2157,50 @@ export function LemonReinit() {
 
     return (
         <Page>
-            <div className="flex flex-col gap-8 p-6">
-                <SectionCard className="mx-auto w-full max-w-[1000px] text-center" bodyClassName="p-10">
-                    <div className="text-[14px] font-bold text-[#ef4444]">
-                        重新初始化将彻底清空您在账套中录入的所有数据，并不可恢复，请慎重！！
-                    </div>
-                    <div className="mt-5 text-[14px] font-bold text-slate-800">
-                        您将要重新初始化账套：{accountSet?.name ?? "（加载中…）"}，以下数据将被永久删除:
-                    </div>
-                    <div className="mt-4 flex flex-col gap-2 text-left text-[13px] leading-6 text-slate-700">
-                        <span>1、新增的所有会计科目、辅助核算等基础设置</span>
-                        <span>2、所有已录入的凭证、发票、日记账、资产及初始化数据</span>
-                        <span>3、已保存的凭证模板、数据透视表模板等个性化配置模板</span>
-                        <span>4、如果您已结账，重新初始化后会退回到账套启用期间</span>
-                    </div>
-                    <div className="mt-6 flex justify-center">
-                        <CheckBox
-                            label="我已清楚重新初始化将会清空所有数据，并知晓操作风险"
-                            checked={checked}
-                            onChange={setChecked}
+            <div className="flex flex-col items-center gap-6 px-6 py-8">
+                <h2 className="text-[18px] font-bold text-(--foreground)">重新初始化</h2>
+                <div className="w-full max-w-[1000px] rounded-xl border border-(--border) px-8 py-8">
+                    <div className="mx-auto flex w-full max-w-[640px] flex-col gap-5">
+                        <Alert
+                            type="error"
+                            showIcon
+                            title="重新初始化将彻底清空您在账套中录入的所有数据，并不可恢复，请慎重！！"
                         />
+                        <div className="text-[14px] font-bold leading-6 text-(--foreground)">
+                            您将要重新初始化账套：{accountSet?.name ?? "（加载中…）"}，以下数据将被永久删除：
+                        </div>
+                        <ol className="flex flex-col gap-2 rounded-xl bg-(--muted) p-4 text-[13px] leading-6 text-(--foreground)">
+                            {[
+                                "新增的所有会计科目、辅助核算等基础设置",
+                                "所有已录入的凭证、发票、日记账、资产及初始化数据",
+                                "已保存的凭证模板、数据透视表模板等个性化配置模板",
+                                "如果您已结账，重新初始化后会退回到账套启用期间",
+                            ].map((item, i) => (
+                                <li key={item} className="flex gap-1.5">
+                                    <span className="shrink-0 tabular-nums text-(--muted-foreground)">{i + 1}、</span>
+                                    <span>{item}</span>
+                                </li>
+                            ))}
+                        </ol>
+                        <div className="flex justify-center pt-1">
+                            <CheckBox
+                                label="我已清楚重新初始化将会清空所有数据，并知晓操作风险"
+                                checked={checked}
+                                onChange={setChecked}
+                            />
+                        </div>
+                        <div className="flex justify-center">
+                            <Btn variant={checked && !busy ? "primary" : "disabled"} disabled={!checked || busy} onClick={() => void doReinit()}>
+                                {busy ? "处理中…" : "重新初始化"}
+                            </Btn>
+                        </div>
+                        {result && (
+                            <div className="rounded-lg bg-(--success-soft) px-4 py-3 text-center text-[13px] leading-6 text-(--success)">
+                                {result}
+                            </div>
+                        )}
                     </div>
-                    <div className="mt-6 flex justify-center">
-                        <Btn variant={checked && !busy ? "primary" : "disabled"}  disabled={!checked || busy} onClick={() => void doReinit()}>
-                            {busy ? "处理中…" : "重新初始化"}
-                        </Btn>
-                    </div>
-                    {result && <div className="mt-5 text-[13px] leading-6 text-[#10b981]">{result}</div>}
-                </SectionCard>
+                </div>
             </div>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Page>

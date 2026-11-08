@@ -127,7 +127,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
       aria-label="登录云财"
     >
       <div
-        className="relative max-h-[92svh] w-full max-w-[480px] overflow-y-auto rounded-[16px] bg-white px-8 py-12 sm:px-12 sm:py-14"
+        className="relative max-h-[92svh] w-full max-w-[480px] overflow-y-auto rounded-[16px] bg-(--card) px-8 py-12 sm:px-12 sm:py-14"
         style={{ boxShadow: "0 24px 60px -20px rgba(10,20,16,.28)" }}
       >
         {/* 关闭 */}
@@ -135,7 +135,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
           type="button"
           onClick={onClose}
           aria-label="关闭登录"
-          className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full text-[13px] transition-colors hover:bg-[#f4f4f4]"
+          className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full text-[13px] transition-colors hover:bg-(--muted)"
           style={{ color: "#b8b8b8" }}
         >
           <CloseOutlined />
@@ -189,7 +189,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
             placeholder="请输入用户名"
-            className="h-[52px] w-full rounded-[12px] px-4 text-[15px] font-normal outline-none transition-shadow placeholder:font-light placeholder:text-[#b8b8b8] focus:shadow-[0_0_0_2px_rgba(7,157,85,.18)]"
+            className="h-[52px] w-full rounded-[12px] px-4 text-[15px] font-normal outline-none transition-shadow placeholder:font-light placeholder:text-(--muted-foreground) focus:shadow-[0_0_0_2px_rgba(7,157,85,.18)]"
             style={{ background: C.field, color: C.ink }}
           />
 
@@ -204,14 +204,14 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
               type={showPwd ? "text" : "password"}
               autoComplete="current-password"
               placeholder="请输入密码"
-              className="h-full w-full bg-transparent text-[15px] font-normal outline-none placeholder:font-light placeholder:text-[#b8b8b8]"
+              className="h-full w-full bg-transparent text-[15px] font-normal outline-none placeholder:font-light placeholder:text-(--muted-foreground)"
               style={{ color: C.ink }}
             />
             <button
               type="button"
               onClick={() => setShowPwd((v) => !v)}
               aria-label={showPwd ? "隐藏密码" : "显示密码"}
-              className="ml-2 flex size-6 shrink-0 items-center justify-center text-[14px] transition-colors hover:text-[#6b6b6b]!"
+              className="ml-2 flex size-6 shrink-0 items-center justify-center text-[14px] transition-colors hover:text-(--foreground)!"
               style={{ color: "#b8b8b8" }}
             >
               {showPwd ? <EyeOutlined /> : <EyeInvisibleOutlined />}

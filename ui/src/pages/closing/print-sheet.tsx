@@ -582,9 +582,9 @@ export function PrintVoucherSheet({
                         ]}
                     />
 
-                    <div className="overflow-auto rounded-xl border border-slate-200 bg-[#f1f5f9] p-3">
+                    <div className="overflow-auto rounded-xl border border-(--border) bg-(--muted) p-3">
                         <div
-                            className="mx-auto bg-white shadow-[0_1px_4px_rgba(16,24,40,0.18)]"
+                            className="mx-auto bg-(--card) shadow-[0_1px_4px_rgba(16,24,40,0.18)]"
                             style={{
                                 width: settings.paper === "V241" ? "241mm" : "180mm",
                                 padding: `${settings.marginTop}mm 6mm 6mm 6mm`,

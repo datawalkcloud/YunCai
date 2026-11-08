@@ -98,6 +98,8 @@ function MultiColumnLedger({
     const lookup = useVoucherLookup(accountSetId, token)
     const [voucherId, setVoucherId] = useState<string | null>(null)
 
+    const selectedAccount = accounts.find((account) => account.id === query.committed.accountId)
+
     const dto = query.data
     // 空数组取模块级常量，保证列定义的 memo 依赖在数据未就绪时也是稳定引用。
     const columns = dto?.columns ?? EMPTY_COLUMNS
@@ -124,15 +126,16 @@ function MultiColumnLedger({
 
     return (
         <LedgerPageShell
-            page="multi-column"
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
                     onChange={query.patch}
                     onQuery={query.query}
+                    onCancel={query.cancel}
                     onReset={query.reset}
                     fields={FIELDS}
                     accounts={accounts}
+                    caption={selectedAccount ? `科目：${selectedAccount.code} ${selectedAccount.name}` : "科目：未选择"}
                     loading={query.loading}
                     extra={
                         <>

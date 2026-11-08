@@ -130,7 +130,11 @@ namespace KuaiJi.Modules.Funds.Domain
             string? counterparty = null,
             string? project = null,
             string? department = null,
-            Guid? voucherId = null)
+            Guid? voucherId = null,
+            string? settlementMethod = null,
+            string? billNo = null,
+            string? remark = null,
+            string? source = null)
         {
             GuardEntry(summary, income, expense);
 
@@ -145,7 +149,11 @@ namespace KuaiJi.Modules.Funds.Domain
                 Normalize(department),
                 income,
                 expense,
-                voucherId);
+                voucherId,
+                Normalize(settlementMethod),
+                Normalize(billNo),
+                Normalize(remark),
+                Normalize(source));
 
             _entries.Add(entry);
             Reindex();
@@ -171,6 +179,19 @@ namespace KuaiJi.Modules.Funds.Domain
             GuardEntry(summary, income, expense);
             entry.Update(date, summary.Trim(), Normalize(category), Normalize(counterparty), Normalize(project), Normalize(department), income, expense, voucherId);
             Reindex();
+        }
+
+        /// <summary>单独改写一笔流水的附加信息：结算方式 / 票据号 / 备注 / 流水来源。</summary>
+        public void SetEntryExtras(
+            Guid entryId,
+            string? settlementMethod = null,
+            string? billNo = null,
+            string? remark = null,
+            string? source = null)
+        {
+            var entry = _entries.FirstOrDefault(e => e.Id == entryId)
+                        ?? throw new InvalidOperationException("日记账分录不存在。");
+            entry.SetExtras(Normalize(settlementMethod), Normalize(billNo), Normalize(remark), Normalize(source));
         }
 
         /// <summary>删除一笔流水，删除后自动重排序号与余额。</summary>

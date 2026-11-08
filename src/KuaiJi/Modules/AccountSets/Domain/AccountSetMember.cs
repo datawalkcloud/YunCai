@@ -1,21 +1,5 @@
 namespace KuaiJi.Modules.AccountSets.Domain
 {
-    /// <summary>账套成员在账套内的角色，决定其可使用的功能范围。</summary>
-    public enum AccountSetMemberRole
-    {
-        /// <summary>账套管理员：全部功能，含成员与设置管理。</summary>
-        Admin = 0,
-
-        /// <summary>会计：凭证、账簿、报表、结账等日常核算。</summary>
-        Accountant = 1,
-
-        /// <summary>出纳：资金日记账、银行对账与收付款单据。</summary>
-        Cashier = 2,
-
-        /// <summary>查看者：只读，不能新增或修改任何单据。</summary>
-        Viewer = 3,
-    }
-
     /// <summary>
     /// 账套成员：一个账套下可协作的自然人及其角色。
     /// 账套创建者自动成为唯一的管理员成员（IsOwner = true），不可删除或停用。
@@ -28,14 +12,14 @@ namespace KuaiJi.Modules.AccountSets.Domain
         }
 
         private AccountSetMember(Guid id, Guid accountSetId, string name, string phone, string? email,
-            AccountSetMemberRole role, bool isOwner)
+            Guid roleId, bool isOwner)
         {
             Id = id;
             AccountSetId = accountSetId;
             Name = name;
             Phone = phone;
             Email = email;
-            Role = role;
+            RoleId = roleId;
             IsOwner = isOwner;
             Enabled = true;
             CreatedAt = DateTime.UtcNow;
@@ -57,8 +41,8 @@ namespace KuaiJi.Modules.AccountSets.Domain
         /// <summary>邮箱，可空。</summary>
         public string? Email { get; private set; }
 
-        /// <summary>账套内角色。</summary>
-        public AccountSetMemberRole Role { get; private set; }
+        /// <summary>账套内角色标识（见 <see cref="AccountSetRole"/>）。</summary>
+        public Guid RoleId { get; private set; }
 
         /// <summary>是否启用；停用后不可登录该账套。</summary>
         public bool Enabled { get; private set; }
@@ -73,20 +57,20 @@ namespace KuaiJi.Modules.AccountSets.Domain
         public DateTime UpdatedAt { get; private set; }
 
         /// <summary>新建普通成员。</summary>
-        public static AccountSetMember Create(Guid accountSetId, string name, string phone, string? email, AccountSetMemberRole role)
-            => new(Guid.NewGuid(), accountSetId, name.Trim(), phone.Trim(), string.IsNullOrWhiteSpace(email) ? null : email.Trim(), role, false);
+        public static AccountSetMember Create(Guid accountSetId, string name, string phone, string? email, Guid roleId)
+            => new(Guid.NewGuid(), accountSetId, name.Trim(), phone.Trim(), string.IsNullOrWhiteSpace(email) ? null : email.Trim(), roleId, false);
 
-        /// <summary>新建账套创建者成员（管理员）。</summary>
-        public static AccountSetMember CreateOwner(Guid accountSetId, string name)
-            => new(Guid.NewGuid(), accountSetId, name.Trim(), string.Empty, null, AccountSetMemberRole.Admin, true);
+        /// <summary>新建账套创建者成员（管理员角色）。</summary>
+        public static AccountSetMember CreateOwner(Guid accountSetId, string name, Guid adminRoleId)
+            => new(Guid.NewGuid(), accountSetId, name.Trim(), string.Empty, null, adminRoleId, true);
 
         /// <summary>修改成员资料与角色；创建者角色固定为管理员。</summary>
-        public void Update(string name, string phone, string? email, AccountSetMemberRole role)
+        public void Update(string name, string phone, string? email, Guid roleId)
         {
             Name = name.Trim();
             Phone = phone.Trim();
             Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
-            Role = IsOwner ? AccountSetMemberRole.Admin : role;
+            RoleId = IsOwner ? RoleId : roleId;
             UpdatedAt = DateTime.UtcNow;
         }
 

@@ -39,6 +39,13 @@ export function DateField({
     )
 }
 
+interface PeriodFieldProps extends FieldProps {
+    /** 可选期间下界（含），按年月比较。 */
+    min?: Date
+    /** 可选期间上界（含），按年月比较。 */
+    max?: Date
+}
+
 /** 期间（年 + 月）选择器；落值归一到当月 1 日，只取年月。 */
 export function PeriodField({
     value,
@@ -47,7 +54,9 @@ export function PeriodField({
     disabled,
     allowClear,
     className,
-}: FieldProps) {
+    min,
+    max,
+}: PeriodFieldProps) {
     return (
         <DatePicker
             className={className}
@@ -58,6 +67,9 @@ export function PeriodField({
             allowClear={allowClear}
             value={value ? dayjs(value) : null}
             onChange={(d) => onChange?.(d ? d.startOf("month").toDate() : undefined)}
+            disabledDate={(d) =>
+                (min != null && d.isBefore(dayjs(min), "month")) || (max != null && d.isAfter(dayjs(max), "month"))
+            }
         />
     )
 }

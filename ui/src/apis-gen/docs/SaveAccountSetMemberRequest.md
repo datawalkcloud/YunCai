@@ -9,7 +9,7 @@ Name | Type
 `name` | string
 `phone` | string
 `email` | string
-`role` | number
+`roleId` | string
 
 ## Example
 
@@ -21,7 +21,7 @@ const example = {
   "name": null,
   "phone": null,
   "email": null,
-  "role": null,
+  "roleId": null,
 } satisfies SaveAccountSetMemberRequest
 
 console.log(example)

@@ -12,7 +12,7 @@ import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
 import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
-import { asDate } from "@/components/ledger/types"
+import { asDate, assistTypeLabel } from "@/components/ledger/types"
 import { useAssistCategories, useAssistItems } from "@/components/ledger/useLedgerOptions"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 
@@ -116,14 +116,15 @@ export default function AgeingAnalysisPage() {
 
     return (
         <LedgerPageShell
-            page="ageing"
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
                     onChange={query.patch}
                     onQuery={query.query}
+                    onCancel={query.cancel}
                     onReset={query.reset}
                     fields={FIELDS}
+                    caption={`类别：${assistType ? (dto?.assistTypeText ?? assistTypeLabel(assistType)) : "未选择"}`}
                     enabledAssistTypes={enabledAssistTypes}
                     assistItems={assistItems}
                     loading={query.loading}

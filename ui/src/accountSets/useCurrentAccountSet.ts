@@ -68,3 +68,22 @@ export function useDefaultAccountingPeriod(): AccountingPeriod {
         return current.period < start ? makePeriod(Math.floor(start / 100), start % 100) : current
     }, [accountSet])
 }
+
+/**
+ * 可选会计期间范围：账套启用期间 ~ 当前自然月。
+ * 启用期间缺失时只收上界；月份尚未到时不可选。
+ */
+export function useAccountingPeriodBounds(): { min?: Date; max: Date } {
+    const accountSet = useCurrentAccountSet()
+
+    return useMemo(
+        () => ({
+            min:
+                accountSet?.startYear && accountSet?.startMonth
+                    ? new Date(accountSet.startYear, accountSet.startMonth - 1, 1)
+                    : undefined,
+            max: new Date(),
+        }),
+        [accountSet],
+    )
+}

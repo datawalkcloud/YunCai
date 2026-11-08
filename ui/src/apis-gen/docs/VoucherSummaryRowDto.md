@@ -8,6 +8,7 @@ Name | Type
 ------------ | -------------
 `code` | string
 `name` | string
+`parentCode` | string
 `voucherCount` | number
 `debit` | number
 `credit` | number
@@ -21,6 +22,7 @@ import type { VoucherSummaryRowDto } from ''
 const example = {
   "code": null,
   "name": null,
+  "parentCode": null,
   "voucherCount": null,
   "debit": null,
   "credit": null,

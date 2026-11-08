@@ -15,12 +15,31 @@ export interface LedgerTableProps<D> {
     rowKey: (row: D) => string
     /** 行点击（下钻）；未提供时行不显示手型光标。 */
     onRowClick?: (row: D, index: number) => void
+    /** 自定义行事件；与 onRowClick 二选一，分组头等非下钻行用它。 */
+    onRow?: TableProps<D>["onRow"]
     /** 行级附加样式，用于区分期初 / 合计行。 */
     rowClassName?: (row: D, index: number) => string | undefined
     /** 展开配置；科目余额表等树形账页用它控制级次展开。 */
     expandable?: TableProps<D>["expandable"]
     /** 合计行等自定义页脚，内部用 Table.Summary.Row / Cell。 */
     footer?: ReactNode
+    /** 分页配置；不传时表格不分页，页脚只展示总条数。 */
+    pagination?: TableProps<D>["pagination"]
+    /** 表头吸顶（跟随内容区滚动），宽表默认开启；嵌在弹窗里的窄表可关闭。 */
+    sticky?: boolean
+    /** 表格下方「共 N 条」；树形账页与自带上报头的页面可关闭。 */
+    showCount?: boolean
+}
+
+/** 树形数据按可见行计数：data.length 只是根节点数，会少报下级科目。 */
+function countRows<D>(rows: D[]): number {
+    let count = 0
+    for (const row of rows) {
+        count += 1
+        const children = (row as { children?: D[] }).children
+        if (children?.length) count += countRows(children)
+    }
+    return count
 }
 
 /**
@@ -33,9 +52,13 @@ export function LedgerTable<D>({
     emptyText = "暂无数据。",
     rowKey,
     onRowClick,
+    onRow,
     rowClassName,
     expandable,
     footer,
+    pagination,
+    sticky = true,
+    showCount = true,
 }: LedgerTableProps<D>) {
     const showSpinner = Boolean(loading) && data.length === 0
 
@@ -45,15 +68,18 @@ export function LedgerTable<D>({
                 columns={columns}
                 dataSource={data}
                 rowKey={rowKey}
-                pagination={false}
+                pagination={pagination ?? false}
                 expandable={expandable}
+                sticky={sticky}
+                scroll={{ x: "max-content" }}
                 rowClassName={(row, index) =>
                     cn(rowClassName?.(row, index), onRowClick && "cursor-pointer")
                 }
                 onRow={
-                    onRowClick
+                    onRow ??
+                    (onRowClick
                         ? (row, index) => ({ onClick: () => onRowClick(row, index ?? 0) })
-                        : undefined
+                        : undefined)
                 }
                 locale={{
                     emptyText: showSpinner ? (
@@ -70,26 +96,13 @@ export function LedgerTable<D>({
                         : () => <Table.Summary>{footer}</Table.Summary>
                 }
             />
-            {/* 页脚：与柠檬云一致的「显示 x 到 y，共 z 条」；不画上边框 —— 表格末行已有分隔线，再加一条会叠成双线 */}
-            <div className="flex items-center justify-between px-4 py-2.5 text-[12.5px] text-slate-500">
-                <span>
-                    显示 {data.length ? 1 : 0} 到 {Math.min(data.length, 20)}，共 {data.length} 条
-                </span>
-                <span className="flex items-center gap-2">
-                    <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2">
-                        20
-                    </span>
-                    <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2 text-slate-400">
-                        ‹
-                    </span>
-                    <span className="inline-flex h-7 w-8 items-center justify-center rounded border border-[#2f6bff] text-[#2f6bff]">
-                        1
-                    </span>
-                    <span className="inline-flex h-7 items-center rounded border border-slate-200 px-2 text-slate-400">
-                        ›
-                    </span>
-                </span>
-            </div>
+            {/* 不分页时只报总条数；此前固定显示「1 到 20」并画了翻不动的页码，
+                50~500 行的账页会给出与实际不符的页脚。 */}
+            {!pagination && showCount && (
+                <div className="flex items-center px-4 py-2.5 text-[12.5px] text-(--muted-foreground)">
+                    共 {countRows(data)} 条
+                </div>
+            )}
         </div>
     )
 }
@@ -105,16 +118,16 @@ export interface LedgerSectionProps {
 /** 账页分段容器：明细账、总账等按科目分段的账页用它包住每一段。 */
 export function LedgerSection({ heading, extra, children }: LedgerSectionProps) {
     return (
-        <section className="flex flex-col overflow-hidden rounded-xl border border-slate-100">
+        <section className="flex flex-col overflow-hidden rounded-xl border border-(--border)">
             {/* 段标题条不画下边框：它紧贴表格上沿，再加一条线会被读成表格的外框上沿 */}
             <div className="flex flex-wrap items-baseline justify-between gap-2 bg-muted px-4 py-2.5">
-                <h2 className="flex items-center gap-2 text-[13px] font-semibold text-slate-800">
-                    <span className="h-3 w-1 rounded-full bg-[#2f6bff]" />
+                <h2 className="flex items-center gap-2 text-[13px] font-semibold text-(--foreground)">
+                    <span className="h-3 w-1 rounded-full bg-(--brand-fill)" />
                     {heading}
                 </h2>
-                {extra && <span className="text-[12px] text-slate-400">{extra}</span>}
+                {extra && <span className="text-[12px] text-(--muted-foreground)">{extra}</span>}
             </div>
-            <div className="bg-white">{children}</div>
+            <div className="bg-(--card)">{children}</div>
         </section>
     )
 }

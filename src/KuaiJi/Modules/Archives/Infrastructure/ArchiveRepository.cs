@@ -46,6 +46,29 @@ namespace KuaiJi.Modules.Archives.Infrastructure
                 .ContinueWith(t => t.Result ?? 0L, cancellationToken);
         }
 
+        public async Task<bool> AnyInCategoryAsync(Guid accountSetId, string path, string leafName, CancellationToken cancellationToken = default)
+        {
+            var prefix = path + ArchiveCategory.PathSeparator;
+            return await _context.ArchiveItems.AsNoTracking()
+                .AnyAsync(a => a.AccountSetId == accountSetId &&
+                               (a.Category == path || a.Category == leafName || a.Category.StartsWith(prefix)),
+                    cancellationToken);
+        }
+
+        public async Task<int> ReplaceCategoryPathAsync(Guid accountSetId, string oldPath, string newPath, CancellationToken cancellationToken = default)
+        {
+            var prefix = oldPath + ArchiveCategory.PathSeparator;
+            var items = await _context.ArchiveItems
+                .Where(a => a.AccountSetId == accountSetId && (a.Category == oldPath || a.Category.StartsWith(prefix)))
+                .ToListAsync(cancellationToken);
+            foreach (var item in items)
+            {
+                item.SetCategory(newPath + item.Category[oldPath.Length..]);
+            }
+
+            return items.Count;
+        }
+
         public async Task AddAsync(ArchiveItem item, CancellationToken cancellationToken = default)
         {
             await _context.ArchiveItems.AddAsync(item, cancellationToken);

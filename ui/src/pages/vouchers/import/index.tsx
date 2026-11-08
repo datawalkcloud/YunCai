@@ -103,7 +103,7 @@ export default function ImportVoucherPage() {
                     onDrop={onDrop}
                     className={cn(
                         "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
-                        dragging ? "border-[#bfdbfe] bg-[#eef4ff]" : "border-border",
+                        dragging ? "border-(--brand-border) bg-(--brand-soft)" : "border-border",
                     )}
                 >
                     <FileExcelOutlined className="text-[40px]" style={ICON_STYLE.placeholder} />
@@ -149,7 +149,7 @@ export default function ImportVoucherPage() {
 
             {/* 导入结果 */}
             {result && (
-                <SectionCard title={<h3 className="text-[14px] font-semibold text-slate-800">导入结果</h3>} bodyClassName="flex flex-col gap-4">
+                <SectionCard title={<h3 className="text-[14px] font-semibold text-(--foreground)">导入结果</h3>} bodyClassName="flex flex-col gap-4">
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                         <Stat label="解析行数" value={result.totalRows ?? 0} />
                         <Stat label="导入凭证" value={result.importedVouchers ?? 0} />

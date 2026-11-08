@@ -75,6 +75,7 @@ namespace KuaiJi.Modules.Ledgers.Application
         {
             var selector = AccountCodeSelector.Parse(Options.AccountExpression);
             var maxLevel = Options.MaxLevel;
+            var minLevel = Options.MinLevel;
             var result = new List<Account>();
             foreach (var account in Accounts)
             {
@@ -84,6 +85,11 @@ namespace KuaiJi.Modules.Ledgers.Application
                 }
 
                 if (maxLevel is { } level && account.Level > level)
+                {
+                    continue;
+                }
+
+                if (minLevel is { } lo && account.Level < lo)
                 {
                     continue;
                 }

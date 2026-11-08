@@ -125,14 +125,15 @@ export default function AssistBalancePage() {
 
     return (
         <LedgerPageShell
-            page="assist-balance"
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
                     onChange={query.patch}
                     onQuery={query.query}
+                    onCancel={query.cancel}
                     onReset={query.reset}
                     fields={FIELDS}
+                    caption={`类别：${assistType ? assistTypeText : "未选择"}`}
                     switches={SWITCHES}
                     enabledAssistTypes={enabledTypes}
                     assistItems={assistItems}

@@ -9,6 +9,9 @@ namespace KuaiJi.Modules.AccountSets.Application
 
         Task<AccountSetMember?> GetByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default);
 
+        /// <summary>账套下是否有成员使用该角色。</summary>
+        Task<bool> AnyWithRoleAsync(Guid accountSetId, Guid roleId, CancellationToken cancellationToken = default);
+
         Task AddAsync(AccountSetMember member, CancellationToken cancellationToken = default);
 
         void Remove(AccountSetMember member);

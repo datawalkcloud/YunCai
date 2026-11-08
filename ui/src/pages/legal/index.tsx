@@ -29,7 +29,7 @@ function LegalPage({
   blocks: Block[];
 }) {
   return (
-    <div className="min-h-svh bg-white">
+    <div className="min-h-svh bg-(--card)">
       <header
         className="h-[65px] border-b"
         style={{ borderColor: C.line }}

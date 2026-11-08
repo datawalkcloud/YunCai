@@ -4,7 +4,8 @@
  * 智能报税各页面取数时，如果服务器上的税局登录态已过期（后端返回 needLogin），
  * 由本弹窗用账套里保存的税局资料重新发起登录：验证码由服务器自动识别，
  * 用户只需把税局发来的短信验证码填回来，成功后页面继续取数，全程不打开税局页面。
- * 服务器若还存着可用的登录态，会先自动恢复，这种情况下连短信都不需要。
+ * 打开弹窗不会自动登录，必须由用户点「登录电子税务局」；
+ * 服务器上已有进行中的登录会话时除外，那种情况接着等即可，不必再发起一次。
  */
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Alert, App, Button, Input, Modal, Space, Spin } from "antd";
@@ -22,7 +23,7 @@ import {
     type TaxPortalLoginState,
 } from "@/lib/tax-portal";
 
-type Phase = "checking" | TaxPortalLoginState;
+type Phase = "idle" | "checking" | TaxPortalLoginState;
 
 interface TaxLoginPromptProps {
     open: boolean;
@@ -40,7 +41,7 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
     const { message } = App.useApp();
     const navigate = useNavigate();
 
-    const [phase, setPhase] = useState<Phase>("checking");
+    const [phase, setPhase] = useState<Phase>("idle");
     const [flowMessage, setFlowMessage] = useState("");
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [smsCode, setSmsCode] = useState("");
@@ -73,7 +74,7 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
 
     /**
      * 打开弹窗：先看服务器上有没有还在进行的登录会话，有就接着等；
-     * 没有就发起一次登录——服务器会优先用保存的登录态恢复，恢复不了才走短信。
+     * 没有只停在待登录界面，等用户点「登录电子税务局」才真的发起登录。
      */
     useEffect(() => {
         if (!open) {
@@ -86,7 +87,7 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
         const attempt = ++attemptRef.current;
         const alive = () => attemptRef.current === attempt;
 
-        setPhase("checking");
+        setPhase("idle");
         setFlowMessage("");
         setSessionId(null);
         setSmsCode("");
@@ -98,18 +99,9 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
         void (async () => {
             try {
                 const status = await getTaxPortalLoginStatus(accountSetId, token);
-                if (!alive()) return;
-                if (status.state && status.state !== "failed") {
-                    applyResponse(status);
-                    return;
-                }
-
-                const started = await startTaxPortalLogin(accountSetId, token);
-                if (alive()) applyResponse(started);
-            } catch (err) {
-                if (!alive()) return;
-                setPhase("failed");
-                setFlowMessage(err instanceof Error && err.message ? err.message : "登录电子税务局失败，请稍后重试。");
+                if (alive() && status.state && status.state !== "failed") applyResponse(status);
+            } catch {
+                // 查不到进展说明服务器上没有会话，保持待登录界面，等用户点按钮。
             }
         })();
     }, [accountSetId, applyResponse, open, token]);
@@ -138,25 +130,30 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
         setCaptchaClicks([]);
     }, [captcha?.image]);
 
-    /** 重新发起一次完整登录（短信重发、失败重试都走这里）。 */
-    const restart = useCallback(async () => {
-        if (busy) return;
-        setBusy(true);
-        setSmsCode("");
-        setCountdown(0);
-        setCaptcha(null);
-        setCaptchaClicks([]);
-        setPhase("starting");
-        setFlowMessage("正在重新登录电子税务局…");
-        try {
-            applyResponse(await startTaxPortalLogin(accountSetId, token));
-        } catch (err) {
-            setPhase("failed");
-            setFlowMessage(err instanceof Error && err.message ? err.message : "登录电子税务局失败，请稍后重试。");
-        } finally {
-            setBusy(false);
-        }
-    }, [accountSetId, applyResponse, busy, token]);
+    /** 发起一次登录：待登录界面的「登录电子税务局」、短信重发、失败重试都走这里。 */
+    const startLogin = useCallback(
+        async (hint: string) => {
+            if (busy) return;
+            setBusy(true);
+            setSmsCode("");
+            setCountdown(0);
+            setCaptcha(null);
+            setCaptchaClicks([]);
+            setPhase("starting");
+            setFlowMessage(hint);
+            try {
+                applyResponse(await startTaxPortalLogin(accountSetId, token));
+            } catch (err) {
+                setPhase("failed");
+                setFlowMessage(err instanceof Error && err.message ? err.message : "登录电子税务局失败，请稍后重试。");
+            } finally {
+                setBusy(false);
+            }
+        },
+        [accountSetId, applyResponse, busy, token],
+    );
+
+    const restart = useCallback(() => void startLogin("正在重新登录电子税务局…"), [startLogin]);
 
     const handleVerify = useCallback(async () => {
         if (busy || !sessionId || phase !== "sms_required") return;
@@ -215,14 +212,14 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
             <div className="flex flex-col gap-3">
                 <Alert type="warning" showIcon message={reason || DEFAULT_REASON} />
 
-                {waiting ? (
-                    <div className="flex items-center gap-3 py-6 text-[13px] text-slate-500">
+                {phase === "idle" ? null : waiting ? (
+                    <div className="flex items-center gap-3 py-6 text-[13px] text-(--muted-foreground)">
                         <Spin size="small" />
                         <span>{flowMessage || "正在连接电子税务局…"}</span>
                     </div>
                 ) : phase === "sms_required" ? (
                     <>
-                        <div className="text-[13px] text-slate-600">
+                        <div className="text-[13px] text-(--foreground)">
                             税局已向实名账号绑定的手机发送短信，请填写验证码：
                         </div>
                         <div className="flex items-center gap-2">
@@ -244,13 +241,13 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
                     </>
                 ) : phase === "captcha_required" ? (
                     captcha ? (
-                        <div className="rounded-lg border border-slate-200 p-3">
-                            <div className="flex flex-wrap items-center gap-2 text-[13px] text-slate-700">
+                        <div className="rounded-lg border border-(--border) p-3">
+                            <div className="flex flex-wrap items-center gap-2 text-[13px] text-(--foreground)">
                                 <span>请依次点击：</span>
                                 {captcha.promptImage && (
                                     <img src={captcha.promptImage} alt="验证码提示字" className="h-12 select-none" draggable={false} />
                                 )}
-                                <span className="ml-auto text-[12px] text-slate-400">服务器未能自动通过，请手动点选</span>
+                                <span className="ml-auto text-[12px] text-(--muted-foreground)">服务器未能自动通过，请手动点选</span>
                             </div>
                             <div
                                 className="relative mx-auto mt-2 cursor-crosshair select-none"
@@ -269,14 +266,14 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
                                 {captchaClicks.map((point, index) => (
                                     <span
                                         key={`${index}-${point.x.toFixed(4)}-${point.y.toFixed(4)}`}
-                                        className="pointer-events-none absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#2f6bff] text-[11px] text-white shadow"
+                                        className="pointer-events-none absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-(--brand-fill) text-[11px] text-white shadow"
                                         style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
                                     >
                                         {index + 1}
                                     </span>
                                 ))}
                             </div>
-                            <div className="mt-2 flex items-center gap-2 text-[12px] text-slate-400">
+                            <div className="mt-2 flex items-center gap-2 text-[12px] text-(--muted-foreground)">
                                 <span>已点选 {captchaClicks.length} 个</span>
                                 <Button size="small" disabled={captchaClicks.length === 0} onClick={() => setCaptchaClicks([])}>
                                     清空
@@ -294,7 +291,7 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
                             </div>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-3 py-6 text-[13px] text-slate-500">
+                        <div className="flex items-center gap-3 py-6 text-[13px] text-(--muted-foreground)">
                             <Spin size="small" />
                             <span>税局要求完成验证码，正在获取题目…</span>
                         </div>
@@ -309,18 +306,26 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
                 )}
 
                 {phase === "sms_required" && flowMessage && (
-                    <div className="text-[12.5px] leading-5 text-slate-500">{flowMessage}</div>
+                    <div className="text-[12.5px] leading-5 text-(--muted-foreground)">{flowMessage}</div>
                 )}
 
-                <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                    <span className="text-[12px] leading-5 text-slate-400">
+                <div className="flex items-center justify-between gap-3 border-t border-(--border) pt-3">
+                    <span className="text-[12px] leading-5 text-(--muted-foreground)">
                         验证码由服务器自动识别；只有税局发来短信时才需要你填写。
                     </span>
                     <Space>
                         {phase === "failed" && (
                             <Button onClick={() => navigate(`/${accountSetId}/tax/login`)}>维护税局资料</Button>
                         )}
-                        {phase === "failed" ? (
+                        {phase === "idle" ? (
+                            <Button
+                                type="primary"
+                                loading={busy}
+                                onClick={() => void startLogin("正在打开电子税务局…")}
+                            >
+                                登录电子税务局
+                            </Button>
+                        ) : phase === "failed" ? (
                             <Button type="primary" loading={busy} onClick={() => void restart()}>
                                 重新登录
                             </Button>

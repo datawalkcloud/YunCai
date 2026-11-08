@@ -45,16 +45,16 @@ export interface AccountSetMemberDto {
     email?: string | null;
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof AccountSetMemberDto
      */
-    role?: number;
+    roleId?: string;
     /**
      * 
      * @type {string}
      * @memberof AccountSetMemberDto
      */
-    roleText?: string;
+    roleName?: string;
     /**
      * 
      * @type {string}
@@ -102,8 +102,8 @@ export function AccountSetMemberDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'name': json['name'] == null ? undefined : json['name'],
         'phone': json['phone'] == null ? undefined : json['phone'],
         'email': json['email'] == null ? undefined : json['email'],
-        'role': json['role'] == null ? undefined : json['role'],
-        'roleText': json['roleText'] == null ? undefined : json['roleText'],
+        'roleId': json['roleId'] == null ? undefined : json['roleId'],
+        'roleName': json['roleName'] == null ? undefined : json['roleName'],
         'permissionText': json['permissionText'] == null ? undefined : json['permissionText'],
         'enabled': json['enabled'] == null ? undefined : json['enabled'],
         'isOwner': json['isOwner'] == null ? undefined : json['isOwner'],
@@ -126,8 +126,8 @@ export function AccountSetMemberDtoToJSONTyped(value?: AccountSetMemberDto | nul
         'name': value['name'],
         'phone': value['phone'],
         'email': value['email'],
-        'role': value['role'],
-        'roleText': value['roleText'],
+        'roleId': value['roleId'],
+        'roleName': value['roleName'],
         'permissionText': value['permissionText'],
         'enabled': value['enabled'],
         'isOwner': value['isOwner'],

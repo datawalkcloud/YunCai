@@ -12,6 +12,10 @@ Name | Type
 `counterparty` | string
 `project` | string
 `department` | string
+`settlementMethod` | string
+`billNo` | string
+`remark` | string
+`source` | string
 `income` | number
 `expense` | number
 
@@ -28,6 +32,10 @@ const example = {
   "counterparty": null,
   "project": null,
   "department": null,
+  "settlementMethod": null,
+  "billNo": null,
+  "remark": null,
+  "source": null,
   "income": null,
   "expense": null,
 } satisfies JournalEntryRequest

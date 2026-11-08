@@ -372,7 +372,7 @@ No authorization required
 
 ## accountsetsAccountSetIdLedgersGeneralGet
 
-> GeneralLedgerDto accountsetsAccountSetIdLedgersGeneralGet(accountSetId, startDate, endDate, accountFrom, accountTo, maxLevel, showOnlyLeaf, hideZeroBalance, hideNoActivity, includeIdleAccounts)
+> GeneralLedgerDto accountsetsAccountSetIdLedgersGeneralGet(accountSetId, startDate, endDate, accountFrom, accountTo, minLevel, maxLevel, showAssist, showOnlyLeaf, hideZeroBalance, hideNoActivity, hideTotalsNoActivity, includeIdleAccounts)
 
 
 
@@ -401,13 +401,19 @@ async function example() {
     // string (optional)
     accountTo: accountTo_example,
     // number (optional)
+    minLevel: 56,
+    // number (optional)
     maxLevel: 56,
+    // boolean (optional)
+    showAssist: true,
     // boolean (optional)
     showOnlyLeaf: true,
     // boolean (optional)
     hideZeroBalance: true,
     // boolean (optional)
     hideNoActivity: true,
+    // boolean (optional)
+    hideTotalsNoActivity: true,
     // boolean (optional)
     includeIdleAccounts: true,
   } satisfies AccountsetsAccountSetIdLedgersGeneralGetRequest;
@@ -434,10 +440,13 @@ example().catch(console.error);
 | **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
 | **accountFrom** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **accountTo** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **minLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
 | **maxLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **showAssist** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **showOnlyLeaf** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **hideZeroBalance** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **hideNoActivity** | `boolean` |  | [Optional] [Defaults to `undefined`] |
+| **hideTotalsNoActivity** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **includeIdleAccounts** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
@@ -550,7 +559,7 @@ No authorization required
 
 ## accountsetsAccountSetIdLedgersKindExportGet
 
-> accountsetsAccountSetIdLedgersKindExportGet(accountSetId, kind, startDate, endDate, accountFrom, accountTo, maxLevel, summaryKeyword, sortBy, showCounterAccount, showOnlyLeaf, hideZeroBalance, hideNoActivity, includeIdleAccounts, assistType, secondaryAssistType, assistItemId, accountId)
+> accountsetsAccountSetIdLedgersKindExportGet(accountSetId, kind, startDate, endDate, accountFrom, accountTo, maxLevel, minLevel, summaryKeyword, sortBy, showAssist, showCounterAccount, showOnlyLeaf, hideZeroBalance, hideNoActivity, hideTotalsNoActivity, includeIdleAccounts, assistType, secondaryAssistType, assistItemId, accountId)
 
 
 
@@ -582,10 +591,14 @@ async function example() {
     accountTo: accountTo_example,
     // number (optional)
     maxLevel: 56,
+    // number (optional)
+    minLevel: 56,
     // string (optional)
     summaryKeyword: summaryKeyword_example,
     // number (optional)
     sortBy: 56,
+    // boolean (optional)
+    showAssist: true,
     // boolean (optional)
     showCounterAccount: true,
     // boolean (optional)
@@ -594,6 +607,8 @@ async function example() {
     hideZeroBalance: true,
     // boolean (optional)
     hideNoActivity: true,
+    // boolean (optional)
+    hideTotalsNoActivity: true,
     // boolean (optional)
     includeIdleAccounts: true,
     // number (optional)
@@ -630,12 +645,15 @@ example().catch(console.error);
 | **accountFrom** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **accountTo** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **maxLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **minLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
 | **summaryKeyword** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **sortBy** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **showAssist** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **showCounterAccount** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **showOnlyLeaf** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **hideZeroBalance** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **hideNoActivity** | `boolean` |  | [Optional] [Defaults to `undefined`] |
+| **hideTotalsNoActivity** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **includeIdleAccounts** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **assistType** | `number` |  | [Optional] [Defaults to `undefined`] |
 | **secondaryAssistType** | `number` |  | [Optional] [Defaults to `undefined`] |
@@ -743,7 +761,7 @@ No authorization required
 
 ## accountsetsAccountSetIdLedgersSubsidiaryGet
 
-> SubsidiaryLedgerDto accountsetsAccountSetIdLedgersSubsidiaryGet(accountSetId, startDate, endDate, accountFrom, accountTo, maxLevel, summaryKeyword, sortBy, showCounterAccount, showOnlyLeaf, hideZeroBalance, hideNoActivity, includeIdleAccounts)
+> SubsidiaryLedgerDto accountsetsAccountSetIdLedgersSubsidiaryGet(accountSetId, startDate, endDate, accountFrom, accountTo, maxLevel, minLevel, summaryKeyword, sortBy, showAssist, showCounterAccount, showOnlyLeaf, hideZeroBalance, hideNoActivity, hideTotalsNoActivity, includeIdleAccounts)
 
 
 
@@ -773,10 +791,14 @@ async function example() {
     accountTo: accountTo_example,
     // number (optional)
     maxLevel: 56,
+    // number (optional)
+    minLevel: 56,
     // string (optional)
     summaryKeyword: summaryKeyword_example,
     // number (optional)
     sortBy: 56,
+    // boolean (optional)
+    showAssist: true,
     // boolean (optional)
     showCounterAccount: true,
     // boolean (optional)
@@ -785,6 +807,8 @@ async function example() {
     hideZeroBalance: true,
     // boolean (optional)
     hideNoActivity: true,
+    // boolean (optional)
+    hideTotalsNoActivity: true,
     // boolean (optional)
     includeIdleAccounts: true,
   } satisfies AccountsetsAccountSetIdLedgersSubsidiaryGetRequest;
@@ -812,12 +836,15 @@ example().catch(console.error);
 | **accountFrom** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **accountTo** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **maxLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **minLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
 | **summaryKeyword** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **sortBy** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **showAssist** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **showCounterAccount** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **showOnlyLeaf** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **hideZeroBalance** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **hideNoActivity** | `boolean` |  | [Optional] [Defaults to `undefined`] |
+| **hideTotalsNoActivity** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **includeIdleAccounts** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type

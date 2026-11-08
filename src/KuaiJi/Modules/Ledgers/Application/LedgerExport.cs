@@ -1,13 +1,19 @@
 namespace KuaiJi.Modules.Ledgers.Application
 {
     /// <summary>
-    /// 一张待导出的账页：压平后的列名 + 表体行 + 页头补充说明。
-    /// 多级表头在此压平成「组名-子列名」，由基础设施层用 MiniExcel 写成 .xlsx。
+    /// 一张待导出的账页：页头信息 + 压平后的列名 + 表体行。
+    /// 多级表头在此压平成「组名-子列名」，由基础设施层按柠檬云打印版式写成单张 .xlsx。
     /// </summary>
     public sealed class LedgerExportSheet
     {
         /// <summary>工作表名（账页中文名）。</summary>
         public required string Name { get; init; }
+
+        /// <summary>导出标题，默认为工作表名；明细账单科目时为「库存现金 明细账」。</summary>
+        public string? Title { get; init; }
+
+        /// <summary>页头「科目」一项，如「1001 库存现金」「所有」；为空时不显示该项。</summary>
+        public string? Subject { get; init; }
 
         /// <summary>页头公共信息。</summary>
         public required LedgerMetaDto Meta { get; init; }
@@ -18,7 +24,7 @@ namespace KuaiJi.Modules.Ledgers.Application
         /// <summary>表体行，含各段合计行与最后的总计行。</summary>
         public required IReadOnlyList<IReadOnlyList<object?>> Rows { get; init; }
 
-        /// <summary>账页特有信息（如多栏账的科目路径、账龄的口径说明），追加在页头工作表。</summary>
+        /// <summary>账页特有信息（如多栏账的科目路径、账龄的口径说明），追加在页头下方。</summary>
         public IReadOnlyList<KeyValuePair<string, string>> ExtraInfo { get; init; } = [];
     }
 
@@ -26,10 +32,10 @@ namespace KuaiJi.Modules.Ledgers.Application
     public static class LedgerExportProjector
     {
         /// <summary>按账页种类投影导出内容；<paramref name="page"/> 须是对应种类的 DTO。</summary>
-        public static LedgerExportSheet Project(LedgerExportKind kind, object page) => kind switch
+        public static LedgerExportSheet Project(LedgerExportKind kind, object page, LedgerQueryOptions? options = null) => kind switch
         {
-            LedgerExportKind.Subsidiary => Subsidiary((SubsidiaryLedgerDto)page),
-            LedgerExportKind.General => General((GeneralLedgerDto)page),
+            LedgerExportKind.Subsidiary => Subsidiary((SubsidiaryLedgerDto)page, options),
+            LedgerExportKind.General => General((GeneralLedgerDto)page, options),
             LedgerExportKind.Journal => Journal((VoucherJournalDto)page),
             LedgerExportKind.VoucherSummary => VoucherSummary((VoucherSummaryDto)page),
             LedgerExportKind.AssistBalance => AssistBalance((AssistBalanceDto)page),
@@ -40,32 +46,44 @@ namespace KuaiJi.Modules.Ledgers.Application
             _ => throw new LedgerException("不支持导出的账页类型。"),
         };
 
-        private static LedgerExportSheet Subsidiary(SubsidiaryLedgerDto dto)
+        private static LedgerExportSheet Subsidiary(SubsidiaryLedgerDto dto, LedgerQueryOptions? options)
         {
-            var columns = new[] { "科目编码", "科目名称", "日期", "凭证号", "摘要", "对方科目", "借方", "贷方", "方向", "余额" };
-            var rows = new List<IReadOnlyList<object?>>();
+            // 页面上关掉「显示对方科目」时导出也不出这一列，与柠檬云一致。
+            var showCounterAccount = options?.ShowCounterAccount ?? true;
+            var columns = new List<string> { "日期", "凭证字号", "科目编码", "科目名称", "摘要" };
+            columns.AddRange(new[] { "借方", "贷方", "方向", "余额" });
+            if (showCounterAccount)
+            {
+                columns.Insert(5, "对方科目");
+            }
 
+            var rows = new List<IReadOnlyList<object?>>();
             foreach (var account in dto.Accounts)
             {
                 foreach (var row in account.Rows)
                 {
-                    rows.Add(new object?[]
+                    var cells = new List<object?> { row.Date, row.VoucherNo, account.Code, account.Name, row.Summary };
+                    if (showCounterAccount)
                     {
-                        account.Code, account.Name, row.Date, row.VoucherNo, row.Summary,
-                        row.CounterAccount, row.Debit, row.Credit, row.Direction, row.Balance,
-                    });
-                }
+                        cells.Add(row.CounterAccount);
+                    }
 
-                rows.Add(new object?[]
-                {
-                    account.Code, account.Name, null, null, "合计", null, account.TotalDebit, account.TotalCredit, null, null,
-                });
+                    cells.AddRange(new object?[] { row.Debit, row.Credit, row.Direction, row.Balance });
+                    rows.Add(cells);
+                }
             }
 
-            return Sheet(LedgerExportKind.Subsidiary, dto.Meta, columns, rows);
+            var single = dto.Accounts.Count == 1 ? dto.Accounts[0] : null;
+            return Sheet(
+                LedgerExportKind.Subsidiary,
+                dto.Meta,
+                columns,
+                rows,
+                title: single is null ? null : $"{single.Name} 明细账",
+                subject: SubjectOf(options, dto.Accounts.Select(a => (a.Code, a.Name))));
         }
 
-        private static LedgerExportSheet General(GeneralLedgerDto dto)
+        private static LedgerExportSheet General(GeneralLedgerDto dto, LedgerQueryOptions? options)
         {
             var columns = new[]
             {
@@ -91,7 +109,8 @@ namespace KuaiJi.Modules.Ledgers.Application
                 });
             }
 
-            return Sheet(LedgerExportKind.General, dto.Meta, columns, rows);
+            return Sheet(LedgerExportKind.General, dto.Meta, columns, rows,
+                subject: SubjectOf(options, dto.Accounts.Select(a => (a.Code, a.Name))));
         }
 
         private static LedgerExportSheet Journal(VoucherJournalDto dto)
@@ -325,16 +344,39 @@ namespace KuaiJi.Modules.Ledgers.Application
             LedgerMetaDto meta,
             IReadOnlyList<string> columns,
             IReadOnlyList<IReadOnlyList<object?>> rows,
-            IReadOnlyList<KeyValuePair<string, string>>? extraInfo = null)
+            IReadOnlyList<KeyValuePair<string, string>>? extraInfo = null,
+            string? title = null,
+            string? subject = null)
         {
             return new LedgerExportSheet
             {
                 Name = LedgerExportKindText.Of(kind),
+                Title = title,
+                Subject = subject,
                 Meta = meta,
                 Columns = columns,
                 Rows = rows,
                 ExtraInfo = extraInfo ?? [],
             };
+        }
+
+        /// <summary>页头「科目」：按查询条件显示单科目、编码区间或「所有」。</summary>
+        private static string SubjectOf(LedgerQueryOptions? options, IEnumerable<(string Code, string Name)> accounts)
+        {
+            var from = options?.AccountFrom;
+            var to = options?.AccountTo;
+            if (string.IsNullOrEmpty(from) && string.IsNullOrEmpty(to))
+            {
+                return "所有";
+            }
+
+            if (!string.IsNullOrEmpty(from) && from == to)
+            {
+                var name = accounts.FirstOrDefault(a => a.Code == from).Name;
+                return string.IsNullOrWhiteSpace(name) ? from : $"{from} {name}";
+            }
+
+            return $"{from} 至 {to}";
         }
     }
 }

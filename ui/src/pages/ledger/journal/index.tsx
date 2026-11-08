@@ -69,12 +69,12 @@ export default function VoucherJournalPage() {
 
     return (
         <LedgerPageShell
-            page="journal"
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
                     onChange={query.patch}
                     onQuery={query.query}
+                    onCancel={query.cancel}
                     onReset={query.reset}
                     fields={FIELDS}
                     switches={SWITCHES}

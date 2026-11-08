@@ -4,7 +4,7 @@ import type { ComponentType, ReactNode } from "react";
 import Landing from "@/pages/landing";
 import { PrivacyPage, TermsPage } from "@/pages/legal";
 import DashboardLayout from "@/components/layout/dashboard/DashboardLayout";
-import { ErrorBoundary, RouteErrorElement } from "@/components/error/ErrorBoundary";
+import { ContentErrorElement, ErrorBoundary, RouteErrorElement } from "@/components/error/ErrorBoundary";
 import { useAuth } from "@/auth/AuthContext";
 import { AccountSetsProvider, useAccountSets } from "@/accountSets/AccountSetsContext";
 
@@ -79,7 +79,7 @@ function lazyRoute<M extends { [K in keyof M]: ComponentType }, K extends keyof 
 ): { lazy: () => Promise<{ Component: ComponentType }>; errorElement: ReactNode } {
     return {
         lazy: async () => ({ Component: (await loader())[key] }),
-        errorElement: <RouteErrorElement />,
+        errorElement: <ContentErrorElement />,
     };
 }
 
@@ -120,12 +120,6 @@ const router = createBrowserRouter([
         children: [
             // 登录后的默认落地：解析默认账套并跳转到 /{accountSetId}。
             { path: "app", element: <DefaultAccountSetRedirect />, errorElement: <RouteErrorElement /> },
-            {
-                // 智能报税是独立全屏工作台：自带侧栏与顶栏，不套 DashboardLayout。
-                // 该路径不在记账外壳的子路由里，因此不会与下面的 :accountSetId 分支争抢匹配。
-                path: ":accountSetId/tax/declare",
-                ...lazyRoute(() => import("./groups/tax"), "TaxWorkspace"),
-            },
             {
                 // 账套 id 作为路由第一段，其下所有页面均归属该账套。
                 path: ":accountSetId",
@@ -192,14 +186,30 @@ const router = createBrowserRouter([
                     { path: "reports/equity-change", ...lazyRoute(() => import("./groups/reports"), "LemonEquityChange") },
                     { path: "reports/tax", ...lazyRoute(() => import("./groups/reports"), "LemonTaxReport") },
                     { path: "reports/financial-summary", ...lazyRoute(() => import("./groups/reports"), "LemonFinancialSummary") },
+                    // 报税分类：原智能报税工作台的各板块拆成独立页面，与记账页共用外壳。
+                    { path: "tax/fetch", ...lazyRoute(() => import("./groups/tax"), "InvoiceFetchPage") },
+                    { path: "tax/declare", ...lazyRoute(() => import("./groups/tax"), "TaxDeclarePage") },
+                    { path: "tax/correction", ...lazyRoute(() => import("./groups/tax"), "TaxCorrectionPage") },
+                    { path: "tax/pay", ...lazyRoute(() => import("./groups/tax"), "TaxPaymentPayPage") },
+                    { path: "tax/payment-query", ...lazyRoute(() => import("./groups/tax"), "TaxPaymentPage") },
+                    { path: "tax/certificate", ...lazyRoute(() => import("./groups/tax"), "TaxCertificatePage") },
+                    { path: "tax/certificate-download", ...lazyRoute(() => import("./groups/tax"), "TaxCertificateDownloadPage") },
+                    { path: "tax/reports", ...lazyRoute(() => import("./groups/tax"), "TaxReportQueryPage") },
+                    { path: "tax/iit/people", ...lazyRoute(() => import("./groups/tax"), "TaxIitPage") },
+                    { path: "tax/iit/report", ...lazyRoute(() => import("./groups/tax"), "TaxIitReportPage") },
+                    { path: "tax/iit/pay", ...lazyRoute(() => import("./groups/tax"), "TaxIitDeclarePage") },
+                    { path: "tax/iit/stats", ...lazyRoute(() => import("./groups/tax"), "TaxIitStatsPage") },
+                    { path: "tax/kinds", ...lazyRoute(() => import("./groups/tax"), "TaxKindsPage") },
+                    { path: "tax/settings", ...lazyRoute(() => import("./groups/tax"), "TaxSettingsPage") },
+                    { path: "tax/tasks", ...lazyRoute(() => import("./groups/tax"), "TaxTaskCenterPage") },
                     { path: "tax/login", ...lazyRoute(() => import("./groups/invoice"), "LemonTaxLogin") },
                     { path: "settings/currency", ...lazyRoute(() => import("./groups/settings"), "LemonCurrency") },
-                    { path: "settings/voucher-word", ...lazyRoute(() => import("./groups/settings"), "LemonVoucherWord") },
+                    { path: "settings/voucher-word", ...lazyRoute(() => import("./groups/settings"), "VoucherWord") },
                     { path: "settings/voucher-template", ...lazyRoute(() => import("./groups/settings"), "LemonVoucherTemplate") },
                     { path: "settings/permission", ...lazyRoute(() => import("./groups/settings"), "LemonPermission") },
                     { path: "settings/boss", ...lazyRoute(() => import("./groups/settings"), "LemonBoss") },
                     { path: "settings/backup", ...lazyRoute(() => import("./groups/settings"), "LemonBackup") },
-                    { path: "settings/log", ...lazyRoute(() => import("./groups/settings"), "LemonLog") },
+                    { path: "settings/log", ...lazyRoute(() => import("./groups/settings"), "OperationLog") },
                     { path: "settings/eis-relation", ...lazyRoute(() => import("./groups/settings"), "LemonEisRelation") },
                     { path: "settings/scm-relation", ...lazyRoute(() => import("./groups/settings"), "LemonScmRelation") },
                     { path: "settings/import-old", ...lazyRoute(() => import("./groups/settings"), "LemonImportOld") },

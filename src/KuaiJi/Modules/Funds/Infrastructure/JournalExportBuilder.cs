@@ -6,7 +6,8 @@ namespace KuaiJi.Modules.Funds.Infrastructure
 {
     /// <summary>
     /// 日记账导出生成器：用 MiniExcel 将一本日记账的分录导出为 .xlsx。
-    /// 导出列包含导入可回传列（日期/摘要/类别/往来/收入/支出）与只读列（序号/余额/关联凭证号）；
+    /// 导出列包含导入可回传列（日期/摘要/类别/往来/收入/支出）与只读列
+    /// （序号/余额/关联凭证号/凭证日期/结算方式/票据号/项目/部门/备注/流水来源）；
     /// 只读列在回传导入时会被 <see cref="XlsJournalImportReader"/> 忽略。
     /// </summary>
     public static class JournalExportBuilder
@@ -30,6 +31,13 @@ namespace KuaiJi.Modules.Funds.Infrastructure
                     ["支出"] = e.Expense,
                     ["余额"] = e.Balance,
                     ["关联凭证号"] = e.VoucherNo ?? string.Empty,
+                    ["凭证日期"] = e.VoucherDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+                    ["结算方式"] = e.SettlementMethod ?? string.Empty,
+                    ["票据号"] = e.BillNo ?? string.Empty,
+                    ["项目"] = e.Project ?? string.Empty,
+                    ["部门"] = e.Department ?? string.Empty,
+                    ["备注"] = e.Remark ?? string.Empty,
+                    ["流水来源"] = e.Source ?? "手工登记",
                 })
                 .ToList();
 
@@ -47,6 +55,13 @@ namespace KuaiJi.Modules.Funds.Infrastructure
                     ["支出"] = string.Empty,
                     ["余额"] = string.Empty,
                     ["关联凭证号"] = string.Empty,
+                    ["凭证日期"] = string.Empty,
+                    ["结算方式"] = string.Empty,
+                    ["票据号"] = string.Empty,
+                    ["项目"] = string.Empty,
+                    ["部门"] = string.Empty,
+                    ["备注"] = string.Empty,
+                    ["流水来源"] = string.Empty,
                 });
             }
 
@@ -84,6 +99,13 @@ namespace KuaiJi.Modules.Funds.Infrastructure
                         ["支出"] = entry.Expense,
                         ["余额"] = entry.Balance,
                         ["关联凭证号"] = entry.VoucherNo ?? string.Empty,
+                        ["凭证日期"] = entry.VoucherDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+                        ["结算方式"] = entry.SettlementMethod ?? string.Empty,
+                        ["票据号"] = entry.BillNo ?? string.Empty,
+                        ["项目"] = entry.Project ?? string.Empty,
+                        ["部门"] = entry.Department ?? string.Empty,
+                        ["备注"] = entry.Remark ?? string.Empty,
+                        ["流水来源"] = entry.Source ?? "手工登记",
                     });
                 }
             }
@@ -102,6 +124,13 @@ namespace KuaiJi.Modules.Funds.Infrastructure
                     ["支出"] = string.Empty,
                     ["余额"] = string.Empty,
                     ["关联凭证号"] = string.Empty,
+                    ["凭证日期"] = string.Empty,
+                    ["结算方式"] = string.Empty,
+                    ["票据号"] = string.Empty,
+                    ["项目"] = string.Empty,
+                    ["部门"] = string.Empty,
+                    ["备注"] = string.Empty,
+                    ["流水来源"] = string.Empty,
                 });
             }
 

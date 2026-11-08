@@ -53,12 +53,15 @@ namespace KuaiJi.Modules.Ledgers.Api
             [FromQuery] string? accountFrom,
             [FromQuery] string? accountTo,
             [FromQuery] int? maxLevel,
+            [FromQuery] int? minLevel,
             [FromQuery] string? summaryKeyword,
             [FromQuery] LedgerSortBy? sortBy,
+            [FromQuery] bool? showAssist,
             [FromQuery] bool? showCounterAccount,
             [FromQuery] bool? showOnlyLeaf,
             [FromQuery] bool? hideZeroBalance,
             [FromQuery] bool? hideNoActivity,
+            [FromQuery] bool? hideTotalsNoActivity,
             [FromQuery] bool? includeIdleAccounts,
             CancellationToken cancellationToken)
         {
@@ -69,12 +72,15 @@ namespace KuaiJi.Modules.Ledgers.Api
                 AccountFrom = accountFrom,
                 AccountTo = accountTo,
                 MaxLevel = maxLevel,
+                MinLevel = minLevel,
                 SummaryKeyword = summaryKeyword,
                 SortBy = sortBy ?? LedgerSortBy.VoucherNumber,
+                ShowAssist = showAssist ?? false,
                 ShowCounterAccount = showCounterAccount ?? true,
                 ShowOnlyLeaf = showOnlyLeaf ?? true,
                 HideZeroBalance = hideZeroBalance ?? false,
                 HideNoActivity = hideNoActivity ?? false,
+                HideTotalsNoActivity = hideTotalsNoActivity ?? false,
                 IncludeIdleAccounts = includeIdleAccounts ?? false,
             };
 
@@ -99,10 +105,13 @@ namespace KuaiJi.Modules.Ledgers.Api
             [FromQuery] DateOnly? endDate,
             [FromQuery] string? accountFrom,
             [FromQuery] string? accountTo,
+            [FromQuery] int? minLevel,
             [FromQuery] int? maxLevel,
+            [FromQuery] bool? showAssist,
             [FromQuery] bool? showOnlyLeaf,
             [FromQuery] bool? hideZeroBalance,
             [FromQuery] bool? hideNoActivity,
+            [FromQuery] bool? hideTotalsNoActivity,
             [FromQuery] bool? includeIdleAccounts,
             CancellationToken cancellationToken)
         {
@@ -112,10 +121,14 @@ namespace KuaiJi.Modules.Ledgers.Api
                 EndDate = endDate,
                 AccountFrom = accountFrom,
                 AccountTo = accountTo,
+                MinLevel = minLevel,
                 MaxLevel = maxLevel,
-                ShowOnlyLeaf = showOnlyLeaf ?? true,
+                ShowAssist = showAssist ?? false,
+                // 总账按科目层级汇总，默认展示全部级次（含上级科目），与柠檬云一致。
+                ShowOnlyLeaf = showOnlyLeaf ?? false,
                 HideZeroBalance = hideZeroBalance ?? false,
                 HideNoActivity = hideNoActivity ?? false,
+                HideTotalsNoActivity = hideTotalsNoActivity ?? false,
                 IncludeIdleAccounts = includeIdleAccounts ?? false,
             };
 
@@ -380,12 +393,15 @@ namespace KuaiJi.Modules.Ledgers.Api
             [FromQuery] string? accountFrom,
             [FromQuery] string? accountTo,
             [FromQuery] int? maxLevel,
+            [FromQuery] int? minLevel,
             [FromQuery] string? summaryKeyword,
             [FromQuery] LedgerSortBy? sortBy,
+            [FromQuery] bool? showAssist,
             [FromQuery] bool? showCounterAccount,
             [FromQuery] bool? showOnlyLeaf,
             [FromQuery] bool? hideZeroBalance,
             [FromQuery] bool? hideNoActivity,
+            [FromQuery] bool? hideTotalsNoActivity,
             [FromQuery] bool? includeIdleAccounts,
             [FromQuery] AssistType? assistType,
             [FromQuery] AssistType? secondaryAssistType,
@@ -405,12 +421,15 @@ namespace KuaiJi.Modules.Ledgers.Api
                 AccountFrom = accountFrom,
                 AccountTo = accountTo,
                 MaxLevel = maxLevel,
+                MinLevel = minLevel,
                 SummaryKeyword = summaryKeyword,
                 SortBy = sortBy ?? LedgerSortBy.VoucherNumber,
+                ShowAssist = showAssist ?? false,
                 ShowCounterAccount = showCounterAccount ?? true,
                 ShowOnlyLeaf = showOnlyLeaf ?? true,
                 HideZeroBalance = hideZeroBalance ?? false,
                 HideNoActivity = hideNoActivity ?? false,
+                HideTotalsNoActivity = hideTotalsNoActivity ?? false,
                 IncludeIdleAccounts = includeIdleAccounts ?? false,
                 AssistType = assistType,
                 SecondaryAssistType = secondaryAssistType,
@@ -433,7 +452,7 @@ namespace KuaiJi.Modules.Ledgers.Api
                     _ => (object)await _ageingAnalysisService.GetAsync(accountSetId, options, cancellationToken),
                 };
 
-                var sheet = LedgerExportProjector.Project(exportKind, page);
+                var sheet = LedgerExportProjector.Project(exportKind, page, options);
                 return File(LedgerExportBuilder.Build(sheet), LedgerExportBuilder.ContentType, LedgerExportBuilder.BuildFileName(sheet));
             }
             catch (LedgerException ex)

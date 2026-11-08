@@ -55,6 +55,12 @@ export interface CarryPreviewLineDto {
      * @memberof CarryPreviewLineDto
      */
     credit?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CarryPreviewLineDto
+     */
+    balance?: number;
 }
 
 /**
@@ -80,6 +86,7 @@ export function CarryPreviewLineDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'accountName': json['accountName'] == null ? undefined : json['accountName'],
         'debit': json['debit'] == null ? undefined : json['debit'],
         'credit': json['credit'] == null ? undefined : json['credit'],
+        'balance': json['balance'] == null ? undefined : json['balance'],
     };
 }
 
@@ -100,6 +107,7 @@ export function CarryPreviewLineDtoToJSONTyped(value?: CarryPreviewLineDto | nul
         'accountName': value['accountName'],
         'debit': value['debit'],
         'credit': value['credit'],
+        'balance': value['balance'],
     };
 }
 

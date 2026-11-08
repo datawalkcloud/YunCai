@@ -104,17 +104,35 @@ namespace KuaiJi.Modules.Reports.Api
         /// <summary>
         /// 科目余额表。可选 startDate/endDate 指定日期范围（含起止日，格式 yyyy-MM-dd）；省略时取全部已过账凭证。
         /// 查询区间按自然月对齐（起始日归一到月初、截止日归一到月末），仅统计已过账凭证。
+        /// 另支持 accountFrom/accountTo（科目编码区间）、minLevel/maxLevel（级次区间）、
+        /// hideZeroBalance（余额为 0 不显示）、hideNoActivity（无发生额且余额为 0 不显示）等显示裁剪。
         /// </summary>
         [HttpGet("trial-balance")]
         public async Task<ActionResult<TrialBalanceDto>> GetTrialBalance(
             Guid accountSetId,
             [FromQuery] DateOnly? startDate,
             [FromQuery] DateOnly? endDate,
+            [FromQuery] string? accountFrom,
+            [FromQuery] string? accountTo,
+            [FromQuery] int? minLevel,
+            [FromQuery] int? maxLevel,
+            [FromQuery] bool? hideZeroBalance,
+            [FromQuery] bool? hideNoActivity,
             CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _trialBalanceService.GetAsync(accountSetId, startDate, endDate, cancellationToken);
+                var result = await _trialBalanceService.GetAsync(accountSetId, new LedgerQueryOptions
+                {
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    AccountFrom = accountFrom,
+                    AccountTo = accountTo,
+                    MinLevel = minLevel,
+                    MaxLevel = maxLevel,
+                    HideZeroBalance = hideZeroBalance ?? false,
+                    HideNoActivity = hideNoActivity ?? false,
+                }, cancellationToken);
                 return Ok(result);
             }
             catch (ReportException ex)

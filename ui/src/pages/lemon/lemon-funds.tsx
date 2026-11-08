@@ -2,7 +2,7 @@
  * 复刻区资金模块（对应柠檬云 /Cashier/*）：
  * 现金/银行日记账（行内编辑网格 + 生成凭证交互链路）、票据管理（按期间查询 / 新增 / 删除已接后端）、
  * 资金报表（六页签汇总）、核对总账、收支类别（收入/支出 + 新增表单）、账户设置（现金/银行存款，启停用/编辑/删除/新增已接后端）。
- * 视觉遵循全站统一风格（云财蓝）：主色 #2f6bff、白卡 + slate 灰阶文字、收入 #10b981 / 支出与错误 #ef4444。
+ * 视觉遵循全站统一风格（云财蓝）：主色 #273cf3、白卡 + slate 灰阶文字、收入 #10b981 / 支出与错误 #ef4444。
  */
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Popconfirm } from "antd";
@@ -29,7 +29,6 @@ import {
     Toggle,
     ToolRow,
     WipBtn,
-    WipNotice,
 } from "./components/ui";
 import type { Col, Row } from "./components/ui";
 import { JournalsApi, AccountsApi, type JournalAccountImportResultDto, type JournalListItemDto, type AccountDto } from "@/apis-gen";
@@ -94,27 +93,6 @@ type AccountFormState = {
     bankAccountNo: string;
 };
 
-/** 二进制下载：fetch + blob + a[download]，返回错误文案（成功返回 null）。 */
-async function fundsDownload(url: string, token: string, fallbackName: string): Promise<string | null> {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const message = body && typeof body === "object" && "message" in body ? String((body as { message?: unknown }).message ?? "") : "";
-        return message || `下载失败（HTTP ${res.status}）`;
-    }
-    const disposition = res.headers.get("Content-Disposition") ?? "";
-    const star = /filename\*=UTF-8''([^;\n]+)/i.exec(disposition);
-    const plain = /filename="?([^";\n]+)"?/i.exec(disposition);
-    const name = star ? decodeURIComponent(star[1]) : plain?.[1] ?? fallbackName;
-    const href = URL.createObjectURL(await res.blob());
-    const a = document.createElement("a");
-    a.href = href;
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(href);
-    return null;
-}
-
 /** 按账户类型筛选可绑定的末级货币资金科目（1=现金 1001*，2=银行存款 1002*）。 */
 function subjectOptionsOf(accounts: AccountDto[], type: number) {
     const prefix = type === 2 ? "1002" : "1001";
@@ -151,7 +129,7 @@ function AccountFormFields({
 }) {
     const currentSubject = accounts.find((a) => a.id === form.accountId);
     return (
-        <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+        <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
             <LabelRow label="编码：">
                 <TextInput className="flex-1" placeholder="留空自动生成" value={form.code} onChange={(v) => setForm({ ...form, code: v })} />
             </LabelRow>
@@ -212,13 +190,6 @@ export function LemonAccountSettings() {
     const accountImportRef = useRef<HTMLInputElement>(null);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState<JournalAccountImportResultDto | null>(null);
-
-    /** 下载资金账户导入模板。 */
-    const doImportTemplate = async () => {
-        if (!token || !accountSetId) return;
-        const err = await fundsDownload(`/api/accountsets/${accountSetId}/journals/accounts/import-template`, token, "资金账户导入模板.xlsx");
-        if (err) setToast(err);
-    };
 
     /** 资金账户批量导入：同名同类型更新，否则新建。 */
     const doImportAccounts = async (file: File) => {
@@ -438,20 +409,24 @@ export function LemonAccountSettings() {
     return (
         <Page>
             <SubTabs tabs={["现金", "银行存款"]} active={tab} onChange={setTab} />
-            {/* 银企互联属外部银行对接能力，不在账套复刻范围内；账户核心管理（编码/币别/期初/科目/启停用/增删改/查询）已全部接真实数据。 */}
-            <WipNotice text="银企互联（绑定银行自动获取流水）为外部银行对接能力，未纳入账套复刻；账户设置的核心功能（编码 / 币别 / 期初余额 / 会计科目 / 启用停用 / 新增编辑删除 / 查询 / 模板下载与批量导入）均已接真实数据。" />
             <ToolRow
                 left={
-                    <>
-                        <span className="text-[13px] text-slate-500">输入 编码或名称：</span>
-                        <TextInput value={keyword} onChange={setKeyword} placeholder="编码 / 名称" className="w-[180px]" />
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="flex items-center gap-2">
+                            <span className="whitespace-nowrap text-[13px] text-(--muted-foreground)">编码 / 名称</span>
+                            <TextInput
+                                value={keyword}
+                                onChange={setKeyword}
+                                placeholder="编码 / 名称"
+                                style={{ width: 200 }}
+                            />
+                        </div>
                         <Btn variant="primary" onClick={() => setApplied(keyword)}>查询</Btn>
-                    </>
+                    </div>
                 }
                 right={
                     <>
                         {tab === 1 && <WipBtn title="预约开户建设中，后端未提供端点">预约开户</WipBtn>}
-                        <Btn onClick={() => void doImportTemplate()}>模板</Btn>
                         <Btn onClick={() => accountImportRef.current?.click()} disabled={importing}>{importing ? "导入中…" : "导入"}</Btn>
                         <input
                             ref={accountImportRef}

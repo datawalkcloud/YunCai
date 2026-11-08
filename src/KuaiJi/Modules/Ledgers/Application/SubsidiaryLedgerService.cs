@@ -64,7 +64,7 @@ namespace KuaiJi.Modules.Ledgers.Application
         /// <summary>该科目在查询区间内的贷方合计。</summary>
         public decimal TotalCredit { get; init; }
 
-        /// <summary>行序列：期初 → 逐笔（每月末插「本月合计」）→ 末尾「本年累计」。</summary>
+        /// <summary>行序列：期初 → 逐笔（每月末插「本月合计」「本年累计」）。</summary>
         public IReadOnlyList<SubsidiaryLedgerRowDto> Rows { get; init; } = [];
     }
 
@@ -145,7 +145,7 @@ namespace KuaiJi.Modules.Ledgers.Application
                     Name = account.Name,
                     TotalDebit = periodDebit,
                     TotalCredit = periodCredit,
-                    Rows = BuildRows(dataSet, facts, rangeStart, openingNet, keyword, options.ShowCounterAccount),
+                    Rows = BuildRows(dataSet, facts, rangeStart, rangeEnd, openingNet, keyword, options.ShowCounterAccount, options.HideTotalsNoActivity),
                 });
             }
 
@@ -171,91 +171,119 @@ namespace KuaiJi.Modules.Ledgers.Application
         }
 
         /// <summary>
-        /// 明细账行序列（期初 → 逐笔 → 每月「本月合计」 → 末尾「本年累计」）。
+        /// 明细账行序列（期初 → 逐笔 → 每月「本月合计」「本年累计」）。
+        /// 区间内没有发生额的月份同样列出两组合计行，本年累计按自然年重新起算。
         /// 核算项目明细账与本账页同构，故共用此构造器：传入该口径下的全部事实与期初净额即可。
         /// </summary>
         internal static List<SubsidiaryLedgerRowDto> BuildRows(
             LedgerDataSet dataSet,
             IReadOnlyList<LedgerFact> facts,
             DateOnly rangeStart,
+            DateOnly rangeEnd,
             decimal openingNet,
             string? keyword,
-            bool showCounterAccount)
+            bool showCounterAccount,
+            bool hideTotalsNoActivity = false)
         {
+            var running = openingNet;
+            var year = rangeStart.Year;
+            decimal yearDebit = 0m, yearCredit = 0m;
+            var index = 0;
+
+            // openingNet 已是查询起始日的余额，查询起始月之前的事实只补进「本年累计」，不重复滚入余额。
+            while (index < facts.Count && facts[index].Date < rangeStart)
+            {
+                yearDebit += facts[index].Debit;
+                yearCredit += facts[index].Credit;
+                index++;
+            }
+
+            // 期初行与柠檬云一致：余额列是期初余额，借贷两栏是本年初至期初的累计发生额。
             var rows = new List<SubsidiaryLedgerRowDto>
             {
                 new SubsidiaryLedgerRowDto
                 {
                     Kind = SubsidiaryRowKind.Opening,
+                    Date = rangeStart.ToString("yyyy-MM-dd"),
                     Summary = "期初余额",
+                    Debit = yearDebit,
+                    Credit = yearCredit,
                     Direction = LedgerDirectionText.Of(openingNet),
                     Balance = Math.Abs(openingNet),
                 },
             };
 
-            var running = openingNet;
-            var currentPeriod = 0;
-            decimal monthDebit = 0m, monthCredit = 0m;
-
-            foreach (var fact in facts)
+            var lastMonth = new DateOnly(rangeEnd.Year, rangeEnd.Month, 1);
+            for (var monthStart = rangeStart; monthStart <= lastMonth; monthStart = monthStart.AddMonths(1))
             {
-                // 逐笔滚动始终按全量事实推进，摘要过滤只影响是否列示该行。
-                running += fact.NetDebit;
-
-                if (fact.Date < rangeStart)
+                if (monthStart.Year != year)
                 {
-                    continue;
+                    year = monthStart.Year;
+                    yearDebit = 0m;
+                    yearCredit = 0m;
                 }
 
-                if (currentPeriod != 0 && fact.Period != currentPeriod)
+                var period = monthStart.Year * 100 + monthStart.Month;
+                decimal monthDebit = 0m, monthCredit = 0m;
+
+                while (index < facts.Count && facts[index].Period == period)
                 {
-                    rows.Add(TotalRow(SubsidiaryRowKind.MonthTotal, "本月合计", monthDebit, monthCredit));
-                    monthDebit = 0m;
-                    monthCredit = 0m;
+                    var fact = facts[index++];
+                    // 逐笔滚动始终按全量事实推进，摘要过滤只影响是否列示该行。
+                    running += fact.NetDebit;
+                    monthDebit += fact.Debit;
+                    monthCredit += fact.Credit;
+                    yearDebit += fact.Debit;
+                    yearCredit += fact.Credit;
+
+                    if (keyword is { Length: > 0 } && !fact.Summary.Contains(keyword, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    rows.Add(new SubsidiaryLedgerRowDto
+                    {
+                        Kind = SubsidiaryRowKind.Entry,
+                        Date = fact.Date.ToString("yyyy-MM-dd"),
+                        VoucherNo = fact.VoucherNo,
+                        Summary = fact.Summary,
+                        CounterAccount = showCounterAccount ? CounterAccountOf(dataSet, fact) : null,
+                        Debit = fact.Debit,
+                        Credit = fact.Credit,
+                        Direction = LedgerDirectionText.Of(running),
+                        Balance = Math.Abs(running),
+                    });
                 }
 
-                currentPeriod = fact.Period;
-                monthDebit += fact.Debit;
-                monthCredit += fact.Credit;
-
-                if (keyword is { Length: > 0 } && !fact.Summary.Contains(keyword, StringComparison.Ordinal))
+                var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+                // 无发生额时按条件跳过「本月合计」「本年累计」，避免空月份仍堆两行合计。
+                if (!hideTotalsNoActivity || monthDebit != 0m || monthCredit != 0m)
                 {
-                    continue;
+                    rows.Add(TotalRow(SubsidiaryRowKind.MonthTotal, "本月合计", monthEnd, monthDebit, monthCredit, running));
+                    rows.Add(TotalRow(SubsidiaryRowKind.YearTotal, "本年累计", monthEnd, yearDebit, yearCredit, running));
                 }
-
-                rows.Add(new SubsidiaryLedgerRowDto
-                {
-                    Kind = SubsidiaryRowKind.Entry,
-                    Date = fact.Date.ToString("yyyy-MM-dd"),
-                    VoucherNo = fact.VoucherNo,
-                    Summary = fact.Summary,
-                    CounterAccount = showCounterAccount ? CounterAccountOf(dataSet, fact) : null,
-                    Debit = fact.Debit,
-                    Credit = fact.Credit,
-                    Direction = LedgerDirectionText.Of(running),
-                    Balance = Math.Abs(running),
-                });
             }
-
-            if (currentPeriod != 0)
-            {
-                rows.Add(TotalRow(SubsidiaryRowKind.MonthTotal, "本月合计", monthDebit, monthCredit));
-            }
-
-            // 本年累计：从本年 1 月 1 日到查询期末的全部发生额（含未逐笔列示的之前月份）。
-            rows.Add(TotalRow(SubsidiaryRowKind.YearTotal, "本年累计", facts.Sum(f => f.Debit), facts.Sum(f => f.Credit)));
 
             return rows;
         }
 
-        private static SubsidiaryLedgerRowDto TotalRow(SubsidiaryRowKind kind, string label, decimal debit, decimal credit)
+        private static SubsidiaryLedgerRowDto TotalRow(
+            SubsidiaryRowKind kind,
+            string label,
+            DateOnly date,
+            decimal debit,
+            decimal credit,
+            decimal running)
         {
             return new SubsidiaryLedgerRowDto
             {
                 Kind = kind,
+                Date = date.ToString("yyyy-MM-dd"),
                 Summary = label,
                 Debit = debit,
                 Credit = credit,
+                Direction = LedgerDirectionText.Of(running),
+                Balance = Math.Abs(running),
             };
         }
 

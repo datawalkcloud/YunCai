@@ -16,10 +16,14 @@ export interface LedgerConditions {
     accountTo?: string
     /** 科目级次上限。 */
     maxLevel?: number
+    /** 科目级次下限。 */
+    minLevel?: number
     /** 摘要关键字。 */
     summaryKeyword?: string
     /** 排序方式，取值见 SORT_BY。 */
     sortBy?: number
+    /** 显示辅助核算。 */
+    showAssist?: boolean
     /** 显示对方科目。 */
     showCounterAccount?: boolean
     /** 只显示明细科目。 */
@@ -28,6 +32,8 @@ export interface LedgerConditions {
     hideZeroBalance?: boolean
     /** 无发生额且余额为零不显示。 */
     hideNoActivity?: boolean
+    /** 无发生额不显示本期合计、本年累计。 */
+    hideTotalsNoActivity?: boolean
     /** 列示区间内无发生额且余额为零的科目（这些科目默认被过滤掉）。 */
     includeIdleAccounts?: boolean
     /** 辅助核算类别，取值见 ASSIST_TYPES。 */
@@ -47,8 +53,8 @@ export const SORT_BY = {
 } as const
 
 export const SORT_BY_OPTIONS: ReadonlyArray<{ value: number; label: string }> = [
-    { value: SORT_BY.voucherNumber, label: "按凭证字号" },
-    { value: SORT_BY.voucherDate, label: "按凭证日期" },
+    { value: SORT_BY.voucherNumber, label: "凭证号排序" },
+    { value: SORT_BY.voucherDate, label: "凭证日期排序" },
 ]
 
 /** 辅助核算类别，与后端 AssistType 一致（1 客户 … 7 现金流）；文案与档案维护页共用一份常量。 */
@@ -66,17 +72,21 @@ export const ROW_KIND = {
 
 /** 账页开关的取值范围。 */
 export type LedgerSwitch =
+    | "showAssist"
     | "showCounterAccount"
     | "showOnlyLeaf"
     | "hideZeroBalance"
     | "hideNoActivity"
+    | "hideTotalsNoActivity"
     | "includeIdleAccounts"
 
 export const SWITCH_LABELS: Record<LedgerSwitch, string> = {
+    showAssist: "显示辅助核算",
     showCounterAccount: "显示对方科目",
     showOnlyLeaf: "只显示明细科目",
-    hideZeroBalance: "余额为零不显示",
-    hideNoActivity: "无发生额不显示",
+    hideZeroBalance: "余额为0不显示",
+    hideNoActivity: "无发生额且余额为0不显示",
+    hideTotalsNoActivity: "无发生额不显示本期合计、本年累计",
     includeIdleAccounts: "包含无发生额科目",
 }
 
@@ -86,20 +96,6 @@ export const DEFAULT_SWITCHES: readonly LedgerSwitch[] = [
     "hideZeroBalance",
     "hideNoActivity",
     "includeIdleAccounts",
-]
-
-/** 账簿页之间的横向切换顺序，Tab 条与各页下钻共用。 */
-export const LEDGER_PAGES: ReadonlyArray<{ path: string; label: string }> = [
-    { path: "trial-balance", label: "科目余额表" },
-    { path: "subsidiary", label: "明细账" },
-    { path: "general", label: "总账" },
-    { path: "journal", label: "序时账" },
-    { path: "voucher-summary", label: "凭证汇总表" },
-    { path: "multi-column", label: "多栏账" },
-    { path: "assist-balance", label: "核算项目余额表" },
-    { path: "assist-subsidiary", label: "核算项目明细账" },
-    { path: "assist-combine", label: "交叉表" },
-    { path: "ageing", label: "账龄分析" },
 ]
 
 /** 把条件里的日期字符串转成生成客户端要求的 Date。 */

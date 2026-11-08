@@ -126,6 +126,7 @@ namespace KuaiJi.Modules.Ledgers.Infrastructure
             return await _context.Vouchers
                 .AsNoTracking()
                 .CountAsync(v => v.AccountSetId == accountSetId
+                                 && v.DeletedAt == null
                                  && v.Status != VoucherStatus.Posted
                                  && v.Date >= startDate && v.Date <= endDate, cancellationToken);
         }

@@ -57,6 +57,30 @@ export interface JournalEntryRequest {
     department?: string | null;
     /**
      * 
+     * @type {string}
+     * @memberof JournalEntryRequest
+     */
+    settlementMethod?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryRequest
+     */
+    billNo?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryRequest
+     */
+    remark?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryRequest
+     */
+    source?: string | null;
+    /**
+     * 
      * @type {number}
      * @memberof JournalEntryRequest
      */
@@ -92,6 +116,10 @@ export function JournalEntryRequestFromJSONTyped(json: any, ignoreDiscriminator:
         'counterparty': json['counterparty'] == null ? undefined : json['counterparty'],
         'project': json['project'] == null ? undefined : json['project'],
         'department': json['department'] == null ? undefined : json['department'],
+        'settlementMethod': json['settlementMethod'] == null ? undefined : json['settlementMethod'],
+        'billNo': json['billNo'] == null ? undefined : json['billNo'],
+        'remark': json['remark'] == null ? undefined : json['remark'],
+        'source': json['source'] == null ? undefined : json['source'],
         'income': json['income'] == null ? undefined : json['income'],
         'expense': json['expense'] == null ? undefined : json['expense'],
     };
@@ -114,6 +142,10 @@ export function JournalEntryRequestToJSONTyped(value?: JournalEntryRequest | nul
         'counterparty': value['counterparty'],
         'project': value['project'],
         'department': value['department'],
+        'settlementMethod': value['settlementMethod'],
+        'billNo': value['billNo'],
+        'remark': value['remark'],
+        'source': value['source'],
         'income': value['income'],
         'expense': value['expense'],
     };

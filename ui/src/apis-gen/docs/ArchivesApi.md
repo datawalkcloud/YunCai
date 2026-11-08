@@ -7,6 +7,10 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdArchivesArchivePost**](ArchivesApi.md#accountsetsaccountsetidarchivesarchivepost) | **POST** /accountsets/{accountSetId}/archives/archive |  |
 | [**accountsetsAccountSetIdArchivesArchivedGet**](ArchivesApi.md#accountsetsaccountsetidarchivesarchivedget) | **GET** /accountsets/{accountSetId}/archives/archived |  |
 | [**accountsetsAccountSetIdArchivesAuditPost**](ArchivesApi.md#accountsetsaccountsetidarchivesauditpost) | **POST** /accountsets/{accountSetId}/archives/audit |  |
+| [**accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete**](ArchivesApi.md#accountsetsaccountsetidarchivescategoriescategoryiddelete) | **DELETE** /accountsets/{accountSetId}/archives/categories/{categoryId} |  |
+| [**accountsetsAccountSetIdArchivesCategoriesCategoryIdPut**](ArchivesApi.md#accountsetsaccountsetidarchivescategoriescategoryidput) | **PUT** /accountsets/{accountSetId}/archives/categories/{categoryId} |  |
+| [**accountsetsAccountSetIdArchivesCategoriesGet**](ArchivesApi.md#accountsetsaccountsetidarchivescategoriesget) | **GET** /accountsets/{accountSetId}/archives/categories |  |
+| [**accountsetsAccountSetIdArchivesCategoriesPost**](ArchivesApi.md#accountsetsaccountsetidarchivescategoriespost) | **POST** /accountsets/{accountSetId}/archives/categories |  |
 | [**accountsetsAccountSetIdArchivesGet**](ArchivesApi.md#accountsetsaccountsetidarchivesget) | **GET** /accountsets/{accountSetId}/archives |  |
 | [**accountsetsAccountSetIdArchivesIdDelete**](ArchivesApi.md#accountsetsaccountsetidarchivesiddelete) | **DELETE** /accountsets/{accountSetId}/archives/{id} |  |
 | [**accountsetsAccountSetIdArchivesIdDownloadGet**](ArchivesApi.md#accountsetsaccountsetidarchivesiddownloadget) | **GET** /accountsets/{accountSetId}/archives/{id}/download |  |
@@ -201,6 +205,278 @@ example().catch(console.error);
 ### Return type
 
 **number**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete
+
+> accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete(accountSetId, categoryId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ArchivesApi,
+} from '';
+import type { AccountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ArchivesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    categoryId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdArchivesCategoriesCategoryIdDeleteRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdArchivesCategoriesCategoryIdDelete(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **categoryId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdArchivesCategoriesCategoryIdPut
+
+> ArchiveCategoryDto accountsetsAccountSetIdArchivesCategoriesCategoryIdPut(accountSetId, categoryId, saveArchiveCategoryRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ArchivesApi,
+} from '';
+import type { AccountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ArchivesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    categoryId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SaveArchiveCategoryRequest
+    saveArchiveCategoryRequest: ...,
+  } satisfies AccountsetsAccountSetIdArchivesCategoriesCategoryIdPutRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdArchivesCategoriesCategoryIdPut(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **categoryId** | `string` |  | [Defaults to `undefined`] |
+| **saveArchiveCategoryRequest** | [SaveArchiveCategoryRequest](SaveArchiveCategoryRequest.md) |  | |
+
+### Return type
+
+[**ArchiveCategoryDto**](ArchiveCategoryDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdArchivesCategoriesGet
+
+> Array&lt;ArchiveCategoryDto&gt; accountsetsAccountSetIdArchivesCategoriesGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ArchivesApi,
+} from '';
+import type { AccountsetsAccountSetIdArchivesCategoriesGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ArchivesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdArchivesCategoriesGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdArchivesCategoriesGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**Array&lt;ArchiveCategoryDto&gt;**](ArchiveCategoryDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdArchivesCategoriesPost
+
+> ArchiveCategoryDto accountsetsAccountSetIdArchivesCategoriesPost(accountSetId, saveArchiveCategoryRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ArchivesApi,
+} from '';
+import type { AccountsetsAccountSetIdArchivesCategoriesPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ArchivesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SaveArchiveCategoryRequest
+    saveArchiveCategoryRequest: ...,
+  } satisfies AccountsetsAccountSetIdArchivesCategoriesPostRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdArchivesCategoriesPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **saveArchiveCategoryRequest** | [SaveArchiveCategoryRequest](SaveArchiveCategoryRequest.md) |  | |
+
+### Return type
+
+[**ArchiveCategoryDto**](ArchiveCategoryDto.md)
 
 ### Authorization
 

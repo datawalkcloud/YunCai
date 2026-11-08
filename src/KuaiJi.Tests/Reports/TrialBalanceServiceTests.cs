@@ -189,14 +189,15 @@ public sealed class TrialBalanceServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAsync_NoDates_DefaultsToVoucherMonthRange()
+    public async Task GetAsync_NoDates_DefaultsFromEnabledPeriodToLastVoucherMonth()
     {
         _h.AddVoucher(new DateOnly(2026, 3, 10), VoucherStatus.Posted,
             _h.Entry("只有三月有凭证", _cash.Id, 100m, 0m), _h.Entry("只有三月有凭证", _revenue.Id, 0m, 100m));
 
         var dto = await _service.GetAsync(_h.AccountSet.Id, null, null);
 
-        Assert.Equal("2026-03-01 至 2026-03-31", dto.PeriodText);
+        // 启用期间 2026-01 起算（与柠檬云一致），末月取最后一张凭证所在月
+        Assert.Equal("2026-01-01 至 2026-03-31", dto.PeriodText);
         Assert.Equal(100m, Row(dto, "1001").PeriodDebit);
     }
 

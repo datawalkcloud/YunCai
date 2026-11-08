@@ -149,7 +149,7 @@ export default function OpeningBalancesPage() {
                 align: "right",
                 render: (_, row) => {
                     if (!row.isLeaf || !row.accountId) {
-                        return <span className="text-slate-400">{fmtAmount(row.openingBalance)}</span>
+                        return <span className="text-(--muted-foreground)">{fmtAmount(row.openingBalance)}</span>
                     }
                     const id = row.accountId
                     return (
@@ -237,54 +237,6 @@ export default function OpeningBalancesPage() {
 
     return (
         <div className="flex w-full flex-col gap-5">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-                {/* 与柠檬云「期初」一致：导出模板 / 导入 / 试算平衡 */}
-                <Button icon={<DownloadOutlined />} onClick={() => void exportTemplate()} disabled={!accountSetId}>
-                    导出
-                </Button>
-                <Button
-                    icon={<UploadOutlined />}
-                    onClick={() => importInputRef.current?.click()}
-                    disabled={!accountSetId || importing}
-                >
-                    导入
-                </Button>
-                <Button
-                    icon={<CalculatorOutlined />}
-                    onClick={() =>
-                        setCheckMessage(
-                            totals.balanced
-                                ? `试算平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}。`
-                                : `试算不平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}，差额 ${fmtAmount(Math.abs(totals.debit - totals.credit))}。`,
-                        )
-                    }
-                >
-                    试算平衡
-                </Button>
-                <input
-                    ref={importInputRef}
-                    type="file"
-                    accept=".xlsx"
-                    className="hidden"
-                    onChange={(e) => void importFile(e.target.files?.[0] ?? null)}
-                />
-                <Button
-                    icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
-                    disabled={loading}
-                    onClick={() => void load()}
-                >
-                    刷新
-                </Button>
-                <Button
-                    type="primary"
-                    icon={saving ? <SaveOutlined spin /> : <SaveOutlined />}
-                    disabled={!dirty || saving}
-                    onClick={() => void save()}
-                >
-                    保存
-                </Button>
-            </div>
-
             {error && <Alert type="error" showIcon title={error} />}
 
             {savedTip && !dirty && (
@@ -303,13 +255,64 @@ export default function OpeningBalancesPage() {
                 />
             )}
 
-            <SectionCard bodyClassName="flex flex-col gap-4">
+            <SectionCard
+                bodyClassName="flex flex-col gap-4"
+                action={
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        {/* 与柠檬云「期初」一致：导出模板 / 导入 / 试算平衡 */}
+                        <Button icon={<DownloadOutlined />} onClick={() => void exportTemplate()} disabled={!accountSetId}>
+                            导出
+                        </Button>
+                        <Button
+                            icon={<UploadOutlined />}
+                            onClick={() => importInputRef.current?.click()}
+                            disabled={!accountSetId || importing}
+                        >
+                            导入
+                        </Button>
+                        <Button
+                            icon={<CalculatorOutlined />}
+                            onClick={() =>
+                                setCheckMessage(
+                                    totals.balanced
+                                        ? `试算平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}。`
+                                        : `试算不平衡：借方合计 ${fmtAmount(totals.debit, true)}，贷方合计 ${fmtAmount(totals.credit, true)}，差额 ${fmtAmount(Math.abs(totals.debit - totals.credit))}。`,
+                                )
+                            }
+                        >
+                            试算平衡
+                        </Button>
+                        <input
+                            ref={importInputRef}
+                            type="file"
+                            accept=".xlsx"
+                            className="hidden"
+                            onChange={(e) => void importFile(e.target.files?.[0] ?? null)}
+                        />
+                        <Button
+                            icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
+                            disabled={loading}
+                            onClick={() => void load()}
+                        >
+                            刷新
+                        </Button>
+                        <Button
+                            type="primary"
+                            icon={saving ? <SaveOutlined spin /> : <SaveOutlined />}
+                            disabled={!dirty || saving}
+                            onClick={() => void save()}
+                        >
+                            保存
+                        </Button>
+                    </div>
+                }
+            >
                 <div
                     className={cn(
                         "flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-[12.5px]",
                         totals.balanced
-                            ? "border-slate-200 bg-muted text-slate-500"
-                            : "border-[#fecaca] bg-[#fef2f2] text-[#ef4444]",
+                            ? "border-(--border) bg-muted text-(--muted-foreground)"
+                            : "border-(--danger-border) bg-(--table-neg-bg) text-(--danger)",
                     )}
                 >
                     {checkMessage && <span className="sr-only">{checkMessage}</span>}

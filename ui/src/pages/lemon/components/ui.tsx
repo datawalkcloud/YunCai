@@ -1,6 +1,6 @@
 /**
  * 柠檬云菜单区页面的共享 UI 基元。
- * 视觉遵循全站统一风格（云财蓝）：主色 #2f6bff、圆角、白卡 + slate 灰阶文字，
+ * 视觉遵循全站统一风格（云财蓝）：主色 #273cf3、圆角、白卡 + slate 灰阶文字，
  * 与 @/components/page 的既有实页同一套色板；交互基元一律用 antd 组件实现。
  */
 import type { CSSProperties, ReactNode, Ref } from "react";
@@ -13,7 +13,6 @@ import {
     Button,
     Card,
     Checkbox,
-    ConfigProvider,
     DatePicker,
     Input,
     Modal,
@@ -129,22 +128,25 @@ export function PeriodStepper({
     text,
     onPrev,
     onNext,
+    children,
 }: {
     text: string;
     onPrev?: () => void;
     onNext?: () => void;
+    /** 覆盖在期间文字上的附加层，如透明的月份选择器（点文字弹出期间面板）。 */
+    children?: ReactNode;
 }) {
     // 高度取自 antd token（compact 下即 28px），使自写控件与 antd 输入框/按钮等高、视觉统一。
     const { token } = theme.useToken();
     const h = token.controlHeight;
     return (
         // 期间名称用 span 展示（不是按钮），避免被当成可点击动作；两侧箭头才是按钮
-        <span className="inline-flex items-center overflow-hidden rounded-md border border-[#2f6bff]">
+        <span className="inline-flex items-center overflow-hidden rounded-md border border-(--brand)">
             <button
                 type="button"
                 aria-label="上一期"
                 style={{ height: h, width: h }}
-                className="flex items-center justify-center bg-[#2f6bff] text-white disabled:opacity-60"
+                className="flex items-center justify-center bg-(--brand-fill) text-white disabled:opacity-60"
                 disabled={!onPrev}
                 onClick={onPrev}
             >
@@ -152,15 +154,16 @@ export function PeriodStepper({
             </button>
             <span
                 style={{ height: h }}
-                className="inline-flex items-center bg-[#2f6bff] px-3 text-[13px] font-medium tabular-nums text-white"
+                className="relative inline-flex items-center bg-(--brand-fill) px-3 text-[13px] font-medium tabular-nums text-white"
             >
                 {text}
+                {children}
             </span>
             <button
                 type="button"
                 aria-label="下一期"
                 style={{ height: h, width: h }}
-                className="flex items-center justify-center bg-[#2f6bff] text-white disabled:opacity-60"
+                className="flex items-center justify-center bg-(--brand-fill) text-white disabled:opacity-60"
                 disabled={!onNext}
                 onClick={onNext}
             >
@@ -183,6 +186,7 @@ export function TextInput({
     type = "text",
     disabled,
     className = "",
+    style,
 }: {
     value: string;
     onChange: (value: string) => void;
@@ -190,10 +194,12 @@ export function TextInput({
     type?: "text" | "number" | "date";
     disabled?: boolean;
     className?: string;
+    style?: CSSProperties;
 }) {
     return (
         <Input
             className={className}
+            style={style}
             type={type}
             value={value}
             disabled={disabled}
@@ -282,10 +288,11 @@ export function ComboBox({
 }
 
 /** 静态下拉框外观。 */
-export function FakeSelect({ text, className = "" }: { text: string; className?: string }) {
+export function FakeSelect({ text, className = "", style }: { text: string; className?: string; style?: CSSProperties }) {
     return (
         <Input
             className={className}
+            style={style}
             readOnly
             value={text}
             suffix={<DownOutlined style={ICON_STYLE.muted} />}
@@ -322,8 +329,9 @@ export function CheckBox({
 }) {
     return (
         <Checkbox
-            className={cn("text-[13px]", !onChange && "pointer-events-none")}
+            className={cn("text-[13px]", !onChange && "opacity-60")}
             checked={checked}
+            disabled={!onChange}
             onChange={onChange ? (e) => onChange(e.target.checked) : undefined}
         >
             {label}
@@ -379,10 +387,10 @@ export function Table({
             const v = row[c.key];
             const isNeg = c.neg && typeof v === "string" && v.startsWith("-");
             const style: CSSProperties = { ...(row.__style ?? {}) };
-            if (zebra && index !== undefined && index % 2 === 1 && style.background === undefined) style.background = "#fafbfd";
+            if (zebra && index !== undefined && index % 2 === 1 && style.background === undefined) style.background = "var(--table-zebra-bg)";
             if (isNeg) {
-                style.background = "#fef2f2";
-                style.color = "#ef4444";
+                style.background = "var(--table-neg-bg)";
+                style.color = "var(--tone-red)";
             }
             return { style };
         },
@@ -407,44 +415,27 @@ export function Table({
     const dataRows = rows.map((r, i) => ({ ...r, __key: String(i) } as Row & { __key: string }));
 
     return (
-        <ConfigProvider theme={{ components: { Table: { rowHoverBg: "#f6f9ff" } } }}>
-            <AntTable<Row & { __key: string }>
-                columns={columns as TableColumnsType<Row & { __key: string }>}
-                dataSource={dataRows}
-                rowKey={(r) => r.__key}
-                pagination={false}
-                scroll={{ x: "max-content", ...(scrollY === undefined ? {} : { y: scrollY }) }}
-                rowClassName={(row) => row.__style ? "" : "transition-colors"}
-                locale={empty === undefined ? undefined : { emptyText: <div className="py-6">{empty}</div> }}
-            />
-        </ConfigProvider>
+        <AntTable<Row & { __key: string }>
+            columns={columns as TableColumnsType<Row & { __key: string }>}
+            dataSource={dataRows}
+            rowKey={(r) => r.__key}
+            pagination={false}
+            scroll={{ x: "max-content", ...(scrollY === undefined ? {} : { y: scrollY }) }}
+            rowClassName={(row) => row.__style ? "" : "transition-colors"}
+            locale={empty === undefined ? undefined : { emptyText: <div className="py-6">{empty}</div> }}
+        />
     );
 }
 
 /* ---------------- 分页页脚 ---------------- */
 
-/** 页脚：左「显示 N 到 M，共 X 条」，右页码组（当前为静态展示，后端分页未接入）。 */
+/** 页脚：只报记录总数。此前画了一组翻不动的页码，且总是写「1 到 20」，与实际渲染的全量行数不符。 */
 export function Pager({ total = 0, count }: { total?: number; count?: number }) {
     // 兼容两种历史传参（total/count 都传记录数、或 count 固定 1），一律取较大者作为记录总数。
     const records = Math.max(total, count ?? 0);
-    const pages = Math.max(1, Math.ceil(records / 20));
     return (
-        <div className="flex items-center justify-between px-4 py-3 text-[12.5px] text-slate-500">
-            <span>
-                显示 {records ? 1 : 0} 到 {Math.min(records, 20)}，共 {records} 条
-            </span>
-            <span className="flex items-center gap-2">
-                <span className="inline-flex h-7 items-center rounded-lg border border-slate-200 px-2">
-                    20 <DownOutlined className="ml-1 text-[11px]" style={ICON_STYLE.muted} />
-                </span>
-                <LeftOutlined className="text-[13px]" style={ICON_STYLE.placeholder} />
-                <span>第</span>
-                <span className="inline-flex h-7 w-10 items-center justify-center rounded-lg border border-slate-200 font-medium text-[#2f6bff]">
-                    1
-                </span>
-                <span>共{pages}页</span>
-                <RightOutlined className="text-[13px]" style={ICON_STYLE.muted} />
-            </span>
+        <div className="flex items-center px-4 py-3 text-[12.5px] text-(--muted-foreground)">
+            共 {records} 条
         </div>
     );
 }
@@ -461,14 +452,10 @@ export function ToolRow({ left, right }: { left?: ReactNode; right?: ReactNode }
     );
 }
 
-/** 页面容器：白色卡片（工具行 + 表格 + 页脚同属一张卡；圆角由 antd 全局主题统一控制）。 */
+/** 页面容器：白色卡片（工具行 + 表格 + 页脚同属一张卡；描边、圆角与投影由全站主题统一控制）。 */
 export function Page({ children, className = "" }: { children: ReactNode; className?: string }) {
     return (
-        <Card
-            className={className}
-            variant="borderless"
-            styles={{ root: { boxShadow: "0 1px 2px rgba(16,24,40,0.04)" }, body: { padding: 0 } }}
-        >
+        <Card className={className}>
             {children}
         </Card>
     );
@@ -551,7 +538,7 @@ export function Toggle({ on = true, onClick }: { on?: boolean; onClick?: () => v
 
 /** 空表提示。 */
 export function EmptyTip({ text = "暂无数据" }: { text?: string }) {
-    return <span className="block text-center text-[13px] text-slate-400">{text}</span>;
+    return <span className="block text-center text-[13px] text-(--muted-foreground)">{text}</span>;
 }
 
 /* ---------------- 行内链接 / 说明块 / 取数状态 ---------------- */
@@ -592,7 +579,7 @@ export function LinkAction({
 /** 浅色说明块：与 WipTag 同一琥珀色板，用于表单/表格上方的口径说明。 */
 export function HintBox({ children, className = "" }: { children: ReactNode; className?: string }) {
     return (
-        <div className={cn("rounded-lg bg-[#fffbeb] px-3 py-2 text-[12.5px] leading-5 text-[#b45309]", className)}>
+        <div className={cn("rounded-lg bg-(--warn-bg) px-3 py-2 text-[12.5px] leading-5 text-(--warn-text)", className)}>
             {children}
         </div>
     );
@@ -608,7 +595,7 @@ export function StateBar({ loading, error }: { loading?: boolean; error?: string
         );
     }
     if (loading) {
-        return <div className="px-4 py-6 text-center text-[13px] text-slate-400">加载中…</div>;
+        return <div className="px-4 py-6 text-center text-[13px] text-(--muted-foreground)">加载中…</div>;
     }
     return null;
 }
@@ -618,7 +605,7 @@ export function StateBar({ loading, error }: { loading?: boolean; error?: string
 /** 行内「建设中」小标：挂在尚未接后端的按钮/字段旁，避免用户误认为可用。 */
 export function WipTag({ text = "建设中", className = "" }: { text?: string; className?: string }) {
     return (
-        <span className={`rounded bg-[#fef3c7] px-2 text-[11px] font-medium leading-5 text-[#b45309] ${className}`}>
+        <span className={`rounded bg-(--warn-bg) px-2 text-[11px] font-medium leading-5 text-(--warn-text) ${className}`}>
             {text}
         </span>
     );

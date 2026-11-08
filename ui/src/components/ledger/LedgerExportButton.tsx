@@ -45,6 +45,7 @@ function buildQuery(conditions: LedgerConditions): string {
     }
     for (const [key, value] of Object.entries({
         maxLevel: conditions.maxLevel,
+        minLevel: conditions.minLevel,
         sortBy: conditions.sortBy,
         assistType: conditions.assistType,
         secondaryAssistType: conditions.secondaryAssistType,
@@ -53,9 +54,11 @@ function buildQuery(conditions: LedgerConditions): string {
     }
     for (const [key, value] of Object.entries({
         showCounterAccount: conditions.showCounterAccount,
+        showAssist: conditions.showAssist,
         showOnlyLeaf: conditions.showOnlyLeaf,
         hideZeroBalance: conditions.hideZeroBalance,
         hideNoActivity: conditions.hideNoActivity,
+        hideTotalsNoActivity: conditions.hideTotalsNoActivity,
         includeIdleAccounts: conditions.includeIdleAccounts,
     })) {
         if (value != null) params.set(key, value ? "true" : "false")
@@ -121,7 +124,7 @@ export function LedgerExportButton({
             >
                 {label}
             </Button>
-            {error && <span className="text-[12.5px] text-[#ef4444]">{error}</span>}
+            {error && <span className="text-[12.5px] text-(--danger)">{error}</span>}
         </div>
     )
 }

@@ -96,7 +96,7 @@ export function LemonVatCalc() {
             <ToolRow
                 left={
                     <>
-                        <span className="text-[13px] text-slate-500">税款所属期：</span>
+                        <span className="text-[13px] text-(--muted-foreground)">税款所属期：</span>
                         <PeriodStepper
                             text={`${period.year}年${period.month}月`}
                             onPrev={() => setUserPeriod(shiftPeriod(period, -1))}
@@ -115,8 +115,8 @@ export function LemonVatCalc() {
                 }
             />
             <div className="flex-1 px-4 pb-4">
-                {error && <div className="py-2 text-[13px] text-red-500">{error}</div>}
-                {loading && <div className="px-1 py-2 text-[13px] text-slate-500">加载中…</div>}
+                {error && <div className="py-2 text-[13px] text-(--danger)">{error}</div>}
+                {loading && <div className="px-1 py-2 text-[13px] text-(--muted-foreground)">加载中…</div>}
                 <Table
                     cols={[
                         { key: "item", title: "项目" },
@@ -128,41 +128,41 @@ export function LemonVatCalc() {
 
                 <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
                     {/* 销项 vs 进项 对比 */}
-                    <div className="rounded border border-slate-100 bg-white p-5">
-                        <div className="mb-3 text-[13px] text-slate-500">本期销项与进项对比</div>
+                    <div className="rounded border border-(--border) bg-(--card) p-5">
+                        <div className="mb-3 text-[13px] text-(--muted-foreground)">本期销项与进项对比</div>
                         <div className="flex items-end justify-center gap-10">
                             <div className="flex flex-col items-center">
                                 <div
-                                    className="w-16 bg-[#f59e0b]"
+                                    className="w-16 bg-(--warn-icon)"
                                     style={{ height: `${Math.max(8, (outputTax / Math.max(1, Math.max(outputTax, inputTax))) * 120)}px` }}
                                 />
-                                <div className="mt-2 text-[13px] text-slate-600">销项税</div>
+                                <div className="mt-2 text-[13px] text-(--foreground)">销项税</div>
                                 <div className="text-[13px] font-medium tabular-nums">{money(outputTax)}</div>
-                                <div className="text-[12px] text-slate-400">（本期销项）</div>
+                                <div className="text-[12px] text-(--muted-foreground)">（本期销项）</div>
                             </div>
                             <div className="flex flex-col items-center">
                                 <div
-                                    className="w-16 bg-[#2f6bff]"
+                                    className="w-16 bg-(--brand-fill)"
                                     style={{ height: `${Math.max(8, (inputTax / Math.max(1, Math.max(outputTax, inputTax))) * 120)}px` }}
                                 />
-                                <div className="mt-2 text-[13px] text-slate-600">进项税</div>
+                                <div className="mt-2 text-[13px] text-(--foreground)">进项税</div>
                                 <div className="text-[13px] font-medium tabular-nums">{money(inputTax)}</div>
-                                <div className="text-[12px] text-slate-400">（本期进项+期初留抵）</div>
+                                <div className="text-[12px] text-(--muted-foreground)">（本期进项+期初留抵）</div>
                             </div>
                         </div>
                     </div>
 
                     {/* 公式说明 */}
-                    <div className="rounded border border-slate-100 bg-white p-5 text-[13px] leading-7 text-slate-600">
-                        <div className="mb-2 font-medium text-slate-700">增值税测算公式：</div>
+                    <div className="rounded border border-(--border) bg-(--card) p-5 text-[13px] leading-7 text-(--foreground)">
+                        <div className="mb-2 font-medium text-(--foreground)">增值税测算公式：</div>
                         <div className="tabular-nums">
                             预计应交增值税 = 销项税额 - 进项税额（本期认证） - 期初进项留抵税额
                         </div>
-                        <div className="tabular-nums text-slate-500">
+                        <div className="tabular-nums text-(--muted-foreground)">
                             = {money(outputTax)} - {money(inputTax)} - {money(carryOver)}
                         </div>
-                        <div className="tabular-nums font-medium text-slate-800">= {money(payable)}</div>
-                        <div className="mt-2 text-[12.5px] text-slate-400">
+                        <div className="tabular-nums font-medium text-(--foreground)">= {money(payable)}</div>
+                        <div className="mt-2 text-[12.5px] text-(--muted-foreground)">
                             {payable <= 0
                                 ? "*本期抵扣的进项税等于或大于销项税，无需缴纳增值税。"
                                 : "*测算结果仅供参考，实际申报以税务机关核定为准。"}
@@ -171,19 +171,19 @@ export function LemonVatCalc() {
                 </div>
 
                 {/* 趋势图 */}
-                <div className="mt-5 rounded border border-slate-100 bg-white p-5">
-                    <div className="mb-4 text-[13px] font-medium text-slate-700">
+                <div className="mt-5 rounded border border-(--border) bg-(--card) p-5">
+                    <div className="mb-4 text-[13px] font-medium text-(--foreground)">
                         应交增值税趋势图（{period.year}年）
                     </div>
                     <div className="flex h-40 items-end gap-2">
                         {trend.map((t) => (
                             <div key={t.month} className="flex flex-1 flex-col items-center justify-end gap-1">
                                 <div
-                                    className={t.value >= 0 ? "w-full bg-[#2f6bff]" : "w-full bg-[#10b981]"}
+                                    className={t.value >= 0 ? "w-full bg-(--brand-fill)" : "w-full bg-(--success)"}
                                     style={{ height: `${Math.max(2, (Math.abs(t.value) / trendMax) * 120)}px` }}
                                     title={`${t.month}：${money(t.value)}`}
                                 />
-                                <span className="text-[11px] text-slate-400">{Number(t.month.slice(5))}月</span>
+                                <span className="text-[11px] text-(--muted-foreground)">{Number(t.month.slice(5))}月</span>
                             </div>
                         ))}
                     </div>

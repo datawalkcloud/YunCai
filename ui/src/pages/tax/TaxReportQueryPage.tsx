@@ -8,7 +8,7 @@
  * 税局的申报查询接口不给缴款日期，该列固定显示「-」，缴款情况到税费缴纳侧核对。
  */
 import { useCallback, useEffect, useRef, useState, type Key } from "react";
-import { App, Button, ConfigProvider, DatePicker, Dropdown, Pagination, Table, Tooltip } from "antd";
+import { Card, App, Button, DatePicker, Dropdown, Pagination, Table, Tooltip } from "antd";
 import type { MenuProps, TableColumnsType } from "antd";
 import {
     DownOutlined,
@@ -22,7 +22,6 @@ import { useNavigate, useParams } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxReports, type TaxDeclarationRow } from "@/lib/tax-portal";
-import { TAX_THEME } from "@/lib/tax-theme";
 import { cn } from "@/lib/utils";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
@@ -159,7 +158,7 @@ export function TaxReportQueryPage() {
                             icon={
                                 <RightOutlined
                                     className={cn(
-                                        "text-[11px] text-[#2f6bff] transition-transform",
+                                        "text-[11px] transition-transform",
                                         expanded && "rotate-90",
                                     )}
                                 />
@@ -193,17 +192,15 @@ export function TaxReportQueryPage() {
 
     // min-h-full 而非 h-full：h-full 会把表格区锁在一屏内，长列表溢出后压住下方的分页栏。
     return (
-        <div className="flex min-h-full flex-col px-6 pt-4">
+        <Card>
             <div className="flex flex-wrap items-start gap-3" style={{ marginBottom: 16 }}>
-                <span className="inline-flex h-8 shrink-0 items-center rounded-md bg-[#eef4ff] pr-1 text-[13px] text-[#2f6bff]">
+                <span className="shrink-0">
                     <DatePicker.RangePicker
-                        variant="borderless"
                         allowClear={false}
                         value={range}
                         format="YYYY-MM-DD"
                         separator="至"
-                        suffixIcon={<DownOutlined className="text-[10px] text-[#2f6bff]" />}
-                        className="[&_input]:!text-[#2f6bff]"
+                        suffixIcon={<DownOutlined />}
                         onChange={(value) => {
                             if (!value?.[0] || !value[1]) return;
                             setRange([value[0].startOf("day"), value[1].startOf("day")]);
@@ -211,8 +208,8 @@ export function TaxReportQueryPage() {
                     />
                 </span>
 
-                <div className="flex min-w-[320px] flex-1 items-start gap-2 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-2 text-[13px] leading-[22px] text-[#8a6a35]">
-                    <ExclamationCircleFilled className="mt-[4px] shrink-0 text-[14px] text-[#e6a23c]" />
+                <div className="flex min-w-[320px] flex-1 items-start gap-2 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-2 text-[13px] leading-[22px] text-(--warn-text)">
+                    <ExclamationCircleFilled className="mt-[4px] shrink-0 text-[14px] text-(--warn-icon)" />
                     <div>
                         <div>温馨提示：1、申报表数据不全或有变更，可以点击【更新报表】按钮进行更新</div>
                         <div className="pl-[76px]">
@@ -249,45 +246,43 @@ export function TaxReportQueryPage() {
             </div>
 
             <div className="min-h-0 flex-1">
-                <ConfigProvider theme={TAX_THEME}>
-                    <Table<TaxDeclarationRow>
-                        columns={columns}
-                        dataSource={paged}
-                        rowKey="key"
-                        tableLayout="fixed"
-                        loading={loading}
-                        pagination={false}
-                        scroll={{ x: 1180 }}
-                        rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
-                        expandable={{
-                            showExpandColumn: false,
-                            expandedRowKeys: expandedKeys,
-                            onExpandedRowsChange: setExpandedKeys,
-                            expandedRowRender: (row) => (
-                                <div className="grid grid-cols-1 gap-x-10 gap-y-1 rounded-lg bg-[#f8faff] px-4 py-2 text-[12.5px] text-[#555] md:grid-cols-2">
-                                    <span>申报表名称：《{row.declareKind}》</span>
-                                    <span>
-                                        税款所属期：{row.periodStart} 至 {row.periodEnd}
-                                    </span>
-                                    <span>申报状态：{row.status}</span>
-                                    <span>申报日期：{row.declareDate}</span>
-                                    <span>应补（退）税额：{fmtMoney(row.payable)}</span>
-                                    {row.feedback && <span>反馈：{row.feedback}</span>}
-                                </div>
-                            ),
-                        }}
-                        locale={{
-                            emptyText: (
-                                <span className="block py-10 text-[13px] text-slate-400">
-                                    {hint ?? "当前查询区间没有申报表"}
+                <Table<TaxDeclarationRow>
+                    columns={columns}
+                    dataSource={paged}
+                    rowKey="key"
+                    tableLayout="fixed"
+                    loading={loading}
+                    pagination={false}
+                    scroll={{ x: 1180 }}
+                    rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
+                    expandable={{
+                        showExpandColumn: false,
+                        expandedRowKeys: expandedKeys,
+                        onExpandedRowsChange: setExpandedKeys,
+                        expandedRowRender: (row) => (
+                            <div className="grid grid-cols-1 gap-x-10 gap-y-1 rounded-lg bg-(--brand-soft) px-4 py-2 text-[12.5px] text-(--foreground) md:grid-cols-2">
+                                <span>申报表名称：《{row.declareKind}》</span>
+                                <span>
+                                    税款所属期：{row.periodStart} 至 {row.periodEnd}
                                 </span>
-                            ),
-                        }}
-                    />
-                </ConfigProvider>
+                                <span>申报状态：{row.status}</span>
+                                <span>申报日期：{row.declareDate}</span>
+                                <span>应补（退）税额：{fmtMoney(row.payable)}</span>
+                                {row.feedback && <span>反馈：{row.feedback}</span>}
+                            </div>
+                        ),
+                    }}
+                    locale={{
+                        emptyText: (
+                            <span className="block py-10 text-[13px] text-(--muted-foreground)">
+                                {hint ?? "当前查询区间没有申报表"}
+                            </span>
+                        ),
+                    }}
+                />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 pb-2.5 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
+            <div className="flex flex-wrap items-center gap-2 pb-2.5 text-[12.5px] text-(--muted-foreground)" style={{ marginTop: 16 }}>
                 <span>
                     显示 {from} 到 {to}，共 {rows.length} 条记录
                 </span>
@@ -315,7 +310,7 @@ export function TaxReportQueryPage() {
                 </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 py-2.5 text-[13px] text-slate-500">
+            <div className="flex flex-wrap items-center gap-3 border-t border-(--border) py-2.5 text-[13px] text-(--muted-foreground)">
                 <span>快捷入口：</span>
                 <Button
                     type="link"
@@ -331,7 +326,7 @@ export function TaxReportQueryPage() {
                 </Button>
             </div>
 
-            <p className="pb-5 text-[12.5px] leading-5 text-slate-400">
+            <p className="pb-5 text-[12.5px] leading-5 text-(--muted-foreground)">
                 申报表取自电子税务局「申报信息查询」，按申报日期区间过滤
                 {fetchedAt ? `；最近更新 ${fetchedAt}` : ""}。税局该接口不返回缴款日期，缴款情况请到【税费缴纳】核对。
             </p>
@@ -346,6 +341,6 @@ export function TaxReportQueryPage() {
                     void load(range);
                 }}
             />
-        </div>
+        </Card>
     );
 }

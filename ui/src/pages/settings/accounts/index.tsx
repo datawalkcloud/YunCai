@@ -685,7 +685,7 @@ export default function AccountsPage() {
             title: "序号",
             width: 64,
             align: "center",
-            render: (_, __, index) => <span className="tabular-nums text-slate-500">{index + 1}</span>,
+            render: (_, __, index) => <span className="tabular-nums text-(--muted-foreground)">{index + 1}</span>,
         },
         {
             title: "科目编码",
@@ -722,7 +722,7 @@ export default function AccountsPage() {
                 return (
                     <div className="flex flex-wrap items-center gap-1">
                         {node.parentId == null ? (
-                            <span className="font-medium text-slate-800">{node.name}</span>
+                            <span className="font-medium text-(--foreground)">{node.name}</span>
                         ) : (
                             <span>{node.name}</span>
                         )}
@@ -739,7 +739,7 @@ export default function AccountsPage() {
             title: "助记码",
             width: 150,
             render: (_, { node }) =>
-                node.mnemonic ? <span className="text-slate-600">{node.mnemonic}</span> : <span className="text-slate-300">—</span>,
+                node.mnemonic ? <span className="text-(--foreground)">{node.mnemonic}</span> : <span className="text-(--muted-foreground)">—</span>,
         },
         {
             title: "余额方向",
@@ -752,7 +752,7 @@ export default function AccountsPage() {
             width: 88,
             align: "center",
             render: (_, { node }) =>
-                node.isEnabled ? <span className="text-slate-700">启用</span> : <span className="text-slate-400">停用</span>,
+                node.isEnabled ? <span className="text-(--foreground)">启用</span> : <span className="text-(--muted-foreground)">停用</span>,
         },
         {
             title: "操作",
@@ -816,12 +816,7 @@ export default function AccountsPage() {
         <div className="flex flex-col gap-4">
             {loadError && <Alert type="error" showIcon title={loadError} closable onClose={() => setLoadError(null)} />}
 
-            <Card
-                variant="borderless"
-                styles={{
-                    root: { boxShadow: "0 1px 2px rgba(16,24,40,0.04)" },
-                }}
-            >
+            <Card>
                 <Tabs
                     activeKey={String(filter)}
                     items={filterOptions.map((option) => ({ key: option.value, label: option.label }))}
@@ -835,7 +830,7 @@ export default function AccountsPage() {
                 >
                     <Input
                         allowClear
-                        prefix={<SearchOutlined className="text-slate-400" />}
+                        prefix={<SearchOutlined className="text-(--muted-foreground)" />}
                         placeholder="输入编码/名称/助记码/状态等关键字搜索"
                         value={keyword}
                         onChange={(e) => setKeyword(e.target.value)}
@@ -907,7 +902,7 @@ export default function AccountsPage() {
                     </div>
                 }
             >
-                <p className="text-[12.5px] text-slate-400">
+                <p className="text-[12.5px] text-(--muted-foreground)">
                     先选择类别，再选择上级科目（可选）。选中上级后将创建明细科目，方向自动继承。
                 </p>
 
@@ -1002,12 +997,12 @@ export default function AccountsPage() {
                 </FormField>
 
                 {parent ? (
-                    <p className="text-sm leading-normal font-normal text-slate-400">
+                    <p className="text-sm leading-normal font-normal text-(--muted-foreground)">
                         将作为「{parent.code} {parent.name}」的第 {newLevel} 级明细科目（本级 {levelDigits} 位，
                         编码方案：{codingScheme}），余额方向已继承上级。
                     </p>
                 ) : (
-                    <p className="text-sm leading-normal font-normal text-slate-400">
+                    <p className="text-sm leading-normal font-normal text-(--muted-foreground)">
                         一级科目编码固定 {expectedCodeLength} 位（编码方案：{codingScheme}）。
                     </p>
                 )}
@@ -1104,13 +1099,13 @@ export default function AccountsPage() {
                 }}
                 styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
             >
-                <p className="text-[12.5px] text-slate-400">
+                <p className="text-[12.5px] text-(--muted-foreground)">
                     支持从 Excel 文件批量导入会计科目。系统按编码查重，已存在的科目自动跳过并告警；未填写的助记码按科目名称自动生成拼音首字母。导入只新增科目，不会删除账套中已有的其他科目。
                 </p>
 
                 <div className="flex flex-col gap-1">
                     <span className="font-medium">导入到账套</span>
-                    <span className="text-[12.5px] text-slate-400">
+                    <span className="text-[12.5px] text-(--muted-foreground)">
                         {currentSet?.name ?? accountSetId}
                         {currentSet?.isCurrent ? "（当前）" : ""}
                     </span>
@@ -1139,21 +1134,21 @@ export default function AccountsPage() {
                     onDrop={onImportDrop}
                     className={cn(
                         "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
-                        importDragging ? "border-[#bfdbfe] bg-[#eef4ff]" : "border-slate-200",
+                        importDragging ? "border-(--brand-border) bg-(--brand-soft)" : "border-(--border)",
                     )}
                 >
                     <FileExcelOutlined className="text-[40px]" style={ICON_STYLE.placeholder} />
                     {importFile ? (
                         <div className="flex flex-col gap-1">
                             <span className="font-medium">{importFile.name}</span>
-                            <span className="text-sm leading-normal font-normal text-slate-400">
+                            <span className="text-sm leading-normal font-normal text-(--muted-foreground)">
                                 {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
                             </span>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-1">
                             <span className="font-medium">点击选择，或拖拽文件到此处</span>
-                            <span className="text-sm leading-normal font-normal text-slate-400">支持 .xls / .xlsx，最大 10MB</span>
+                            <span className="text-sm leading-normal font-normal text-(--muted-foreground)">支持 .xls / .xlsx，最大 10MB</span>
                         </div>
                     )}
                     <input
@@ -1183,7 +1178,7 @@ export default function AccountsPage() {
                 {/* 导入结果 */}
                 {importResult && (
                     <div className={cn(SOFT_PANEL, "flex flex-col gap-4 p-4")}>
-                        <h3 className="text-[13px] font-semibold text-slate-800">导入结果</h3>
+                        <h3 className="text-[13px] font-semibold text-(--foreground)">导入结果</h3>
                         <div className="grid grid-cols-3 gap-3">
                             <Tile label="解析行数" value={importResult.totalRows ?? 0} tone="blue" icon={FileExcelOutlined} />
                             <Tile label="导入科目" value={importResult.importedAccounts ?? 0} tone="green" icon={PlusOutlined} />
@@ -1192,10 +1187,10 @@ export default function AccountsPage() {
 
                         {importResult.warnings && importResult.warnings.length > 0 && (
                             <div className="flex flex-col gap-2">
-                                <span className="text-[12.5px] text-slate-400">
+                                <span className="text-[12.5px] text-(--muted-foreground)">
                                     告警（{importResult.warnings.length}）
                                 </span>
-                                <ul className="max-h-64 overflow-auto rounded-lg border border-slate-100 bg-white p-3 text-[12.5px] text-slate-500">
+                                <ul className="max-h-64 overflow-auto rounded-lg border border-(--border) bg-(--card) p-3 text-[12.5px] text-(--muted-foreground)">
                                     {importResult.warnings.map((w, i) => (
                                         <li key={i} className={cn("py-0.5")}>
                                             · {w}
@@ -1234,7 +1229,7 @@ export default function AccountsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                             {Array.from({ length: schemeLevels }, (_, i) => (
                                 <div key={i} className="flex items-center gap-2">
-                                    {i > 0 && <span className="text-slate-400">-</span>}
+                                    {i > 0 && <span className="text-(--muted-foreground)">-</span>}
                                     <Select
                                         className="w-16"
                                         value={schemeDigits[i] ?? 2}
@@ -1249,12 +1244,12 @@ export default function AccountsPage() {
                     {/* 示例预览 */}
                     <div className={cn(SOFT_PANEL, "flex flex-col gap-1 px-4 py-3")}>
                         <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
-                            <span className="text-slate-400">
+                            <span className="text-(--muted-foreground)">
                                 编码方案：{schemeDigits.slice(0, schemeLevels).join("-")}
                             </span>
-                            <code className="whitespace-nowrap text-[13px] font-medium text-slate-700 tabular-nums">{schemePreview}</code>
+                            <code className="whitespace-nowrap text-[13px] font-medium text-(--foreground) tabular-nums">{schemePreview}</code>
                         </div>
-                        <span className="text-[12.5px] text-slate-400">
+                        <span className="text-[12.5px] text-(--muted-foreground)">
                             各级总位数：{schemeTotalDigits.join(" → ")}
                         </span>
                     </div>
@@ -1277,7 +1272,7 @@ export default function AccountsPage() {
                 }}
                 onCancel={() => setSchemeConfirmOpen(false)}
             >
-                <p className="text-[13px] text-slate-500">
+                <p className="text-[13px] text-(--muted-foreground)">
                     {`当前账套下已有 ${accounts.length} 个科目。更改编码方案将按新规则重建所有科目编码（如二级 "01" 变为 "001"）。确定继续吗？`}
                 </p>
             </Modal>
@@ -1297,11 +1292,11 @@ export default function AccountsPage() {
                     setAssistTarget(null)
                 }}
             >
-                <p className="mb-4 text-[12.5px] text-slate-400">
+                <p className="mb-4 text-[12.5px] text-(--muted-foreground)">
                     挂上辅助核算后，凭证里该科目分录必须录入对应类别的核算项目档案（标「必录」）。改动只影响后续制单，历史凭证取值不变。
                 </p>
                 {assistLoading ? (
-                    <div className="flex items-center gap-2 py-4 text-slate-400">
+                    <div className="flex items-center gap-2 py-4 text-(--muted-foreground)">
                         <Spin />
                         加载中…
                     </div>
@@ -1324,7 +1319,7 @@ export default function AccountsPage() {
                                     >
                                         {meta?.label ?? row.type}
                                         {!enabledInSet && !row.checked && (
-                                            <span className="ml-1 text-[11px] text-slate-400">账套未启用</span>
+                                            <span className="ml-1 text-[11px] text-(--muted-foreground)">账套未启用</span>
                                         )}
                                     </Checkbox>
                                     {row.checked && (

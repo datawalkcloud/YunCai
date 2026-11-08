@@ -38,6 +38,8 @@ export interface LedgerQueryState<T> {
     patch: (next: Partial<LedgerConditions>, immediate?: boolean) => void
     /** 把面板条件提交给后端。 */
     query: () => void
+    /** 丢弃未提交的编辑，回到已提交条件（不重查）。 */
+    cancel: () => void
     /** 回到进入页面时的条件并重查。 */
     reset: () => void
     /** 用当前已提交的条件重查。 */
@@ -80,6 +82,11 @@ export function useLedgerQuery<T extends LedgerResponse>({
     const backfilled = useRef(false)
 
     const run = useCallback(() => setCommitted({ ...draftRef.current }), [])
+
+    const cancel = useCallback(() => {
+        draftRef.current = { ...committed }
+        setDraft({ ...committed })
+    }, [committed])
 
     const patch = useCallback(
         (next: Partial<LedgerConditions>, immediate = false) => {
@@ -151,5 +158,5 @@ export function useLedgerQuery<T extends LedgerResponse>({
         }
     }, [accountSetId, token, committed, fallbackError])
 
-    return { conditions: draft, committed, patch, query: run, reset, reload: run, data, meta, loading, error }
+    return { conditions: draft, committed, patch, query: run, cancel, reset, reload: run, data, meta, loading, error }
 }

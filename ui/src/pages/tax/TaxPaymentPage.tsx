@@ -5,7 +5,7 @@
  * 直连数字账户接口取回，登录态过期时弹窗补一次短信验证码，成功后自动重取。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, ConfigProvider, DatePicker, InputNumber, Select, Table } from "antd";
+import { Card, App, Button, DatePicker, InputNumber, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
     DownOutlined,
@@ -22,7 +22,6 @@ import { useNavigate, useParams } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxPayments, type TaxPaymentRow } from "@/lib/tax-portal";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
 
@@ -179,17 +178,15 @@ export function TaxPaymentPage() {
     }, [page, pageSize]);
 
     return (
-        <div className="flex h-full flex-col px-6 pt-4">
+        <Card>
             <div className="flex flex-wrap items-center gap-3" style={{ marginBottom: 16 }}>
-                <span className="inline-flex items-center rounded-md bg-[#eef4ff] pr-1 text-[13px] text-[#2f6bff]">
+                <span>
                     <DatePicker.RangePicker
-                        variant="borderless"
                         allowClear={false}
                         value={range}
                         format="YYYY-MM-DD"
                         separator="至"
-                        suffixIcon={<DownOutlined className="text-[10px]" />}
-                        className="[&_input]:!text-[#2f6bff]"
+                        suffixIcon={<DownOutlined />}
                         onChange={(value) => {
                             if (!value?.[0] || !value[1]) return;
                             setRange([value[0].startOf("day"), value[1].startOf("day")]);
@@ -197,8 +194,8 @@ export function TaxPaymentPage() {
                         }}
                     />
                 </span>
-                <span className="flex items-center gap-1.5 text-[12.5px] text-slate-500">
-                    <InfoCircleOutlined className="text-[#faad14]" />
+                <span className="flex items-center gap-1.5 text-[12.5px] text-(--muted-foreground)">
+                    <InfoCircleOutlined className="text-(--warn-icon)" />
                     温馨提示：如无数据，请点击【更新缴款信息】按钮进行更新
                 </span>
                 <div className="ml-auto flex items-center gap-2">
@@ -217,26 +214,23 @@ export function TaxPaymentPage() {
             </div>
 
             <div>
-                <ConfigProvider theme={TAX_THEME}>
-                    <Table<PaymentRow>
-                        columns={columns}
-                        dataSource={rows.slice((page - 1) * pageSize, page * pageSize)}
-                        rowKey="key"
-                        tableLayout="fixed"
-                        scroll={{ x: 1400 }}
-                        loading={loading}
-                        locale={{
-                            emptyText: (
-                                <span className="block py-10 text-[13px] text-slate-400">{hint ?? "暂无数据"}</span>
-                            ),
-                        }}
-                        pagination={false}
-                        className="[&_.ant-table-placeholder>.ant-table-cell]:!h-[calc(100vh_-_370px)]"
-                    />
-                </ConfigProvider>
+                <Table<PaymentRow>
+                    columns={columns}
+                    dataSource={rows.slice((page - 1) * pageSize, page * pageSize)}
+                    rowKey="key"
+                    tableLayout="fixed"
+                    scroll={{ x: 1400 }}
+                    loading={loading}
+                    locale={{
+                        emptyText: (
+                            <span className="block py-10 text-[13px] text-(--muted-foreground)">{hint ?? "暂无数据"}</span>
+                        ),
+                    }}
+                    pagination={false}
+                />
             </div>
 
-            <div className="mt-auto flex flex-wrap items-center justify-between gap-2 py-3 text-[12.5px] text-slate-500">
+            <div className="mt-auto flex flex-wrap items-center justify-between gap-2 py-3 text-[12.5px] text-(--muted-foreground)">
                 <span>
                     显示 {from} 到 {to}，共 {rows.length} 条记录
                 </span>
@@ -255,7 +249,6 @@ export function TaxPaymentPage() {
                         aria-label="首页"
                         disabled={page <= 1}
                         onClick={() => setPage(1)}
-                        className="!text-slate-500 enabled:hover:!border-[#2f6bff] enabled:hover:!text-[#2f6bff] disabled:!text-slate-300"
                         icon={<VerticalRightOutlined />}
                     />
                     <Button
@@ -263,7 +256,6 @@ export function TaxPaymentPage() {
                         aria-label="上一页"
                         disabled={page <= 1}
                         onClick={() => setPage(page - 1)}
-                        className="!text-slate-500 enabled:hover:!border-[#2f6bff] enabled:hover:!text-[#2f6bff] disabled:!text-slate-300"
                         icon={<LeftOutlined />}
                     />
                     <span className="pl-1">第</span>
@@ -283,7 +275,6 @@ export function TaxPaymentPage() {
                         aria-label="下一页"
                         disabled={page >= pageCount}
                         onClick={() => setPage(page + 1)}
-                        className="!text-slate-500 enabled:hover:!border-[#2f6bff] enabled:hover:!text-[#2f6bff] disabled:!text-slate-300"
                         icon={<RightOutlined />}
                     />
                     <Button
@@ -291,7 +282,6 @@ export function TaxPaymentPage() {
                         aria-label="末页"
                         disabled={page >= pageCount}
                         onClick={() => setPage(pageCount)}
-                        className="!text-slate-500 enabled:hover:!border-[#2f6bff] enabled:hover:!text-[#2f6bff] disabled:!text-slate-300"
                         icon={<VerticalLeftOutlined />}
                     />
                     <Button
@@ -305,7 +295,7 @@ export function TaxPaymentPage() {
                 </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 py-3 text-[13px] text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 py-3 text-[13px] text-(--muted-foreground)">
                 快捷入口：
                 <Button
                     type="link"
@@ -314,7 +304,7 @@ export function TaxPaymentPage() {
                     缴款信息查询
                 </Button>
             </div>
-            <p className="pb-5 text-[12.5px] leading-5 text-slate-400">
+            <p className="pb-5 text-[12.5px] leading-5 text-(--muted-foreground)">
                 缴款记录取自电子税务局「缴款信息查询」，按缴款日期区间过滤。
                 {needLogin ? "税局登录态已过期，登录后点击「更新缴款信息」重新取数。" : ""}
             </p>
@@ -329,6 +319,6 @@ export function TaxPaymentPage() {
                     void load(range);
                 }}
             />
-        </div>
+        </Card>
     );
 }

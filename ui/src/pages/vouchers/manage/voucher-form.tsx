@@ -173,7 +173,9 @@ export default function VoucherForm({
         return { totalDebit: debit, totalCredit: credit }
     }, [entries])
 
-    const balanced = totalDebit === totalCredit
+    // 按分比较，避免 0.1 + 0.2 这类浮点误差把平衡凭证判成不平。
+    const balanced = Math.round(totalDebit * 100) === Math.round(totalCredit * 100)
+    const diffCents = Math.abs(Math.round(totalDebit * 100) - Math.round(totalCredit * 100))
     const canSave = balanced && !saving
 
     function updateEntry(id: number, patch: Partial<EntryRow>) {
@@ -265,34 +267,36 @@ export default function VoucherForm({
     async function handleSave() {
         if (!canSave) return
 
-        // 仅提交有内容的分录行；逐行校验摘要、科目与借贷单边非零。
+        // 仅提交有内容的分录行；一次性汇总所有缺项，避免逐条改完再报下一条。
         const active = entries.filter(isActiveEntry)
         if (active.length === 0) {
             setError("请至少录入一条分录。")
             return
         }
-        for (const e of active) {
-            if (!e.summary.trim()) return setError("每条分录都需要填写摘要。")
-            if (!e.accountId) return setError("每条分录都需要选择会计科目。")
-            const debit = toAmount(e.debit)
-            const credit = toAmount(e.credit)
-            const hasDebit = debit !== 0
-            const hasCredit = credit !== 0
-            if (hasDebit === hasCredit) {
-                return setError("每条分录只能填写借方或贷方其一，且金额不能为零。")
-            }
-        }
-
-        // 辅助核算必录校验：行号按表格中的可见行序（与用户所见一致）。
-        for (let i = 0; i < entries.length; i++) {
-            const e = entries[i]
-            if (!isActiveEntry(e)) continue
+        const noSummary: number[] = []
+        const noAccount: number[] = []
+        const badAmount: number[] = []
+        const noAssist: string[] = []
+        entries.forEach((e, i) => {
+            if (!isActiveEntry(e)) return
+            const line = i + 1
+            if (!e.summary.trim()) noSummary.push(line)
+            if (!e.accountId) noAccount.push(line)
+            if ((toAmount(e.debit) !== 0) === (toAmount(e.credit) !== 0)) badAmount.push(line)
             const missing = assistTypesOf(e.accountId)
                 .filter((c) => c.isRequired !== false && !e.assists[c.type as number])
                 .map((c) => assistLabel(c.type))
-            if (missing.length > 0) {
-                return setError(`第 ${i + 1} 行 ${missing.join("、")} 未选择核算项目。`)
-            }
+            if (missing.length > 0) noAssist.push(`第 ${line} 行缺 ${missing.join("、")}`)
+        })
+        const problems = [
+            noSummary.length > 0 ? `第 ${noSummary.join("、")} 行未填摘要` : "",
+            noAccount.length > 0 ? `第 ${noAccount.join("、")} 行未选科目` : "",
+            badAmount.length > 0 ? `第 ${badAmount.join("、")} 行需且只能填借方或贷方之一` : "",
+            ...noAssist,
+        ].filter(Boolean)
+        if (problems.length > 0) {
+            setError(`${problems.join("；")}。`)
+            return
         }
 
         // 损益类科目方向检查
@@ -487,10 +491,10 @@ export default function VoucherForm({
                             <Table.Summary.Cell index={0} colSpan={2} className="px-2 py-2 font-medium">
                                 合计：{amountToChineseUppercase(totalDebit)}
                             </Table.Summary.Cell>
-                            <Table.Summary.Cell index={2} className="!p-0">
+                            <Table.Summary.Cell index={2} className="pk-cell-flush">
                                 <AmountCells value={totalDebit} />
                             </Table.Summary.Cell>
-                            <Table.Summary.Cell index={3} className="!p-0">
+                            <Table.Summary.Cell index={3} className="pk-cell-flush">
                                 <AmountCells value={totalCredit} />
                             </Table.Summary.Cell>
                             <Table.Summary.Cell index={4} />
@@ -519,7 +523,7 @@ export default function VoucherForm({
                         ? "借贷平衡"
                         : totalDebit === 0 && totalCredit === 0
                             ? "请输入借贷金额"
-                            : `借贷不平衡，差额 ${fmtMoney(Math.abs(totalDebit - totalCredit))}`}
+                            : `借贷不平衡，差额 ${fmtMoney(diffCents / 100)}`}
                 </span>
                 <div className="flex-1" />
                 <Button onClick={onCancel} disabled={saving}>

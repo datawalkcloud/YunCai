@@ -19,6 +19,13 @@ Name | Type
 `balance` | number
 `voucherId` | string
 `voucherNo` | string
+`voucherDate` | Date
+`voucherWord` | string
+`voucherNumber` | number
+`settlementMethod` | string
+`billNo` | string
+`remark` | string
+`source` | string
 
 ## Example
 
@@ -40,6 +47,13 @@ const example = {
   "balance": null,
   "voucherId": null,
   "voucherNo": null,
+  "voucherDate": null,
+  "voucherWord": null,
+  "voucherNumber": null,
+  "settlementMethod": null,
+  "billNo": null,
+  "remark": null,
+  "source": null,
 } satisfies JournalEntryDto
 
 console.log(example)

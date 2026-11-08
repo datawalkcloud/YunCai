@@ -5,7 +5,7 @@
  * 费用单据（已接后端）、发票资金一览表（已接后端）、发票风险分析（建设中）。
  * 商品明细页签把发票列表接口返回的行明细直接摊平展示（真实数据）；
  * 暂不入账页签走发票列表接口 status=3（暂不入账），「入账」经状态变更端点恢复发票进入账流程。
- * 视觉遵循全站「云财蓝」设计语言：主色 #2f6bff、直角卡片、白卡 + slate 灰阶文字。
+ * 视觉遵循全站「云财蓝」设计语言：主色 #273cf3、直角卡片、白卡 + slate 灰阶文字。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -47,6 +47,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { makePeriod, shiftPeriod, useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
+import { fmtAmount } from "@/lib/format";
 
 /** 后端日期字段运行时是 Date，统一按 yyyy-MM-dd 展示。 */
 const fmtDate = (v: Date | string | null | undefined): string => (v ? new Date(v).toISOString().substring(0, 10) : "");
@@ -138,18 +139,18 @@ export function LemonInvoiceFetch() {
             <div className="flex flex-1 flex-col items-center justify-center px-4 py-16">
                 <div className="flex w-[860px] max-w-full items-center gap-10">
                     {/* 左侧显示器插画（简化为示意框） */}
-                    <div className="flex h-[220px] w-[300px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-[#fafbfd] text-[13px] text-slate-400">
+                    <div className="flex h-[220px] w-[300px] shrink-0 items-center justify-center rounded-xl border border-(--border) bg-(--table-zebra-bg) text-[13px] text-(--muted-foreground)">
                         取票界面示意
                     </div>
                     <div className="flex flex-1 flex-col gap-6">
                         {FETCH_POINTS.map((p, i) => (
                             <div key={p.title} className="flex items-start gap-3">
-                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2f6bff] text-[13px] text-white">
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-(--brand-fill) text-[13px] text-white">
                                     {i + 1}
                                 </span>
                                 <div>
-                                    <div className="text-[15px] font-bold text-slate-800">{p.title}</div>
-                                    <div className="mt-1 text-[13px] text-slate-500">{p.desc}</div>
+                                    <div className="text-[15px] font-bold text-(--foreground)">{p.title}</div>
+                                    <div className="mt-1 text-[13px] text-(--muted-foreground)">{p.desc}</div>
                                 </div>
                             </div>
                         ))}
@@ -164,23 +165,6 @@ export function LemonInvoiceFetch() {
 }
 
 /* ---------- 销项/进项发票列表 ---------- */
-
-function HotBadge() {
-    return (
-        <span className="absolute -top-2 -right-3 rounded-full bg-[#ef4444] px-1 text-[10px] leading-[14px] text-white">
-            Hot
-        </span>
-    );
-}
-
-function HotBtn({ children }: { children: string }) {
-    return (
-        <span className="relative inline-flex">
-            <WipBtn title={`${children}建设中，后端未提供端点`}>{children}</WipBtn>
-            <HotBadge />
-        </span>
-    );
-}
 
 /** 发票状态文案 → 状态胶囊色调（纯视觉口径：完成类绿、暂不入账类橙、其余蓝，空值灰）。 */
 function invoiceStatusTone(text?: string | null): PillTone {
@@ -528,8 +512,8 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                 right={
                     <>
                         <CheckBox label="显示所有信息" />
-                        {kind === "sales" && <HotBtn>开具发票</HotBtn>}
-                        <HotBtn>一键取票</HotBtn>
+                        {kind === "sales" && <WipBtn title="开具发票建设中，后端未提供端点">开具发票</WipBtn>}
+                        <WipBtn title="一键取票建设中，后端未提供端点">一键取票</WipBtn>
                         <Btn dropdown onClick={() => setShowAdd(true)}>新增发票</Btn>
                         <Btn dropdown disabled={busy} title="导出当前期间的发票为 .xlsx" onClick={() => void exportInvoices()}>导出</Btn>
                         <Btn dropdown title="从 .xlsx 导入发票" onClick={() => setShowImport(true)}>导入</Btn>
@@ -557,64 +541,56 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
             />
             <div className="flex-1 px-4">
                 {error2(data.error)}
-                {data.loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
+                {data.loading && <div className="px-3 py-2 text-[13px] text-(--muted-foreground)">加载中…</div>}
+                {data.invoices.length > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg bg-(--table-zebra-bg) px-4 py-2.5 text-[13px]">
+                        <span className="text-(--muted-foreground)">
+                            发票 <span className="ml-1 font-medium tabular-nums text-(--foreground)">{data.invoices.length}</span> 张
+                        </span>
+                        <span className="text-(--muted-foreground)">
+                            金额合计 <span className="ml-1 font-medium tabular-nums text-(--foreground)">¥{fmtAmount(data.summary?.totalAmount, true)}</span>
+                        </span>
+                        <span className="text-(--muted-foreground)">
+                            税额合计 <span className="ml-1 font-medium tabular-nums text-(--foreground)">¥{fmtAmount(data.summary?.totalTax, true)}</span>
+                        </span>
+                        <span className="text-(--muted-foreground)">
+                            价税合计 <span className="ml-1 text-[14px] font-semibold tabular-nums text-(--foreground)">¥{fmtAmount(data.summary?.totalWithTax, true)}</span>
+                        </span>
+                        {selected.size > 0 && (
+                            <span className="ml-auto text-[12.5px] text-(--brand)">已选 {selected.size} 张</span>
+                        )}
+                    </div>
+                )}
                 <Table
                     cols={cols}
-                    rows={[
-                        // 空数据时不渲染合计行，空态交给 Table 的 empty
-                        ...(data.invoices.length
-                            ? [
-                                  {
-                                      ck: "",
-                                      type: "",
-                                      inputDate: "",
-                                      issueDate: "",
-                                      no: "",
-                                      partner: <span className="font-bold text-slate-800">合计</span>,
-                                      authDate: "",
-                                      period: "",
-                                      biz: "",
-                                      goods: "",
-                                      amount: (data.summary?.totalAmount ?? 0).toFixed(2),
-                                      rate: "",
-                                      tax: (data.summary?.totalTax ?? 0).toFixed(2),
-                                      total: (data.summary?.totalWithTax ?? 0).toFixed(2),
-                                      voucher: "",
-                                      source: "",
-                                      status: "",
-                                      __style: { background: "#fafbfd", fontWeight: 500 },
-                                  } as Row,
-                              ]
-                            : []),
-                        ...data.invoices.map(
-                            (inv) =>
-                                ({
-                                    ck: <CheckBox label="" checked={selected.has(inv.id ?? "")} onChange={() => toggleSel(inv.id ?? "")} />,
-                                    type: inv.invoiceType,
-                                    inputDate: fmtDate(inv.inputDate),
-                                    issueDate: fmtDate(inv.issueDate),
-                                    no: inv.invoiceNo,
-                                    partner: inv.partnerName,
-                                    authDate: fmtDate(inv.authDate),
-                                    period: fmtTaxPeriod(inv.taxPeriod),
-                                    biz: inv.bizType,
-                                    goods: inv.lines?.[0]?.goodsName ?? "",
-                                    amount: (inv.totalAmount ?? 0).toFixed(2),
-                                    rate: fmtRate(inv.lines?.[0]?.taxRate),
-                                    tax: (inv.totalTax ?? 0).toFixed(2),
-                                    // 已认证进项按合计税额全额抵扣；未认证/销项不显示
-                                    deductible:
-                                        kind === "purchase" && inv.statusText === "已认证"
-                                            ? (inv.totalTax ?? 0).toFixed(2)
-                                            : "",
-                                    total: (inv.totalWithTax ?? 0).toFixed(2),
-                                    voucher: inv.voucherText,
-                                    source: inv.source,
-                                    status: <StatusPill tone={invoiceStatusTone(inv.statusText)}>{inv.statusText}</StatusPill>,
-                                    __style: selected.has(inv.id ?? "") ? { background: "#eef4ff" } : undefined,
-                                }) as Row
-                        ),
-                    ]}
+                    rows={data.invoices.map(
+                        (inv) =>
+                            ({
+                                ck: <CheckBox label="" checked={selected.has(inv.id ?? "")} onChange={() => toggleSel(inv.id ?? "")} />,
+                                type: inv.invoiceType,
+                                inputDate: fmtDate(inv.inputDate),
+                                issueDate: fmtDate(inv.issueDate),
+                                no: inv.invoiceNo,
+                                partner: inv.partnerName,
+                                authDate: fmtDate(inv.authDate),
+                                period: fmtTaxPeriod(inv.taxPeriod),
+                                biz: inv.bizType,
+                                goods: inv.lines?.[0]?.goodsName ?? "",
+                                amount: fmtAmount(inv.totalAmount),
+                                rate: fmtRate(inv.lines?.[0]?.taxRate),
+                                tax: fmtAmount(inv.totalTax),
+                                // 已认证进项按合计税额全额抵扣；未认证/销项不显示
+                                deductible:
+                                    kind === "purchase" && inv.statusText === "已认证"
+                                        ? fmtAmount(inv.totalTax, true)
+                                        : "",
+                                total: fmtAmount(inv.totalWithTax),
+                                voucher: inv.voucherText,
+                                source: inv.source,
+                                status: <StatusPill tone={invoiceStatusTone(inv.statusText)}>{inv.statusText}</StatusPill>,
+                                __style: selected.has(inv.id ?? "") ? { background: "var(--brand-soft)" } : undefined,
+                            }) as Row,
+                    )}
                     empty={data.invoices.length === 0 && !data.loading ? <EmptyTip /> : undefined}
                 />
             </div>
@@ -634,7 +610,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+                    <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
                         {([
                             ["发票种类：", <Select key="t" className={FORM_CONTROL_W} value={addForm.invoiceType} onChange={(v) => setAddForm({ ...addForm, invoiceType: v })} options={["增值税专用发票", "增值税普通发票", "电子发票"]} />],
                             ["开票日期：", <DateInput key="d" className={FORM_CONTROL_W} value={addForm.issueDate} onChange={(v) => setAddForm({ ...addForm, issueDate: v })} />],
@@ -666,7 +642,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+                    <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
                         <HintBox>
                             支持 .xlsx；同一发票号码的多行商品会合并为一张发票的多条明细。已存在的发票号会被跳过。
                         </HintBox>
@@ -680,7 +656,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
                             />
                             <Btn onClick={() => importInputRef.current?.click()}>选择文件</Btn>
-                            <span className="text-[12px] text-slate-500">{importFile ? importFile.name : "未选择文件"}</span>
+                            <span className="text-[12px] text-(--muted-foreground)">{importFile ? importFile.name : "未选择文件"}</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <span className={`${FORM_LABEL_W} text-right`} />
@@ -704,7 +680,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+                    <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
                         <HintBox>
                             已勾选 {selected.size} 张发票。销项生成「借 应收账款 价税合计 / 贷 收入 金额、贷 销项税额 税额」，进项生成「借 商品 金额、借 进项税额 税额 / 贷 应付账款 价税合计」。
                         </HintBox>
@@ -762,7 +738,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                                 {control}
                             </label>
                         ))}
-                        <div className="pl-[122px] text-[12px] text-slate-400">凭证日期留空时取发票开票日期。</div>
+                        <div className="pl-[122px] text-[12px] text-(--muted-foreground)">凭证日期留空时取发票开票日期。</div>
                     </div>
                 </Dialog>
             )}
@@ -777,15 +753,15 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                 cancelText="关闭"
             >
                 {importResult && (
-                    <div className="flex flex-col gap-2 py-1 text-[13px] text-slate-700">
+                    <div className="flex flex-col gap-2 py-1 text-[13px] text-(--foreground)">
                         <div>
                             解析 {importResult.totalRows ?? 0} 行，成功导入 <b>{importResult.imported ?? 0}</b> 张发票，
                             跳过 <b>{importResult.skipped ?? 0}</b> 行。
                         </div>
                         {(importResult.warnings?.length ?? 0) > 0 && (
                             <div className="flex flex-col gap-1">
-                                <span className="text-slate-500">告警：</span>
-                                <ul className="ml-4 list-disc text-[12.5px] text-slate-600">
+                                <span className="text-(--muted-foreground)">告警：</span>
+                                <ul className="ml-4 list-disc text-[12.5px] text-(--foreground)">
                                     {(importResult.warnings ?? []).map((w, i) => (
                                         <li key={i}>{w}</li>
                                     ))}
@@ -802,7 +778,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
 
 /** 错误可见化小件：有错误时渲染红色提示行，无错误渲染 null。 */
 function error2(err: string | null) {
-    return err ? <div className="px-3 py-2 text-[13px] text-[#ef4444]">{err}</div> : null;
+    return err ? <div className="px-3 py-2 text-[13px] text-(--danger)">{err}</div> : null;
 }
 
 /** 销项发票。 */
@@ -1252,7 +1228,7 @@ export function LemonExpenseBill() {
             />
             <div className="flex-1 px-4">
                 {error2(error)}
-                {loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
+                {loading && <div className="px-3 py-2 text-[13px] text-(--muted-foreground)">加载中…</div>}
                 <Table
                     cols={cols}
                     rows={[
@@ -1264,7 +1240,7 @@ export function LemonExpenseBill() {
                                       date: "",
                                       no: "",
                                       type: "",
-                                      reason: <span className="font-bold text-slate-800">合计（{visible.length} 张）</span>,
+                                      reason: <span className="font-bold text-(--foreground)">合计（{visible.length} 张）</span>,
                                       settle: "",
                                       payee: "",
                                       deductTax: totalTax.toFixed(2),
@@ -1272,7 +1248,7 @@ export function LemonExpenseBill() {
                                       voucher: "",
                                       status: "",
                                       ops: "",
-                                      __style: { background: "#fafbfd", fontWeight: 500 },
+                                      __style: { background: "var(--table-zebra-bg)", fontWeight: 500 },
                                   } as Row,
                               ]
                             : []),
@@ -1300,7 +1276,7 @@ export function LemonExpenseBill() {
                                             </LinkAction>
                                         </span>
                                     ),
-                                    __style: selected.has(b.id ?? "") ? { background: "#eef4ff" } : undefined,
+                                    __style: selected.has(b.id ?? "") ? { background: "var(--brand-soft)" } : undefined,
                                 }) as Row
                         ),
                     ]}
@@ -1333,7 +1309,7 @@ export function LemonExpenseBill() {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+                    <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
                         <HintBox>
                             单据编号留空时自动生成（FY-0001）。单据金额为含税总额，可抵扣税额需小于单据金额。
                         </HintBox>
@@ -1352,7 +1328,7 @@ export function LemonExpenseBill() {
                                 {control}
                             </label>
                         ))}
-                        <div className="pl-[122px] text-[12px] text-slate-400">
+                        <div className="pl-[122px] text-[12px] text-(--muted-foreground)">
                             不含税金额 {(Number(form.amount || 0) - Number(form.deductibleTax || 0)).toFixed(2)} 元
                         </div>
                     </div>
@@ -1373,7 +1349,7 @@ export function LemonExpenseBill() {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+                    <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
                         <HintBox>
                             已勾选 {voucherIds.length} 张单据，将逐张生成「借 费用科目（不含税）+ 借 进项税额（可抵扣税额）/ 贷 对方科目（含税）」。
                             税额科目留空时自动取 2221 下的「进项税额」。
@@ -1439,7 +1415,7 @@ export function LemonExpenseBill() {
                         </div>
                     }
                 >
-                    <div className="px-1 py-2 text-[13px] text-slate-700">
+                    <div className="px-1 py-2 text-[13px] text-(--foreground)">
                         将删除{confirmDelete.label || "所选费用单据"}，删除后不可恢复。已生成凭证的单据会被跳过。
                     </div>
                 </Dialog>
@@ -1458,14 +1434,14 @@ export function LemonExpenseBill() {
                         </div>
                     }
                 >
-                    <div className="flex flex-col gap-2 px-1 py-1 text-[13px] text-slate-700">
+                    <div className="flex flex-col gap-2 px-1 py-1 text-[13px] text-(--foreground)">
                         <div>
                             新增 <b>{importResult.imported ?? 0}</b> 张，更新 <b>{importResult.updated ?? 0}</b> 张。
                         </div>
                         {(importResult.failures?.length ?? 0) > 0 && (
                             <div className="flex flex-col gap-1">
-                                <span className="text-slate-500">失败明细：</span>
-                                <ul className="ml-4 max-h-[220px] list-disc overflow-auto text-[12.5px] text-slate-600">
+                                <span className="text-(--muted-foreground)">失败明细：</span>
+                                <ul className="ml-4 max-h-[220px] list-disc overflow-auto text-[12.5px] text-(--foreground)">
                                     {(importResult.failures ?? []).map((f, i) => (
                                         <li key={i}>
                                             第 {f.row} 行：{f.reason}
@@ -1528,7 +1504,7 @@ export function LemonInvoiceSummary() {
         { key: "ops", title: "操作", width: "110px" },
     ];
     const tableRows: Row[] = rows.map((r) => ({
-        partner: <span className="text-[#2f6bff]">{r.partnerName}</span>,
+        partner: <span className="text-(--brand)">{r.partnerName}</span>,
         sales: (r.salesWithTax ?? 0).toFixed(2),
         received: (r.received ?? 0).toFixed(2),
         notInvoiced: (r.notInvoiced ?? 0).toFixed(2),
@@ -1555,7 +1531,7 @@ export function LemonInvoiceSummary() {
             />
             <div className="flex-1 px-4">
                 {error2(error)}
-                {loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
+                {loading && <div className="px-3 py-2 text-[13px] text-(--muted-foreground)">加载中…</div>}
                 <Table cols={cols} rows={tableRows} empty={rows.length === 0 && !loading && !error ? <EmptyTip /> : undefined} />
             </div>
             {/* 真实数据不足一页时隐藏分页控件，不显示假页码 */}
@@ -1568,15 +1544,15 @@ export function LemonInvoiceSummary() {
 
 const RISK_POINTS = [
     {
-        color: "#10b981",
+        color: "var(--tone-green)",
         text: "发票风险分析数据来源于企业通过一键取票从税局获取的发票数据，通过获取的发票数据，依据相关政策规定为您公司检测可能存在的发票风险及销售采购资金分析等",
     },
     {
-        color: "#f59e0b",
+        color: "var(--warn-icon)",
         text: "进销项对比、虚开发票、采购虚假发票、销售采购资金分析、销售收入分析等多维度分析发票潜在风险",
     },
     {
-        color: "#ef4444",
+        color: "var(--tone-red)",
         text: "通过发票风险分析，可了解企业当前开票是否合规，客户及供应商情况，商品明细信息，规避企业潜在的发票风险",
     },
 ];
@@ -1586,15 +1562,15 @@ export function LemonInvoiceRisk() {
         <Page>
             <WipNotice text="发票风险分析依赖一键取票取得的税局发票数据，后端尚未提供分析端点，本页为功能介绍（建设中）。" />
             <div className="flex flex-1 items-center justify-center px-4 py-10">
-                <div className="flex w-[1100px] max-w-full items-center gap-10 rounded-2xl border border-slate-100 bg-white px-10 py-12 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                    <div className={`${FORM_CONTROL_W} flex h-[240px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-[#fafbfd] text-[13px] text-slate-400`}>
+                <div className="flex w-[1100px] max-w-full items-center gap-10 rounded-2xl border border-(--border) bg-(--card) px-10 py-12 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                    <div className={`${FORM_CONTROL_W} flex h-[240px] shrink-0 items-center justify-center rounded-xl border border-(--border) bg-(--table-zebra-bg) text-[13px] text-(--muted-foreground)`}>
                         风险分析插画
                     </div>
                     <div className="flex flex-1 flex-col items-center">
-                        <div className="text-[22px] font-bold text-slate-800">发票风险分析</div>
+                        <div className="text-[22px] font-bold text-(--foreground)">发票风险分析</div>
                         <div className="mt-6 flex flex-col gap-4">
                             {RISK_POINTS.map((p, i) => (
-                                <div key={i} className="flex items-start gap-2 text-[13px] text-slate-500">
+                                <div key={i} className="flex items-start gap-2 text-[13px] text-(--muted-foreground)">
                                     <span
                                         className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
                                         style={{ background: p.color }}
@@ -1677,7 +1653,7 @@ function InvoiceGoodsTable({
                   rate: "",
                   tax: sum("tax").toFixed(2),
                   total: sum("total").toFixed(2),
-                  __style: { background: "#fafbfd", fontWeight: 700, color: "#1e293b" },
+                  __style: { background: "var(--table-zebra-bg)", fontWeight: 700, color: "var(--foreground)" },
               },
               ...flat,
           ]
@@ -1702,7 +1678,7 @@ function InvoiceGoodsTable({
             />
             <div className="flex-1 px-4">
                 {error2(error)}
-                {loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
+                {loading && <div className="px-3 py-2 text-[13px] text-(--muted-foreground)">加载中…</div>}
                 <Table cols={cols} rows={rows} empty={<EmptyTip />} />
             </div>
         </Page>
@@ -1825,48 +1801,25 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
         { key: "source", title: "发票来源", width: "100px" },
         { key: "ops", title: "操作", width: "80px" },
     ];
-    const rows: Row[] = [
-        ...(data.invoices.length
-            ? [
-                  {
-                      ck: "",
-                      type: "",
-                      inputDate: "",
-                      issueDate: "",
-                      no: "",
-                      status: "",
-                      partner: <span className="font-bold">合计</span>,
-                      goods: "",
-                      amount: (data.summary?.totalAmount ?? 0).toFixed(2),
-                      rate: "",
-                      tax: (data.summary?.totalTax ?? 0).toFixed(2),
-                      total: (data.summary?.totalWithTax ?? 0).toFixed(2),
-                      source: "",
-                      ops: "",
-                      __style: { background: "#fafbfd" },
-                  } as Row,
-              ]
-            : []),
-        ...data.invoices.map(
-            (inv) =>
-                ({
-                    ck: <CheckBox label="" checked={selected.has(inv.id ?? "")} onChange={() => toggleSel(inv.id ?? "")} />,
-                    type: inv.invoiceType,
-                    inputDate: fmtDate(inv.inputDate),
-                    issueDate: fmtDate(inv.issueDate),
-                    no: inv.invoiceNo,
-                    status: <StatusPill tone={invoiceStatusTone(inv.statusText)}>{inv.statusText}</StatusPill>,
-                    partner: inv.partnerName,
-                    goods: inv.lines?.[0]?.goodsName ?? "",
-                    amount: (inv.totalAmount ?? 0).toFixed(2),
-                    rate: fmtRate(inv.lines?.[0]?.taxRate),
-                    tax: (inv.totalTax ?? 0).toFixed(2),
-                    total: (inv.totalWithTax ?? 0).toFixed(2),
-                    source: inv.source,
-                    ops: <LinkAction onClick={() => void postNow([inv.id ?? ""])}>入账</LinkAction>,
-                }) as Row,
-        ),
-    ];
+    const rows: Row[] = data.invoices.map(
+        (inv) =>
+            ({
+                ck: <CheckBox label="" checked={selected.has(inv.id ?? "")} onChange={() => toggleSel(inv.id ?? "")} />,
+                type: inv.invoiceType,
+                inputDate: fmtDate(inv.inputDate),
+                issueDate: fmtDate(inv.issueDate),
+                no: inv.invoiceNo,
+                status: <StatusPill tone={invoiceStatusTone(inv.statusText)}>{inv.statusText}</StatusPill>,
+                partner: inv.partnerName,
+                goods: inv.lines?.[0]?.goodsName ?? "",
+                amount: fmtAmount(inv.totalAmount),
+                rate: fmtRate(inv.lines?.[0]?.taxRate),
+                tax: fmtAmount(inv.totalTax),
+                total: fmtAmount(inv.totalWithTax),
+                source: inv.source,
+                ops: <LinkAction onClick={() => void postNow([inv.id ?? ""])}>入账</LinkAction>,
+            }) as Row,
+    );
     return (
         <Page>
             <SubTabs tabs={["进项发票", "商品明细", "暂不入账发票"]} active={2} onChange={onTab} />
@@ -1899,7 +1852,23 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
             />
             <div className="flex-1 px-4">
                 {error2(data.error)}
-                {data.loading && <div className="px-3 py-2 text-[13px] text-slate-500">加载中…</div>}
+                {data.loading && <div className="px-3 py-2 text-[13px] text-(--muted-foreground)">加载中…</div>}
+                {data.invoices.length > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg bg-(--table-zebra-bg) px-4 py-2.5 text-[13px]">
+                        <span className="text-(--muted-foreground)">
+                            暂不入账 <span className="ml-1 font-medium tabular-nums text-(--foreground)">{data.invoices.length}</span> 张
+                        </span>
+                        <span className="text-(--muted-foreground)">
+                            金额合计 <span className="ml-1 font-medium tabular-nums text-(--foreground)">¥{fmtAmount(data.summary?.totalAmount, true)}</span>
+                        </span>
+                        <span className="text-(--muted-foreground)">
+                            价税合计 <span className="ml-1 text-[14px] font-semibold tabular-nums text-(--foreground)">¥{fmtAmount(data.summary?.totalWithTax, true)}</span>
+                        </span>
+                        {selected.size > 0 && (
+                            <span className="ml-auto text-[12.5px] text-(--brand)">已选 {selected.size} 张</span>
+                        )}
+                    </div>
+                )}
                 <Table cols={cols} rows={rows} empty={<EmptyTip />} />
             </div>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
@@ -1913,19 +1882,19 @@ export function LemonSpb() {
     return (
         <Page>
             <div className="flex flex-1 flex-col items-center px-4 pt-10">
-                <div className="text-[16px] text-slate-500">帮您智能收取票据，一键提交财务，解放双手之神器</div>
+                <div className="text-[16px] text-(--muted-foreground)">帮您智能收取票据，一键提交财务，解放双手之神器</div>
                 <div className="mt-8">
                     <Button type="primary" size="large" onClick={() => setAuthOpen(true)}>
                         立即授权
                     </Button>
                 </div>
-                <div className="mt-10 flex w-[900px] max-w-full items-center gap-8 rounded-2xl bg-[#fafbfd] p-8">
+                <div className="mt-10 flex w-[900px] max-w-full items-center gap-8 rounded-2xl bg-(--table-zebra-bg) p-8">
                     <div className="flex-1">
-                        <div className="text-[15px] font-bold text-slate-800">收票宝亮点：</div>
-                        <div className="mt-4 flex flex-col gap-3 text-[13px] text-slate-700">
+                        <div className="text-[15px] font-bold text-(--foreground)">收票宝亮点：</div>
+                        <div className="mt-4 flex flex-col gap-3 text-[13px] text-(--foreground)">
                             {["多方案采集，自动核验", "一键交票，告别粘贴", "关联凭证，高效利用", "智能归档，无忧存储"].map((t) => (
                                 <span key={t} className="flex items-center gap-2">
-                                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-md bg-[#10b981] text-[10px] text-white">✓</span>
+                                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-md bg-(--success) text-[10px] text-white">✓</span>
                                     {t}
                                 </span>
                             ))}
@@ -1945,7 +1914,7 @@ export function LemonSpb() {
                 onOk={() => setAuthOpen(false)}
                 onCancel={() => setAuthOpen(false)}
             >
-                <div className="text-[13px] leading-6 text-slate-600">
+                <div className="text-[13px] leading-6 text-(--foreground)">
                     收票宝通过微信小程序收票，需要先在小程序内完成企业绑定后才能授权到本账套。
                     <br />
                     当前环境未接入微信小程序服务，暂时无法生成授权小程序码。
@@ -1958,11 +1927,11 @@ export function LemonSpb() {
 /** 手机样机：展示收票宝小程序的样子（纯静态示意）。 */
 function PhoneMock({ title, rows }: { title: string; rows: string[] }) {
     return (
-        <div className="h-[200px] w-[104px] overflow-hidden rounded-[14px] border-4 border-slate-800 bg-white">
-            <div className="rounded bg-[#10b981] px-2 py-1 text-center text-[10px] text-white">{title}</div>
+        <div className="h-[200px] w-[104px] overflow-hidden rounded-[14px] border-4 border-(--border) bg-(--card)">
+            <div className="rounded bg-(--success) px-2 py-1 text-center text-[10px] text-white">{title}</div>
             <div className="flex flex-col gap-1.5 p-1.5">
                 {rows.map((r) => (
-                    <div key={r} className="rounded bg-slate-100 p-1 text-[8px] leading-3 text-slate-500">
+                    <div key={r} className="rounded bg-(--muted) p-1 text-[8px] leading-3 text-(--muted-foreground)">
                         {r}
                     </div>
                 ))}
@@ -1981,63 +1950,63 @@ export function LemonBankLink() {
             <WipNotice text="银企互联需对接银行直连服务，后端尚未提供端点，本页为签约流程示意（建设中），表单内容不会提交。" />
             <SubTabs tabs={BANK_TABS} active={bank} onChange={setBank} />
             <div
-                className="mx-auto my-6 w-[1220px] rounded-2xl border border-slate-200 bg-white p-8"
+                className="mx-auto my-6 w-[1220px] rounded-2xl border border-(--border) bg-(--card) p-8"
                 style={{ maxWidth: "calc(100% - 32px)" }}
             >
                 <div className="flex justify-end gap-1 text-[13px]">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2f6bff] text-[11px] text-white">?</span>
-                    <span className="cursor-pointer text-[#2f6bff]">点此查看操作手册</span>
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-(--brand-fill) text-[11px] text-white">?</span>
+                    <span className="cursor-pointer text-(--brand)">点此查看操作手册</span>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-10">
                     <div className="flex flex-1 flex-col gap-5">
                         <div className="flex items-center">
-                            <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 公司名称：</span>
+                            <span className="w-[170px] text-right text-[13px] text-(--foreground)"><span className="text-(--danger)">*</span> 公司名称：</span>
                             <FakeInput className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
-                            <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 统一社会信用代码：</span>
+                            <span className="w-[170px] text-right text-[13px] text-(--foreground)"><span className="text-(--danger)">*</span> 统一社会信用代码：</span>
                             <FakeInput className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
-                            <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 银行账户：</span>
+                            <span className="w-[170px] text-right text-[13px] text-(--foreground)"><span className="text-(--danger)">*</span> 银行账户：</span>
                             <FakeSelect text="" className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
-                            <span className="w-[170px] text-right text-[13px] text-slate-700"><span className="text-[#ef4444]">*</span> 银行账号：</span>
+                            <span className="w-[170px] text-right text-[13px] text-(--foreground)"><span className="text-(--danger)">*</span> 银行账号：</span>
                             <FakeInput className={FORM_CONTROL_W} />
                         </div>
                         <div className="flex items-center">
-                            <span className="w-[170px] text-right text-[13px] text-slate-700">企业客户号：</span>
-                            <span className={`${FORM_CONTROL_W} inline-flex h-8 items-center rounded-lg border border-slate-200 px-2.5 text-[13px] text-slate-400`}>
+                            <span className="w-[170px] text-right text-[13px] text-(--foreground)">企业客户号：</span>
+                            <span className={`${FORM_CONTROL_W} inline-flex h-8 items-center rounded-lg border border-(--border) px-2.5 text-[13px] text-(--muted-foreground)`}>
                                 若集团账号签约，请输入企业客户号
                                 <QuestionCircleOutlined className="ml-auto text-[14px]" style={ICON_STYLE.muted} />
                             </span>
                         </div>
                     </div>
-                    <div className="w-[370px] max-w-full shrink-0 self-start rounded-xl bg-[#fafbfd] p-5 text-[13px] leading-6">
-                        <div className="font-medium text-[#ef4444]">提示：</div>
-                        <div className="text-slate-600">1、请确认公司名称和统一社会信用代码</div>
-                        <div className="text-slate-600">2、选择对应的银行账户，并确认银行账号和名称正确</div>
-                        <div className="text-slate-600">3、在电脑上插入“{BANK_TABS[bank]}飞盾”</div>
-                        <div className="text-slate-600">4、点击立即授权</div>
+                    <div className="w-[370px] max-w-full shrink-0 self-start rounded-xl bg-(--table-zebra-bg) p-5 text-[13px] leading-6">
+                        <div className="font-medium text-(--danger)">提示：</div>
+                        <div className="text-(--foreground)">1、请确认公司名称和统一社会信用代码</div>
+                        <div className="text-(--foreground)">2、选择对应的银行账户，并确认银行账号和名称正确</div>
+                        <div className="text-(--foreground)">3、在电脑上插入“{BANK_TABS[bank]}飞盾”</div>
+                        <div className="text-(--foreground)">4、点击立即授权</div>
                     </div>
                 </div>
                 <div className="mt-8 flex justify-center">
                     <WipBtn title="银企互联建设中，后端未提供授权端点">立即授权</WipBtn>
                 </div>
-                <div className="mt-5 text-center text-[13px] text-slate-500">
-                    如有疑问，请 <span className="cursor-pointer text-[#2f6bff]">咨询客服</span> ，咨询时间：周一至周日 8:30-12:00,13:30-20:30
+                <div className="mt-5 text-center text-[13px] text-(--muted-foreground)">
+                    如有疑问，请 <span className="cursor-pointer text-(--brand)">咨询客服</span> ，咨询时间：周一至周日 8:30-12:00,13:30-20:30
                 </div>
             </div>
             <div
-                className="mx-auto mb-8 mt-8 flex h-[85px] w-[990px] items-center justify-between rounded-2xl bg-[#eef4ff] px-10"
+                className="mx-auto mb-8 mt-8 flex h-[85px] w-[990px] items-center justify-between rounded-2xl bg-(--brand-soft) px-10"
                 style={{ maxWidth: "calc(100% - 32px)" }}
             >
                 <span className="text-[20px] font-bold">
-                    <span className="text-slate-800">云财与各大银行 </span>
-                    <span className="text-[#2f6bff]">携手研发</span>
+                    <span className="text-(--foreground)">云财与各大银行 </span>
+                    <span className="text-(--brand)">携手研发</span>
                 </span>
-                <span className="text-[13px] text-slate-500">实时同步对账单，自动生成凭证，银行级加密，安全可靠</span>
+                <span className="text-[13px] text-(--muted-foreground)">实时同步对账单，自动生成凭证，银行级加密，安全可靠</span>
                 <span className="text-[26px]">🏦</span>
             </div>
         </Page>

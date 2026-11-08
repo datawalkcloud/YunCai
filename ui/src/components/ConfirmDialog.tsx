@@ -38,7 +38,7 @@ export function ConfirmDialog({
             width={400}
             title={
                 <span className="flex items-center gap-2">
-                    <ExclamationCircleFilled style={{ color: "#ef4444" }} />
+                    <ExclamationCircleFilled style={{ color: "var(--tone-red)" }} />
                     {title}
                 </span>
             }

@@ -115,6 +115,7 @@ builder.Services.AddScoped<KuaiJi.Modules.Invoices.Domain.IInvoiceRepository, Ku
 builder.Services.AddScoped<KuaiJi.Modules.Invoices.Domain.IInvoiceTaxImporter, KuaiJi.Modules.Invoices.Infrastructure.InvoiceTaxImporter>();
 builder.Services.AddScoped<KuaiJi.Modules.Salary.Domain.ISalaryRepository, KuaiJi.Modules.Salary.Infrastructure.SalaryRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.Archives.Domain.IArchiveRepository, KuaiJi.Modules.Archives.Infrastructure.ArchiveRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.Archives.Domain.IArchiveCategoryRepository, KuaiJi.Modules.Archives.Infrastructure.ArchiveCategoryRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.Auditing.Domain.IOperationLogRepository, KuaiJi.Modules.Auditing.Infrastructure.OperationLogRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Domain.IReinitRepository, KuaiJi.Modules.AccountSets.Infrastructure.ReinitRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.CurrencyService>();
@@ -126,9 +127,12 @@ builder.Services.AddScoped<KuaiJi.Modules.Expenses.Application.ExpenseService>()
 builder.Services.AddScoped<KuaiJi.Modules.Invoices.Application.InvoiceService>();
 builder.Services.AddScoped<KuaiJi.Modules.Salary.Application.SalaryService>();
 builder.Services.AddScoped<KuaiJi.Modules.Archives.Application.ArchiveService>();
+builder.Services.AddScoped<KuaiJi.Modules.Archives.Application.ArchiveCategoryService>();
 builder.Services.AddScoped<KuaiJi.Modules.Auditing.Application.OperationLogService>();
 builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.ReinitService>();
 builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.IAccountSetMemberRepository, KuaiJi.Modules.AccountSets.Infrastructure.AccountSetMemberRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Domain.IAccountSetRoleRepository, KuaiJi.Modules.AccountSets.Infrastructure.AccountSetRoleRepository>();
+builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.RoleService>();
 builder.Services.AddScoped<KuaiJi.Modules.AccountSets.Application.MemberService>();
 // 税局密码加解密只依赖配置，无状态，做成单例避免每次请求重派密钥。
 builder.Services.AddSingleton<KuaiJi.Modules.AccountSets.Application.ITaxCredentialProtector, KuaiJi.Modules.AccountSets.Infrastructure.AesTaxCredentialProtector>();

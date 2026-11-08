@@ -314,7 +314,7 @@ namespace KuaiJi.Modules.Ledgers.Application
                         Name = name,
                         TotalDebit = inRange.Sum(f => f.Debit),
                         TotalCredit = inRange.Sum(f => f.Credit),
-                        Rows = SubsidiaryLedgerService.BuildRows(dataSet, facts, rangeStart, openingNet, keyword, options.ShowCounterAccount),
+                        Rows = SubsidiaryLedgerService.BuildRows(dataSet, facts, rangeStart, rangeEnd, openingNet, keyword, options.ShowCounterAccount),
                     });
                 }
 

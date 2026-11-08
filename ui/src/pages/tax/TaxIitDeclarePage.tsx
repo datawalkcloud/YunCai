@@ -7,18 +7,17 @@
  * （查询统计 → 申报记录查询），本地只负责推算有没有填过；正式报送仍在税局侧。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, ConfigProvider, Modal, Table, Tooltip } from "antd";
+import { Card, App, Button, Modal, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { BookOutlined } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router";
 
-import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
+import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
 import { downloadCsv } from "@/lib/tax-csv";
 import { EMPTY_CELL, filingDeadline, formatAmount, formatDate, pad, periodKey } from "@/lib/tax-format";
 import { fetchIitFilings, type TaxIitFilingRow } from "@/lib/tax-iit";
 import { fetchIitReport } from "@/lib/tax-portal";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 import { IitLoginModal } from "./IitLoginModal";
 
@@ -61,7 +60,7 @@ const HELP_NOTES = [
 
 const moneyCell = (value: number | null) =>
     value === null ? (
-        <span className="text-slate-400">{EMPTY_CELL}</span>
+        <span className="text-(--muted-foreground)">{EMPTY_CELL}</span>
     ) : (
         <span className="tabular-nums">{formatAmount(value)}</span>
     );
@@ -108,7 +107,8 @@ function parseCount(value: string): number | null {
     return match ? Number(match[0]) : null;
 }
 
-export function TaxIitDeclarePage({ period, onOpenReport }: { period: AccountingPeriod; onOpenReport: () => void }) {
+export function TaxIitDeclarePage() {
+    const period = useTaxPeriod();
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { token } = useAuth();
@@ -284,7 +284,7 @@ export function TaxIitDeclarePage({ period, onOpenReport }: { period: Accounting
             width: 120,
             align: "right",
             render: (value: number | null) =>
-                value === null ? <span className="text-slate-400">{EMPTY_CELL}</span> : `${value} 人`,
+                value === null ? <span className="text-(--muted-foreground)">{EMPTY_CELL}</span> : `${value} 人`,
         },
         {
             title: "本期收入",
@@ -299,7 +299,7 @@ export function TaxIitDeclarePage({ period, onOpenReport }: { period: Accounting
             key: "action",
             width: 90,
             render: () => (
-                <Button type="link" size="small" className="!px-0" onClick={onOpenReport}>
+                <Button type="link" size="small" onClick={() => navigate(`/${accountSetId}/tax/iit/report`)}>
                     填写
                 </Button>
             ),
@@ -313,10 +313,10 @@ export function TaxIitDeclarePage({ period, onOpenReport }: { period: Accounting
                 <span
                     className={
                         record.declared && record.status !== "已作废"
-                            ? "text-emerald-600"
+                            ? "text-(--success)"
                             : record.status === "查询中…"
-                              ? "text-slate-400"
-                              : "text-slate-700"
+                              ? "text-(--muted-foreground)"
+                              : "text-(--foreground)"
                     }
                 >
                     {value}
@@ -336,23 +336,23 @@ export function TaxIitDeclarePage({ period, onOpenReport }: { period: Accounting
             dataIndex: "declaredOn",
             key: "declaredOn",
             width: 170,
-            render: (value: string | null) => value ?? <span className="text-slate-400">{EMPTY_CELL}</span>,
+            render: (value: string | null) => value ?? <span className="text-(--muted-foreground)">{EMPTY_CELL}</span>,
         },
         {
             title: "申报渠道",
             dataIndex: "channel",
             key: "channel",
             width: 130,
-            render: (value: string | null) => value ?? <span className="text-slate-400">{EMPTY_CELL}</span>,
+            render: (value: string | null) => value ?? <span className="text-(--muted-foreground)">{EMPTY_CELL}</span>,
         },
         { title: "反馈", dataIndex: "feedback", key: "feedback", width: 90, render: (value: string | null) => value ?? "-" },
     ];
 
     return (
-        <div className="flex h-full flex-col">
-            <div className="flex shrink-0 flex-wrap items-start gap-4 px-6 pt-3">
-                <div className="flex w-full max-w-[820px] shrink-0 items-start gap-2 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-2 text-[12.5px] leading-5 text-[#8a6a35]">
-                    <span className="mt-0.5 flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-full bg-[#f5a623] text-[10px] text-white">
+        <Card>
+            <div className="flex shrink-0 flex-wrap items-start gap-4">
+                <div className="flex w-full max-w-[820px] shrink-0 items-start gap-2 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-2 text-[12.5px] leading-5 text-(--warn-text)">
+                    <span className="mt-0.5 flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-full bg-(--warn-icon) text-[10px] text-white">
                         !
                     </span>
                     <span>
@@ -362,7 +362,7 @@ export function TaxIitDeclarePage({ period, onOpenReport }: { period: Accounting
                     </span>
                 </div>
                 <div className="ml-auto flex flex-wrap items-center gap-2">
-                    <Button type="text" icon={<BookOutlined className="text-[#2f6bff]" />} onClick={() => setHelpOpen(true)}>
+                    <Button type="text" icon={<BookOutlined className="text-(--brand)" />} onClick={() => setHelpOpen(true)}>
                         帮助手册
                     </Button>
                     <Tooltip title="完税证明由电子税务局开具，尚未接入">
@@ -399,14 +399,14 @@ export function TaxIitDeclarePage({ period, onOpenReport }: { period: Accounting
                 </div>
             </div>
 
-            <div className="min-h-0 flex-1 px-6 pb-3 pt-3">
+            <div className="min-h-0 flex-1 pb-3 pt-3">
                 {error && (
-                    <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-[12.5px] text-red-600">
+                    <div className="mb-3 rounded-md border border-(--warn-border) bg-(--table-neg-bg) px-3 py-1.5 text-[12.5px] text-(--danger)">
                         {error}
                     </div>
                 )}
                 {needLogin ? (
-                    <div className="mb-3 flex items-center gap-3 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-1.5 text-[12.5px] text-[#8a6a35]">
+                    <div className="mb-3 flex items-center gap-3 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-1.5 text-[12.5px] text-(--warn-text)">
                         <span>{filingsMessage ?? "个税登录状态已失效，没有读取到税局的申报记录。"}</span>
                         <Button size="small" onClick={() => setLoginOpen(true)}>
                             登录个税
@@ -414,22 +414,20 @@ export function TaxIitDeclarePage({ period, onOpenReport }: { period: Accounting
                     </div>
                 ) : (
                     filingsMessage && (
-                        <div className="mb-3 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-1.5 text-[12.5px] text-[#8a6a35]">
+                        <div className="mb-3 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-1.5 text-[12.5px] text-(--warn-text)">
                             {filingsMessage}
                         </div>
                     )
                 )}
-                <ConfigProvider theme={TAX_THEME}>
-                    <Table<DeclareRow>
-                        columns={columns}
-                        dataSource={rows}
-                        rowKey="key"
-                        loading={loading}
-                        pagination={false}
-                        scroll={{ x: 1480 }}
-                    />
-                </ConfigProvider>
-                <div className="mt-2 text-[12px] text-slate-400">
+                <Table<DeclareRow>
+                    columns={columns}
+                    dataSource={rows}
+                    rowKey="key"
+                    loading={loading}
+                    pagination={false}
+                    scroll={{ x: 1480 }}
+                />
+                <div className="mt-2 text-[12px] text-(--muted-foreground)">
                     申报状态、申报日期与申报渠道取自自然人电子税务局的申报记录（查询统计 → 申报记录查询）；未取回时，状态按本地填写情况显示。
                 </div>
             </div>
@@ -441,7 +439,7 @@ export function TaxIitDeclarePage({ period, onOpenReport }: { period: Accounting
                 footer={<Button onClick={() => setHelpOpen(false)}>知道了</Button>}
                 onCancel={() => setHelpOpen(false)}
             >
-                <ul className="m-0 list-disc space-y-2 pl-5 text-[13px] leading-6 text-slate-600">
+                <ul className="m-0 list-disc space-y-2 pl-5 text-[13px] leading-6 text-(--foreground)">
                     {HELP_NOTES.map((note) => (
                         <li key={note}>{note}</li>
                     ))}
@@ -457,6 +455,6 @@ export function TaxIitDeclarePage({ period, onOpenReport }: { period: Accounting
                     void refreshFilings();
                 }}
             />
-        </div>
+        </Card>
     );
 }

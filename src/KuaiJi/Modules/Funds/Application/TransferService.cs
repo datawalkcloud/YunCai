@@ -71,8 +71,8 @@ namespace KuaiJi.Modules.Funds.Application
                 throw new JournalException(ex.Message);
             }
 
-            var fromEntry = from.AddEntry(transfer.Date, transfer.Summary, 0m, transfer.Amount, TransferCategory, to.Name);
-            var toEntry = to.AddEntry(transfer.Date, transfer.Summary, transfer.Amount, 0m, TransferCategory, from.Name);
+            var fromEntry = from.AddEntry(transfer.Date, transfer.Summary, 0m, transfer.Amount, TransferCategory, to.Name, remark: transfer.Remark, source: "内部转账");
+            var toEntry = to.AddEntry(transfer.Date, transfer.Summary, transfer.Amount, 0m, TransferCategory, from.Name, remark: transfer.Remark, source: "内部转账");
             transfer.AttachEntries(fromEntry.Id, toEntry.Id);
 
             await _transferRepository.AddAsync(transfer, cancellationToken);
@@ -115,8 +115,8 @@ namespace KuaiJi.Modules.Funds.Application
             // 清理旧流水（可能位于不同账户），再按新参数重建。
             oldFrom.RemoveEntry(transfer.FromEntryId);
             oldTo.RemoveEntry(transfer.ToEntryId);
-            var fromEntry = from.AddEntry(transfer.Date, transfer.Summary, 0m, transfer.Amount, TransferCategory, to.Name);
-            var toEntry = to.AddEntry(transfer.Date, transfer.Summary, transfer.Amount, 0m, TransferCategory, from.Name);
+            var fromEntry = from.AddEntry(transfer.Date, transfer.Summary, 0m, transfer.Amount, TransferCategory, to.Name, remark: transfer.Remark, source: "内部转账");
+            var toEntry = to.AddEntry(transfer.Date, transfer.Summary, transfer.Amount, 0m, TransferCategory, from.Name, remark: transfer.Remark, source: "内部转账");
             transfer.AttachEntries(fromEntry.Id, toEntry.Id);
 
             await _transferRepository.SaveChangesAsync(cancellationToken);

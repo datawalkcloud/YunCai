@@ -70,7 +70,13 @@ namespace KuaiJi.Modules.AccountSets.Domain
 
             if (word.Trim().Length > MaxWordLength)
             {
-                throw new ArgumentException($"凭证字不能超过 {MaxWordLength} 个字符。", nameof(word));
+                throw new ArgumentException($"凭证字不能超过 {MaxWordLength} 个字符。");
+            }
+
+            // 凭证字会拼进账套的逗号串供制单使用，含分隔符或空白会把一个凭证字拆成多个。
+            if (word.Any(ch => ch is ',' or '，' or '、' || char.IsWhiteSpace(ch)))
+            {
+                throw new ArgumentException("凭证字不能包含逗号、顿号或空格。");
             }
         }
 

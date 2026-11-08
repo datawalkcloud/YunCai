@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react"
-import { App, Button, DatePicker, Dropdown, Empty, Input, InputNumber, Modal, Popconfirm, Select, Switch, Table } from "antd"
+import type { KeyboardEvent as ReactKeyboardEvent } from "react"
+import { App, Button, DatePicker, Dropdown, Empty, Input, InputNumber, Modal, Popconfirm, Select, Switch, Table, Tooltip } from "antd"
 import type { InputRef, MenuProps } from "antd"
 import {
     ArrowLeftOutlined,
@@ -10,13 +10,14 @@ import {
     CopyOutlined,
     DeleteOutlined,
     DownloadOutlined,
+    DownOutlined,
     EditOutlined,
     FileTextOutlined,
     FullscreenExitOutlined,
     FullscreenOutlined,
-    PaperClipOutlined,
     PlusCircleOutlined,
     PrinterOutlined,
+    QuestionCircleOutlined,
     UploadOutlined,
     ZoomInOutlined,
     ZoomOutOutlined,
@@ -40,42 +41,33 @@ import {
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { amountToChineseUppercase } from "@/lib/amount-uppercase"
-import { toISODate } from "@/lib/format"
+import { toISODate, fmtAmount } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { PrintVoucherSheet } from "@/pages/closing/print-sheet"
+import { AmountCells, AmountHeaderCell } from "@/components/voucher/amount-grid"
 import { useKeepAliveActive } from "@/components/layout/dashboard/route-tabs-context"
 
 /* ================= 常量 ================= */
 
-/** 金额位（亿 → 分），合计 11 位，与纸质凭证的金额栏对应。 */
-const DIGITS = ["亿", "千", "百", "十", "万", "千", "百", "十", "元", "角", "分"]
+/** 单个金额位宽度（px）；借方 / 贷方各 11 位，组宽 = 11 × 20 = 220。 */
+const CELL_W = 20
+const GROUP_W = CELL_W * 11
 
-/** 单个金额位宽度（px）；借方 / 贷方各 11 位，组宽 = 11 × 22 = 242。 */
-const CELL_W = 22
-const GROUP_W = CELL_W * DIGITS.length
+/** 纸样尺寸：表头 60，分录行与合计行 70，与凭证纸面比例一致。 */
+const HEAD_H = 60
+const ROW_H = 70
 
-/** 金额列表头：标题 + 11 位分位刻度（原表两行表头合并进一个单元格）。 */
-function AmountHeaderCell({ title, prefix }: { title: string; prefix: string }) {
+/** 纸样左右留白：行操作浮标悬停时落在这段槽位里，不挤占表体列宽。 */
+const GUTTER = 30
+
+/** 纸样表头标题：整格居中，与金额列的两段式表头等高。 */
+function SheetHeadTitle({ text }: { text: string }) {
     return (
-        <div className="py-1">
-            <div>{title}</div>
-            <div className="flex border-t border-[#e6eaf2]">
-                {DIGITS.map((d, i) => (
-                    <span
-                        key={`${prefix}${i}`}
-                        className="h-5 text-center text-[10px] leading-5 text-slate-400"
-                        style={{ width: CELL_W }}
-                    >
-                        {d}
-                    </span>
-                ))}
-            </div>
+        <div className="flex items-center justify-center" style={{ height: HEAD_H }}>
+            {text}
         </div>
     )
 }
-
-/** 元位分界线：第 8 条竖线（亿 千 百 十 万 千 百 十 | 元 角 分）用红色，方便对位到分。 */
-const YUAN_X = CELL_W * 8
 
 /** 分录行：金额以字符串保存，便于「12.」这类半成品输入。 */
 interface EntryRow {
@@ -110,14 +102,6 @@ function parseVoucherWords(raw?: string): string[] {
         .map((s) => s.trim())
         .filter(Boolean)
     return list.length > 0 ? [...new Set(list)] : ["记"]
-}
-
-/** 金额栏底纹：11 等分竖线 + 元位红色分界线。 */
-const AMOUNT_GRID_BG: CSSProperties = {
-    backgroundImage: [
-        `repeating-linear-gradient(to right, #e6eaf2 0 1px, transparent 1px ${CELL_W}px)`,
-        `linear-gradient(to right, transparent ${YUAN_X - 1}px, #f0a99e ${YUAN_X - 1}px, #f0a99e ${YUAN_X}px, transparent ${YUAN_X}px)`,
-    ].join(", "),
 }
 
 /** 快捷键说明：[左功能, 左按键, 右功能, 右按键]。 */
@@ -176,7 +160,7 @@ body{font-family:"Microsoft YaHei",sans-serif;color:#333;padding:24px}
 h1{font-size:16px;text-align:center;margin:0 0 16px}
 table{width:100%;border-collapse:collapse;font-size:13px}
 td{border:1px solid #d9d9d9;padding:8px 12px}
-.k{text-align:center;font-family:Consolas,monospace;color:#2f6bff}
+.k{text-align:center;font-family:Consolas,monospace;color:#273cf3}
 </style></head><body><h1>凭证快捷键</h1><table>${rows}</table></body></html>`
     const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }))
     const win = window.open(url, "_blank")
@@ -228,19 +212,19 @@ function AccountSelect({
             className="w-full"
             value={value || undefined}
             options={options}
-            placeholder="请输入科目名称/科目编码/科目名称拼音首字母快速搜索"
+            placeholder=""
             showSearch
             optionFilterProp="search"
             suffixIcon={null}
             popupMatchSelectWidth={420}
             onFocus={onFocus}
             onChange={(v) => onChange(v ?? "")}
-            style={{ height: 44, fontSize: 13 }}
+            style={{ height: ROW_H }}
             optionRender={(option) => (
                 <div className="flex items-center justify-between gap-4">
                     <span>{option.data.label}</span>
                     {Math.abs(option.data.balance) >= 0.005 && (
-                        <span className="text-[12px] tabular-nums text-slate-400">
+                        <span className="text-[12px] tabular-nums text-(--muted-foreground)">
                             {option.data.balance.toFixed(2)}
                         </span>
                     )}
@@ -249,7 +233,7 @@ function AccountSelect({
             popupRender={(menu) => (
                 <div>
                     <div
-                        className="flex items-center gap-4 border-b border-slate-100 px-3 py-2 text-[13px]"
+                        className="flex items-center gap-4 border-b border-(--border) px-3 py-2 text-[13px]"
                         onMouseDown={(e) => e.preventDefault()}
                     >
                         {ACCOUNT_CATEGORIES.map((c) => (
@@ -259,8 +243,8 @@ function AccountSelect({
                                 className={cn(
                                     "border-b-2 border-transparent pb-0.5",
                                     category === c.key
-                                        ? "border-[#2f6bff] font-medium text-[#2f6bff]"
-                                        : "text-slate-600 hover:text-[#2f6bff]",
+                                        ? "border-(--brand) font-medium text-(--brand)"
+                                        : "text-(--foreground) hover:text-(--brand)",
                                 )}
                                 onClick={() => setCategory(c.key)}
                             >
@@ -269,7 +253,7 @@ function AccountSelect({
                         ))}
                     </div>
                     {menu}
-                    <div className="border-t border-slate-100 py-1 text-center" onMouseDown={(e) => e.preventDefault()}>
+                    <div className="border-t border-(--border) py-1 text-center" onMouseDown={(e) => e.preventDefault()}>
                         <Button
                             type="link"
                             onClick={() => navigate(`/${accountSetId}/settings/accounts`)}
@@ -313,8 +297,6 @@ export default function VoucherNewPage() {
     const [loadedId, setLoadedId] = useState<string | null>(null)
     const [printVoucherId, setPrintVoucherId] = useState<string | null>(null)
     const [activeRow, setActiveRow] = useState(0)
-    /** 当前聚焦的金额格（`行key:debit|credit`），用于显示 0.00 与聚焦描边。 */
-    const [focusedCell, setFocusedCell] = useState<string | null>(null)
     /** 当前聚焦单元格的行 key 与列，供 F3 复制上一格 / 空格互换等使用。 */
     const [focusInfo, setFocusInfo] = useState<{ rowKey: number; col: string } | null>(null)
     const [zoom, setZoom] = useState(false)
@@ -973,8 +955,12 @@ export default function VoucherNewPage() {
                 void loadSibling(1)
             } else if (e.altKey && key === "n") {
                 e.preventDefault()
-                resetForm()
-                message.info("已新建空白凭证")
+                if (isDirty) {
+                    confirmReset()
+                } else {
+                    resetForm()
+                    message.info("已新建空白凭证")
+                }
             }
         }
         window.addEventListener("keydown", onKey)
@@ -991,6 +977,48 @@ export default function VoucherNewPage() {
 
     const canSave = !saving && !loading && !!word && !!date && totals.balanced
 
+    /** 当前凭证在同字号凭证里的位置；空白新增态记为 -1。 */
+    const siblingIndex = loadedId ? siblings.findIndex((v) => v.id === loadedId) : -1
+    const atFirst = loadedId !== null && siblingIndex <= 0
+    const atLast = loadedId === null || siblingIndex < 0 || siblingIndex >= siblings.length - 1
+    /** 保存按钮为何不可用：直接写在工具条上，用户不用猜。 */
+    const hasAmount = rows.some((r) => toAmount(r.debit) || toAmount(r.credit))
+    const saveHint = !totals.balanced
+        ? `借贷不平，差额 ${fmtAmount(Math.abs(totals.debit - totals.credit), true)}`
+        : !word || !date
+          ? "请先填写凭证字与日期"
+          : ""
+
+    /** 是否已录入内容：清空前据此决定是否需要确认，避免空表也弹窗。 */
+    const isDirty = useMemo(
+        () =>
+            loadedId !== null ||
+            rows.some((r) => r.summary.trim() || r.accountId || toAmount(r.debit) || toAmount(r.credit)) ||
+            Boolean(remark) ||
+            Boolean(attachmentCount),
+        [loadedId, rows, remark, attachmentCount],
+    )
+
+    /** 清空凭证：有内容时二次确认，避免误触 Alt+N / 菜单项丢掉刚录的分录。 */
+    const confirmReset = () => {
+        const clear = () => {
+            resetForm()
+            message.success("已清空凭证")
+        }
+        if (!isDirty) {
+            clear()
+            return
+        }
+        modal.confirm({
+            title: "清空当前凭证？",
+            content: "已填写的分录、摘要与附件将被丢弃，且无法撤销。",
+            okText: "清空",
+            okButtonProps: { danger: true },
+            cancelText: "取消",
+            onOk: clear,
+        })
+    }
+
     const moreItems: MenuProps["items"] = [
         { key: "save-template", label: "保存为模板" },
         { key: "load-template", label: "从模板中加载" },
@@ -1004,8 +1032,7 @@ export default function VoucherNewPage() {
         else if (key === "load-template") openTemplateLoad()
         else if (key === "load-draft") openDraft()
         else if (key === "clear") {
-            resetForm()
-            message.success("已清空凭证")
+            confirmReset()
         } else if (key === "options") setOptionsOpen(true)
     }
 
@@ -1155,86 +1182,120 @@ export default function VoucherNewPage() {
 
     /* ---------- 渲染 ---------- */
 
-    /** 金额单元格：底层铺分位网格线，上层是透明输入框（聚焦时显示蓝色选框）。 */
-    const renderAmountCell = (r: EntryRow, idx: number, side: "debit" | "credit") => {
-        const focused = focusedCell === `${r.key}:${side}`
-        return (
-            <div className="relative">
-                <div aria-hidden className="pointer-events-none absolute inset-0" style={AMOUNT_GRID_BG} />
-                <input
-                    data-nav={side}
-                    data-col={side}
-                    value={side === "debit" ? r.debit : r.credit}
-                    placeholder={focused ? "0.00" : ""}
-                    onFocus={() => {
-                        setActiveRow(idx ?? 0)
-                        setFocusedCell(`${r.key}:${side}`)
-                        setFocusInfo({ rowKey: r.key, col: side })
-                    }}
-                    onBlur={() => setFocusedCell(null)}
-                    onDoubleClick={() => autoBalance(r.key, side)}
-                    onKeyDown={onCellKeyDown}
-                    onChange={(e) =>
-                        patchRow(
-                            r.key,
-                            side === "debit"
-                                ? { debit: e.target.value.replace(/[^\d.]/g, ""), credit: "" }
-                                : { credit: e.target.value.replace(/[^\d.]/g, ""), debit: "" },
-                        )
-                    }
-                    className="relative w-full bg-transparent px-2 text-right text-[13px] tabular-nums text-slate-700 outline-none placeholder:text-slate-300"
-                    style={{ height: 44, boxShadow: focused ? "inset 0 0 0 1px #2f6bff" : undefined }}
-                />
-            </div>
-        )
-    }
+    /** 金额单元格：分位小格打底，点击后整组并成一格直接输入完整数值。 */
+    const renderAmountCell = (r: EntryRow, idx: number, side: "debit" | "credit") => (
+        <AmountCells
+            value={toAmount(side === "debit" ? r.debit : r.credit)}
+            raw={side === "debit" ? r.debit : r.credit}
+            editable
+            height={ROW_H}
+            onInputFocus={() => {
+                setActiveRow(idx)
+                setFocusInfo({ rowKey: r.key, col: side })
+            }}
+            onChange={(v) =>
+                patchRow(r.key, side === "debit" ? { debit: v, credit: "" } : { credit: v, debit: "" })
+            }
+            inputAttrs={{
+                "data-nav": side,
+                "data-col": side,
+                onDoubleClick: () => autoBalance(r.key, side),
+                onKeyDown: onCellKeyDown,
+            }}
+        />
+    )
+
+    /** 行操作浮标：悬停本行时出现在纸面左侧槽位，不占表体列宽。 */
+    const renderRowTools = (idx: number) => (
+        <div
+            className="absolute top-1/2 flex -translate-y-1/2 flex-col gap-0.5 opacity-0 group-hover:opacity-100"
+            style={{ left: -GUTTER }}
+        >
+            <Button
+                size="small"
+                type="text"
+                title="在下方插入一行"
+                icon={<PlusCircleOutlined />}
+                onClick={() => insertBelow(idx)}
+            />
+            <Button
+                size="small"
+                type="text"
+                title="复制本行"
+                icon={<CopyOutlined />}
+                onClick={() => duplicateRow(idx)}
+            />
+            <Button
+                size="small"
+                type="text"
+                title="删除本行"
+                disabled={rows.length <= 1}
+                className={rows.length <= 1 ? "!text-(--muted-foreground)" : "!text-(--danger)"}
+                icon={<CloseOutlined />}
+                onClick={() => removeRow(idx)}
+            />
+        </div>
+    )
 
     return (
-        <div ref={sheetRef} className="flex flex-col bg-white">
+        <div ref={sheetRef} className="flex flex-col bg-(--card)">
             {/* 工具条 */}
-            <div className="relative flex min-h-[56px] items-center border-b border-slate-100 px-4 py-2">
-                <div className="flex flex-1 items-center justify-center gap-3">
-                    <Button type="primary" disabled={!canSave} loading={saving} onClick={() => void save(true)}>
-                        入账并新增
+            <div className="flex min-h-[56px] flex-wrap items-center gap-2 border-b border-(--border) px-4 py-2">
+                <Button type="primary" disabled={!canSave} loading={saving} onClick={() => void save(true)}>
+                    入账并新增
+                </Button>
+                <Button type="primary" disabled={!canSave} loading={saving} onClick={() => void save(false)}>
+                    保存入账
+                </Button>
+                <Button icon={<PrinterOutlined />} disabled={!loadedId} onClick={() => setPrintVoucherId(loadedId)}>
+                    打印
+                </Button>
+                <Dropdown menu={{ items: moreItems, onClick: onMore }} trigger={["click"]}>
+                    <Button>
+                        更多 <DownOutlined className="text-[10px]" />
                     </Button>
-                    <Button type="primary" ghost disabled={!canSave} loading={saving} onClick={() => void save(false)}>
-                        保存入账
-                    </Button>
-                    <Button
-                        icon={<PrinterOutlined />}
-                        onClick={() =>
-                            loadedId ? setPrintVoucherId(loadedId) : message.info("请先保存凭证再打印")
-                        }
-                    >
-                        打印
-                    </Button>
-                    <Dropdown menu={{ items: moreItems, onClick: onMore }} trigger={["click"]}>
-                        <Button>更多</Button>
-                    </Dropdown>
-                </div>
-                <div className="absolute right-4 flex items-center gap-5 text-[13px] text-slate-600">
+                </Dropdown>
+                {/* 平衡状态与不可保存的原因常驻显示，替代「按钮灰着但不说为什么」。 */}
+                <span
+                    className={cn(
+                        "ml-1 shrink-0 rounded px-2 py-0.5 text-[12.5px] whitespace-nowrap",
+                        totals.balanced
+                            ? "bg-(--success-soft) text-(--success)"
+                            : hasAmount && saveHint
+                              ? "bg-(--table-neg-bg) text-(--danger)"
+                              : "text-(--muted-foreground)",
+                    )}
+                >
+                    {totals.balanced
+                        ? `借贷平衡 · 合计 ${fmtAmount(totals.debit, true)}`
+                        : hasAmount
+                          ? saveHint
+                          : "尚未录入金额"}
+                </span>
+                <div className="ml-auto flex flex-wrap items-center justify-end gap-3 text-[13px] text-(--foreground)">
                     <Button
                         type="text"
-                        className="!text-slate-600 hover:!text-[#2f6bff]"
                         icon={<ControlOutlined />}
                         onClick={() => setShortcutOpen(true)}
                     >
                         快捷键
                     </Button>
+                    <span className="rounded bg-(--muted) px-2 py-0.5 tabular-nums text-(--muted-foreground)">
+                        {loadedId ? `${Math.max(siblingIndex, 0) + 1} / ${siblings.length}` : `新凭证 · 共 ${siblings.length} 张`}
+                    </span>
                     <Button
                         type="text"
-                        className="!text-slate-600 hover:!text-[#2f6bff]"
                         icon={<ArrowLeftOutlined />}
                         iconPosition="end"
+                        disabled={atFirst}
                         onClick={() => void loadSibling(-1)}
                     >
                         上一页
                     </Button>
                     <Button
                         type="text"
-                        className="!text-slate-600 hover:!text-[#2f6bff]"
                         icon={<ArrowRightOutlined />}
-                        iconPosition="end"
+                        disabled={atLast}
                         onClick={() => void loadSibling(1)}
                     >
                         下一页
@@ -1243,21 +1304,21 @@ export default function VoucherNewPage() {
             </div>
 
             {metaError && (
-                <div className="mx-auto w-[1080px] py-1 text-[13px] text-[#ef4444]">{metaError}</div>
+                <div className="mx-auto w-full max-w-[1440px] px-8 py-1 text-[13px] text-(--danger)">{metaError}</div>
             )}
 
             <div className="flex-1 overflow-auto">
                 <div
-                    className="mx-auto w-[1080px] pt-4 pb-6"
-                    style={{ zoom: zoom ? 1.25 : 1 }}
+                    className="mx-auto w-full max-w-[1440px] pt-4 pb-6"
+                    style={{ paddingLeft: GUTTER, paddingRight: GUTTER, zoom: zoom ? 1.25 : 1 }}
                 >
                     {/* 凭证头 */}
-                    <div className="flex flex-wrap items-center gap-2 pb-3">
+                    <div className="flex flex-wrap items-center gap-2 pb-3 text-[13px] whitespace-nowrap text-(--foreground)">
                         <Select
                             value={word}
                             onChange={setWord}
                             options={words.map((w) => ({ value: w, label: w }))}
-                            style={{ width: 84 }}
+                            style={{ width: 76 }}
                             disabled={!!loadedId}
                         />
                         <InputNumber
@@ -1266,33 +1327,31 @@ export default function VoucherNewPage() {
                             min={1}
                             precision={0}
                             controls={false}
-                            style={{ width: 64 }}
+                            style={{ width: 62 }}
                             disabled={!!loadedId}
                         />
-                        <span className="text-[13px] text-slate-700">号</span>
-                        <span className="ml-2 text-[13px] text-slate-700">日期：</span>
+                        <span>号</span>
+                        <span className="ml-1">日期：</span>
                         <span ref={dateRef} className="inline-flex">
                             <DatePicker
                                 value={date ? dayjs(date) : null}
                                 onChange={(v) => setDate(v ? v.format("YYYY-MM-DD") : "")}
                                 allowClear={false}
-                                style={{ width: 140 }}
+                                style={{ width: 130 }}
                             />
                         </span>
-                        <span className="ml-3 text-[13px] text-[#92640b]">亲，按回车键，能快速选择单元格哟！</span>
-                        <div className="ml-auto flex items-center gap-2 text-[13px] text-slate-700">
+                        <span className="ml-2 text-(--warn-text)">亲，按回车键，能快速选择单元格哟！</span>
+                        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                             附单据
                             <Input
                                 ref={attachmentRef}
                                 value={attachmentCount}
                                 onChange={(e) => setAttachmentCount(e.target.value.replace(/\D/g, ""))}
-                                style={{ width: 56, textAlign: "center" }}
+                                style={{ width: 62, textAlign: "center" }}
                             />
                             张
                             <Button
                                 type="link"
-                                className="hover:!underline"
-                                icon={<PaperClipOutlined />}
                                 onClick={() => {
                                     if (!loadedId) {
                                         message.warning("请先保存凭证，再上传附件")
@@ -1304,7 +1363,7 @@ export default function VoucherNewPage() {
                             >
                                 附件
                                 {attachments.length > 0 && (
-                                    <span className="rounded-full bg-[#2f6bff] px-1.5 text-[11px] leading-4 text-white">
+                                    <span className="rounded-full bg-(--brand-fill) px-1.5 text-[11px] leading-4 text-white">
                                         {attachments.length}
                                     </span>
                                 )}
@@ -1322,16 +1381,17 @@ export default function VoucherNewPage() {
                             ) : (
                                 <Button
                                     type="link"
-                                    className="hover:!underline"
                                     title={remark || "添加凭证备注"}
                                     onClick={() => setRemarkOpen(true)}
                                 >
-                                    备注 ⓘ
+                                    备注
                                 </Button>
                             )}
+                            <Tooltip title="凭证备注随凭证一起保存；附件在保存凭证后上传">
+                                <QuestionCircleOutlined className="text-(--muted-foreground)" />
+                            </Tooltip>
                             <Button
                                 type="text"
-                                className="!text-slate-600 hover:!text-[#2f6bff]"
                                 icon={zoom ? <ZoomOutOutlined /> : <ZoomInOutlined />}
                                 onClick={() => setZoom((v) => !v)}
                             >
@@ -1339,7 +1399,6 @@ export default function VoucherNewPage() {
                             </Button>
                             <Button
                                 type="text"
-                                className="!text-slate-600 hover:!text-[#2f6bff]"
                                 icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                                 onClick={() => void toggleFullscreen()}
                             >
@@ -1353,58 +1412,37 @@ export default function VoucherNewPage() {
                         <Table<EntryRow>
                             size="small"
                             pagination={false}
+                            tableLayout="fixed"
+                            className="voucher-sheet"
                             rowKey={(r) => r.key}
                             dataSource={rows}
                             onRow={(_, idx) => ({ onMouseDown: () => setActiveRow(idx ?? 0) })}
                             rowClassName={(_, idx) =>
-                                cn("group", idx === activeRow ? "bg-[#f5f9ff]" : "bg-white")
+                                cn("group", idx === activeRow ? "bg-(--brand-soft)" : "bg-(--card)")
                             }
                             columns={[
                                 {
-                                    title: "",
-                                    width: 22,
-                                    onCell: () => ({ style: { padding: 0, border: 0 } }),
-                                    render: (_, _r, idx) => {
-                                        const active = idx === activeRow
-                                        return (
-                                            <div
-                                                className={cn(
-                                                    "flex flex-col items-center gap-0.5",
-                                                    active ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                                                )}
-                                            >
-                                                <Button
-                                                    type="text"
-                                                    title="在下方插入一行"
-                                                    className="!text-[#22c55e]"
-                                                    icon={<PlusCircleOutlined />}
-                                                    onClick={() => insertBelow(idx ?? 0)}
-                                                />
-                                                <Button
-                                                    type="text"
-                                                    title="复制本行"
-                                                    className="!text-[#2f6bff]"
-                                                    icon={<CopyOutlined />}
-                                                    onClick={() => duplicateRow(idx ?? 0)}
-                                                />
-                                            </div>
-                                        )
-                                    },
-                                },
-                                {
-                                    title: "序号",
-                                    width: 44,
-                                    onCell: () => ({ style: { padding: 0 } }),
+                                    title: <SheetHeadTitle text="序号" />,
+                                    width: 33,
+                                    onHeaderCell: () => ({ className: "pk-sheet-head-cell" }),
+                                    onCell: () => ({ className: "pk-sheet-cell", style: { height: ROW_H } }),
                                     render: (_, _r, idx) => (
-                                        <span className="text-center text-[13px] text-slate-500 tabular-nums">
-                                            {(idx ?? 0) + 1}
-                                        </span>
+                                        <div className="relative flex h-full items-center justify-center">
+                                            <span className="text-[13px] tabular-nums text-(--muted-foreground)">
+                                                {(idx ?? 0) + 1}
+                                            </span>
+                                            {renderRowTools(idx ?? 0)}
+                                        </div>
                                     ),
                                 },
                                 {
-                                    title: "摘要",
-                                    width: 200,
-                                    onCell: () => ({ style: { padding: 0 }, className: "relative" }),
+                                    title: <SheetHeadTitle text="摘要" />,
+                                    width: "20%",
+                                    onHeaderCell: () => ({ className: "pk-sheet-head-cell" }),
+                                    onCell: () => ({
+                                        className: "pk-sheet-cell relative",
+                                        style: { height: ROW_H },
+                                    }),
                                     render: (_, r, idx) => (
                                         <>
                                             <Input
@@ -1412,7 +1450,6 @@ export default function VoucherNewPage() {
                                                 data-col="summary"
                                                 variant="borderless"
                                                 value={r.summary}
-                                                placeholder="摘要"
                                                 onFocus={() => {
                                                     setActiveRow(idx ?? 0)
                                                     setFocusInfo({ rowKey: r.key, col: "summary" })
@@ -1424,15 +1461,15 @@ export default function VoucherNewPage() {
                                                 }}
                                                 onKeyDown={onCellKeyDown}
                                                 onChange={(e) => patchRow(r.key, { summary: e.target.value })}
-                                                style={{ height: 44, fontSize: 13 }}
+                                                style={{ height: ROW_H }}
                                             />
                                             {summaryPickRow === r.key && summaryCandidates.length > 0 && (
-                                                <div className="absolute left-0 top-full z-20 max-h-[220px] w-[300px] overflow-auto rounded border border-slate-200 bg-white py-1 shadow-lg">
+                                                <div className="absolute left-0 top-full z-20 max-h-[220px] w-[300px] overflow-auto rounded border border-(--border) bg-(--card) py-1 shadow-lg">
                                                     {summaryCandidates.map((item) => (
                                                         <button
                                                             key={item}
                                                             type="button"
-                                                            className="block w-full px-3 py-1.5 text-left text-[13px] text-slate-700 hover:bg-[#f2f6ff]"
+                                                            className="block w-full px-3 py-1.5 text-left text-[13px] text-(--foreground) hover:bg-(--brand-soft)"
                                                             onMouseDown={(e) => {
                                                                 e.preventDefault()
                                                                 patchRow(r.key, { summary: item })
@@ -1448,8 +1485,9 @@ export default function VoucherNewPage() {
                                     ),
                                 },
                                 {
-                                    title: "会计科目",
-                                    onCell: () => ({ style: { padding: 0 } }),
+                                    title: <SheetHeadTitle text="会计科目" />,
+                                    onHeaderCell: () => ({ className: "pk-sheet-head-cell" }),
+                                    onCell: () => ({ className: "pk-sheet-cell", style: { height: ROW_H } }),
                                     render: (_, r, idx) => (
                                         <div data-nav="account" data-col="account" onKeyDown={onCellKeyDown}>
                                             <AccountSelect
@@ -1467,70 +1505,48 @@ export default function VoucherNewPage() {
                                     ),
                                 },
                                 {
-                                    title: <AmountHeaderCell title="借方金额" prefix="jd" />,
+                                    title: <AmountHeaderCell title="借方金额" idPrefix="jd" height={HEAD_H} divider />,
                                     width: GROUP_W,
-                                    onCell: () => ({ style: { padding: 0 } }),
+                                    onHeaderCell: () => ({ className: "pk-sheet-head-cell" }),
+                                    onCell: () => ({ className: "pk-sheet-cell" }),
                                     render: (_, r, idx) => renderAmountCell(r, idx ?? 0, "debit"),
                                 },
                                 {
-                                    title: <AmountHeaderCell title="贷方金额" prefix="cd" />,
+                                    title: <AmountHeaderCell title="贷方金额" idPrefix="cd" height={HEAD_H} divider />,
                                     width: GROUP_W,
-                                    onCell: () => ({ style: { padding: 0 } }),
+                                    onHeaderCell: () => ({ className: "pk-sheet-head-cell" }),
+                                    onCell: () => ({ className: "pk-sheet-cell" }),
                                     render: (_, r, idx) => renderAmountCell(r, idx ?? 0, "credit"),
-                                },
-                                {
-                                    title: "",
-                                    width: 28,
-                                    onCell: () => ({ style: { padding: 0, border: 0 } }),
-                                    render: (_, _r, idx) => {
-                                        const active = idx === activeRow
-                                        return (
-                                            <Button
-                                                type="text"
-                                                title="删除本行"
-                                                disabled={rows.length <= 1}
-                                                className={cn(
-                                                    rows.length <= 1
-                                                        ? "!text-slate-200"
-                                                        : cn(
-                                                              "!text-[#ef4444]",
-                                                              active
-                                                                  ? "opacity-100"
-                                                                  : "opacity-0 group-hover:opacity-100",
-                                                          ),
-                                                )}
-                                                onClick={() => removeRow(idx ?? 0)}
-                                                icon={<CloseOutlined />}
-                                            />
-                                        )
-                                    },
                                 },
                             ]}
                             summary={() => (
                                 <Table.Summary.Row>
-                                    <Table.Summary.Cell index={0} className="!border-0" />
-                                    <Table.Summary.Cell index={1} colSpan={3} className="px-3 text-[13px] font-medium text-slate-700">
+                                    <Table.Summary.Cell
+                                        index={0}
+                                        colSpan={3}
+                                        className="pk-sheet-label"
+                                        align="left"
+                                    >
                                         合计：{amountToChineseUppercase(totals.debit)}
                                     </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={4} align="right" className="px-2 text-[13px] font-medium tabular-nums text-slate-700">
-                                        {totals.debit > 0 ? totals.debit.toFixed(2) : ""}
+                                    <Table.Summary.Cell index={3}>
+                                        <AmountCells value={totals.debit} height={ROW_H} />
                                     </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={5} align="right" className="px-2 text-[13px] font-medium tabular-nums text-slate-700">
-                                        {totals.credit > 0 ? totals.credit.toFixed(2) : ""}
+                                    <Table.Summary.Cell index={4}>
+                                        <AmountCells value={totals.credit} height={ROW_H} />
                                     </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={6} className="!border-0" />
                                 </Table.Summary.Row>
                             )}
                         />
                     </div>
 
                     {/* 制单人 */}
-                    <div className="mt-4 flex items-center justify-between text-[13px] text-slate-500">
+                    <div className="mt-4 flex items-center justify-between text-[13px] text-(--foreground)">
                         <span className="flex items-center gap-1.5">
-                            <EditOutlined />
+                            <EditOutlined className="text-(--brand)" />
                             制单人：{user?.displayName || user?.username || "-"}
                         </span>
-                        {loadedId && <span className="text-slate-400">当前为已保存凭证，保存将更新原凭证并入账</span>}
+                        {loadedId && <span className="text-(--muted-foreground)">当前为已保存凭证，保存将更新原凭证并入账</span>}
                     </div>
                 </div>
             </div>
@@ -1551,11 +1567,11 @@ export default function VoucherNewPage() {
                 footer={null}
                 width={640}
                 onCancel={() => setShortcutOpen(false)}
-                styles={{ body: { padding: 0 } }}
+                
             >
                 <div className="pt-2 text-[13px]">
-                    <div className="border border-slate-200">
-                        <div className="bg-[#eef4ff] py-2 text-center text-[14px] font-medium text-[#2f6bff]">
+                    <div className="border border-(--border)">
+                        <div className="bg-(--brand-soft) py-2 text-center text-[14px] font-medium text-(--brand)">
                             凭证快捷键
                         </div>
                         <Table
@@ -1568,14 +1584,14 @@ export default function VoucherNewPage() {
                                     title: "快捷键",
                                     width: "16%",
                                     align: "center",
-                                    render: (_, r) => <span className="font-mono text-[12px] text-slate-600">{r[1]}</span>,
+                                    render: (_, r) => <span className="font-mono text-[12px] text-(--foreground)">{r[1]}</span>,
                                 },
                                 { title: "操作", width: "34%", render: (_, r) => r[2] },
                                 {
                                     title: "快捷键",
                                     width: "16%",
                                     align: "center",
-                                    render: (_, r) => <span className="font-mono text-[12px] text-slate-600">{r[3]}</span>,
+                                    render: (_, r) => <span className="font-mono text-[12px] text-(--foreground)">{r[3]}</span>,
                                 },
                             ]}
                             dataSource={SHORTCUTS}
@@ -1603,7 +1619,7 @@ export default function VoucherNewPage() {
             >
                 <div className="flex flex-col gap-3 py-2 text-[13px]">
                     <label className="flex items-center gap-2">
-                        <span className="w-16 shrink-0 text-slate-600">模板名称</span>
+                        <span className="w-16 shrink-0 text-(--foreground)">模板名称</span>
                         <Input
                             value={templateName}
                             onChange={(e) => setTemplateName(e.target.value)}
@@ -1612,7 +1628,7 @@ export default function VoucherNewPage() {
                         />
                     </label>
                     <label className="flex items-center gap-2">
-                        <span className="w-16 shrink-0 text-slate-600">模板类型</span>
+                        <span className="w-16 shrink-0 text-(--foreground)">模板类型</span>
                         <Select
                             className="flex-1"
                             value={templateType}
@@ -1620,7 +1636,7 @@ export default function VoucherNewPage() {
                             options={TEMPLATE_TYPES}
                         />
                     </label>
-                    <p className="text-[12px] text-slate-400">
+                    <p className="text-[12px] text-(--muted-foreground)">
                         只保存当前分录的摘要、科目与借贷方向，金额不保存。
                     </p>
                 </div>
@@ -1636,7 +1652,7 @@ export default function VoucherNewPage() {
                 onCancel={() => setTemplateLoadOpen(false)}
             >
                 {templates.length === 0 ? (
-                    <p className="py-8 text-center text-[13px] text-slate-400">
+                    <p className="py-8 text-center text-[13px] text-(--muted-foreground)">
                         暂无凭证模板，可先「保存为模板」
                     </p>
                 ) : (
@@ -1648,16 +1664,16 @@ export default function VoucherNewPage() {
                                 className={cn(
                                     "flex flex-col items-start gap-0.5 rounded border px-3 py-2 text-left text-[13px]",
                                     templateId === t.id
-                                        ? "border-[#2f6bff] bg-[#f5f9ff]"
-                                        : "border-slate-200 hover:border-[#2f6bff]",
+                                        ? "border-(--brand) bg-(--brand-soft)"
+                                        : "border-(--border) hover:border-(--brand)",
                                 )}
                                 onClick={() => setTemplateId(t.id ?? "")}
                             >
-                                <span className="text-slate-700">
+                                <span className="text-(--foreground)">
                                     {t.name}
-                                    <span className="ml-2 text-[12px] text-slate-400">{t.typeText}</span>
+                                    <span className="ml-2 text-[12px] text-(--muted-foreground)">{t.typeText}</span>
                                 </span>
-                                <span className="text-[12px] text-slate-400">
+                                <span className="text-[12px] text-(--muted-foreground)">
                                     {(t.lines ?? [])
                                         .map((l) => `${l.accountCode ?? ""} ${l.accountName ?? ""}`)
                                         .join(" / ")}
@@ -1685,15 +1701,15 @@ export default function VoucherNewPage() {
                             className={cn(
                                 "flex items-center gap-3 rounded border px-3 py-2 text-left",
                                 draftId === v.id
-                                    ? "border-[#2f6bff] bg-[#f5f9ff]"
-                                    : "border-slate-200 hover:border-[#2f6bff]",
+                                    ? "border-(--brand) bg-(--brand-soft)"
+                                    : "border-(--border) hover:border-(--brand)",
                             )}
                             onClick={() => setDraftId(v.id ?? "")}
                         >
-                            <span className="font-medium text-slate-700">{v.voucherNo}</span>
-                            <span className="text-slate-500">{toISODate(v.date)}</span>
-                            <span className="text-slate-400">{v.entryCount} 条分录</span>
-                            <span className="ml-auto tabular-nums text-slate-600">
+                            <span className="font-medium text-(--foreground)">{v.voucherNo}</span>
+                            <span className="text-(--muted-foreground)">{toISODate(v.date)}</span>
+                            <span className="text-(--muted-foreground)">{v.entryCount} 条分录</span>
+                            <span className="ml-auto tabular-nums text-(--foreground)">
                                 {(v.totalDebit ?? 0).toFixed(2)}
                             </span>
                         </button>
@@ -1709,13 +1725,13 @@ export default function VoucherNewPage() {
                 onCancel={() => setAttachOpen(false)}
                 footer={
                     <div className="flex items-center justify-between">
-                        <span className="text-[12px] text-slate-400">支持 PDF / 图片 / Office 文档，单个文件不超过 10MB</span>
+                        <span className="text-[12px] text-(--muted-foreground)">支持 PDF / 图片 / Office 文档，单个文件不超过 10MB</span>
                         <Button onClick={() => setAttachOpen(false)}>关闭</Button>
                     </div>
                 }
             >
                 <div className="flex flex-col gap-3">
-                    <label className="flex h-9 w-fit cursor-pointer items-center gap-1 rounded border border-dashed border-[#2f6bff] px-3 text-[13px] text-[#2f6bff] hover:bg-[#f2f6ff]">
+                    <label className="flex h-9 w-fit cursor-pointer items-center gap-1 rounded border border-dashed border-(--brand) px-3 text-[13px] text-(--brand) hover:bg-(--brand-soft)">
                         <UploadOutlined />
                         {attachUploading ? "上传中…" : "上传附件"}
                         <input
@@ -1732,25 +1748,24 @@ export default function VoucherNewPage() {
                     {attachments.length === 0 ? (
                         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无附件" />
                     ) : (
-                        <div className="flex flex-col divide-y divide-slate-100 rounded border border-slate-200">
+                        <div className="flex flex-col divide-y divide-(--border) rounded border border-(--border)">
                             {attachments.map((a) => (
                                 <div key={a.id} className="flex items-center gap-2 px-3 py-2 text-[13px]">
-                                    <FileTextOutlined className="text-slate-400" />
+                                    <FileTextOutlined className="text-(--muted-foreground)" />
                                     <Button
                                         type="text"
-                                        className="max-w-[280px] !justify-start !px-0 text-left text-slate-700 hover:!text-[#2f6bff]"
+                                        className="pk-link-flush max-w-[280px]"
                                         title={a.fileName}
                                         onClick={() => void openAttachment(a.id ?? "", a.fileName ?? "附件", false)}
                                     >
                                         <span className="truncate">{a.fileName}</span>
                                     </Button>
-                                    <span className="ml-auto text-[12px] text-slate-400">
+                                    <span className="ml-auto text-[12px] text-(--muted-foreground)">
                                         {formatBytes(a.sizeBytes ?? 0)}
                                     </span>
                                     <Button
                                         type="text"
                                         title="下载"
-                                        className="!text-slate-400 hover:!text-[#2f6bff]"
                                         icon={<DownloadOutlined />}
                                         onClick={() => void openAttachment(a.id ?? "", a.fileName ?? "附件", true)}
                                     />
@@ -1763,7 +1778,6 @@ export default function VoucherNewPage() {
                                         <Button
                                             type="text"
                                             title="删除"
-                                            className="!text-slate-400 hover:!text-[#ef4444]"
                                             icon={<DeleteOutlined />}
                                         />
                                     </Popconfirm>
@@ -1795,18 +1809,18 @@ export default function VoucherNewPage() {
                     </div>
                 }
             >
-                <div className="flex flex-col gap-4 py-2 text-[13px] text-slate-700">
+                <div className="flex flex-col gap-4 py-2 text-[13px] text-(--foreground)">
                     <div className="flex items-center justify-between">
                         <div>
                             <div>自动填补凭证断号</div>
-                            <div className="text-[12px] text-slate-400">新增凭证时优先填补已删除凭证留下的空号</div>
+                            <div className="text-[12px] text-(--muted-foreground)">新增凭证时优先填补已删除凭证留下的空号</div>
                         </div>
                         <Switch checked={optFillGap} onChange={setOptFillGap} />
                     </div>
                     <div className="flex items-center justify-between">
                         <div>
                             <div>按科目方向定位借贷方</div>
-                            <div className="text-[12px] text-slate-400">选完科目后，光标自动跳到该科目的正常余额方向</div>
+                            <div className="text-[12px] text-(--muted-foreground)">选完科目后，光标自动跳到该科目的正常余额方向</div>
                         </div>
                         <Switch checked={optFollowDirection} onChange={setOptFollowDirection} />
                     </div>

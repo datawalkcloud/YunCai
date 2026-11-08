@@ -136,6 +136,11 @@ namespace KuaiJi.Modules.Vouchers.Api
             try
             {
                 var voucher = await _voucherService.UpdateAsync(accountSetId, id, request, cancellationToken);
+                if (voucher is not null)
+                {
+                    await LogAsync(accountSetId, "修改", $"修改凭证 {voucher.VoucherNo}", cancellationToken);
+                }
+
                 return voucher is null ? NotFound() : Ok(voucher);
             }
             catch (VoucherException ex)
@@ -150,7 +155,13 @@ namespace KuaiJi.Modules.Vouchers.Api
         {
             try
             {
+                var existing = await _voucherService.GetAsync(accountSetId, id, cancellationToken);
                 var deleted = await _voucherService.DeleteAsync(accountSetId, id, cancellationToken);
+                if (deleted && existing is not null)
+                {
+                    await LogAsync(accountSetId, "删除", $"删除凭证 {existing.VoucherNo}", cancellationToken);
+                }
+
                 return deleted ? NoContent() : NotFound();
             }
             catch (VoucherException ex)
@@ -166,6 +177,11 @@ namespace KuaiJi.Modules.Vouchers.Api
             try
             {
                 var voucher = await _voucherService.UnpostAsync(accountSetId, id, cancellationToken);
+                if (voucher is not null)
+                {
+                    await LogAsync(accountSetId, "反过账", $"反过账凭证 {voucher.VoucherNo}", cancellationToken);
+                }
+
                 return voucher is null ? NotFound() : Ok(voucher);
             }
             catch (VoucherException ex)
@@ -339,6 +355,14 @@ namespace KuaiJi.Modules.Vouchers.Api
             {
                 await using var stream = file.OpenReadStream();
                 var result = await _importService.ImportAsync(accountSetId, stream, conflictMode, cancellationToken);
+                if (result.ImportedVouchers > 0 || result.OverwrittenVouchers > 0)
+                {
+                    var detail = result.OverwrittenVouchers > 0
+                        ? $"导入凭证 {result.ImportedVouchers} 张（覆盖 {result.OverwrittenVouchers} 张）"
+                        : $"导入凭证 {result.ImportedVouchers} 张";
+                    await LogAsync(accountSetId, "导入", detail, cancellationToken);
+                }
+
                 return Ok(result);
             }
             catch (VoucherImportException ex)
@@ -399,7 +423,14 @@ namespace KuaiJi.Modules.Vouchers.Api
                 var preparer = User.FindFirst("displayName")?.Value
                                ?? User.FindFirst("unique_name")?.Value
                                ?? "未知";
-                return Ok(await _voucherService.CopyAsync(accountSetId, id, preparer, date, cancellationToken));
+                var source = await _voucherService.GetAsync(accountSetId, id, cancellationToken);
+                var copy = await _voucherService.CopyAsync(accountSetId, id, preparer, date, cancellationToken);
+                await LogAsync(
+                    accountSetId,
+                    "复制",
+                    source is null ? $"复制生成凭证 {copy.VoucherNo}" : $"复制凭证 {source.VoucherNo} 生成 {copy.VoucherNo}",
+                    cancellationToken);
+                return Ok(copy);
             }
             catch (VoucherException ex)
             {
@@ -417,7 +448,14 @@ namespace KuaiJi.Modules.Vouchers.Api
                 var preparer = User.FindFirst("displayName")?.Value
                                ?? User.FindFirst("unique_name")?.Value
                                ?? "未知";
-                return Ok(await _voucherService.ReverseAsync(accountSetId, id, preparer, date, cancellationToken));
+                var source = await _voucherService.GetAsync(accountSetId, id, cancellationToken);
+                var reversed = await _voucherService.ReverseAsync(accountSetId, id, preparer, date, cancellationToken);
+                await LogAsync(
+                    accountSetId,
+                    "红冲",
+                    source is null ? $"红冲生成凭证 {reversed.VoucherNo}" : $"红冲凭证 {source.VoucherNo} 生成 {reversed.VoucherNo}",
+                    cancellationToken);
+                return Ok(reversed);
             }
             catch (VoucherException ex)
             {
@@ -432,6 +470,11 @@ namespace KuaiJi.Modules.Vouchers.Api
             try
             {
                 var restored = await _voucherService.RestoreAsync(accountSetId, id, cancellationToken);
+                if (restored is not null)
+                {
+                    await LogAsync(accountSetId, "还原", $"从回收站还原凭证 {restored.VoucherNo}", cancellationToken);
+                }
+
                 return restored is null ? NotFound() : Ok(restored);
             }
             catch (VoucherException ex)
@@ -446,7 +489,14 @@ namespace KuaiJi.Modules.Vouchers.Api
         {
             try
             {
-                return await _voucherService.PurgeAsync(accountSetId, id, cancellationToken) ? NoContent() : NotFound();
+                var existing = await _voucherService.GetAsync(accountSetId, id, cancellationToken);
+                var purged = await _voucherService.PurgeAsync(accountSetId, id, cancellationToken);
+                if (purged && existing is not null)
+                {
+                    await LogAsync(accountSetId, "删除", $"从回收站彻底删除凭证 {existing.VoucherNo}", cancellationToken);
+                }
+
+                return purged ? NoContent() : NotFound();
             }
             catch (VoucherException ex)
             {
@@ -460,7 +510,13 @@ namespace KuaiJi.Modules.Vouchers.Api
         {
             try
             {
-                return Ok(new { removed = await _voucherService.ClearRecycleBinAsync(accountSetId, cancellationToken) });
+                var removed = await _voucherService.ClearRecycleBinAsync(accountSetId, cancellationToken);
+                if (removed > 0)
+                {
+                    await LogAsync(accountSetId, "删除", $"清空回收站，彻底删除 {removed} 张凭证", cancellationToken);
+                }
+
+                return Ok(new { removed });
             }
             catch (VoucherException ex)
             {
@@ -477,6 +533,12 @@ namespace KuaiJi.Modules.Vouchers.Api
             {
                 var changed = await _voucherService.RenumberAsync(
                     accountSetId, request.Word, request.PeriodStart, request.PeriodEnd, request.ByDate, cancellationToken);
+                if (changed > 0)
+                {
+                    var basis = request.ByDate ? "按凭证日期" : "按凭证号";
+                    await LogAsync(accountSetId, "整理", $"整理凭证号（{basis}），变更 {changed} 张", cancellationToken);
+                }
+
                 return Ok(new { changed });
             }
             catch (VoucherException ex)

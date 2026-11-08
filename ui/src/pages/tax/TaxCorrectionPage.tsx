@@ -6,7 +6,7 @@
  * 未登录或登录态过期时弹出补一次短信验证码，登录成功后自动重取。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { App, Button, ConfigProvider, DatePicker, Pagination, Table, Tooltip } from "antd";
+import { Card, App, Button, DatePicker, Pagination, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { DownOutlined, ExclamationCircleFilled, LoginOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
@@ -14,7 +14,6 @@ import { useNavigate, useParams } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxReports, type TaxDeclarationRow } from "@/lib/tax-portal";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
 
@@ -106,7 +105,7 @@ export function TaxCorrectionPage() {
                         应补（退）税额 {fmtMoney(row.payable)}。
                     </span>
                     <span>{ACTION_HINT[action]}</span>
-                    <span className="text-slate-500">
+                    <span className="text-(--muted-foreground)">
                         {action}在电子税务局完成，本系统不代发；进税局后在「申报信息查询」里选中本张申报表办理，
                         办完回到本页点【搜索】即可看到状态更新。
                     </span>
@@ -148,14 +147,13 @@ export function TaxCorrectionPage() {
             width: "12%",
             render: (_, row) =>
                 row.status === "已作废" ? (
-                    <span className="text-slate-400">--</span>
+                    <span className="text-(--muted-foreground)">--</span>
                 ) : (
-                    <span className="-mx-1 flex items-center">
+                    <span className="flex items-center gap-1">
                         {(["作废", "更正"] as const).map((action) => (
                             <Button
                                 key={action}
                                 type="link"
-                                className="!px-1 !text-[12.5px]"
                                 onClick={() => askVoidOrCorrect(action, row)}
                             >
                                 {action}
@@ -174,19 +172,17 @@ export function TaxCorrectionPage() {
 
     // min-h-full 而非 h-full：h-full 会把表格区锁在一屏内，长列表溢出后压住下方的分页栏。
     return (
-        <div className="flex min-h-full flex-col px-6 pt-4">
+        <Card>
             <div className="flex flex-wrap items-center gap-3" style={{ marginBottom: 16 }}>
-                <span className="flex items-center gap-1.5 text-[13px] text-slate-600">
+                <span className="flex items-center gap-1.5 text-[13px] text-(--foreground)">
                     申报日期：
-                    <span className="inline-flex items-center rounded-md border border-[#2f6bff] bg-white pr-1">
+                    <span>
                         <DatePicker.RangePicker
-                            variant="borderless"
                             allowClear={false}
                             value={range}
                             format="YYYY-MM-DD"
                             separator="至"
-                            suffixIcon={<DownOutlined className="text-[10px] text-[#2f6bff]" />}
-                            className="[&_input]:!text-[#2f6bff]"
+                            suffixIcon={<DownOutlined />}
                             onChange={(value) => {
                                 if (!value?.[0] || !value[1]) return;
                                 setRange([value[0].startOf("day"), value[1].startOf("day")]);
@@ -202,33 +198,31 @@ export function TaxCorrectionPage() {
                         登录电子税务局
                     </Button>
                 )}
-                <span className="flex items-center gap-1.5 text-[12.5px] text-[#e6a23c]">
-                    <ExclamationCircleFilled className="text-[#faad14]" />
+                <span className="flex items-center gap-1.5 text-[12.5px] text-(--warn-icon)">
+                    <ExclamationCircleFilled className="text-(--warn-icon)" />
                     作废成功后，请您及时重新申报，避免造成逾期未申报，被税务局处罚！
                 </span>
             </div>
 
             <div className="min-h-0 flex-1">
-                <ConfigProvider theme={TAX_THEME}>
-                    <Table<TaxDeclarationRow>
-                        columns={columns}
-                        dataSource={rows.slice((current - 1) * pageSize, current * pageSize)}
-                        rowKey="key"
-                        tableLayout="fixed"
-                        loading={loading}
-                        pagination={false}
-                        locale={{
-                            emptyText: (
-                                <span className="block py-10 text-[13px] text-slate-400">
-                                    {hint ?? "当前查询区间没有申报表"}
-                                </span>
-                            ),
-                        }}
-                    />
-                </ConfigProvider>
+                <Table<TaxDeclarationRow>
+                    columns={columns}
+                    dataSource={rows.slice((current - 1) * pageSize, current * pageSize)}
+                    rowKey="key"
+                    tableLayout="fixed"
+                    loading={loading}
+                    pagination={false}
+                    locale={{
+                        emptyText: (
+                            <span className="block py-10 text-[13px] text-(--muted-foreground)">
+                                {hint ?? "当前查询区间没有申报表"}
+                            </span>
+                        ),
+                    }}
+                />
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 text-[12.5px] text-(--muted-foreground)" style={{ marginTop: 16 }}>
                 <span>{`显示 ${from} 到 ${to}，共 ${total} 条记录`}</span>
                 <span className="flex items-center gap-1">
                     <Pagination
@@ -255,7 +249,7 @@ export function TaxCorrectionPage() {
                 </span>
             </div>
 
-            <p className="pb-5 text-[12.5px] leading-5 text-slate-400">
+            <p className="pb-5 text-[12.5px] leading-5 text-(--muted-foreground)">
                 申报表取自电子税务局「申报信息查询」，按申报日期区间过滤
                 {fetchedAt ? `；最近更新 ${fetchedAt}` : ""}。作废与更正在电子税务局办理，已作废的申报表不再提供操作入口。
             </p>
@@ -270,6 +264,6 @@ export function TaxCorrectionPage() {
                     void load(range);
                 }}
             />
-        </div>
+        </Card>
     );
 }

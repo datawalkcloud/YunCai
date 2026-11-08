@@ -325,18 +325,18 @@ export function IitLoginModal({ open, accountSetId, onClose, onSuccess }: IitLog
                 </Form>
 
                 {showQr && (
-                    <div className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 py-4">
+                    <div className="flex flex-col items-center gap-2 rounded-lg border border-(--border) py-4">
                         {qrImage ? (
                             <img src={qrImage} alt="个税扫码登录二维码" className="h-[200px] w-[200px] select-none" />
                         ) : (
                             <Spin />
                         )}
-                        <span className="text-[12.5px] text-slate-500">请用个人所得税 APP 扫码并确认登录</span>
+                        <span className="text-[12.5px] text-(--muted-foreground)">请用个人所得税 APP 扫码并确认登录</span>
                     </div>
                 )}
 
                 {waiting && (
-                    <div className="flex items-center gap-3 py-2 text-[13px] text-slate-500">
+                    <div className="flex items-center gap-3 py-2 text-[13px] text-(--muted-foreground)">
                         <Spin size="small" />
                         <span>{flowMessage || "正在连接自然人电子税务局…"}</span>
                     </div>
@@ -346,21 +346,21 @@ export function IitLoginModal({ open, accountSetId, onClose, onSuccess }: IitLog
 
                 {failed && failureShot && (
                     <div className="flex flex-col gap-1.5">
-                        <span className="text-[12.5px] text-slate-500">失败那一刻服务器里浏览器看到的画面：</span>
+                        <span className="text-[12.5px] text-(--muted-foreground)">失败那一刻服务器里浏览器看到的画面：</span>
                         <Image
                             src={failureShot}
                             alt="个税登录失败页面截图"
-                            className="rounded-lg border border-slate-200"
+                            className="rounded-lg border border-(--border)"
                             width="100%"
                         />
                     </div>
                 )}
 
                 {flowMessage && (showSms || showQr) && (
-                    <div className="text-[12.5px] leading-5 text-slate-500">{flowMessage}</div>
+                    <div className="text-[12.5px] leading-5 text-(--muted-foreground)">{flowMessage}</div>
                 )}
 
-                <Space className="text-[12px] text-slate-400">
+                <Space className="text-[12px] text-(--muted-foreground)">
                     登录由服务器完成，验证码自动识别；只有税局发来短信时才需要你填写。
                 </Space>
             </div>

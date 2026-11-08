@@ -73,6 +73,12 @@ export interface AccountsetsAccountSetIdReportsBalanceSheetGetRequest {
     month?: number;
 }
 
+export interface AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest {
+    accountSetId: string;
+    year?: number;
+    month?: number;
+}
+
 export interface AccountsetsAccountSetIdReportsCashFlowGetRequest {
     accountSetId: string;
     year?: number;
@@ -168,6 +174,12 @@ export interface AccountsetsAccountSetIdReportsTrialBalanceGetRequest {
     accountSetId: string;
     startDate?: Date;
     endDate?: Date;
+    accountFrom?: string;
+    accountTo?: string;
+    minLevel?: number;
+    maxLevel?: number;
+    hideZeroBalance?: boolean;
+    hideNoActivity?: boolean;
 }
 
 /**
@@ -201,6 +213,31 @@ export interface ReportsApiInterface {
     /**
      */
     accountsetsAccountSetIdReportsBalanceSheetGet(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BalanceSheetDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsBalanceSheetPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsBalanceSheetPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsBalanceSheetPdfGetRaw(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdReportsBalanceSheetPdfGet(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdReportsCashFlowGet without sending the request
@@ -584,6 +621,12 @@ export interface ReportsApiInterface {
      * @param {string} accountSetId 
      * @param {Date} [startDate] 
      * @param {Date} [endDate] 
+     * @param {string} [accountFrom] 
+     * @param {string} [accountTo] 
+     * @param {number} [minLevel] 
+     * @param {number} [maxLevel] 
+     * @param {boolean} [hideZeroBalance] 
+     * @param {boolean} [hideNoActivity] 
      * @throws {RequiredError}
      * @memberof ReportsApiInterface
      */
@@ -594,6 +637,12 @@ export interface ReportsApiInterface {
      * @param {string} accountSetId 
      * @param {Date} [startDate] 
      * @param {Date} [endDate] 
+     * @param {string} [accountFrom] 
+     * @param {string} [accountTo] 
+     * @param {number} [minLevel] 
+     * @param {number} [maxLevel] 
+     * @param {boolean} [hideZeroBalance] 
+     * @param {boolean} [hideNoActivity] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof ReportsApiInterface
@@ -660,6 +709,56 @@ export class ReportsApi extends runtime.BaseAPI implements ReportsApiInterface {
     async accountsetsAccountSetIdReportsBalanceSheetGet(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BalanceSheetDto> {
         const response = await this.accountsetsAccountSetIdReportsBalanceSheetGetRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsBalanceSheetPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdReportsBalanceSheetPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdReportsBalanceSheetPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['year'] != null) {
+            queryParameters['year'] = requestParameters['year'];
+        }
+
+        if (requestParameters['month'] != null) {
+            queryParameters['month'] = requestParameters['month'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Reports/balance-sheet/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsBalanceSheetPdfGetRaw(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdReportsBalanceSheetPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsBalanceSheetPdfGet(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdReportsBalanceSheetPdfGetRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -1449,6 +1548,30 @@ export class ReportsApi extends runtime.BaseAPI implements ReportsApiInterface {
 
         if (requestParameters['endDate'] != null) {
             queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['accountFrom'] != null) {
+            queryParameters['accountFrom'] = requestParameters['accountFrom'];
+        }
+
+        if (requestParameters['accountTo'] != null) {
+            queryParameters['accountTo'] = requestParameters['accountTo'];
+        }
+
+        if (requestParameters['minLevel'] != null) {
+            queryParameters['minLevel'] = requestParameters['minLevel'];
+        }
+
+        if (requestParameters['maxLevel'] != null) {
+            queryParameters['maxLevel'] = requestParameters['maxLevel'];
+        }
+
+        if (requestParameters['hideZeroBalance'] != null) {
+            queryParameters['hideZeroBalance'] = requestParameters['hideZeroBalance'];
+        }
+
+        if (requestParameters['hideNoActivity'] != null) {
+            queryParameters['hideNoActivity'] = requestParameters['hideNoActivity'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

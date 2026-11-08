@@ -5,6 +5,7 @@ All URIs are relative to *http://localhost:5271*
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
 | [**accountsetsAccountSetIdReportsBalanceSheetGet**](ReportsApi.md#accountsetsaccountsetidreportsbalancesheetget) | **GET** /accountsets/{accountSetId}/Reports/balance-sheet |  |
+| [**accountsetsAccountSetIdReportsBalanceSheetPdfGet**](ReportsApi.md#accountsetsaccountsetidreportsbalancesheetpdfget) | **GET** /accountsets/{accountSetId}/Reports/balance-sheet/pdf |  |
 | [**accountsetsAccountSetIdReportsCashFlowGet**](ReportsApi.md#accountsetsaccountsetidreportscashflowget) | **GET** /accountsets/{accountSetId}/Reports/cash-flow |  |
 | [**accountsetsAccountSetIdReportsCashFlowOpeningGet**](ReportsApi.md#accountsetsaccountsetidreportscashflowopeningget) | **GET** /accountsets/{accountSetId}/Reports/cash-flow-opening |  |
 | [**accountsetsAccountSetIdReportsCashFlowQuarterGet**](ReportsApi.md#accountsetsaccountsetidreportscashflowquarterget) | **GET** /accountsets/{accountSetId}/Reports/cash-flow-quarter |  |
@@ -85,6 +86,77 @@ No authorization required
 
 - **Content-Type**: Not defined
 - **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdReportsBalanceSheetPdfGet
+
+> accountsetsAccountSetIdReportsBalanceSheetPdfGet(accountSetId, year, month)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReportsApi,
+} from '';
+import type { AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ReportsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    year: 56,
+    // number (optional)
+    month: 56,
+  } satisfies AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdReportsBalanceSheetPdfGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **year** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **month** | `number` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 
 ### HTTP response details
@@ -1165,7 +1237,7 @@ No authorization required
 
 ## accountsetsAccountSetIdReportsTrialBalanceGet
 
-> TrialBalanceDto accountsetsAccountSetIdReportsTrialBalanceGet(accountSetId, startDate, endDate)
+> TrialBalanceDto accountsetsAccountSetIdReportsTrialBalanceGet(accountSetId, startDate, endDate, accountFrom, accountTo, minLevel, maxLevel, hideZeroBalance, hideNoActivity)
 
 
 
@@ -1189,6 +1261,18 @@ async function example() {
     startDate: 2013-10-20,
     // Date (optional)
     endDate: 2013-10-20,
+    // string (optional)
+    accountFrom: accountFrom_example,
+    // string (optional)
+    accountTo: accountTo_example,
+    // number (optional)
+    minLevel: 56,
+    // number (optional)
+    maxLevel: 56,
+    // boolean (optional)
+    hideZeroBalance: true,
+    // boolean (optional)
+    hideNoActivity: true,
   } satisfies AccountsetsAccountSetIdReportsTrialBalanceGetRequest;
 
   try {
@@ -1211,6 +1295,12 @@ example().catch(console.error);
 | **accountSetId** | `string` |  | [Defaults to `undefined`] |
 | **startDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
 | **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **accountFrom** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **accountTo** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **minLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **maxLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **hideZeroBalance** | `boolean` |  | [Optional] [Defaults to `undefined`] |
+| **hideNoActivity** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 

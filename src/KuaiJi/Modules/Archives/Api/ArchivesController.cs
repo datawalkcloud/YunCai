@@ -11,10 +11,12 @@ namespace KuaiJi.Modules.Archives.Api
     public class ArchivesController : ControllerBase
     {
         private readonly ArchiveService _archiveService;
+        private readonly ArchiveCategoryService _categoryService;
 
-        public ArchivesController(ArchiveService archiveService)
+        public ArchivesController(ArchiveService archiveService, ArchiveCategoryService categoryService)
         {
             _archiveService = archiveService;
+            _categoryService = categoryService;
         }
 
         /// <summary>获取未归档档案列表。</summary>
@@ -74,6 +76,64 @@ namespace KuaiJi.Modules.Archives.Api
             {
                 var item = await _archiveService.UpdateAsync(accountSetId, id, request, cancellationToken);
                 return item is null ? NotFound() : Ok(item);
+            }
+            catch (ArchiveException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>分类树节点（扁平列表，前端按 ParentId 组树；首次访问自动播种内置分类）。</summary>
+        [HttpGet("categories")]
+        public async Task<ActionResult<IReadOnlyList<ArchiveCategoryDto>>> GetCategories(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _categoryService.GetListAsync(accountSetId, cancellationToken));
+            }
+            catch (ArchiveException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>在指定节点下新增子分类。</summary>
+        [HttpPost("categories")]
+        public async Task<ActionResult<ArchiveCategoryDto>> CreateCategory(Guid accountSetId, [FromBody] SaveArchiveCategoryRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _categoryService.CreateAsync(accountSetId, request, cancellationToken));
+            }
+            catch (ArchiveException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>重命名自建分类（同步档案分类路径）。</summary>
+        [HttpPut("categories/{categoryId:guid}")]
+        public async Task<ActionResult<ArchiveCategoryDto>> RenameCategory(Guid accountSetId, Guid categoryId, [FromBody] SaveArchiveCategoryRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var dto = await _categoryService.RenameAsync(accountSetId, categoryId, request, cancellationToken);
+                return dto is null ? NotFound() : Ok(dto);
+            }
+            catch (ArchiveException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>删除自建分类（有子节点或已挂档案时拒绝）。</summary>
+        [HttpDelete("categories/{categoryId:guid}")]
+        public async Task<IActionResult> DeleteCategory(Guid accountSetId, Guid categoryId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var deleted = await _categoryService.DeleteAsync(accountSetId, categoryId, cancellationToken);
+                return deleted ? NoContent() : NotFound();
             }
             catch (ArchiveException ex)
             {

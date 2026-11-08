@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Key } from "react";
-import { App, Button, ConfigProvider, DatePicker, InputNumber, Select, Table } from "antd";
+import { Card, App, Button, DatePicker, InputNumber, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
     LeftOutlined,
@@ -18,11 +18,10 @@ import {
     StepForwardOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxCertificates, type TaxCertificateRow } from "@/lib/tax-portal";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
 
@@ -47,8 +46,9 @@ const columns: TableColumnsType<CertificateRow> = [
     { title: "开具税务机关", dataIndex: "authority", key: "authority", width: "24%" },
 ];
 
-export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertificate: () => void }) {
+export function TaxCertificateDownloadPage() {
     const { accountSetId = "" } = useParams();
+    const navigate = useNavigate();
     const { message } = App.useApp();
     const { token } = useAuth();
 
@@ -124,9 +124,9 @@ export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertif
     }
 
     return (
-        <div className="flex h-full flex-col px-6 pt-4">
+        <Card>
             <div className="flex flex-wrap items-center gap-3" style={{ marginBottom: 16 }}>
-                <span className="text-[13px] text-slate-600">开具日期：</span>
+                <span className="text-[13px] text-(--foreground)">开具日期：</span>
                 <DatePicker
                     allowClear={false}
                     value={range[0]}
@@ -136,7 +136,7 @@ export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertif
                         if (value) setRange([value.startOf("day"), range[1]]);
                     }}
                 />
-                <span className="text-[13px] text-slate-500">至</span>
+                <span className="text-[13px] text-(--muted-foreground)">至</span>
                 <DatePicker
                     allowClear={false}
                     value={range[1]}
@@ -167,34 +167,32 @@ export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertif
             </div>
 
             <div>
-                <ConfigProvider theme={TAX_THEME}>
-                    <Table<CertificateRow>
-                        columns={columns}
-                        dataSource={paged}
-                        rowKey="key"
-                        tableLayout="fixed"
-                        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-                        loading={querying}
-                        pagination={false}
-                        locale={{
-                            emptyText: (
-                                <div className="flex min-h-[calc(100vh-300px)] flex-col items-center justify-center gap-1 text-[13px] leading-6 text-slate-500">
-                                    <div>{hint ?? "您所选的期间内查无数据。"}</div>
-                                    <div>
-                                        如需开具完税证明，请前往{" "}
-                                        <Button type="link" onClick={onOpenCertificate}>
-                                            开具完税证明
-                                        </Button>{" "}
-                                        。
-                                    </div>
+                <Table<CertificateRow>
+                    columns={columns}
+                    dataSource={paged}
+                    rowKey="key"
+                    tableLayout="fixed"
+                    rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+                    loading={querying}
+                    pagination={false}
+                    locale={{
+                        emptyText: (
+                            <div className="flex min-h-[calc(100vh-300px)] flex-col items-center justify-center gap-1 text-[13px] leading-6 text-(--muted-foreground)">
+                                <div>{hint ?? "您所选的期间内查无数据。"}</div>
+                                <div>
+                                    如需开具完税证明，请前往{" "}
+                                    <Button type="link" onClick={() => navigate(`/${accountSetId}/tax/certificate`)}>
+                                        开具完税证明
+                                    </Button>{" "}
+                                    。
                                 </div>
-                            ),
-                        }}
-                    />
-                </ConfigProvider>
+                            </div>
+                        ),
+                    }}
+                />
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 text-[12.5px] text-(--muted-foreground)" style={{ marginTop: 16 }}>
                 <span>{`显示 ${from} 到 ${to}, 共 ${total} 条记录`}</span>
                 <div className="flex items-center gap-1">
                     <Select
@@ -265,6 +263,6 @@ export function TaxCertificateDownloadPage({ onOpenCertificate }: { onOpenCertif
                     void load(range);
                 }}
             />
-        </div>
+        </Card>
     );
 }

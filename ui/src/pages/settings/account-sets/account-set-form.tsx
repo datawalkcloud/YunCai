@@ -26,7 +26,7 @@ import {
 function Tip({ text }: { text: string }) {
     return (
         <span title={text}>
-            <InfoCircleOutlined className="text-[12px] text-slate-300" />
+            <InfoCircleOutlined className="text-[12px] text-(--muted-foreground)" />
         </span>
     )
 }
@@ -51,9 +51,9 @@ function Row({
         <div className="flex items-start gap-3">
             <label
                 htmlFor={htmlFor}
-                className="w-[150px] shrink-0 pt-1 text-right text-[13px] leading-6 text-slate-600"
+                className="w-[150px] shrink-0 pt-1 text-right text-[13px] leading-6 text-(--foreground)"
             >
-                {required && <span className="mr-0.5 text-[#ef4444]">*</span>}
+                {required && <span className="mr-0.5 text-(--danger)">*</span>}
                 {label}：
             </label>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -62,7 +62,7 @@ function Row({
                     {tip && <Tip text={tip} />}
                 </div>
                 {error && (
-                    <p role="alert" className="text-[12px] leading-normal text-[#ef4444]">
+                    <p role="alert" className="text-[12px] leading-normal text-(--danger)">
                         {error}
                     </p>
                 )}
@@ -76,8 +76,8 @@ function Group({ title, hint, children }: { title: string; hint?: string; childr
     return (
         <section className="flex flex-col gap-4">
             <div className="flex items-baseline gap-2">
-                <h4 className="text-[13.5px] font-semibold text-slate-800">{title}</h4>
-                {hint && <span className="text-[12px] text-slate-400">{hint}</span>}
+                <h4 className="text-[13.5px] font-semibold text-(--foreground)">{title}</h4>
+                {hint && <span className="text-[12px] text-(--muted-foreground)">{hint}</span>}
             </div>
             {children}
         </section>
@@ -210,19 +210,9 @@ export function BasicInfoFields({ values, errors, editing, onChange }: AccountSe
             {editing && (
                 <Row
                     label="凭证字"
-                    htmlFor="account-set-voucher-words"
-                    required
-                    error={errors.voucherWords}
-                    tip="以逗号分隔多个凭证字，制单时只能从中选择。"
+                    tip="在「设置 → 凭证字」中维护，新增、删除与默认设置会同步到制单下拉。"
                 >
-                    <Input
-                        id="account-set-voucher-words"
-                        className={FORM_CONTROL_W}
-                        value={values.voucherWords ?? ""}
-                        onChange={(e) => onChange("voucherWords", e.target.value)}
-                        placeholder="记,收,付,转"
-                        maxLength={100}
-                    />
+                    <span className="text-[13px] text-(--foreground)">{values.voucherWords || "—"}</span>
                 </Row>
             )}
         </div>
@@ -334,7 +324,7 @@ export function TaxInfoFields({ values, errors, onChange }: AccountSetFieldsProp
                     />
                 </Row>
                 <div className="flex items-start gap-3">
-                    <span className="w-[150px] shrink-0 pt-1 text-right text-[13px] leading-6 text-slate-600">
+                    <span className="w-[150px] shrink-0 pt-1 text-right text-[13px] leading-6 text-(--foreground)">
                         税率：
                     </span>
                     <div className="flex items-center gap-2">
@@ -348,7 +338,7 @@ export function TaxInfoFields({ values, errors, onChange }: AccountSetFieldsProp
                                 max={100}
                                 precision={2}
                             />
-                            <span className="text-[12.5px] text-slate-400">% 增值税</span>
+                            <span className="text-[12.5px] text-(--muted-foreground)">% 增值税</span>
                         </span>
                         <span className="flex items-center gap-1">
                             <NumberField
@@ -360,7 +350,7 @@ export function TaxInfoFields({ values, errors, onChange }: AccountSetFieldsProp
                                 max={100}
                                 precision={2}
                             />
-                            <span className="text-[12.5px] text-slate-400">% 企业所得税</span>
+                            <span className="text-[12.5px] text-(--muted-foreground)">% 企业所得税</span>
                         </span>
                     </div>
                 </div>

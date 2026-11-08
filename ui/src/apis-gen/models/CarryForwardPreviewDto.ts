@@ -65,6 +65,24 @@ export interface CarryForwardPreviewDto {
     profitAmount?: number;
     /**
      * 
+     * @type {number}
+     * @memberof CarryForwardPreviewDto
+     */
+    retainedProfitAmount?: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CarryForwardPreviewDto
+     */
+    hasRetainedVoucher?: boolean;
+    /**
+     * 
+     * @type {CarryPreviewVoucherDto}
+     * @memberof CarryForwardPreviewDto
+     */
+    retainedVoucher?: CarryPreviewVoucherDto | null;
+    /**
+     * 
      * @type {Array<CarryPreviewVoucherDto>}
      * @memberof CarryForwardPreviewDto
      */
@@ -100,6 +118,9 @@ export function CarryForwardPreviewDtoFromJSONTyped(json: any, ignoreDiscriminat
         'alreadyCarried': json['alreadyCarried'] == null ? undefined : json['alreadyCarried'],
         'needsCarry': json['needsCarry'] == null ? undefined : json['needsCarry'],
         'profitAmount': json['profitAmount'] == null ? undefined : json['profitAmount'],
+        'retainedProfitAmount': json['retainedProfitAmount'] == null ? undefined : json['retainedProfitAmount'],
+        'hasRetainedVoucher': json['hasRetainedVoucher'] == null ? undefined : json['hasRetainedVoucher'],
+        'retainedVoucher': json['retainedVoucher'] == null ? undefined : CarryPreviewVoucherDtoFromJSON(json['retainedVoucher']),
         'vouchers': json['vouchers'] == null ? undefined : ((json['vouchers'] as Array<any>).map(CarryPreviewVoucherDtoFromJSON)),
         'warnings': json['warnings'] == null ? undefined : json['warnings'],
     };
@@ -122,6 +143,9 @@ export function CarryForwardPreviewDtoToJSONTyped(value?: CarryForwardPreviewDto
         'alreadyCarried': value['alreadyCarried'],
         'needsCarry': value['needsCarry'],
         'profitAmount': value['profitAmount'],
+        'retainedProfitAmount': value['retainedProfitAmount'],
+        'hasRetainedVoucher': value['hasRetainedVoucher'],
+        'retainedVoucher': CarryPreviewVoucherDtoToJSON(value['retainedVoucher']),
         'vouchers': value['vouchers'] == null ? undefined : ((value['vouchers'] as Array<any>).map(CarryPreviewVoucherDtoToJSON)),
         'warnings': value['warnings'],
     };

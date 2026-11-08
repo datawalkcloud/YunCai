@@ -99,10 +99,13 @@ export interface AccountsetsAccountSetIdLedgersGeneralGetRequest {
     endDate?: Date;
     accountFrom?: string;
     accountTo?: string;
+    minLevel?: number;
     maxLevel?: number;
+    showAssist?: boolean;
     showOnlyLeaf?: boolean;
     hideZeroBalance?: boolean;
     hideNoActivity?: boolean;
+    hideTotalsNoActivity?: boolean;
     includeIdleAccounts?: boolean;
 }
 
@@ -125,12 +128,15 @@ export interface AccountsetsAccountSetIdLedgersKindExportGetRequest {
     accountFrom?: string;
     accountTo?: string;
     maxLevel?: number;
+    minLevel?: number;
     summaryKeyword?: string;
     sortBy?: number;
+    showAssist?: boolean;
     showCounterAccount?: boolean;
     showOnlyLeaf?: boolean;
     hideZeroBalance?: boolean;
     hideNoActivity?: boolean;
+    hideTotalsNoActivity?: boolean;
     includeIdleAccounts?: boolean;
     assistType?: number;
     secondaryAssistType?: number;
@@ -153,12 +159,15 @@ export interface AccountsetsAccountSetIdLedgersSubsidiaryGetRequest {
     accountFrom?: string;
     accountTo?: string;
     maxLevel?: number;
+    minLevel?: number;
     summaryKeyword?: string;
     sortBy?: number;
+    showAssist?: boolean;
     showCounterAccount?: boolean;
     showOnlyLeaf?: boolean;
     hideZeroBalance?: boolean;
     hideNoActivity?: boolean;
+    hideTotalsNoActivity?: boolean;
     includeIdleAccounts?: boolean;
 }
 
@@ -332,10 +341,13 @@ export interface LedgersApiInterface {
      * @param {Date} [endDate] 
      * @param {string} [accountFrom] 
      * @param {string} [accountTo] 
+     * @param {number} [minLevel] 
      * @param {number} [maxLevel] 
+     * @param {boolean} [showAssist] 
      * @param {boolean} [showOnlyLeaf] 
      * @param {boolean} [hideZeroBalance] 
      * @param {boolean} [hideNoActivity] 
+     * @param {boolean} [hideTotalsNoActivity] 
      * @param {boolean} [includeIdleAccounts] 
      * @throws {RequiredError}
      * @memberof LedgersApiInterface
@@ -349,10 +361,13 @@ export interface LedgersApiInterface {
      * @param {Date} [endDate] 
      * @param {string} [accountFrom] 
      * @param {string} [accountTo] 
+     * @param {number} [minLevel] 
      * @param {number} [maxLevel] 
+     * @param {boolean} [showAssist] 
      * @param {boolean} [showOnlyLeaf] 
      * @param {boolean} [hideZeroBalance] 
      * @param {boolean} [hideNoActivity] 
+     * @param {boolean} [hideTotalsNoActivity] 
      * @param {boolean} [includeIdleAccounts] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -408,12 +423,15 @@ export interface LedgersApiInterface {
      * @param {string} [accountFrom] 
      * @param {string} [accountTo] 
      * @param {number} [maxLevel] 
+     * @param {number} [minLevel] 
      * @param {string} [summaryKeyword] 
      * @param {number} [sortBy] 
+     * @param {boolean} [showAssist] 
      * @param {boolean} [showCounterAccount] 
      * @param {boolean} [showOnlyLeaf] 
      * @param {boolean} [hideZeroBalance] 
      * @param {boolean} [hideNoActivity] 
+     * @param {boolean} [hideTotalsNoActivity] 
      * @param {boolean} [includeIdleAccounts] 
      * @param {number} [assistType] 
      * @param {number} [secondaryAssistType] 
@@ -433,12 +451,15 @@ export interface LedgersApiInterface {
      * @param {string} [accountFrom] 
      * @param {string} [accountTo] 
      * @param {number} [maxLevel] 
+     * @param {number} [minLevel] 
      * @param {string} [summaryKeyword] 
      * @param {number} [sortBy] 
+     * @param {boolean} [showAssist] 
      * @param {boolean} [showCounterAccount] 
      * @param {boolean} [showOnlyLeaf] 
      * @param {boolean} [hideZeroBalance] 
      * @param {boolean} [hideNoActivity] 
+     * @param {boolean} [hideTotalsNoActivity] 
      * @param {boolean} [includeIdleAccounts] 
      * @param {number} [assistType] 
      * @param {number} [secondaryAssistType] 
@@ -491,12 +512,15 @@ export interface LedgersApiInterface {
      * @param {string} [accountFrom] 
      * @param {string} [accountTo] 
      * @param {number} [maxLevel] 
+     * @param {number} [minLevel] 
      * @param {string} [summaryKeyword] 
      * @param {number} [sortBy] 
+     * @param {boolean} [showAssist] 
      * @param {boolean} [showCounterAccount] 
      * @param {boolean} [showOnlyLeaf] 
      * @param {boolean} [hideZeroBalance] 
      * @param {boolean} [hideNoActivity] 
+     * @param {boolean} [hideTotalsNoActivity] 
      * @param {boolean} [includeIdleAccounts] 
      * @throws {RequiredError}
      * @memberof LedgersApiInterface
@@ -511,12 +535,15 @@ export interface LedgersApiInterface {
      * @param {string} [accountFrom] 
      * @param {string} [accountTo] 
      * @param {number} [maxLevel] 
+     * @param {number} [minLevel] 
      * @param {string} [summaryKeyword] 
      * @param {number} [sortBy] 
+     * @param {boolean} [showAssist] 
      * @param {boolean} [showCounterAccount] 
      * @param {boolean} [showOnlyLeaf] 
      * @param {boolean} [hideZeroBalance] 
      * @param {boolean} [hideNoActivity] 
+     * @param {boolean} [hideTotalsNoActivity] 
      * @param {boolean} [includeIdleAccounts] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -893,8 +920,16 @@ export class LedgersApi extends runtime.BaseAPI implements LedgersApiInterface {
             queryParameters['accountTo'] = requestParameters['accountTo'];
         }
 
+        if (requestParameters['minLevel'] != null) {
+            queryParameters['minLevel'] = requestParameters['minLevel'];
+        }
+
         if (requestParameters['maxLevel'] != null) {
             queryParameters['maxLevel'] = requestParameters['maxLevel'];
+        }
+
+        if (requestParameters['showAssist'] != null) {
+            queryParameters['showAssist'] = requestParameters['showAssist'];
         }
 
         if (requestParameters['showOnlyLeaf'] != null) {
@@ -907,6 +942,10 @@ export class LedgersApi extends runtime.BaseAPI implements LedgersApiInterface {
 
         if (requestParameters['hideNoActivity'] != null) {
             queryParameters['hideNoActivity'] = requestParameters['hideNoActivity'];
+        }
+
+        if (requestParameters['hideTotalsNoActivity'] != null) {
+            queryParameters['hideTotalsNoActivity'] = requestParameters['hideTotalsNoActivity'];
         }
 
         if (requestParameters['includeIdleAccounts'] != null) {
@@ -1054,12 +1093,20 @@ export class LedgersApi extends runtime.BaseAPI implements LedgersApiInterface {
             queryParameters['maxLevel'] = requestParameters['maxLevel'];
         }
 
+        if (requestParameters['minLevel'] != null) {
+            queryParameters['minLevel'] = requestParameters['minLevel'];
+        }
+
         if (requestParameters['summaryKeyword'] != null) {
             queryParameters['summaryKeyword'] = requestParameters['summaryKeyword'];
         }
 
         if (requestParameters['sortBy'] != null) {
             queryParameters['sortBy'] = requestParameters['sortBy'];
+        }
+
+        if (requestParameters['showAssist'] != null) {
+            queryParameters['showAssist'] = requestParameters['showAssist'];
         }
 
         if (requestParameters['showCounterAccount'] != null) {
@@ -1076,6 +1123,10 @@ export class LedgersApi extends runtime.BaseAPI implements LedgersApiInterface {
 
         if (requestParameters['hideNoActivity'] != null) {
             queryParameters['hideNoActivity'] = requestParameters['hideNoActivity'];
+        }
+
+        if (requestParameters['hideTotalsNoActivity'] != null) {
+            queryParameters['hideTotalsNoActivity'] = requestParameters['hideTotalsNoActivity'];
         }
 
         if (requestParameters['includeIdleAccounts'] != null) {
@@ -1220,12 +1271,20 @@ export class LedgersApi extends runtime.BaseAPI implements LedgersApiInterface {
             queryParameters['maxLevel'] = requestParameters['maxLevel'];
         }
 
+        if (requestParameters['minLevel'] != null) {
+            queryParameters['minLevel'] = requestParameters['minLevel'];
+        }
+
         if (requestParameters['summaryKeyword'] != null) {
             queryParameters['summaryKeyword'] = requestParameters['summaryKeyword'];
         }
 
         if (requestParameters['sortBy'] != null) {
             queryParameters['sortBy'] = requestParameters['sortBy'];
+        }
+
+        if (requestParameters['showAssist'] != null) {
+            queryParameters['showAssist'] = requestParameters['showAssist'];
         }
 
         if (requestParameters['showCounterAccount'] != null) {
@@ -1242,6 +1301,10 @@ export class LedgersApi extends runtime.BaseAPI implements LedgersApiInterface {
 
         if (requestParameters['hideNoActivity'] != null) {
             queryParameters['hideNoActivity'] = requestParameters['hideNoActivity'];
+        }
+
+        if (requestParameters['hideTotalsNoActivity'] != null) {
+            queryParameters['hideTotalsNoActivity'] = requestParameters['hideTotalsNoActivity'];
         }
 
         if (requestParameters['includeIdleAccounts'] != null) {

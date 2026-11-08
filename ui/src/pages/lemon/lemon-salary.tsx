@@ -1,18 +1,13 @@
 /**
  * 复刻区工资模块（对应柠檬云 /Salary/*）：
  * 工资管理、员工信息、工资统计表、五险一金设置。
- * 视觉遵循全站云财蓝：主色 #2f6bff、直角卡片、白卡 + slate 灰阶文字。
+ * 视觉遵循全站云财蓝：主色 #273cf3、直角卡片、白卡 + slate 灰阶文字。
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Alert, Drawer, Dropdown, Radio, Segmented } from "antd";
-import {
-    PayCircleOutlined,
-    QuestionCircleOutlined,
-    WalletOutlined,
-} from "@ant-design/icons";
+import { InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined } from "@ant-design/icons";
 
-import { ICON_STYLE, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
-import { Tile } from "@/components/page/tile";
+import { ICON_STYLE, PILL, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import {
@@ -132,8 +127,8 @@ async function uploadFile<T>(url: string, token: string, file: File): Promise<{ 
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
     return (
         <label className="flex items-center gap-3">
-            <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-slate-700`}>
-                {required && <span className="text-[#ef4444]">*</span>}
+            <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-(--foreground)`}>
+                {required && <span className="text-(--danger)">*</span>}
                 {label}：
             </span>
             {children}
@@ -346,7 +341,7 @@ function ConfirmDialog({
                 </div>
             }
         >
-            <div className="text-center text-[13px] leading-6 text-slate-700">{text}</div>
+            <div className="text-center text-[13px] leading-6 text-(--foreground)">{text}</div>
         </Dialog>
     );
 }
@@ -409,7 +404,76 @@ function useLeafAccounts() {
 
 /* ---------- 工资管理 ---------- */
 
-/** 计提工资/发放工资视图（已接后端）：双卡显示当期应发/实发合计，一键生成计提/发放凭证。 */
+/** 凭证进度标签：全部生成绿、部分生成琥珀、未生成灰。 */
+function VoucherState({ done, total }: { done: number; total: number }) {
+    if (total === 0) {
+        return (
+            <span className="rounded bg-(--muted) px-2 py-0.5 text-[11px] font-medium text-(--muted-foreground) dark:bg-(--card)/10 dark:text-(--muted-foreground)">
+                暂无工资单
+            </span>
+        );
+    }
+    const all = done >= total;
+    const tone = all ? PILL.green : done > 0 ? PILL.amber : PILL.gray;
+    return (
+        <span className="rounded px-2 py-0.5 text-[11px] font-medium" style={{ background: tone.bg, color: tone.fg }}>
+            {all ? `已全部生成（${total} 张）` : done > 0 ? `已生成 ${done} / ${total}` : "未生成"}
+        </span>
+    );
+}
+
+/** 处理步骤行：编号 + 说明 + 金额 + 凭证进度 + 生成按钮。 */
+function AccrueStep({
+    no,
+    title,
+    desc,
+    amountLabel,
+    amount,
+    done,
+    total,
+    actionText,
+    busy,
+    disabled,
+    onGenerate,
+}: {
+    no: string;
+    title: string;
+    desc: string;
+    amountLabel: string;
+    amount?: number | null;
+    done: number;
+    total: number;
+    actionText: string;
+    busy: boolean;
+    disabled: boolean;
+    onGenerate: () => void;
+}) {
+    return (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-lg border border-(--border) px-5 py-4 dark:border-white/10">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-(--muted) text-[12px] font-semibold tabular-nums text-(--foreground) dark:bg-(--card)/10 dark:text-(--muted-foreground)">
+                {no}
+            </span>
+            <div className="min-w-[200px] flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[14px] font-semibold text-(--foreground) dark:text-(--muted-foreground)">{title}</span>
+                    <VoucherState done={done} total={total} />
+                </div>
+                <div className="mt-1 text-[12.5px] leading-5 text-(--muted-foreground) dark:text-(--muted-foreground)">{desc}</div>
+            </div>
+            <div className="min-w-[128px] text-right">
+                <div className="text-[12px] text-(--muted-foreground) dark:text-(--muted-foreground)">{amountLabel}</div>
+                <div className="mt-0.5 text-[20px] leading-none font-semibold tabular-nums text-(--foreground) dark:text-(--muted-foreground)">
+                    ¥{nf(amount)}
+                </div>
+            </div>
+            <Btn variant="primary" disabled={disabled} onClick={onGenerate}>
+                {busy ? "生成中…" : actionText}
+            </Btn>
+        </div>
+    );
+}
+
+/** 计提工资/发放工资视图（已接后端）：按期展示应发/实发金额与凭证生成进度，一键生成对应凭证。 */
 function SalaryAccrueView() {
     const { token, user } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
@@ -417,9 +481,10 @@ function SalaryAccrueView() {
     const [override, setOverride] = useState<AccountingPeriod | null>(null);
     const period = override ?? defaultPeriod;
     const [view, setView] = useState<AccrueViewDto | null>(null);
+    const [bills, setBills] = useState<SalaryBillDto[]>([]);
     const [toast, setToast] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [busy, setBusy] = useState(false);
+    const [busy, setBusy] = useState<"accrue" | "pay" | null>(null);
     const [settingOpen, setSettingOpen] = useState(false);
 
     const reload = useCallback(async () => {
@@ -428,15 +493,17 @@ function SalaryAccrueView() {
         }
         setLoading(true);
         try {
-            setView(
-                await new SalariesApi(apiConfig(token)).accountsetsAccountSetIdSalaryAccrueViewGet({
-                    accountSetId,
-                    period: period.period,
-                }),
-            );
+            const api = new SalariesApi(apiConfig(token));
+            const [accrueView, billList] = await Promise.all([
+                api.accountsetsAccountSetIdSalaryAccrueViewGet({ accountSetId, period: period.period }),
+                api.accountsetsAccountSetIdSalaryBillsGet({ accountSetId, period: period.period }),
+            ]);
+            setView(accrueView);
+            setBills(billList ?? []);
             setToast(null);
         } catch (e) {
             setView(null);
+            setBills([]);
             setToast(await apiErrorMessage(e, "加载计提视图失败"));
         } finally {
             setLoading(false);
@@ -450,7 +517,7 @@ function SalaryAccrueView() {
         if (!token || !accountSetId || busy) {
             return;
         }
-        setBusy(true);
+        setBusy(kind);
         try {
             const api = new SalariesApi(apiConfig(token));
             const request = {
@@ -469,46 +536,77 @@ function SalaryAccrueView() {
         } catch (e) {
             setToast(await apiErrorMessage(e, "生成凭证失败"));
         } finally {
-            setBusy(false);
+            setBusy(null);
         }
     };
 
-    const cards: Array<{
-        title: string;
-        amount: string;
-        kind: "accrue" | "pay";
-        tone: "blue" | "green";
-        icon: typeof WalletOutlined;
-    }> = [
-        { title: "计提工资", amount: nf(view?.payable), kind: "accrue", tone: "blue", icon: WalletOutlined },
-        { title: "发放工资", amount: nf(view?.net), kind: "pay", tone: "green", icon: PayCircleOutlined },
-    ];
+    // 只有应发 / 实发大于 0 的工资单才会出凭证，与后端的跳过条件保持一致。
+    const accrueTargets = bills.filter((b) => (b.cost ?? 0) > 0);
+    const payTargets = bills.filter((b) => (b.net ?? 0) > 0);
+    const accrueDone = accrueTargets.filter((b) => b.accruedVoucherText).length;
+    const payDone = payTargets.filter((b) => b.paidVoucherText).length;
+
     return (
         <>
             <ToolRow
                 left={<PeriodStepper text={periodLabel(period)} onPrev={() => setOverride(shiftPeriod(period, -1))} onNext={() => setOverride(shiftPeriod(period, 1))} />}
                 right={
-                    <span className="flex items-center gap-1 text-[13px] text-[#2f6bff]">
-                        <Btn onClick={() => setSettingOpen(true)} title="配置计提 / 发放凭证使用的科目与发放账户">
-                            ⚙ 工资凭证设置
-                        </Btn>
-                    </span>
+                    <Btn
+                        icon={<SettingOutlined />}
+                        onClick={() => setSettingOpen(true)}
+                        title="配置计提 / 发放凭证使用的科目与发放账户"
+                    >
+                        工资凭证设置
+                    </Btn>
                 }
             />
             <StateBar loading={loading} error={toast && !view ? toast : null} />
-            <div className="mx-auto mt-6 grid w-[720px] grid-cols-2 gap-8 pb-8">
-                {cards.map((c) => (
-                    <div key={c.kind} className="flex flex-col items-center gap-4">
-                        <Tile className="w-full" label={c.title} value={c.amount} tone={c.tone} icon={c.icon} />
-                        <Btn
-                            variant="primary"
-                            disabled={busy}
-                            onClick={() => void generate(c.kind)}
-                        >
-                            生成凭证
-                        </Btn>
-                    </div>
-                ))}
+            <div className="px-4 pb-6">
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-[13px] font-medium text-(--foreground) dark:text-(--muted-foreground)">本期处理</span>
+                    <span className="text-[12.5px] text-(--muted-foreground) dark:text-(--muted-foreground)">
+                        {bills.length > 0
+                            ? `${periodLabel(period)} · ${bills.length} 人工资单`
+                            : view
+                              ? `${periodLabel(period)} · 暂无工资单，请先在「工资列表」录入或导入`
+                              : periodLabel(period)}
+                    </span>
+                </div>
+                <div className="flex flex-col gap-3">
+                    <AccrueStep
+                        no="01"
+                        title="计提工资"
+                        desc="按应发工资合计计提「应付职工薪酬」，生成计提凭证。"
+                        amountLabel="应发合计"
+                        amount={view?.payable}
+                        done={accrueDone}
+                        total={accrueTargets.length}
+                        actionText="生成计提凭证"
+                        busy={busy === "accrue"}
+                        disabled={busy !== null}
+                        onGenerate={() => void generate("accrue")}
+                    />
+                    <AccrueStep
+                        no="02"
+                        title="发放工资"
+                        desc="按实发工资发放，代扣个税与个人款项在凭证中分列。"
+                        amountLabel="实发合计"
+                        amount={view?.net}
+                        done={payDone}
+                        total={payTargets.length}
+                        actionText="生成发放凭证"
+                        busy={busy === "pay"}
+                        disabled={busy !== null}
+                        onGenerate={() => void generate("pay")}
+                    />
+                </div>
+                <div className="mt-4 flex items-start gap-2 rounded-lg bg-(--table-zebra-bg) px-4 py-3 text-[12.5px] leading-5 text-(--muted-foreground) dark:bg-(--card)/5 dark:text-(--muted-foreground)">
+                    <InfoCircleOutlined className="mt-[3px]" style={ICON_STYLE.muted} />
+                    <span>
+                        先计提、再发放。计提凭证：借 员工计提工资科目 / 贷 应付职工薪酬；发放凭证：借 应付职工薪酬 / 贷
+                        银行存款、应交个人所得税及代扣个人款项。科目可在右上角「工资凭证设置」中指定，留空时按编码自动推断。
+                    </span>
+                </div>
             </div>
             {toast && !loading && <Toast text={toast} onClose={() => setToast(null)} />}
             {settingOpen && (
@@ -604,10 +702,10 @@ function SalaryVoucherSettingDialog({ onClose, onSaved }: { onClose: () => void;
             }
         >
             <div className="flex flex-col gap-3 py-2">
-                <div className="text-[12.5px] text-slate-500">
+                <div className="text-[12.5px] text-(--muted-foreground)">
                     留空的项沿用自动推断（按科目编码找应付职工薪酬 2211、个人所得税、其他应付款，发放账户取首个启用的银行日记账）。
                 </div>
-                {loading && <div className="text-[13px] text-slate-400">加载中…</div>}
+                {loading && <div className="text-[13px] text-(--muted-foreground)">加载中…</div>}
                 {rows.map((r) => (
                     <Field key={r.key} label={r.label}>
                         <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -617,11 +715,11 @@ function SalaryVoucherSettingDialog({ onClose, onSaved }: { onClose: () => void;
                                 onChange={(v) => setForm((prev) => ({ ...prev, [r.key]: v }))}
                                 options={[{ value: "", label: `自动：${r.auto ?? "未找到"}` }, ...options]}
                             />
-                            <span className="pl-0.5 text-[12.5px] text-slate-400">{r.hint}</span>
+                            <span className="pl-0.5 text-[12.5px] text-(--muted-foreground)">{r.hint}</span>
                         </span>
                     </Field>
                 ))}
-                {error && <div className="text-[13px] text-[#ef4444]">{error}</div>}
+                {error && <div className="text-[13px] text-(--danger)">{error}</div>}
             </div>
         </Dialog>
     );
@@ -631,7 +729,7 @@ function SalaryVoucherSettingDialog({ onClose, onSaved }: { onClose: () => void;
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
         <section>
-            <div className="text-[15px] font-bold text-slate-800">{title}</div>
+            <div className="text-[15px] font-bold text-(--foreground)">{title}</div>
             <div className="mt-3">{children}</div>
         </section>
     );
@@ -894,8 +992,8 @@ function EmployeeDrawerForm({
                         <DateInput className="min-w-0 flex-1" value={draft.payStartDate} onChange={(v) => set({ payStartDate: v })} />
                     </Field>
                     <div className="flex min-w-0 items-center gap-3">
-                        <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-slate-700`}>
-                            <span className="text-[#ef4444]">*</span>减除费用：
+                        <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-(--foreground)`}>
+                            <span className="text-(--danger)">*</span>减除费用：
                         </span>
                         <Radio.Group
                             value={draft.deductBasicExpense ? "1" : "2"}
@@ -940,7 +1038,7 @@ function EmployeeDrawerForm({
                         />
                     </Field>
                     <div className="flex min-w-0 items-center gap-4">
-                        <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-slate-700`}>税收减免：</span>
+                        <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-(--foreground)`}>税收减免：</span>
                         <span className="flex flex-wrap items-center gap-4">
                             <CheckBox label="残疾" checked={draft.isDisabled} onChange={(c) => set({ isDisabled: c })} />
                             <CheckBox label="烈属" checked={draft.isMartyrFamily} onChange={(c) => set({ isMartyrFamily: c })} />
@@ -952,8 +1050,8 @@ function EmployeeDrawerForm({
 
             <Section title="扣除款项">
                 <div className="flex items-center gap-3">
-                    <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-slate-700`}>
-                        <span className="text-[#ef4444]">*</span>是否缴纳五险一金：
+                    <span className={`${FORM_LABEL_W} shrink-0 text-right text-[13px] text-(--foreground)`}>
+                        <span className="text-(--danger)">*</span>是否缴纳五险一金：
                     </span>
                     <Radio.Group
                         value={draft.paysSocialInsurance ? "1" : "2"}
@@ -967,7 +1065,7 @@ function EmployeeDrawerForm({
                     insurance.length > 0 ? (
                         <div className="mt-3">
                             <Table cols={insuranceCols} rows={insuranceRows} empty={<EmptyTip />} />
-                            <div className="mt-2 text-[12.5px] text-slate-400">
+                            <div className="mt-2 text-[12.5px] text-(--muted-foreground)">
                                 比例来自「五险一金设置」，缴纳基数留空或为 0 表示不为该员工缴纳此项目。
                             </div>
                         </div>
@@ -1099,35 +1197,55 @@ export function LemonSalaryManage() {
         { key: "cost", title: "员工成本", align: "right" },
     ];
     const list = bills;
+    const sumOf = (pick: (b: SalaryBillDto) => number | null | undefined) =>
+        list.reduce((s2, b) => s2 + (pick(b) ?? 0), 0);
     const totals = {
-        gross: list.reduce((s2, b) => s2 + (b.gross ?? 0), 0).toFixed(2),
-        deductible: list.reduce((s2, b) => s2 + (b.deductible ?? 0), 0).toFixed(2),
-        payable: list.reduce((s2, b) => s2 + (b.payable ?? 0), 0).toFixed(2),
-        personal: list.reduce((s2, b) => s2 + (b.personalDeduction ?? 0), 0).toFixed(2),
-        threshold: "5000",
-        tax: list.reduce((s2, b) => s2 + (b.tax ?? 0), 0).toFixed(2),
-        adjust: list.reduce((s2, b) => s2 + (b.adjust ?? 0), 0).toFixed(2),
-        net: list.reduce((s2, b) => s2 + (b.net ?? 0), 0).toFixed(2),
-        company: list.reduce((s2, b) => s2 + (b.companyPart ?? 0), 0).toFixed(2),
-        cost: list.reduce((s2, b) => s2 + (b.cost ?? 0), 0).toFixed(2),
+        gross: sumOf((b) => b.gross),
+        deductible: sumOf((b) => b.deductible),
+        payable: sumOf((b) => b.payable),
+        personal: sumOf((b) => b.personalDeduction),
+        threshold: 5000,
+        tax: sumOf((b) => b.tax),
+        adjust: sumOf((b) => b.adjust),
+        net: sumOf((b) => b.net),
+        company: sumOf((b) => b.companyPart),
+        cost: sumOf((b) => b.cost),
     };
     const rows: Row[] = [
         ...list.map((b) => ({
             no: b.employeeCode,
             name: b.employeeName,
             dept: b.dept,
-            gross: (b.gross ?? 0).toFixed(2),
-            deduct: (b.deductible ?? 0).toFixed(2),
-            payable: (b.payable ?? 0).toFixed(2),
-            personal: (b.personalDeduction ?? 0).toFixed(2),
-            threshold: (b.taxThreshold ?? 0).toFixed(0),
-            tax: (b.tax ?? 0).toFixed(2),
-            adjust: (b.adjust ?? 0).toFixed(2),
-            net: (b.net ?? 0).toFixed(2),
-            company: (b.companyPart ?? 0).toFixed(2),
-            cost: (b.cost ?? 0).toFixed(2),
+            gross: nf(b.gross),
+            deduct: nf(b.deductible),
+            payable: nf(b.payable),
+            personal: nf(b.personalDeduction),
+            threshold: String(b.taxThreshold ?? 0),
+            tax: nf(b.tax),
+            adjust: nf(b.adjust),
+            net: nf(b.net),
+            company: nf(b.companyPart),
+            cost: nf(b.cost),
         })),
-        { dept: "合计", gross: totals.gross, deduct: totals.deductible, payable: totals.payable, personal: totals.personal, threshold: totals.threshold, tax: totals.tax, adjust: totals.adjust, net: totals.net, company: totals.company, cost: totals.cost, __style: { background: "#fafbfd", fontWeight: 500 } },
+        // 空期间不渲染全 0 的合计行，空态交给 Table 的 empty。
+        ...(list.length
+            ? [
+                  {
+                      dept: "合计",
+                      gross: nf(totals.gross),
+                      deduct: nf(totals.deductible),
+                      payable: nf(totals.payable),
+                      personal: nf(totals.personal),
+                      threshold: String(totals.threshold),
+                      tax: nf(totals.tax),
+                      adjust: nf(totals.adjust),
+                      net: nf(totals.net),
+                      company: nf(totals.company),
+                      cost: nf(totals.cost),
+                      __style: { background: "var(--table-zebra-bg)", fontWeight: 500 },
+                  },
+              ]
+            : []),
     ];
     return (
         <Page>
@@ -1188,6 +1306,25 @@ export function LemonSalaryManage() {
                 }
             />
             <StateBar loading={loading} error={error} />
+            {list.length > 0 && (
+                <div className="mx-4 mb-3 flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg bg-(--table-zebra-bg) px-4 py-2.5 text-[13px]">
+                    <span className="text-(--muted-foreground)">
+                        员工 <span className="ml-1 font-medium tabular-nums text-(--foreground)">{list.length}</span> 人
+                    </span>
+                    <span className="text-(--muted-foreground)">
+                        应发合计 <span className="ml-1 font-medium tabular-nums text-(--foreground)">¥{nf(totals.payable)}</span>
+                    </span>
+                    <span className="text-(--muted-foreground)">
+                        实发合计 <span className="ml-1 text-[14px] font-semibold tabular-nums text-(--foreground)">¥{nf(totals.net)}</span>
+                    </span>
+                    <span className="text-(--muted-foreground)">
+                        本月个税 <span className="ml-1 font-medium tabular-nums text-(--foreground)">¥{nf(totals.tax)}</span>
+                    </span>
+                    <span className="text-(--muted-foreground)">
+                        员工成本 <span className="ml-1 font-medium tabular-nums text-(--foreground)">¥{nf(totals.cost)}</span>
+                    </span>
+                </div>
+            )}
             <div className="flex-1 px-4">
                 <Table cols={cols} rows={rows} empty={<EmptyTip />} />
             </div>
@@ -1217,16 +1354,16 @@ export function LemonSalaryManage() {
                         </div>
                     }
                 >
-                    <div className="py-2 text-[13px] text-slate-700">
+                    <div className="py-2 text-[13px] text-(--foreground)">
                         新增 <b>{importResult.imported}</b> 条，更新 <b>{importResult.updated}</b> 条
                         {(importResult.failures ?? []).length > 0 && `，失败 ${(importResult.failures ?? []).length} 条`}
                     </div>
                     {(importResult.failures ?? []).length > 0 && (
-                        <div className="max-h-[240px] overflow-auto rounded border border-slate-200">
+                        <div className="max-h-[240px] overflow-auto rounded border border-(--border)">
                             {(importResult.failures ?? []).map((f, i) => (
-                                <div key={i} className="flex gap-2 border-b border-slate-100 px-2 py-1 text-[12.5px] last:border-0">
-                                    <span className="w-[52px] shrink-0 text-slate-400">第 {f.row} 行</span>
-                                    <span className="text-[#ef4444]">{f.reason}</span>
+                                <div key={i} className="flex gap-2 border-b border-(--border) px-2 py-1 text-[12.5px] last:border-0">
+                                    <span className="w-[52px] shrink-0 text-(--muted-foreground)">第 {f.row} 行</span>
+                                    <span className="text-(--danger)">{f.reason}</span>
                                 </div>
                             ))}
                         </div>
@@ -1528,16 +1665,16 @@ export function LemonSalaryEmployee() {
                         </div>
                     }
                 >
-                    <div className="py-2 text-[13px] text-slate-700">
+                    <div className="py-2 text-[13px] text-(--foreground)">
                         新增 <b>{importResult.imported}</b> 人，更新 <b>{importResult.updated}</b> 人
                         {(importResult.failures ?? []).length > 0 && `，失败 ${(importResult.failures ?? []).length} 行`}
                     </div>
                     {(importResult.failures ?? []).length > 0 && (
-                        <div className="max-h-[240px] overflow-auto rounded border border-slate-200">
+                        <div className="max-h-[240px] overflow-auto rounded border border-(--border)">
                             {(importResult.failures ?? []).map((f, i) => (
-                                <div key={i} className="flex gap-2 border-b border-slate-100 px-2 py-1 text-[12.5px] last:border-0">
-                                    <span className="w-[52px] shrink-0 text-slate-400">第 {f.row} 行</span>
-                                    <span className="text-[#ef4444]">{f.reason}</span>
+                                <div key={i} className="flex gap-2 border-b border-(--border) px-2 py-1 text-[12.5px] last:border-0">
+                                    <span className="w-[52px] shrink-0 text-(--muted-foreground)">第 {f.row} 行</span>
+                                    <span className="text-(--danger)">{f.reason}</span>
                                 </div>
                             ))}
                         </div>
@@ -1634,7 +1771,7 @@ export function LemonSalarySummary() {
             company: rows2.reduce((s2, r) => s2 + (r.companyPart ?? 0), 0).toFixed(2),
             net: rows2.reduce((s2, r) => s2 + (r.net ?? 0), 0).toFixed(2),
             cost: rows2.reduce((s2, r) => s2 + (r.cost ?? 0), 0).toFixed(2),
-            __style: { background: "#fafbfd", fontWeight: 500 },
+            __style: { background: "var(--table-zebra-bg)", fontWeight: 500 },
         },
     ];
     return (

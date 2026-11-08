@@ -12,6 +12,7 @@ Name | Type
 `accountName` | string
 `debit` | number
 `credit` | number
+`balance` | number
 
 ## Example
 
@@ -26,6 +27,7 @@ const example = {
   "accountName": null,
   "debit": null,
   "credit": null,
+  "balance": null,
 } satisfies CarryPreviewLineDto
 
 console.log(example)

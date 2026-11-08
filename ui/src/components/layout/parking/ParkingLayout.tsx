@@ -42,7 +42,7 @@ export default function ParkingLayout({
     children,
 }: ParkingLayoutProps) {
     return (
-        <div className="parking-shell flex h-screen w-screen flex-col overflow-hidden bg-white">
+        <div className="parking-shell flex h-screen w-screen flex-col overflow-hidden bg-(--pk-bg)">
             <TopBar
                 brand={brand}
                 menus={menus}
@@ -56,10 +56,10 @@ export default function ParkingLayout({
                 <Sidebar title={sidebarTitle} sections={sections} selectedKey={selectedKey} />
                 <div className="flex min-w-0 flex-1 flex-col">
                     <TabStrip tabs={tabs} />
-                    <main className="pk-main min-h-0 flex-1 overflow-y-auto bg-(--pk-gray-bg) p-3">{children}</main>
+                    <main className="pk-main min-h-0 flex-1 overflow-y-auto bg-(--pk-bg) p-3">{children}</main>
                 </div>
                 {aside && (
-                    <aside className="hidden w-[380px] shrink-0 overflow-y-auto border-l border-(--pk-border) bg-white p-3 xl:block">
+                    <aside className="hidden w-[380px] shrink-0 overflow-y-auto border-l border-(--pk-border) bg-(--pk-surface) p-3 xl:block">
                         {aside}
                     </aside>
                 )}
@@ -90,7 +90,7 @@ function TopBar({
     noticeCount: number;
 }) {
     return (
-        <header className="flex h-[52px] shrink-0 items-center gap-4 border-b border-(--pk-border) bg-white px-4">
+        <header className="flex h-[52px] shrink-0 items-center gap-4 border-b border-(--pk-border) bg-(--pk-surface) px-4">
             <div className="flex items-center gap-2">
                 <LogoMark />
                 <span className="text-[15px] font-semibold tracking-wide">{brand}</span>
@@ -105,15 +105,15 @@ function TopBar({
                             className={
                                 "relative flex h-[52px] cursor-pointer items-center whitespace-nowrap px-2.5 text-[13px] " +
                                 (isPill
-                                    ? "mt-2.5 mb-2.5 h-auto rounded-full bg-(--pk-brand-tint) px-3.5 py-1 font-medium text-(--pk-brand)"
+                                    ? "mt-2.5 mb-2.5 h-auto rounded-full bg-(--pk-brand-tint) px-3.5 py-1 font-medium text-(--pk-brand-text)"
                                     : isActive
-                                      ? "font-semibold text-(--pk-brand)"
-                                      : "text-(--pk-text) hover:text-(--pk-brand)")
+                                      ? "font-semibold text-(--pk-brand-text)"
+                                      : "text-(--pk-text) hover:text-(--pk-brand-text)")
                             }
                         >
                             {menu.label}
                             {isActive && !isPill && (
-                                <span className="absolute inset-x-2 bottom-0 h-[3px] rounded-t bg-(--pk-brand)" />
+                                <span className="absolute inset-x-2 bottom-0 h-[3px] rounded-t bg-(--pk-brand-text)" />
                             )}
                         </span>
                     );
@@ -194,10 +194,10 @@ function Sidebar({
     selectedKey?: string;
 }) {
     return (
-        <aside className="flex w-[236px] shrink-0 flex-col overflow-hidden border-r border-(--pk-border) bg-white">
+        <aside className="flex w-[236px] shrink-0 flex-col overflow-hidden border-r border-(--pk-border) bg-(--pk-surface)">
             <div className="flex h-[44px] shrink-0 items-center gap-1.5 bg-(--pk-gray-bg) px-4 text-[13px] font-medium">
                 <svg viewBox="0 0 16 16" className="size-3.5" fill="none">
-                    <path d="M2 8.5h3.5V14H2V8.5Zm4.5-6H10V14H6.5V2.5Zm4.5 9.5H14.5V11H11v1Z" fill="#1A1A1A" />
+                    <path d="M2 8.5h3.5V14H2V8.5Zm4.5-6H10V14H6.5V2.5Zm4.5 9.5H14.5V11H11v1Z" fill="currentColor" />
                 </svg>
                 <span className="flex-1">{title}</span>
                 <UpOutlined className="text-[10px] text-(--pk-text-2)" />
@@ -220,14 +220,14 @@ function Sidebar({
                                     className={
                                         "relative flex h-[42px] cursor-pointer items-center gap-2 px-4 text-[13px] " +
                                         (selected
-                                            ? "bg-(--pk-brand-soft) font-medium text-(--pk-brand)"
+                                            ? "bg-(--pk-brand-soft) font-medium text-(--pk-brand-text)"
                                             : "text-(--pk-text) hover:bg-(--pk-gray-bg)")
                                     }
                                 >
                                     {item.icon && <span className="text-[14px]">{item.icon}</span>}
                                     <span className="truncate">{item.label}</span>
                                     {selected && (
-                                        <span className="absolute top-0 right-0 h-full w-[3px] bg-(--pk-brand)" />
+                                        <span className="absolute top-0 right-0 h-full w-[3px] bg-(--pk-brand-text)" />
                                     )}
                                 </div>
                             );
@@ -245,7 +245,7 @@ function Sidebar({
 
 function TabStrip({ tabs }: { tabs: ParkingTab[] }) {
     return (
-        <div className="flex h-[44px] shrink-0 items-center border-b border-(--pk-border) bg-white">
+        <div className="flex h-[44px] shrink-0 items-center border-b border-(--pk-border) bg-(--pk-surface)">
             <span className="flex h-full w-9 cursor-pointer items-center justify-center border-r border-(--pk-border) text-[11px] text-(--pk-text-2)">
                 <LeftOutlined />
             </span>
@@ -255,7 +255,7 @@ function TabStrip({ tabs }: { tabs: ParkingTab[] }) {
                         key={tab.key}
                         className={
                             "flex h-full cursor-pointer items-center gap-2 border-r border-(--pk-border) px-4 text-[13px] whitespace-nowrap " +
-                            (tab.active ? "text-(--pk-brand)" : "text-(--pk-text)")
+                            (tab.active ? "text-(--pk-brand-text)" : "text-(--pk-text)")
                         }
                     >
                         {tab.label}

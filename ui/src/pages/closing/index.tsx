@@ -56,20 +56,20 @@ const STATE_META: Record<string, { label: string; short: string; dot: string; ca
     NotCarried: {
         label: "未结转损益、未结账",
         short: "待结转",
-        dot: "bg-[#22c55e]",
-        card: "border-slate-200 bg-[#f8fdf9]",
+        dot: "bg-(--success)",
+        card: "border-(--border) bg-(--success-soft)",
     },
     Carried: {
         label: "已结转损益、未结账",
         short: "待结账",
-        dot: "bg-[#2f6bff]",
-        card: "border-[#bfdbfe] bg-[#f5f9ff]",
+        dot: "bg-(--brand-fill)",
+        card: "border-(--brand-border) bg-(--brand-soft)",
     },
     Closed: {
         label: "已结转损益、已结账",
         short: "已结账",
-        dot: "bg-slate-300",
-        card: "border-slate-200 bg-slate-50",
+        dot: "bg-(--muted)",
+        card: "border-(--border) bg-(--muted)",
     },
 }
 
@@ -118,16 +118,19 @@ function PeriodCard({ period, active, onClick }: PeriodCardProps) {
             className={cn(
                 "flex w-[124px] flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors",
                 meta.card,
-                active ? "border-[#2f6bff] ring-2 ring-[#dbeafe]" : "hover:border-slate-300",
+                active ? "border-(--brand) ring-2 ring-(--brand-border)" : "hover:border-(--border)",
             )}
         >
-            <span className="flex items-center gap-1.5 text-[15px] font-semibold text-slate-800">{period.month} 月</span>
-            <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500">
+            <span className="flex items-center gap-1.5 text-[15px] font-semibold text-(--foreground)">{period.month} 月</span>
+            <span className="flex items-center gap-1.5 text-[11.5px] text-(--muted-foreground)">
                 <span className={cn("size-1.5 rounded-full", meta.dot)} />
                 {meta.short}
             </span>
             {!!period.unpostedCount && (
-                <span className="text-[11px] font-medium text-[#ef4444]">{period.unpostedCount} 张未过账</span>
+                <span className="text-[11px] font-medium text-(--danger)">{period.unpostedCount} 张未过账</span>
+            )}
+            {period.voucherCount > 0 && (
+                <span className="text-[11px] text-(--muted-foreground)">{period.voucherCount} 张凭证</span>
             )}
         </button>
     )
@@ -135,11 +138,11 @@ function PeriodCard({ period, active, onClick }: PeriodCardProps) {
 
 function StateLegend() {
     return (
-        <div className="flex flex-wrap items-center gap-3 text-[12px] text-slate-500">
+        <div className="flex flex-wrap items-center gap-3 text-[12px] text-(--muted-foreground)">
             {[
-                { dot: "bg-[#22c55e]", text: "未结转损益、未结账" },
-                { dot: "bg-[#2f6bff]", text: "已结转损益、未结账" },
-                { dot: "bg-slate-300", text: "已结转损益、已结账" },
+                { dot: "bg-(--success)", text: "未结转损益、未结账" },
+                { dot: "bg-(--brand-fill)", text: "已结转损益、未结账" },
+                { dot: "bg-(--muted)", text: "已结转损益、已结账" },
             ].map((item) => (
                 <span key={item.text} className="inline-flex items-center gap-1.5">
                     <span className={cn("size-2 rounded-full", item.dot)} />
@@ -162,11 +165,11 @@ function CheckRow({ item, onAction }: { item: ClosingCheckItemDto; onAction?: (a
         <div className="flex items-start gap-2.5 px-4 py-2.5">
             <CheckIcon status={item.status} />
             <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-medium text-slate-700">{item.title}</div>
-                <div className="text-[12.5px] text-slate-500">{item.message}</div>
+                <div className="text-[13px] font-medium text-(--foreground)">{item.title}</div>
+                <div className="text-[12.5px] text-(--muted-foreground)">{item.message}</div>
             </div>
             {item.actionKey && onAction && (
-                <Button size="small" type="link" className="!px-0" onClick={() => onAction(item.actionKey as string)}>
+                <Button size="small" type="link" className="pk-link-flush" onClick={() => onAction(item.actionKey as string)}>
                     {item.actionText ?? "点击查看"}
                 </Button>
             )}
@@ -196,10 +199,10 @@ const CARRY_VOUCHER_COLUMNS: TableColumnsType<CarryVoucherRow> = [
         key: "account",
         render: (_, row) => (
             <div className="flex flex-col gap-0.5">
-                <span className="truncate text-slate-800">
+                <span className="truncate text-(--foreground)">
                     {row.accountCode} {row.accountName}
                 </span>
-                <span className="text-[12px] text-slate-400">余额：{money(row.balance)}</span>
+                <span className="text-[12px] text-(--muted-foreground)">余额：{money(row.balance)}</span>
             </div>
         ),
     },
@@ -240,11 +243,11 @@ function CarryVoucherPreview({
         balance: line.balance,
     }))
 
-    const headerCell = "min-w-10 rounded border border-slate-300 bg-white px-2 py-0.5 text-center font-semibold text-slate-800"
+    const headerCell = "min-w-10 rounded border border-(--border) bg-(--card) px-2 py-0.5 text-center font-semibold text-(--foreground)"
 
     return (
-        <div className="overflow-hidden rounded-lg border border-slate-200">
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-500">
+        <div className="overflow-hidden rounded-lg border border-(--border)">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-(--border) bg-(--muted) px-3 py-2.5 text-[13px] text-(--muted-foreground)">
                 <span className="flex items-center gap-1.5">
                     凭证字号
                     <span className={headerCell}>{voucher.word}</span>
@@ -267,16 +270,16 @@ function CarryVoucherPreview({
                         <Table.Summary.Cell index={0} colSpan={3} className="px-2 py-2 font-medium">
                             合计：{amountToChineseUppercase(voucher.totalDebit)}
                         </Table.Summary.Cell>
-                        <Table.Summary.Cell index={3} className="!p-0">
+                        <Table.Summary.Cell index={3} className="pk-cell-flush">
                             <AmountCells value={voucher.totalDebit} />
                         </Table.Summary.Cell>
-                        <Table.Summary.Cell index={4} className="!p-0">
+                        <Table.Summary.Cell index={4} className="pk-cell-flush">
                             <AmountCells value={voucher.totalCredit} />
                         </Table.Summary.Cell>
                     </Table.Summary.Row>
                 )}
             />
-            <div className="px-3 py-2 text-[12.5px] text-slate-500">制单人：{preparer || "—"}</div>
+            <div className="px-3 py-2 text-[12.5px] text-(--muted-foreground)">制单人：{preparer || "—"}</div>
         </div>
     )
 }
@@ -676,19 +679,19 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                             showIcon
                             title="请按下列结转项逐项确认金额并生成凭证；本期无发生额的项目可直接进入下一步。"
                         />
-                        <div className="flex flex-col divide-y divide-slate-100 rounded-xl border border-slate-100">
+                        <div className="flex flex-col divide-y divide-(--border) rounded-xl border border-(--border)">
                             {preClose?.items.map((item) => (
                                 <div key={item.key} className="flex flex-wrap items-center gap-3 px-4 py-3">
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium text-slate-700">
+                                        <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium text-(--foreground)">
                                             {item.title}
                                             {item.generated && <Tag color="green">已生成</Tag>}
                                             {item.source === "salary" && <Tag color="blue">工资模块</Tag>}
                                             {item.source === "unsupported" && <Tag>需模板/手工</Tag>}
                                         </div>
-                                        <div className="mt-0.5 text-[12px] text-slate-400">{item.hint}</div>
+                                        <div className="mt-0.5 text-[12px] text-(--muted-foreground)">{item.hint}</div>
                                     </div>
-                                    <div className="w-32 text-right text-[13px] font-semibold text-slate-700">
+                                    <div className="w-32 text-right text-[13px] font-semibold text-(--foreground)">
                                         {item.amount ? `¥ ${money(item.amount)}` : "—"}
                                     </div>
                                     <div className="w-28 text-right">
@@ -706,7 +709,7 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                                     {item.voucherLabel}
                                                 </Button>
                                             ) : (
-                                                <span className="text-[12px] text-slate-400">{item.voucherLabel ?? "已生成"}</span>
+                                                <span className="text-[12px] text-(--muted-foreground)">{item.voucherLabel ?? "已生成"}</span>
                                             )
                                         ) : item.available ? (
                                             <Button
@@ -727,7 +730,7 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                 </div>
                             ))}
                             {!preClose && (
-                                <div className="flex justify-center py-8 text-[13px] text-slate-400">
+                                <div className="flex justify-center py-8 text-[13px] text-(--muted-foreground)">
                                     {preCloseLoading ? "正在检查…" : "暂无结转项"}
                                 </div>
                             )}
@@ -738,7 +741,7 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                 {step === 1 && (
                     <div className="flex flex-col gap-3">
                         {previewLoading && !preview && (
-                            <div className="py-6 text-center text-[13px] text-slate-400">正在计算结转金额…</div>
+                            <div className="py-6 text-center text-[13px] text-(--muted-foreground)">正在计算结转金额…</div>
                         )}
                         {preview?.warnings.map((warning) => (
                             <Alert key={warning} type="warning" showIcon title={warning} />
@@ -761,14 +764,14 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                 <Alert type="info" showIcon title="已生成年末结转未分配利润凭证。" />
                             ) : preview.retainedProfitAmount !== 0 ? (
                                 <div className="flex flex-col gap-3">
-                                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
-                                        <div className="text-[13px] text-slate-600">
+                                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--border) p-3">
+                                        <div className="text-[13px] text-(--foreground)">
                                             年末结转未分配利润：
-                                            <span className="font-semibold text-slate-800">
+                                            <span className="font-semibold text-(--foreground)">
                                                 {preview.retainedProfitAmount > 0 ? "净利润" : "净亏损"} ¥{" "}
                                                 {money(Math.abs(preview.retainedProfitAmount))}
                                             </span>
-                                            <span className="ml-1 text-[12px] text-slate-400">（本年利润余额转入未分配利润）</span>
+                                            <span className="ml-1 text-[12px] text-(--muted-foreground)">（本年利润余额转入未分配利润）</span>
                                         </div>
                                         <Button
                                             type="primary"
@@ -791,8 +794,8 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                         )}
                         {!previewLoading && preview && !preview.alreadyCarried && !preview.needsCarry && (
                             <div className="flex flex-col items-center gap-1.5 py-12">
-                                <span className="text-[15px] font-medium text-slate-600">亲！本期不需要结转损益。</span>
-                                <span className="text-[12px] text-slate-400">本期没有损益类余额，标记已结转后即可结账。</span>
+                                <span className="text-[15px] font-medium text-(--foreground)">亲！本期不需要结转损益。</span>
+                                <span className="text-[12px] text-(--muted-foreground)">本期没有损益类余额，标记已结转后即可结账。</span>
                             </div>
                         )}
                         {preview && (preview.needsCarry || preview.vouchers.length > 0) && (
@@ -805,6 +808,21 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                         >
                                             收入和成本分开结转损益
                                         </Checkbox>
+                                    </div>
+                                )}
+                                {preview.vouchers.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl bg-(--table-zebra-bg) px-4 py-2.5 text-[13px] text-(--muted-foreground)">
+                                        <span>
+                                            本次结转{" "}
+                                            <span className="font-medium text-(--foreground)">{preview.vouchers.length}</span> 张凭证
+                                        </span>
+                                        <span>
+                                            借方合计{" "}
+                                            <span className="font-semibold tabular-nums text-(--foreground)">
+                                                ¥{money(preview.vouchers.reduce((sum, voucher) => sum + (voucher.totalDebit ?? 0), 0))}
+                                            </span>
+                                        </span>
+                                        {preview.alreadyCarried && <span className="text-[12px] text-(--success)">已结转，仅查看</span>}
                                     </div>
                                 )}
                                 {preview.vouchers
@@ -823,8 +841,8 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                         />
                                     ))}
                                 {!preview.alreadyCarried && templates.length > 0 && (
-                                    <div className="flex flex-col gap-1.5 rounded-xl border border-slate-100 p-3">
-                                        <div className="text-[12.5px] font-medium text-slate-600">结转模板</div>
+                                    <div className="flex flex-col gap-1.5 rounded-xl border border-(--border) p-3">
+                                        <div className="text-[12.5px] font-medium text-(--foreground)">结转模板</div>
                                         {templates.map((template) => (
                                             <Checkbox
                                                 key={template.id}
@@ -839,7 +857,7 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                             >
                                                 {template.name}
                                                 {!template.isEnabled && (
-                                                    <span className="ml-1 text-[11.5px] text-slate-400">（已停用）</span>
+                                                    <span className="ml-1 text-[11.5px] text-(--muted-foreground)">（已停用）</span>
                                                 )}
                                             </Checkbox>
                                         ))}
@@ -848,32 +866,38 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                             </>
                         )}
                         {!previewLoading && !preview && !error && (
-                            <div className="flex justify-center py-8 text-[13px] text-slate-400">暂无结转数据</div>
+                            <div className="flex justify-center py-8 text-[13px] text-(--muted-foreground)">暂无结转数据</div>
                         )}
                     </div>
                 )}
 
                 {step === 2 && (
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                        <SectionCard title={<span className="text-[13.5px] font-semibold text-slate-700">影响结账</span>}>
-                            <div className="-mx-4 divide-y divide-slate-100">
+                        <SectionCard title={<span className="text-[13.5px] font-semibold text-(--foreground)">影响结账</span>}>
+                            <div className="-mx-4 divide-y divide-(--border)">
                                 {blockingItems.map((item) => (
                                     <CheckRow key={item.key} item={item} onAction={goAction} />
                                 ))}
+                                {checks && blockingItems.length === 0 && (
+                                    <div className="flex items-center gap-2 px-4 py-4 text-[13px] text-(--success)">
+                                        <CheckCircleOutlined className="text-(--success)" />
+                                        全部检查通过，可以结账。
+                                    </div>
+                                )}
                                 {!checks && (
-                                    <div className="flex justify-center py-8 text-[13px] text-slate-400">
+                                    <div className="flex justify-center py-8 text-[13px] text-(--muted-foreground)">
                                         {checksLoading ? "正在检查…" : "暂无检查结果"}
                                     </div>
                                 )}
                             </div>
                         </SectionCard>
-                        <SectionCard title={<span className="text-[13.5px] font-semibold text-slate-700">仅提示</span>}>
-                            <div className="-mx-4 divide-y divide-slate-100">
+                        <SectionCard title={<span className="text-[13.5px] font-semibold text-(--foreground)">仅提示</span>}>
+                            <div className="-mx-4 divide-y divide-(--border)">
                                 {infoItems.map((item) => (
                                     <CheckRow key={item.key} item={item} onAction={goAction} />
                                 ))}
                                 {checks && infoItems.length === 0 && (
-                                    <div className="flex justify-center py-6 text-[13px] text-slate-400">暂无提示</div>
+                                    <div className="flex justify-center py-6 text-[13px] text-(--muted-foreground)">暂无提示</div>
                                 )}
                             </div>
                         </SectionCard>
@@ -1108,18 +1132,18 @@ export default function ClosingPage() {
             {tab === "process" ? (
                 <div className="flex flex-col gap-5">
                     <SectionCard
-                        title={<h3 className="text-[14px] font-semibold text-slate-800">期间状态</h3>}
+                        title={<h3 className="text-[14px] font-semibold text-(--foreground)">期间状态</h3>}
                         action={<StateLegend />}
                     >
                         {processGroups.length === 0 ? (
-                            <div className="flex justify-center py-8 text-[13px] text-slate-400">
+                            <div className="flex justify-center py-8 text-[13px] text-(--muted-foreground)">
                                 {loading ? "正在加载…" : "暂无期间数据"}
                             </div>
                         ) : (
                             <div className="flex flex-col gap-4">
                                 {processGroups.map(([year, yearPeriods]) => (
                                     <div key={year} className="flex flex-col gap-2">
-                                        <div className="text-[15px] font-bold text-slate-800">{year}</div>
+                                        <div className="text-[15px] font-bold text-(--foreground)">{year}</div>
                                         <div className="flex flex-wrap gap-2.5">
                                             {yearPeriods.map((period) => (
                                                 <PeriodCard
@@ -1145,16 +1169,16 @@ export default function ClosingPage() {
                             { label: "已结转损益至", value: status?.carriedPeriod ?? "未结转" },
                             { label: "已结账至", value: status?.closedPeriod ?? "未结账" },
                         ].map((item) => (
-                            <div key={item.label} className="rounded-xl border border-slate-100 bg-[#fafbfe] px-4 py-3">
-                                <div className="text-[12px] text-slate-400">{item.label}</div>
-                                <div className="mt-1 text-[15px] font-semibold text-slate-800">{item.value}</div>
+                            <div key={item.label} className="rounded-xl border border-(--border) bg-(--table-zebra-bg) px-4 py-3">
+                                <div className="text-[12px] text-(--muted-foreground)">{item.label}</div>
+                                <div className="mt-1 text-[15px] font-semibold text-(--foreground)">{item.value}</div>
                             </div>
                         ))}
                     </div>
                 </div>
             ) : (
                 <SectionCard
-                    title={<h3 className="text-[14px] font-semibold text-slate-800">反结账</h3>}
+                    title={<h3 className="text-[14px] font-semibold text-(--foreground)">反结账</h3>}
                     action={
                         <Button
                             icon={<UndoOutlined />}
@@ -1167,16 +1191,16 @@ export default function ClosingPage() {
                         </Button>
                     }
                 >
-                    <p className="mb-3 text-[13px] leading-6 text-slate-500">
+                    <p className="mb-3 text-[13px] leading-6 text-(--muted-foreground)">
                         点击任意已结账的月份即可从该月起反结账——该月份及其后所有已结账期间都会恢复为可修改状态；如需重做结转，请先反结账，再撤销结转。
                     </p>
                     {closedGroups.length === 0 ? (
-                        <div className="flex justify-center py-8 text-[13px] text-slate-400">暂无已结账期间</div>
+                        <div className="flex justify-center py-8 text-[13px] text-(--muted-foreground)">暂无已结账期间</div>
                     ) : (
                         <div className="flex flex-col gap-4">
                             {closedGroups.map(([year, yearPeriods]) => (
                                 <div key={year} className="flex flex-col gap-2">
-                                    <div className="text-[15px] font-bold text-slate-800">{year}</div>
+                                    <div className="text-[15px] font-bold text-(--foreground)">{year}</div>
                                     <div className="flex flex-wrap gap-2.5">
                                         {yearPeriods.map((period) => (
                                             <button
@@ -1185,13 +1209,13 @@ export default function ClosingPage() {
                                                 disabled={!!busy}
                                                 onClick={() => void doReopen(period)}
                                                 className={cn(
-                                                    "flex w-[124px] flex-col items-start gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition-colors hover:border-slate-300",
+                                                    "flex w-[124px] flex-col items-start gap-1 rounded-xl border border-(--border) bg-(--muted) px-3 py-2.5 text-left transition-colors hover:border-(--border)",
                                                     busy === `reopen-${period.periodText}` && "opacity-60",
                                                 )}
                                             >
-                                                <span className="text-[15px] font-semibold text-slate-800">{period.month} 月</span>
-                                                <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500">
-                                                    <span className="size-1.5 rounded-full bg-slate-300" />
+                                                <span className="text-[15px] font-semibold text-(--foreground)">{period.month} 月</span>
+                                                <span className="flex items-center gap-1.5 text-[11.5px] text-(--muted-foreground)">
+                                                    <span className="size-1.5 rounded-full bg-(--muted)" />
                                                     已结账
                                                 </span>
                                             </button>

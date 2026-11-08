@@ -10,7 +10,7 @@ namespace KuaiJi.Tests.Ledgers;
 /// <summary>
 /// 账簿装载工厂 <see cref="LedgerDataSetFactory"/> 的口径测试。
 /// 领域依据（AGENTS.md「领域须知」/ 设计文档 §0）：
-/// ① 查询区间一律归一到自然月（起始归月初、截止归月末），缺省区间取凭证边界（含未过账）；
+/// ① 查询区间一律归一到自然月（起始归月初、截止归月末），缺省区间从账套启用期间起算并覆盖全部凭证（含未过账）；
 /// ② 期初 = 科目启用期初（按方向换算为借 - 贷）+ 起始日之前已过账分录累计，且启用期初只认末级科目；
 /// ③ 装载只按「日期 + 已过账」裁剪，科目/摘要/级次等显示条件不影响装载集合；
 /// ④ 同一次请求内按「账套 + 区间 + 排序方式」复用装载结果；条件非法或账套不存在时抛中文文案。
@@ -104,6 +104,19 @@ public sealed class LedgerDataSetFactoryTests : IDisposable
         Assert.DoesNotContain(dataSet.Facts, f => f.Summary == "草稿在更早已过账前");
         Assert.Equal(202601, dataSet.StartPeriod);
         Assert.Equal(202604, dataSet.EndPeriod);
+    }
+
+    [Fact]
+    public async Task LoadAsync_NoDates_StartsFromEnabledPeriodEvenBeforeFirstVoucher()
+    {
+        // 与柠檬云一致：启用后尚无凭证的月份也要出现在账页里，缺省区间从启用期间起算
+        _h.AddVoucher(new DateOnly(2026, 3, 10), VoucherStatus.Posted,
+            _h.Entry("首笔", _cash.Id, 10m, 0m), _h.Entry("首笔", _revenue.Id, 0m, 10m));
+
+        var dataSet = await _factory.LoadAsync(_h.AccountSet.Id, new LedgerQueryOptions());
+
+        Assert.Equal(new DateOnly(2026, 1, 1), dataSet.StartDate);
+        Assert.Equal(new DateOnly(2026, 3, 31), dataSet.EndDate);
     }
 
     [Fact]

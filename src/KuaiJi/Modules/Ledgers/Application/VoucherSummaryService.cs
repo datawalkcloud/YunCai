@@ -9,6 +9,9 @@ namespace KuaiJi.Modules.Ledgers.Application
         /// <summary>科目名称。</summary>
         public required string Name { get; init; }
 
+        /// <summary>上级科目编码；一级科目为 null。页面按它把平表挂成树。</summary>
+        public string? ParentCode { get; init; }
+
         /// <summary>该科目涉及的凭证张数（按凭证去重）。</summary>
         public int VoucherCount { get; init; }
 
@@ -83,6 +86,9 @@ namespace KuaiJi.Modules.Ledgers.Application
                 {
                     Code = account.Code,
                     Name = account.Name,
+                    ParentCode = account.ParentId is { } parentId && dataSet.AccountsById.TryGetValue(parentId, out var parent)
+                        ? parent.Code
+                        : null,
                     VoucherCount = facts.Select(f => f.VoucherId).Distinct().Count(),
                     Debit = facts.Sum(f => f.Debit),
                     Credit = facts.Sum(f => f.Credit),

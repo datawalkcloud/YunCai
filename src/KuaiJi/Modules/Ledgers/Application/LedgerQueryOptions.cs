@@ -49,6 +49,9 @@ namespace KuaiJi.Modules.Ledgers.Application
         /// <summary>科目级次上限；为空表示不限。</summary>
         public int? MaxLevel { get; init; }
 
+        /// <summary>科目级次下限；为空表示不限制。与 <see cref="MaxLevel"/> 共同构成「科目级别」区间。</summary>
+        public int? MinLevel { get; init; }
+
         /// <summary>币别口径。</summary>
         public LedgerCurrencyScope Currency { get; init; } = LedgerCurrencyScope.Base;
 
@@ -75,6 +78,9 @@ namespace KuaiJi.Modules.Ledgers.Application
 
         /// <summary>是否列示全部科目（含本期无发生额的启用科目）。默认假，行为与既有科目余额表一致。</summary>
         public bool IncludeIdleAccounts { get; init; }
+
+        /// <summary>无发生额的月份不输出「本月合计」「本年累计」两行。明细账专用。</summary>
+        public bool HideTotalsNoActivity { get; init; }
 
         /// <summary>
         /// 数量金额式。依赖尚未实现的数量核算，一期恒为假，仅保留字段以免日后重写九张账页的条件模型。

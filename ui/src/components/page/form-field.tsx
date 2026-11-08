@@ -33,17 +33,17 @@ export function FormField({
         <div className={cn("flex w-full flex-col gap-2", className)}>
             <label
                 htmlFor={htmlFor}
-                className="flex w-fit items-center gap-1 text-sm font-medium leading-none text-slate-700"
+                className="flex w-fit items-center gap-1 text-sm font-medium leading-none text-(--foreground)"
             >
                 {label}
-                {required && <span className="text-[#ef4444]">*</span>}
+                {required && <span className="text-(--danger)">*</span>}
             </label>
             {children}
             {description && (
-                <p className="text-sm leading-normal font-normal text-slate-400">{description}</p>
+                <p className="text-sm leading-normal font-normal text-(--muted-foreground)">{description}</p>
             )}
             {error && (
-                <p role="alert" className="text-sm font-normal text-[#ef4444]">
+                <p role="alert" className="text-sm font-normal text-(--danger)">
                     {error}
                 </p>
             )}

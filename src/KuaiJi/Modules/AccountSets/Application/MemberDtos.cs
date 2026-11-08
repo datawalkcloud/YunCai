@@ -1,5 +1,3 @@
-using KuaiJi.Modules.AccountSets.Domain;
-
 namespace KuaiJi.Modules.AccountSets.Application
 {
     /// <summary>账套成员列表行。</summary>
@@ -13,14 +11,14 @@ namespace KuaiJi.Modules.AccountSets.Application
 
         public string? Email { get; init; }
 
-        /// <summary>角色枚举值（0 管理员 / 1 会计 / 2 出纳 / 3 查看）。</summary>
-        public AccountSetMemberRole Role { get; init; }
+        /// <summary>角色标识。</summary>
+        public Guid RoleId { get; init; }
 
-        /// <summary>角色显示文本。</summary>
-        public string RoleText { get; init; } = null!;
+        /// <summary>角色名称。</summary>
+        public string RoleName { get; init; } = string.Empty;
 
         /// <summary>该角色的权限说明（用于列表「权限」列）。</summary>
-        public string PermissionText { get; init; } = null!;
+        public string PermissionText { get; init; } = string.Empty;
 
         public bool Enabled { get; init; }
 
@@ -39,7 +37,8 @@ namespace KuaiJi.Modules.AccountSets.Application
 
         public string? Email { get; init; }
 
-        public AccountSetMemberRole Role { get; init; } = AccountSetMemberRole.Accountant;
+        /// <summary>角色标识；必须属于当前账套。</summary>
+        public Guid RoleId { get; init; }
     }
 
     /// <summary>成员启用状态切换请求。</summary>

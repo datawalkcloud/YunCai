@@ -91,14 +91,18 @@ public sealed class LedgersApiTests : IAsyncLifetime, IDisposable
     {
         var ledger = await GetAsync<SubsidiaryLedger>(Ledgers("/subsidiary?startDate=2026-01-01&endDate=2026-02-28&accountFrom=1001&accountTo=1122"));
 
-        // 应收账款只有 1 月发生额（1122 上级取其下级 112201）：本月合计只在有发生的月份插行
+        // 应收账款只有 1 月发生额（1122 上级取其下级 112201）：1、2 月各一组合计行，2 月合计为 0
         var ar = ledger.Accounts.Single(a => a.Code == "112201");
         Assert.Equal(1000m, ar.TotalDebit);
         Assert.Equal(500m, ar.TotalCredit);
         Assert.Single(ar.Rows, r => r.Kind == 1);
         Assert.Equal(2, ar.Rows.Count(r => r.Kind == 0));
-        Assert.Single(ar.Rows, r => r.Kind == 2);
-        Assert.Single(ar.Rows, r => r.Kind == 3);
+        Assert.Equal(2, ar.Rows.Count(r => r.Kind == 2));
+        Assert.Equal(2, ar.Rows.Count(r => r.Kind == 3));
+        var febMonth = ar.Rows.Last(r => r.Kind == 2);
+        Assert.Equal("2026-02-28", febMonth.Date);
+        Assert.Equal(0m, febMonth.Debit);
+        Assert.Equal(500m, febMonth.Balance);
 
         // 滚动余额必须等于逐笔借贷的净额累加
         var running = 0m;
@@ -109,15 +113,48 @@ public sealed class LedgersApiTests : IAsyncLifetime, IDisposable
         }
         Assert.Equal(500m, running);
 
-        // 库存现金跨两个月：两个月合计 + 末尾本年累计等于全区间发生额
+        // 库存现金跨两个月：每月一组「本月合计 + 本年累计」，末组累计等于全区间发生额
         var cash = ledger.Accounts.Single(a => a.Code == "1001");
         Assert.Equal(2, cash.Rows.Count(r => r.Kind == 2));
-        var cashYear = cash.Rows.Single(r => r.Kind == 3);
+        Assert.Equal(2, cash.Rows.Count(r => r.Kind == 3));
+        var cashYear = cash.Rows.Last(r => r.Kind == 3);
         Assert.Equal(2500m, cash.Rows.Where(r => r.Kind == 0).Sum(r => r.Debit));
         Assert.Equal(2500m, cashYear.Debit);
         Assert.Equal(300m, cashYear.Credit);
         Assert.Equal("本年累计", cashYear.Summary);
         Assert.Equal("本月合计", cash.Rows.Last(r => r.Kind == 2).Summary);
+    }
+
+    [Fact]
+    public async Task Subsidiary_RangeStartingMidYearRollsOpeningAndYearTotal()
+    {
+        // 区间从年中开始时：期初已含之前月份的余额，本年累计仍从 1 月起算
+        var ledger = await GetAsync<SubsidiaryLedger>(
+            Ledgers("/subsidiary?startDate=2026-02-01&endDate=2026-02-28&accountFrom=1001&accountTo=1001"));
+        var cash = ledger.Accounts.Single(a => a.Code == "1001");
+
+        var opening = cash.Rows.Single(r => r.Kind == 1);
+        Assert.Equal("2026-02-01", opening.Date);
+        Assert.Equal(500m, opening.Balance);
+        // 期初行借贷两栏是年初至期初的累计发生额（1 月收到货款 500）
+        Assert.Equal(500m, opening.Debit);
+        Assert.Equal(0m, opening.Credit);
+
+        var entries = cash.Rows.Where(r => r.Kind == 0).ToList();
+        Assert.Equal(2, entries.Count);
+        Assert.Equal(200m, entries[0].Balance);
+        Assert.Equal(2200m, entries[1].Balance);
+
+        var month = cash.Rows.Single(r => r.Kind == 2);
+        Assert.Equal(2000m, month.Debit);
+        Assert.Equal(300m, month.Credit);
+        Assert.Equal(2200m, month.Balance);
+
+        var year = cash.Rows.Single(r => r.Kind == 3);
+        Assert.Equal(2500m, year.Debit);
+        Assert.Equal(300m, year.Credit);
+        Assert.Equal(2200m, year.Balance);
+        Assert.Equal("2026-02-28", year.Date);
     }
 
     [Fact]
@@ -168,6 +205,9 @@ public sealed class LedgersApiTests : IAsyncLifetime, IDisposable
         var rolled = await GetAsync<VoucherSummary>(Ledgers("/voucher-summary?startDate=2026-01-01&endDate=2026-02-28&showOnlyLeaf=false"));
         Assert.Equal(1000m, rolled.Rows.Single(r => r.Code == "1122").Debit);
         Assert.Equal(500m, rolled.Rows.Single(r => r.Code == "1122").Credit);
+        // 页面按 parentCode 把平表挂成树：下级指向上级，一级科目为空
+        Assert.Equal("1122", rolled.Rows.Single(r => r.Code == "112201").ParentCode);
+        Assert.Null(rolled.Rows.Single(r => r.Code == "1122").ParentCode);
     }
 
     [Fact]
@@ -183,6 +223,27 @@ public sealed class LedgersApiTests : IAsyncLifetime, IDisposable
         var ledger = await GetAsync<SubsidiaryLedger>(Ledgers("/subsidiary?startDate=2026-02-01&endDate=2026-02-28&accountFrom=1001&accountTo=1001"));
         Assert.Equal(1, ledger.Meta.UnpostedVoucherCount);
         Assert.DoesNotContain(ledger.Accounts[0].Rows, r => r.Summary == "草稿不提");
+    }
+
+    [Fact]
+    public async Task SoftDeletedDraftIsNotReportedInUnpostedMeta()
+    {
+        // 回收站里的草稿不算「未入账草稿」：提示只应指向仍可打开保存的凭证，
+        // 否则用户按提示跳过去看不到任何待处理单据。
+        var draftId = await PostVoucherAsync("2026-02-26", new[]
+        {
+            ("已删草稿", _cash, 888m, 0m, Array.Empty<(Guid, int)>()),
+            ("已删草稿", _cap, 0m, 888m, Array.Empty<(Guid, int)>()),
+        }, post: false);
+
+        var before = await GetAsync<SubsidiaryLedger>(Ledgers("/subsidiary?startDate=2026-02-01&endDate=2026-02-28&accountFrom=1001&accountTo=1001"));
+        Assert.Equal(1, before.Meta.UnpostedVoucherCount);
+
+        var deleted = await _client.DeleteAsync($"{ApiHarness.ResourcePath(_accountSetId, "Vouchers")}/{draftId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+
+        var after = await GetAsync<SubsidiaryLedger>(Ledgers("/subsidiary?startDate=2026-02-01&endDate=2026-02-28&accountFrom=1001&accountTo=1001"));
+        Assert.Equal(0, after.Meta.UnpostedVoucherCount);
     }
 
     [Fact]
@@ -208,11 +269,11 @@ public sealed class LedgersApiTests : IAsyncLifetime, IDisposable
             .Single(i => i.Name.Contains("甲公司"));
         Assert.Equal(1000m, customerItem.TotalDebit);
         Assert.Equal(500m, customerItem.TotalCredit);
-        // 档案段复用明细账的行结构：期初 + 两笔逐行（均在 1 月）+ 本月合计 + 本年累计
+        // 档案段复用明细账的行结构：期初 + 两笔逐行（均在 1 月）+ 1、2 月各一组「本月合计 + 本年累计」
         Assert.Single(customerItem.Rows, r => r.Kind == 1);
         Assert.Equal(2, customerItem.Rows.Count(r => r.Kind == 0));
-        Assert.Single(customerItem.Rows, r => r.Kind == 2);
-        Assert.Single(customerItem.Rows, r => r.Kind == 3);
+        Assert.Equal(2, customerItem.Rows.Count(r => r.Kind == 2));
+        Assert.Equal(2, customerItem.Rows.Count(r => r.Kind == 3));
         // 末笔余额等于「借 - 贷」净额，与明细账同一口径
         Assert.Equal(500m, customerItem.Rows.Single(r => r.Kind == 0 && r.Debit == 0m).Balance);
 
@@ -301,7 +362,7 @@ public sealed class LedgersApiTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>制单（可带辅助核算）；post=false 时反过账退回草稿，用于验证账簿只认已过账凭证。</summary>
-    private async Task PostVoucherAsync(
+    private async Task<Guid> PostVoucherAsync(
         string date,
         (string Summary, Guid AccountId, decimal Debit, decimal Credit, (Guid ItemId, int Type)[] Assists)[] entries,
         bool post = true)
@@ -324,13 +385,15 @@ public sealed class LedgersApiTests : IAsyncLifetime, IDisposable
             new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
         var created = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, created);
-        if (post)
-        {
-            return;
-        }
 
         using var doc = JsonDocument.Parse(created);
-        await _h.UnpostVoucherAsync(_accountSetId, doc.RootElement.GetProperty("id").GetGuid());
+        var voucherId = doc.RootElement.GetProperty("id").GetGuid();
+        if (!post)
+        {
+            await _h.UnpostVoucherAsync(_accountSetId, voucherId);
+        }
+
+        return voucherId;
     }
 
     private async Task<T> GetAsync<T>(string path)
@@ -354,7 +417,7 @@ public sealed class LedgersApiTests : IAsyncLifetime, IDisposable
 
     private sealed record GeneralLedger(LedgerMeta Meta, GeneralAccount[] Accounts);
 
-    private sealed record SummaryRow(string Code, string Name, decimal Debit, decimal Credit);
+    private sealed record SummaryRow(string Code, string Name, string? ParentCode, decimal Debit, decimal Credit);
 
     private sealed record VoucherSummary(LedgerMeta Meta, int VoucherCount, SummaryRow[] Rows);
 

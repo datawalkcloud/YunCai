@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Key } from "react";
-import { App, Button, DatePicker, Pagination, Select, Table, Tooltip } from "antd";
+import { Card, App, Button, DatePicker, Pagination, Select, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { DownOutlined, LoginOutlined, QuestionCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
@@ -36,7 +36,7 @@ const columns: TableColumnsType<CertificateRow> = [
         align: "right",
         render: (value: number) => fmtMoney(value),
     },
-    { title: "操作", key: "op", width: "7%", render: () => <span className="text-slate-400">--</span> },
+    { title: "操作", key: "op", width: "7%", render: () => <span className="text-(--muted-foreground)">--</span> },
 ];
 
 export function TaxCertificatePage() {
@@ -146,12 +146,12 @@ export function TaxCertificatePage() {
     }
 
     return (
-        <div className="flex h-full flex-col px-6 pt-4">
+        <Card>
             <div className="flex flex-wrap items-center gap-3" style={{ marginBottom: 16 }}>
-                <span className="flex items-center text-[13px] text-slate-600">
+                <span className="flex items-center text-[13px] text-(--foreground)">
                     开具格式
                     <Tooltip title="表格式按缴款明细逐笔开具；文书式按查询区间汇总开具。">
-                        <QuestionCircleOutlined className="mx-1 text-[12px] text-slate-400" />
+                        <QuestionCircleOutlined className="mx-1 text-[12px] text-(--muted-foreground)" />
                     </Tooltip>
                     ：
                 </span>
@@ -164,15 +164,13 @@ export function TaxCertificatePage() {
                     ]}
                     onChange={setFormat}
                 />
-                <span className="inline-flex items-center rounded-md border border-[#2f6bff] bg-white pr-1">
+                <span>
                     <DatePicker.RangePicker
-                        variant="borderless"
                         allowClear={false}
                         value={range}
                         format="YYYY-MM-DD"
                         separator="至"
-                        suffixIcon={<DownOutlined className="text-[10px] text-[#2f6bff]" />}
-                        className="[&_input]:!text-[#2f6bff]"
+                        suffixIcon={<DownOutlined />}
                         onChange={(value) => {
                             if (!value?.[0] || !value[1]) return;
                             setRange([value[0].startOf("day"), value[1].startOf("day")]);
@@ -180,7 +178,7 @@ export function TaxCertificatePage() {
                         }}
                     />
                 </span>
-                <span className="flex items-center gap-1 text-[13px] text-slate-500">
+                <span className="flex items-center gap-1 text-[13px] text-(--muted-foreground)">
                     快捷入口：
                     <Button
                         type="link"
@@ -213,13 +211,13 @@ export function TaxCertificatePage() {
                     pagination={false}
                     locale={{
                         emptyText: (
-                            <span className="block py-10 text-[13px] text-slate-400">{hint ?? "暂无数据"}</span>
+                            <span className="block py-10 text-[13px] text-(--muted-foreground)">{hint ?? "暂无数据"}</span>
                         ),
                     }}
                 />
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 text-[12.5px] text-(--muted-foreground)" style={{ marginTop: 16 }}>
                 <span>{`显示 ${from} 到 ${to}，共 ${total} 条记录`}</span>
                 <span className="flex items-center gap-1">
                     <Pagination
@@ -246,7 +244,7 @@ export function TaxCertificatePage() {
                 </span>
             </div>
 
-            <p className="pb-5 text-[12.5px] leading-5 text-slate-400">
+            <p className="pb-5 text-[12.5px] leading-5 text-(--muted-foreground)">
                 完税证明按缴款记录开具，支持表格式与文书式；列表取自电子税务局「缴款信息查询」，
                 开具与打印请在电子税务局办理。
             </p>
@@ -261,6 +259,6 @@ export function TaxCertificatePage() {
                     void load(range);
                 }}
             />
-        </div>
+        </Card>
     );
 }

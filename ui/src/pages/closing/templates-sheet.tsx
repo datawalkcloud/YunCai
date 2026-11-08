@@ -238,12 +238,12 @@ export function ClosingTemplatesSheet({
                 onClose={() => onOpenChange(false)}
                 styles={{ body: { display: "flex", flexDirection: "column", gap: 16, overflow: "auto" } }}
             >
-                <p className="text-[12.5px] text-slate-400">
+                <p className="text-[12.5px] text-(--muted-foreground)">
                     月末结转时可复用生成凭证（如计提工资、结转成本）。金额在结转时按当月数据计算，结转前会先预览平衡情况。
                 </p>
 
                 <div className="flex items-center justify-between gap-2">
-                    <span className="text-[12.5px] text-slate-400">共 {templates.length} 个模板</span>
+                    <span className="text-[12.5px] text-(--muted-foreground)">共 {templates.length} 个模板</span>
                     <div className="flex items-center gap-2">
                         <Button
                             icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
@@ -269,10 +269,10 @@ export function ClosingTemplatesSheet({
                 ) : (
                     <div className="flex flex-col gap-2.5">
                         {templates.map((t) => (
-                            <div key={t.id} className="rounded-xl border border-slate-100 bg-white p-3.5">
+                            <div key={t.id} className="rounded-xl border border-(--border) bg-(--card) p-3.5">
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex min-w-0 items-center gap-2">
-                                        <span className="truncate text-[13.5px] font-medium text-slate-800">{t.name}</span>
+                                        <span className="truncate text-[13.5px] font-medium text-(--foreground)">{t.name}</span>
                                         <StatusPill tone={t.isEnabled ? "green" : "gray"}>{t.isEnabled ? "启用" : "停用"}</StatusPill>
                                     </div>
                                     <div className="flex items-center gap-0">
@@ -294,13 +294,13 @@ export function ClosingTemplatesSheet({
                                 </div>
                                 <div className="mt-2 flex flex-col gap-1">
                                     {(t.lines ?? []).map((l) => (
-                                        <div key={l.id} className="flex items-center gap-2 text-[12.5px] text-slate-500">
-                                            <span className="w-6 shrink-0 text-center text-slate-400">{l.directionText}</span>
-                                            <span className="w-44 shrink-0 truncate text-slate-700">
+                                        <div key={l.id} className="flex items-center gap-2 text-[12.5px] text-(--muted-foreground)">
+                                            <span className="w-6 shrink-0 text-center text-(--muted-foreground)">{l.directionText}</span>
+                                            <span className="w-44 shrink-0 truncate text-(--foreground)">
                                                 {l.accountCode} {l.accountName}
                                             </span>
                                             <span className="min-w-0 flex-1 truncate">{l.summary}</span>
-                                            <span className="shrink-0 text-slate-400">
+                                            <span className="shrink-0 text-(--muted-foreground)">
                                                 {l.sourceType === 1
                                                     ? `固定 ${l.amount ?? 0}`
                                                     : `${l.sourceTypeText}：${l.sourceAccountCode ?? ""} ${l.sourceAccountName ?? ""}`}
@@ -325,7 +325,7 @@ export function ClosingTemplatesSheet({
                 confirmLoading={saving}
                 styles={{ body: { maxHeight: "62vh", overflow: "auto" } }}
             >
-                <p className="mb-4 text-[12.5px] text-slate-400">
+                <p className="mb-4 text-[12.5px] text-(--muted-foreground)">
                     每行一条分录；全部为固定金额时保存即校验借贷平衡，取数型模板在结转时计算并校验。
                 </p>
 
@@ -340,7 +340,7 @@ export function ClosingTemplatesSheet({
                                 maxLength={50}
                             />
                         </FormField>
-                        <label className="flex items-center gap-2 pb-2 text-[13px] text-slate-600">
+                        <label className="flex items-center gap-2 pb-2 text-[13px] text-(--foreground)">
                             <Checkbox checked={isEnabled} onChange={(e) => setIsEnabled(e.target.checked)} />
                             启用（结转时默认勾选）
                         </label>
@@ -348,9 +348,9 @@ export function ClosingTemplatesSheet({
 
                     <div className="flex flex-col gap-2">
                         {lines.map((l, index) => (
-                            <div key={l.key} className="rounded-xl border border-slate-100 p-2.5">
+                            <div key={l.key} className="rounded-xl border border-(--border) p-2.5">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[12px] text-slate-400">第 {index + 1} 行</span>
+                                    <span className="text-[12px] text-(--muted-foreground)">第 {index + 1} 行</span>
                                     <Button
                                         type="text"
                                         danger
@@ -397,7 +397,7 @@ export function ClosingTemplatesSheet({
                                 <div className="mt-2 grid grid-cols-12 gap-2">
                                     {l.sourceType === 1 ? (
                                         <>
-                                            <span className="col-span-8 flex items-center text-[12px] text-slate-400">
+                                            <span className="col-span-8 flex items-center text-[12px] text-(--muted-foreground)">
                                                 固定金额将原样记入该行方向
                                             </span>
                                             <NumberField
@@ -422,7 +422,7 @@ export function ClosingTemplatesSheet({
                                                     onChange={(v) => setLine(l.key, { sourceAccountId: v ?? "" })}
                                                 />
                                             </div>
-                                            <span className="col-span-4 flex items-center text-[12px] text-slate-400">按结转期间计算金额</span>
+                                            <span className="col-span-4 flex items-center text-[12px] text-(--muted-foreground)">按结转期间计算金额</span>
                                         </>
                                     )}
                                 </div>

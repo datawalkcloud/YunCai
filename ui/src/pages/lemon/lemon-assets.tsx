@@ -3,7 +3,7 @@
  * 资产管理（初始化/列表/变更记录/计提折旧四页签 + 期初确认弹窗 + 折旧凭证设置）、
  * 折旧摊销明细表、资产汇总表（部门/类别双页签）、资产类别设置、资产核对总账，
  * 以及折旧凭证 / 变更凭证生成、资产导入导出与批量操作。
- * 视觉遵循全站云财蓝：主色 #2f6bff、直角卡片、白卡 + slate 灰阶文字。
+ * 视觉遵循全站云财蓝：主色 #273cf3、直角卡片、白卡 + slate 灰阶文字。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dropdown, Table as AntTable } from "antd";
@@ -42,6 +42,7 @@ import {
     type AccountingPeriod,
 } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
+import { fmtAmount } from "@/lib/format";
 import {
     AccountsApi,
     FixedAssetsApi,
@@ -140,7 +141,7 @@ function ConfirmDialog({
                 </div>
             }
         >
-            <div className="text-center text-[13px] leading-6 text-slate-700">{text}</div>
+            <div className="text-center text-[13px] leading-6 text-(--foreground)">{text}</div>
         </Dialog>
     );
 }
@@ -166,22 +167,22 @@ function ImportResultDialog({
                 </div>
             }
         >
-            <div className="px-1 text-[13px] leading-6 text-slate-700">
+            <div className="px-1 text-[13px] leading-6 text-(--foreground)">
                 <div>
-                    新增 <b className="text-[#2f6bff]">{result.imported ?? 0}</b> 条，更新{" "}
-                    <b className="text-[#2f6bff]">{result.updated ?? 0}</b> 条，失败{" "}
-                    <b className={failures.length ? "text-[#ef4444]" : ""}>{failures.length}</b> 条。
+                    新增 <b className="text-(--brand)">{result.imported ?? 0}</b> 条，更新{" "}
+                    <b className="text-(--brand)">{result.updated ?? 0}</b> 条，失败{" "}
+                    <b className={failures.length ? "text-(--danger)" : ""}>{failures.length}</b> 条。
                 </div>
                 {failures.length > 0 && (
                     // 纵向交给外层 max-h 滚动，横向交给 antd（scroll.x）；overflow-y-auto + overflow-x-hidden
                     // 避免外层 overflow-auto 把 overflow-x 也算成 auto，凭空多出一条横向滚动条。
-                    <div className="mt-2 max-h-[240px] overflow-y-auto overflow-x-hidden rounded-lg border border-slate-200">
+                    <div className="mt-2 max-h-[240px] overflow-y-auto overflow-x-hidden rounded-lg border border-(--border)">
                         <AntTable
                             pagination={false}
                             scroll={{ x: "max-content" }}
                             columns={[
-                                { title: "行号", dataIndex: "row", key: "row", width: 70, render: (v) => <span className="text-slate-600">{v}</span> },
-                                { title: "失败原因", dataIndex: "reason", key: "reason", render: (v) => <span className="text-slate-600">{v}</span> },
+                                { title: "行号", dataIndex: "row", key: "row", width: 70, render: (v) => <span className="text-(--foreground)">{v}</span> },
+                                { title: "失败原因", dataIndex: "reason", key: "reason", render: (v) => <span className="text-(--foreground)">{v}</span> },
                             ]}
                             dataSource={failures.map((f, i) => ({ key: i, row: f.row, reason: f.reason }))}
                         />
@@ -348,8 +349,8 @@ function AssetVoucherSettingDialog({ onClose }: { onClose: () => void }) {
                 </div>
             }
         >
-            <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
-                <div className="rounded-lg bg-[#eef4ff] px-3 py-2 text-[12.5px] leading-5 text-[#2f6bff]">
+            <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
+                <div className="rounded-lg bg-(--brand-soft) px-3 py-2 text-[12.5px] leading-5 text-(--brand)">
                     留空的项由系统按科目编码自动识别（1602 累计折旧 / 1702 累计摊销 / 6602 折旧摊销费用 / 1606 固定资产清理）。
                 </div>
                 {rows.map(([label, key, autoText]) => (
@@ -364,7 +365,7 @@ function AssetVoucherSettingDialog({ onClose }: { onClose: () => void }) {
                             />
                         </span>
                         {!form[key] && autoText && (
-                            <span className="pl-[142px] text-[12.5px] text-slate-400">自动：{autoText}</span>
+                            <span className="pl-[142px] text-[12.5px] text-(--muted-foreground)">自动：{autoText}</span>
                         )}
                     </label>
                 ))}
@@ -478,7 +479,7 @@ function ChangeVoucherDialog({
                 </div>
             }
         >
-            <div className="flex flex-col gap-2 px-1 text-[13px] text-slate-700">
+            <div className="flex flex-col gap-2 px-1 text-[13px] text-(--foreground)">
                 {preview?.hint && <HintBox>{preview.hint}</HintBox>}
                 <AntTable<ChangeEntryRow & { __i: number }>
                     pagination={false}
@@ -536,7 +537,7 @@ function ChangeVoucherDialog({
                     ]}
                     dataSource={rows.map((r, i) => ({ ...r, __i: i }))}
                 />
-                <div className="flex justify-end gap-6 pr-1 text-[12.5px] text-slate-500">
+                <div className="flex justify-end gap-6 pr-1 text-[12.5px] text-(--muted-foreground)">
                     <span>借方合计：{debitTotal.toFixed(2)}</span>
                     <span>贷方合计：{creditTotal.toFixed(2)}</span>
                 </div>
@@ -603,7 +604,7 @@ function CopyAssetDialog({
                 </div>
             }
         >
-            <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+            <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
                 <label className="flex items-center gap-3">
                     <span className={`${FORM_LABEL_W} text-right`}>原资产：</span>
                     <Select
@@ -987,7 +988,7 @@ export function LemonAssetManage() {
             <Page>
                 <SubTabs tabs={ASSET_TABS} active={0} onChange={setTab} />
                 <ToolRow
-                    left={<span className="text-[13px] text-slate-400">资产启用期间：{periodLabel(period)}</span>}
+                    left={<span className="text-[13px] text-(--muted-foreground)">资产启用期间：{periodLabel(period)}</span>}
                     right={
                         <>
                             <Btn variant="primary" onClick={() => setInitDialog(true)}>
@@ -1024,9 +1025,9 @@ export function LemonAssetManage() {
                             name: a.name,
                             model: a.model,
                             date: toDateInput(a.startDate),
-                            origin: (a.originValue ?? 0).toFixed(2),
-                            dep: (a.accumulatedDepreciation ?? 0).toFixed(2),
-                            net: (a.netValue ?? ((a.originValue ?? 0) - (a.accumulatedDepreciation ?? 0))).toFixed(2),
+                            origin: fmtAmount(a.originValue),
+                            dep: fmtAmount(a.accumulatedDepreciation),
+                            net: fmtAmount(a.netValue ?? (a.originValue ?? 0) - (a.accumulatedDepreciation ?? 0)),
                         }))}
                         empty={<EmptyTip text="还没有期初资产，点击上方「增加资产」录入期初卡片。" />}
                     />
@@ -1091,9 +1092,9 @@ export function LemonAssetManage() {
                             period: c.period,
                             amount: c.amount != null ? c.amount.toFixed(2) : "",
                             ops: c.voucherText ? (
-                                <span className="text-[#2f6bff]">{c.voucherText}</span>
+                                <span className="text-(--brand)">{c.voucherText}</span>
                             ) : c.kindText === "每月计提" ? (
-                                <span className="text-slate-400">按期计提，在计提页生成</span>
+                                <span className="text-(--muted-foreground)">按期计提，在计提页生成</span>
                             ) : (
                                 <Btn onClick={() => setChangeVoucher(c)}>生成凭证</Btn>
                             ),
@@ -1122,7 +1123,7 @@ export function LemonAssetManage() {
         return (
             <Page>
                 <SubTabs tabs={ASSET_TABS} active={3} onChange={setTab} />
-                <div className="mx-4 mt-2 rounded-lg bg-[#eef4ff] px-4 py-2.5 text-[13px] leading-5 text-[#2f6bff]">
+                <div className="mx-4 mt-2 rounded-lg bg-(--brand-soft) px-4 py-2.5 text-[13px] leading-5 text-(--brand)">
                     亲，点击“计提折旧”即可生成当期折旧摊销明细；再点击“生成凭证”按资产属性汇总生成一张折旧 / 摊销凭证。
                     科目可在“折旧凭证设置”中调整。
                 </div>
@@ -1146,11 +1147,11 @@ export function LemonAssetManage() {
                                 title: "计提折旧",
                                 render: () =>
                                     depVoucher && depVoucher.changeCount ? (
-                                        <span className="text-slate-600">
+                                        <span className="text-(--foreground)">
                                             已计提 {depVoucher.changeCount} 项，合计 {(depVoucher.totalAmount ?? 0).toFixed(2)} 元
                                         </span>
                                     ) : (
-                                        <span className="text-slate-400">{busy ? "计提中…" : "待计提"}</span>
+                                        <span className="text-(--muted-foreground)">{busy ? "计提中…" : "待计提"}</span>
                                     ),
                             },
                             {
@@ -1158,9 +1159,9 @@ export function LemonAssetManage() {
                                 title: "折旧凭证",
                                 render: () =>
                                     depVoucher?.voucherText ? (
-                                        <span className="text-[#2f6bff]">{depVoucher.voucherText}</span>
+                                        <span className="text-(--brand)">{depVoucher.voucherText}</span>
                                     ) : (
-                                        <span className="text-slate-400">未生成</span>
+                                        <span className="text-(--muted-foreground)">未生成</span>
                                     ),
                             },
                             {
@@ -1183,7 +1184,7 @@ export function LemonAssetManage() {
                                             生成凭证
                                         </Btn>
                                         <span
-                                            className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
+                                            className="cursor-pointer text-[13px] text-(--brand) hover:underline"
                                             onClick={() => setVoucherSettingOpen(true)}
                                         >
                                             凭证设置
@@ -1207,6 +1208,15 @@ export function LemonAssetManage() {
 
     /* tab === 1 资产列表 */
     const allChecked = data.assets.length > 0 && data.assets.every((a) => selected.has(a.id ?? ""));
+    const assetTotals = data.assets.reduce(
+        (acc, a) => {
+            acc.origin += a.originValue ?? 0;
+            acc.dep += a.currentPeriodDepreciation ?? 0;
+            acc.net += a.netValue ?? (a.originValue ?? 0) - (a.accumulatedDepreciation ?? 0);
+            return acc;
+        },
+        { origin: 0, dep: 0, net: 0 },
+    );
     const cols: Col[] = [
         {
             key: "ck",
@@ -1273,6 +1283,26 @@ export function LemonAssetManage() {
             />
             <div className="flex-1 px-4">
                 <StateBar loading={data.loading} error={data.error} />
+                {data.assets.length > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg bg-(--table-zebra-bg) px-4 py-2.5 text-[13px]">
+                        <span className="text-(--muted-foreground)">
+                            资产{" "}
+                            <span className="ml-1 font-medium tabular-nums text-(--foreground)">{data.assets.length}</span> 项
+                        </span>
+                        <span className="text-(--muted-foreground)">
+                            原值合计{" "}
+                            <span className="ml-1 font-medium tabular-nums text-(--foreground)">¥{fmtAmount(assetTotals.origin, true)}</span>
+                        </span>
+                        <span className="text-(--muted-foreground)">
+                            本期折旧{" "}
+                            <span className="ml-1 font-medium tabular-nums text-(--foreground)">¥{fmtAmount(assetTotals.dep, true)}</span>
+                        </span>
+                        <span className="text-(--muted-foreground)">
+                            净值合计{" "}
+                            <span className="ml-1 text-[14px] font-semibold tabular-nums text-(--foreground)">¥{fmtAmount(assetTotals.net, true)}</span>
+                        </span>
+                    </div>
+                )}
                 <Table
                     cols={cols}
                     rows={data.assets.map((a) => ({
@@ -1299,27 +1329,27 @@ export function LemonAssetManage() {
                         name: a.name,
                         model: a.model,
                         date: toDateInput(a.startDate),
-                        origin: (a.originValue ?? 0).toFixed(2),
+                        origin: fmtAmount(a.originValue),
                         // 本期折旧（后端取最近一次计提期间的折旧额）
-                        dep: (a.currentPeriodDepreciation ?? 0).toFixed(2),
-                        net: (a.netValue ?? ((a.originValue ?? 0) - (a.accumulatedDepreciation ?? 0))).toFixed(2),
+                        dep: fmtAmount(a.currentPeriodDepreciation),
+                        net: fmtAmount(a.netValue ?? (a.originValue ?? 0) - (a.accumulatedDepreciation ?? 0)),
                         status: a.statusText,
                         ops: (
                             <span className="flex gap-2">
                                 <span
-                                    className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
+                                    className="cursor-pointer text-[13px] text-(--brand) hover:underline"
                                     onClick={() => setCopyOpen({ preset: a })}
                                 >
                                     复制
                                 </span>
                                 <span
-                                    className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
+                                    className="cursor-pointer text-[13px] text-(--brand) hover:underline"
                                     onClick={() => setClearing(a)}
                                 >
                                     清理
                                 </span>
                                 <span
-                                    className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
+                                    className="cursor-pointer text-[13px] text-(--brand) hover:underline"
                                     onClick={() => setDeleting(a)}
                                 >
                                     删除
@@ -1399,7 +1429,7 @@ export function LemonAssetManage() {
                     </div>
                 }
             >
-                <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+                <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
                     <label className="flex items-center gap-3">
                         <span className={`${FORM_LABEL_W} text-right`}>资产类别：</span>
                         <Select
@@ -1442,7 +1472,7 @@ export function LemonAssetManage() {
                             )}
                         </label>
                     ))}
-                    <div className="pl-[122px] text-[12.5px] text-slate-400">资产编号由系统按类别自动生成，可导入后统一调整。</div>
+                    <div className="pl-[122px] text-[12.5px] text-(--muted-foreground)">资产编号由系统按类别自动生成，可导入后统一调整。</div>
                 </div>
             </Dialog>
         );
@@ -1466,7 +1496,7 @@ function InitDialog({ onClose, onConfirm }: { onClose: () => void; onConfirm: ()
                 </div>
             }
         >
-            <div className="text-center text-[13px] leading-6 text-slate-700">
+            <div className="text-center text-[13px] leading-6 text-(--foreground)">
                 请确定是否存在资产的期初数据？如有期初，请点击「去录入」
                 <br />
                 前往录入期初资产卡片，否则请关闭~
@@ -1568,12 +1598,12 @@ export function LemonAssetDepreciation() {
                         name: r.assetName,
                         model: r.model,
                         dept: r.dept,
-                        origin: (r.originValue ?? 0).toFixed(2),
-                        dep: (r.periodDepreciation ?? 0).toFixed(2),
-                        yearDep: (r.yearAccumulated ?? 0).toFixed(2),
-                        totalDep: (r.totalAccumulated ?? 0).toFixed(2),
-                        impair: (r.impairment ?? 0).toFixed(2),
-                        net: (r.netValue ?? 0).toFixed(2),
+                        origin: fmtAmount(r.originValue),
+                        dep: fmtAmount(r.periodDepreciation),
+                        yearDep: fmtAmount(r.yearAccumulated),
+                        totalDep: fmtAmount(r.totalAccumulated),
+                        impair: fmtAmount(r.impairment),
+                        net: fmtAmount(r.netValue),
                     }))}
                     empty={<EmptyTip />}
                 />
@@ -1636,7 +1666,7 @@ export function LemonAssetSummary() {
         }
     };
 
-    const fmt = (v: number | null | undefined) => Number(v ?? 0).toFixed(2);
+    const fmt = (v: number | null | undefined) => fmtAmount(v);
     const sub = ["期初数", "本期增加", "本期减少", "期末数"];
     const groupDefs: Array<{ title: string; keys: Array<keyof FixedAssetSummaryRowDto> }> = [
         { title: "资产原值", keys: ["originOpening", "originIncrease", "originDecrease", "originClosing"] },
@@ -1671,7 +1701,7 @@ export function LemonAssetSummary() {
             <ToolRow
                 left={
                     <>
-                        <span className="text-[13px] text-slate-500">会计期间:</span>
+                        <span className="text-[13px] text-(--muted-foreground)">会计期间:</span>
                         <PeriodStepper text={label} onPrev={() => step(-1)} onNext={() => step(1)} />
                     </>
                 }
@@ -1778,7 +1808,7 @@ function CategoryEditDialog({
                 </div>
             }
         >
-            <div className="flex flex-col gap-3 px-1 text-[13px] text-slate-700">
+            <div className="flex flex-col gap-3 px-1 text-[13px] text-(--foreground)">
                 <label className="flex items-center gap-3">
                     <span className={`${FORM_LABEL_W} text-right`}>类别编码：</span>
                     <TextInput className={FORM_CONTROL_W} value={form.code} onChange={(v) => set({ code: v })} />
@@ -1885,13 +1915,13 @@ export function LemonAssetCategory() {
             render: (row: Row) => (
                 <span className="flex gap-2">
                     <span
-                        className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
+                        className="cursor-pointer text-[13px] text-(--brand) hover:underline"
                         onClick={() => setEditing(row.__cat as FixedAssetCategoryDto)}
                     >
                         编辑
                     </span>
                     <span
-                        className="cursor-pointer text-[13px] text-[#2f6bff] hover:underline"
+                        className="cursor-pointer text-[13px] text-(--brand) hover:underline"
                         onClick={() => setDeleting(row.__cat as FixedAssetCategoryDto)}
                     >
                         删除
@@ -2053,7 +2083,7 @@ export function LemonAssetCheck() {
                                         <DownOutlined className="text-[12px]" style={ICON_STYLE.muted} /> {r.groupName}
                                     </span>
                                 ) : (
-                                    <span className={r.item.isDiff ? "text-[#2f6bff]" : undefined}>
+                                    <span className={r.item.isDiff ? "text-(--brand)" : undefined}>
                                         {r.item.isDiff ? "差异" : r.item.item}
                                     </span>
                                 ),
@@ -2067,25 +2097,25 @@ export function LemonAssetCheck() {
                         {
                             title: "期初余额",
                             align: "right",
-                            render: (_, r) => (r.item.opening ? r.item.opening.toFixed(2) : ""),
+                            render: (_, r) => fmtAmount(r.item.opening),
                             onCell: (r) => (r.kind === "group" ? { colSpan: 0 } : {}),
                         },
                         {
                             title: "借方",
                             align: "right",
-                            render: (_, r) => (r.item.debit ? r.item.debit.toFixed(2) : ""),
+                            render: (_, r) => fmtAmount(r.item.debit),
                             onCell: (r) => (r.kind === "group" ? { colSpan: 0 } : {}),
                         },
                         {
                             title: "贷方",
                             align: "right",
-                            render: (_, r) => (r.item.credit ? r.item.credit.toFixed(2) : ""),
+                            render: (_, r) => fmtAmount(r.item.credit),
                             onCell: (r) => (r.kind === "group" ? { colSpan: 0 } : {}),
                         },
                         {
                             title: "余额",
                             align: "right",
-                            render: (_, r) => (r.item.balance ? r.item.balance.toFixed(2) : ""),
+                            render: (_, r) => fmtAmount(r.item.balance),
                             onCell: (r) => (r.kind === "group" ? { colSpan: 0 } : {}),
                         },
                     ]}

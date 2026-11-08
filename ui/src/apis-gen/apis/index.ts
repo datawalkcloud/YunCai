@@ -22,6 +22,7 @@ export * from './MembersApi';
 export * from './OperationLogsApi';
 export * from './ReinitApi';
 export * from './ReportsApi';
+export * from './RolesApi';
 export * from './SalariesApi';
 export * from './TaxLoginTicketApi';
 export * from './TaxPortalApi';

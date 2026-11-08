@@ -325,9 +325,9 @@ namespace KuaiJi.Modules.AccountSets.Domain
                 throw new ArgumentException("凭证字列表不能为空。");
             }
 
-            if (list.Any(w => w.Length > 4))
+            if (list.Any(w => w.Length > VoucherWord.MaxWordLength))
             {
-                throw new ArgumentException("单个凭证字不能超过 4 个字符。");
+                throw new ArgumentException($"单个凭证字不能超过 {VoucherWord.MaxWordLength} 个字符。");
             }
 
             VoucherWords = string.Join(',', list);

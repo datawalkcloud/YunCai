@@ -88,7 +88,7 @@ namespace KuaiJi.Modules.Funds.Application
 
                 try
                 {
-                    journal.AddEntry(row.Date, row.Summary, row.Income, row.Expense, category, row.Counterparty);
+                    journal.AddEntry(row.Date, row.Summary, row.Income, row.Expense, category, row.Counterparty, source: "Excel导入");
                     imported++;
                 }
                 catch (ArgumentException ex)

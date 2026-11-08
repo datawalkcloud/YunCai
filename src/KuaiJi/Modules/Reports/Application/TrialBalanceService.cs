@@ -27,13 +27,26 @@ namespace KuaiJi.Modules.Reports.Application
         }
 
         /// <summary>
-        /// 生成指定账套、指定日期范围的科目余额表。startDate/endDate 省略时默认取全部已过账凭证所在月。
+        /// 生成指定账套、指定日期范围的科目余额表。等价于带日期的 <see cref="GetAsync(Guid, LedgerQueryOptions, CancellationToken)"/>
+        /// 重载，仅按日期装载、不做其他显示裁剪，保持既有调用与单测不变。
         /// </summary>
-        public async Task<TrialBalanceDto> GetAsync(Guid accountSetId, DateOnly? startDate, DateOnly? endDate, CancellationToken cancellationToken = default)
+        public Task<TrialBalanceDto> GetAsync(Guid accountSetId, DateOnly? startDate, DateOnly? endDate, CancellationToken cancellationToken = default)
+            => GetAsync(accountSetId, new LedgerQueryOptions { StartDate = startDate, EndDate = endDate }, cancellationToken);
+
+        /// <summary>
+        /// 生成指定账套、指定查询条件的科目余额表。startDate/endDate 省略时默认取全部已过账凭证所在月。
+        /// <para>
+        /// 装载阶段只按「日期区间 + 已过账」裁剪（见 <see cref="LedgerDataSet"/> 的设计约定），科目级次、
+        /// 起止科目、余额/发生额过滤等「显示条件」一律在投影成行之后再做，这样上级行的合计口径不受显示条件影响，
+        /// 被裁掉的明细若仍挂着某上级，该上级会一并保留以维持树形。
+        /// </para>
+        /// </summary>
+        public async Task<TrialBalanceDto> GetAsync(Guid accountSetId, LedgerQueryOptions options, CancellationToken cancellationToken = default)
         {
+            // 装载只传日期：保全全部科目与完整子树合计，级次/编码过滤放到行级别处理。
             var dataSet = await _ledgerDataSetFactory.LoadAsync(
                 accountSetId,
-                new LedgerQueryOptions { StartDate = startDate, EndDate = endDate },
+                new LedgerQueryOptions { StartDate = options.StartDate, EndDate = options.EndDate },
                 cancellationToken);
 
             // 先找出自身有余额或发生额的科目，再沿上级链补齐祖先——上级行要有下级合计才成树，
@@ -55,7 +68,7 @@ namespace KuaiJi.Modules.Reports.Application
                 }
             }
 
-            var rows = new List<TrialBalanceRowDto>(visible.Count);
+            var allRows = new List<TrialBalanceRowDto>(visible.Count);
             foreach (var accountId in visible)
             {
                 var account = dataSet.AccountsById[accountId];
@@ -64,7 +77,7 @@ namespace KuaiJi.Modules.Reports.Application
                 var (openingDebit, openingCredit) = BalanceAmounts.SplitBySign(balance.OpeningNet);
                 var (endingDebit, endingCredit) = BalanceAmounts.SplitBySign(balance.EndingNet);
 
-                rows.Add(new TrialBalanceRowDto
+                allRows.Add(new TrialBalanceRowDto
                 {
                     Code = account.Code,
                     Name = account.Name,
@@ -81,7 +94,21 @@ namespace KuaiJi.Modules.Reports.Application
                 });
             }
 
-            rows = rows.OrderBy(r => r.Code, StringComparer.Ordinal).ToList();
+            // 按显示条件裁剪行：科目级次、起止科目编码、余额为零 / 无发生额。
+            // 被裁掉的明细若仍挂在某个上级下，该上级（及其祖先）一并保留，否则前端挂不成树。
+            var rowsByCode = allRows.ToDictionary(r => r.Code ?? "", r => r);
+            var keep = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var row in allRows)
+            {
+                if (!PassesDisplayFilters(row, options))
+                {
+                    continue;
+                }
+
+                MarkRowWithAncestors(row.Code ?? "", rowsByCode, keep);
+            }
+
+            var rows = allRows.Where(r => keep.Contains(r.Code ?? "")).OrderBy(r => r.Code, StringComparer.Ordinal).ToList();
 
             return new TrialBalanceDto
             {
@@ -90,6 +117,65 @@ namespace KuaiJi.Modules.Reports.Application
                 PeriodText = dataSet.PeriodText,
                 Rows = rows,
             };
+        }
+
+        /// <summary>科目余额表的行级显示裁剪：级次区间、编码区间、余额为 0、无发生额且余额为 0。</summary>
+        private static bool PassesDisplayFilters(TrialBalanceRowDto row, LedgerQueryOptions options)
+        {
+            var level = row.Level;
+            if (options.MinLevel is { } min && level < min)
+            {
+                return false;
+            }
+
+            if (options.MaxLevel is { } max && level > max)
+            {
+                return false;
+            }
+
+            var code = row.Code ?? "";
+            if (!string.IsNullOrWhiteSpace(options.AccountFrom)
+                && string.Compare(code, options.AccountFrom, StringComparison.Ordinal) < 0)
+            {
+                return false;
+            }
+
+            var upper = string.IsNullOrWhiteSpace(options.AccountTo) ? "999999" : options.AccountTo;
+            if (string.Compare(code, upper, StringComparison.Ordinal) > 0)
+            {
+                return false;
+            }
+
+            var openingNet = row.OpeningDebit - row.OpeningCredit;
+            var endingNet = row.EndingDebit - row.EndingCredit;
+            if (options.HideZeroBalance && openingNet == 0 && endingNet == 0)
+            {
+                return false;
+            }
+
+            if (options.HideNoActivity
+                && row.PeriodDebit == 0 && row.PeriodCredit == 0
+                && openingNet == 0 && endingNet == 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>把行及其全部祖先标记为保留（已标记过的节点其祖先也已就位，直接截断上溯）。</summary>
+        private static void MarkRowWithAncestors(string code, Dictionary<string, TrialBalanceRowDto> rowsByCode, HashSet<string> keep)
+        {
+            var current = code;
+            while (current is not null && rowsByCode.TryGetValue(current, out var row))
+            {
+                if (!keep.Add(current))
+                {
+                    break;
+                }
+
+                current = row.ParentCode;
+            }
         }
     }
 }

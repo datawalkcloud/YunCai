@@ -19,6 +19,9 @@ namespace KuaiJi.Modules.Archives.Domain
         /// <summary>文件名称最大长度。</summary>
         public const int MaxFileNameLength = 200;
 
+        /// <summary>分类路径最大长度（分类树可有多层，路径由各节点名称用 &gt; 拼接）。</summary>
+        public const int MaxCategoryPathLength = 500;
+
         /// <summary>单文件大小上限（10 MB，与免费版额度一致）。</summary>
         public const long MaxFileBytes = 10L * 1024 * 1024;
 
@@ -189,6 +192,9 @@ namespace KuaiJi.Modules.Archives.Domain
 
         /// <summary>审核 / 取消审核。</summary>
         public void SetAudited(bool audited) => Status = audited ? ArchiveFileStatus.Audited : ArchiveFileStatus.Unaudited;
+
+        /// <summary>分类树节点重命名 / 移动后同步档案的分类路径。</summary>
+        public void SetCategory(string category) => Category = Normalize(category) ?? string.Empty;
 
         /// <summary>标记 / 取消标记为纸质档案。</summary>
         public void SetPaper(bool isPaper) => IsPaper = isPaper;

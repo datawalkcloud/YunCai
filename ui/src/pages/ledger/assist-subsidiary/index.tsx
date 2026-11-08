@@ -17,6 +17,7 @@ import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import {
     ROW_KIND,
     asDate,
+    assistTypeLabel,
     type LedgerConditions,
 } from "@/components/ledger/types"
 import { useAssistCategories, useAssistItems } from "@/components/ledger/useLedgerOptions"
@@ -112,14 +113,15 @@ export default function AssistSubsidiaryPage() {
 
     return (
         <LedgerPageShell
-            page="assist-subsidiary"
             panel={
                 <LedgerQueryPanel
                     value={query.conditions}
                     onChange={query.patch}
                     onQuery={query.query}
+                    onCancel={query.cancel}
                     onReset={query.reset}
                     fields={FIELDS}
+                    caption={`类别：${assistType ? assistTypeLabel(assistType) : "未选择"}`}
                     switches={SWITCHES}
                     enabledAssistTypes={enabledTypes}
                     assistItems={assistItems}

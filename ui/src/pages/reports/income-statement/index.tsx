@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ReloadOutlined } from "@ant-design/icons";
-import { Button, Table } from "antd"
+import { DownloadOutlined, PrinterOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Button, Table, Tooltip } from "antd"
 import type { TableColumnsType } from "antd"
-import dayjs from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { useAccountingPeriodBounds } from "@/accountSets/useCurrentAccountSet"
 import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type IncomeStatementLineDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-import { PeriodField } from "@/components/fields/date-fields"
 import { ReportPageShell } from "@/components/report/ReportPageShell"
+import { ReportPeriodToolbar } from "@/components/report/ReportPeriodToolbar"
+import { downloadReportExport } from "@/components/report/report-export"
 import { AMOUNT_COL } from "@/components/page/styles"
 
 type RowKind = "item" | "total"
@@ -121,11 +122,6 @@ function fmt(value: number, force = false): string {
     })
 }
 
-/** 期间 → 当月 1 日的 Date，与 PeriodField 的落值形状一致。 */
-function toPeriodDate(p: Period | null): Date | undefined {
-    return p ? dayjs(`${p.year}-${String(p.month).padStart(2, "0")}-01`).toDate() : undefined
-}
-
 /** 依据后端行次金额，构建完整的利润表行序列（行次 1-32，与柠檬云企业会计准则 2007 版式一致）。 */
 function buildRows(map: AmountMap): { rows: StatementLine[]; net: { current: number; yearToDate: number } } {
     const operating = toItems(OPERATING_ITEMS, map)
@@ -173,9 +169,9 @@ function indentCls(indent?: number): string {
     return indent >= 2 ? "ml-8" : "ml-4"
 }
 
-/** 合计行加粗，明细行常规。 */
+/** 合计行加粗并浅底，与明细行区分；此前两者同为常规字重，金额一眼扫不出来。 */
 function cellCls(row: StatementLine): string {
-    return row.kind === "total" ? "font-medium" : ""
+    return row.kind === "total" ? "bg-(--table-zebra-bg) font-semibold text-(--foreground)" : ""
 }
 
 /** 会企02表四列：项目、行次、本年累计金额、本期金额（列序与柠檬云一致）。 */
@@ -214,6 +210,7 @@ export default function IncomeStatementPage() {
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
+    const periodBounds = useAccountingPeriodBounds()
 
     const [period, setPeriod] = useState<Period | null>(null)
     const [lines, setLines] = useState<IncomeStatementLineDto[]>([])
@@ -262,36 +259,58 @@ export default function IncomeStatementPage() {
         return buildRows(map).rows
     }, [lines])
 
+    /** 导出当前期间的利润表（后端生成 .xlsx）。 */
+    const exportSheet = useCallback(async () => {
+        if (!token || !accountSetId || !period) return
+        await downloadReportExport(
+            `/api/accountsets/${accountSetId}/reports/export?kind=income-statement&year=${period.year}&month=${period.month}`,
+            token,
+            `利润表_${period.year}年${String(period.month).padStart(2, "0")}月.xlsx`,
+        )
+    }, [token, accountSetId, period])
+
     return (
         <ReportPageShell
-            title="利润表"
-            template="会企02表"
-            period={
-                <>
-                    <span className="text-[12.5px] text-slate-500">会计期间：</span>
-                    <PeriodField
-                        value={toPeriodDate(period)}
-                        onChange={(d) => d && setPeriod({ year: dayjs(d).year(), month: dayjs(d).month() + 1 })}
-                        disabled={!accountSetId}
-                        allowClear={false}
-                    />
-                </>
-            }
-            actions={
-                <Button
-                    icon={loading ? <ReloadOutlined spin /> : <ReloadOutlined />}
-                    onClick={() => void load()}
-                    disabled={loading || !accountSetId}
-                >
-                    刷新
-                </Button>
-            }
-            meta={
-                <>
-                    <span>编制单位：{currentSet?.companyName ?? "——"}</span>
-                    <span>{periodText}</span>
-                    <span>单位：元</span>
-                </>
+            toolbar={
+                <ReportPeriodToolbar
+                    value={period}
+                    min={periodBounds.min}
+                    max={periodBounds.max}
+                    onChange={setPeriod}
+                    disabled={!accountSetId}
+                    actions={
+                        <>
+                            <Button
+                                icon={<DownloadOutlined />}
+                                onClick={() => void exportSheet()}
+                                disabled={!accountSetId || loading}
+                            >
+                                导出
+                            </Button>
+                            <Button icon={<PrinterOutlined />} onClick={() => window.print()} disabled={!accountSetId}>
+                                打印
+                            </Button>
+                            <Tooltip title="刷新">
+                                <Button
+                                    type="text"
+                                    shape="circle"
+                                    aria-label="刷新"
+                                    icon={<ReloadOutlined spin={loading} />}
+                                    onClick={() => void load()}
+                                    disabled={loading || !accountSetId}
+                                />
+                            </Tooltip>
+                        </>
+                    }
+                    meta={
+                        <>
+                            <span>编制单位：{currentSet?.companyName ?? "——"}</span>
+                            <span>会企02表</span>
+                            <span>{periodText}</span>
+                            <span>单位：元</span>
+                        </>
+                    }
+                />
             }
             loading={loading && !loaded}
             error={error}

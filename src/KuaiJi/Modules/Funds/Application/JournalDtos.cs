@@ -108,6 +108,27 @@ namespace KuaiJi.Modules.Funds.Application
         /// <summary>关联凭证号，如「记-1」；未关联时为空。</summary>
         public string? VoucherNo { get; init; }
 
+        /// <summary>关联凭证的凭证日期；未关联时为空。用于账页「凭证日期」筛选。</summary>
+        public DateOnly? VoucherDate { get; init; }
+
+        /// <summary>关联凭证的凭证字，如「记」；未关联时为空。</summary>
+        public string? VoucherWord { get; init; }
+
+        /// <summary>关联凭证的凭证号（数字部分）；未关联时为空。</summary>
+        public int? VoucherNumber { get; init; }
+
+        /// <summary>结算方式（现金 / 转账 / 支票 等），可空。</summary>
+        public string? SettlementMethod { get; init; }
+
+        /// <summary>票据号，可空。</summary>
+        public string? BillNo { get; init; }
+
+        /// <summary>备注，可空。</summary>
+        public string? Remark { get; init; }
+
+        /// <summary>流水来源：手工登记 / Excel导入 / 内部转账 / 凭证生成；历史数据为空。</summary>
+        public string? Source { get; init; }
+
         public static JournalEntryDto FromDomain(JournalEntry entry, Voucher? voucher) => new()
         {
             Id = entry.Id,
@@ -123,6 +144,13 @@ namespace KuaiJi.Modules.Funds.Application
             Balance = entry.Balance,
             VoucherId = entry.VoucherId,
             VoucherNo = voucher is null ? null : $"{voucher.Word}-{voucher.Number}",
+            VoucherDate = voucher?.Date,
+            VoucherWord = voucher?.Word,
+            VoucherNumber = voucher?.Number,
+            SettlementMethod = entry.SettlementMethod,
+            BillNo = entry.BillNo,
+            Remark = entry.Remark,
+            Source = entry.Source,
         };
     }
 
@@ -263,6 +291,18 @@ namespace KuaiJi.Modules.Funds.Application
 
         /// <summary>部门，可空。</summary>
         public string? Department { get; init; }
+
+        /// <summary>结算方式，可空。</summary>
+        public string? SettlementMethod { get; init; }
+
+        /// <summary>票据号，可空。</summary>
+        public string? BillNo { get; init; }
+
+        /// <summary>备注，可空。</summary>
+        public string? Remark { get; init; }
+
+        /// <summary>流水来源，可空；新增时默认「手工登记」。</summary>
+        public string? Source { get; init; }
 
         public decimal Income { get; init; }
 

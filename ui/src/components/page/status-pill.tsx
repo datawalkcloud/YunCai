@@ -2,11 +2,21 @@ import type { ReactNode } from "react"
 
 import { Tag } from "antd"
 
-import { PILL, type PillTone } from "./styles"
+import { type PillTone } from "./styles"
+
+/** 状态标签色调 → antd Tag 预设色：直接用库自带的浅底彩签，不再自己上色。 */
+const PRESET: Record<PillTone, string> = {
+    blue: "blue",
+    green: "green",
+    purple: "purple",
+    amber: "orange",
+    red: "red",
+    gray: "default",
+}
 
 /**
- * 状态标签：账页与凭证列表共用的小号标签，圆角形状跟随 antd 全局主题。
- * 色调走内联样式而非类名，避免与 antd Tag 自身注入的背景/描边规则争夺优先级。
+ * 状态标签：账页与凭证列表共用的小号标签。
+ * 外观完全交给 antd Tag 预设色，深浅底、描边、留白都跟随全局主题，组件不再自己覆盖。
  */
 export function StatusPill({
     tone,
@@ -18,22 +28,7 @@ export function StatusPill({
     className?: string
 }) {
     return (
-        <Tag
-            className={className}
-            variant="filled"
-            styles={{
-                root: {
-                    marginInlineEnd: 0,
-                    border: "none",
-                    padding: "1px 8px",
-                    fontSize: 11,
-                    lineHeight: "16px",
-                    fontWeight: 500,
-                    background: PILL[tone].bg,
-                    color: PILL[tone].fg,
-                },
-            }}
-        >
+        <Tag className={className} color={PRESET[tone]}>
             {children}
         </Tag>
     )

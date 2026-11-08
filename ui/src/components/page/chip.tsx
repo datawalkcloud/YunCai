@@ -19,8 +19,8 @@ export function Chip({
                 className,
             )}
         >
-            <span className="text-slate-400">{label}</span>
-            <span className="font-medium text-slate-700">{value || "—"}</span>
+            <span className="text-(--muted-foreground)">{label}</span>
+            <span className="font-medium text-(--foreground)">{value || "—"}</span>
         </span>
     )
 }

@@ -364,6 +364,7 @@ namespace KuaiJi.Modules.Closing.Application
                 Message = profitNet < 0m
                     ? $"已生成年末结转凭证 {voucher.Word}-{voucher.Number}：本年利润 {amountText} 元转入未分配利润。"
                     : $"已生成年末结转凭证 {voucher.Word}-{voucher.Number}：本年亏损 {amountText} 元转入未分配利润。",
+                Created = true,
                 Voucher = new CarryVoucherRefDto
                 {
                     Id = voucher.Id,

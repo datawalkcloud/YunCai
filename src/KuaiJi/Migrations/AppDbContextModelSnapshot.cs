@@ -254,9 +254,9 @@ namespace KuaiJi.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("phone");
 
-                    b.Property<int>("Role")
-                        .HasColumnType("integer")
-                        .HasColumnName("role");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -264,9 +264,61 @@ namespace KuaiJi.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RoleId");
+
                     b.HasIndex("AccountSetId", "Phone");
 
                     b.ToTable("account_set_members", (string)null);
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.AccountSets.Domain.AccountSetRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_admin");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Permissions")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("permissions");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("account_set_roles", (string)null);
                 });
 
             modelBuilder.Entity("KuaiJi.Modules.AccountSets.Domain.Currency", b =>
@@ -448,6 +500,47 @@ namespace KuaiJi.Migrations
                     b.ToTable("account_assist_types", (string)null);
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.Archives.Domain.ArchiveCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("AccountSetId", "ParentId");
+
+                    b.ToTable("archive_categories", (string)null);
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.Archives.Domain.ArchiveItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -469,8 +562,8 @@ namespace KuaiJi.Migrations
 
                     b.Property<string>("Category")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("category");
 
                     b.Property<string>("CheckStatus")
@@ -1315,6 +1408,11 @@ namespace KuaiJi.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("balance");
 
+                    b.Property<string>("BillNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("bill_no");
+
                     b.Property<string>("Category")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -1351,9 +1449,24 @@ namespace KuaiJi.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("project");
 
+                    b.Property<string>("Remark")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("remark");
+
                     b.Property<int>("Sequence")
                         .HasColumnType("integer")
                         .HasColumnName("sequence");
+
+                    b.Property<string>("SettlementMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("settlement_method");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("source");
 
                     b.Property<string>("Summary")
                         .IsRequired()
@@ -2277,6 +2390,21 @@ namespace KuaiJi.Migrations
                         .HasForeignKey("AccountSetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSetRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.AccountSets.Domain.AccountSetRole", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
+                        .WithMany()
+                        .HasForeignKey("AccountSetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("KuaiJi.Modules.AccountSets.Domain.Currency", b =>
@@ -2320,6 +2448,20 @@ namespace KuaiJi.Migrations
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.Archives.Domain.ArchiveCategory", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
+                        .WithMany()
+                        .HasForeignKey("AccountSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KuaiJi.Modules.Archives.Domain.ArchiveCategory", null)
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("KuaiJi.Modules.Archives.Domain.ArchiveItem", b =>

@@ -7,12 +7,12 @@
  * 与「税费缴纳 › 缴款信息查询」（企业端数字账户 DescribeJkxxcx）不是同一份数据，不能互相替代。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, ConfigProvider, DatePicker, Select, Table, Tooltip } from "antd";
+import { Card, App, Button, DatePicker, Select, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useNavigate, useParams } from "react-router";
 
-import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
+import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
 import { downloadCsv } from "@/lib/tax-csv";
 import { EMPTY_CELL, pad } from "@/lib/tax-format";
@@ -23,7 +23,6 @@ import {
     type TaxIitPaymentDateField,
     type TaxIitPaymentRow,
 } from "@/lib/tax-iit";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 import { IitLoginModal } from "./IitLoginModal";
 
@@ -34,14 +33,15 @@ type FetchState = "idle" | "loading" | "loaded" | "failed";
 
 const isBlank = (value: string) => !value || value === EMPTY_CELL || value === "-";
 
-const TEXT_DASH = <span className="text-slate-400">{EMPTY_CELL}</span>;
+const TEXT_DASH = <span className="text-(--muted-foreground)">{EMPTY_CELL}</span>;
 
 const textCell = (value: string) => (isBlank(value) ? TEXT_DASH : value);
 
 const numberCell = (value: string) =>
     isBlank(value) ? TEXT_DASH : <span className="tabular-nums">{value}</span>;
 
-export function TaxIitStatsPage({ period }: { period: AccountingPeriod }) {
+export function TaxIitStatsPage() {
+    const period = useTaxPeriod();
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { token } = useAuth();
@@ -238,8 +238,8 @@ export function TaxIitStatsPage({ period }: { period: AccountingPeriod }) {
     );
 
     return (
-        <div className="flex h-full flex-col">
-            <div className="flex shrink-0 items-center gap-6 border-b border-slate-200 px-6">
+        <Card>
+            <div className="flex shrink-0 items-center gap-6 border-b border-(--border)">
                 {tabs.map((item) => (
                     <button
                         key={item.key}
@@ -253,18 +253,18 @@ export function TaxIitStatsPage({ period }: { period: AccountingPeriod }) {
                             }
                             setTab(item.key);
                         }}
-                        className="relative h-[46px] text-[13px] font-medium text-slate-800"
+                        className="relative h-[46px] text-[13px] font-medium text-(--foreground)"
                     >
                         {item.label}
-                        {tab === item.key && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[#2f6bff]" />}
+                        {tab === item.key && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-(--brand-fill)" />}
                     </button>
                 ))}
             </div>
 
             {tab === "declarations" ? (
                 <>
-                    <div className="flex shrink-0 flex-wrap items-center gap-3 px-6 pt-3 text-[13px]">
-                        <span className="text-slate-500">税款所属期：</span>
+                    <div className="flex shrink-0 flex-wrap items-center gap-3 pt-3 text-[13px]">
+                        <span className="text-(--muted-foreground)">税款所属期：</span>
                         <DatePicker
                             picker="month"
                             allowClear={false}
@@ -273,7 +273,7 @@ export function TaxIitStatsPage({ period }: { period: AccountingPeriod }) {
                             format="YYYY-MM"
                             onChange={(value) => value && setRange([value, range[1].isBefore(value) ? value : range[1]])}
                         />
-                        <span className="text-slate-500">至</span>
+                        <span className="text-(--muted-foreground)">至</span>
                         <DatePicker
                             picker="month"
                             allowClear={false}
@@ -290,44 +290,42 @@ export function TaxIitStatsPage({ period }: { period: AccountingPeriod }) {
                         </Button>
                     </div>
 
-                    <div className="min-h-0 flex-1 px-6 pb-3 pt-3">
+                    <div className="min-h-0 flex-1 pb-3 pt-3">
                         {error && (
-                            <div className="mb-3 flex items-center gap-3 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-1.5 text-[12.5px] text-[#8a6a35]">
+                            <div className="mb-3 flex items-center gap-3 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-1.5 text-[12.5px] text-(--warn-text)">
                                 <span>{error}</span>
                                 <Button size="small" onClick={() => setLoginOpen(true)}>
                                     {needLogin ? "重新登录个税" : "登录个税"}
                                 </Button>
                             </div>
                         )}
-                        <ConfigProvider theme={TAX_THEME}>
-                            <Table<TaxIitFilingRow>
-                                columns={declarationColumns}
-                                dataSource={rows}
-                                rowKey="key"
-                                loading={loading}
-                                scroll={{ x: 1660 }}
-                                pagination={{
-                                    pageSize: 20,
-                                    showSizeChanger: true,
-                                    showTotal: (total) => `共 ${total} 条记录`,
-                                }}
-                                locale={{
-                                    emptyText: (
-                                        <span className="block py-16 text-[13px] text-slate-400">
-                                            {loading ? "正在获取申报记录…" : "暂无数据"}
-                                        </span>
-                                    ),
-                                }}
-                            />
-                        </ConfigProvider>
-                        <div className="mt-2 text-[12px] text-slate-400">
+                        <Table<TaxIitFilingRow>
+                            columns={declarationColumns}
+                            dataSource={rows}
+                            rowKey="key"
+                            loading={loading}
+                            scroll={{ x: 1660 }}
+                            pagination={{
+                                pageSize: 20,
+                                showSizeChanger: true,
+                                showTotal: (total) => `共 ${total} 条记录`,
+                            }}
+                            locale={{
+                                emptyText: (
+                                    <span className="block py-16 text-[13px] text-(--muted-foreground)">
+                                        {loading ? "正在获取申报记录…" : "暂无数据"}
+                                    </span>
+                                ),
+                            }}
+                        />
+                        <div className="mt-2 text-[12px] text-(--muted-foreground)">
                             申报记录来自自然人电子税务局的扣缴申报，未申报的所属期不会出现在这里。
                         </div>
                     </div>
                 </>
             ) : (
                 <>
-                    <div className="flex shrink-0 flex-wrap items-center gap-3 px-6 pt-3 text-[13px]">
+                    <div className="flex shrink-0 flex-wrap items-center gap-3 pt-3 text-[13px]">
                         <Select
                             value={payDateField}
                             onChange={(value) => {
@@ -365,9 +363,9 @@ export function TaxIitStatsPage({ period }: { period: AccountingPeriod }) {
                         </div>
                     </div>
 
-                    <div className="min-h-0 flex-1 px-6 pb-3 pt-3">
+                    <div className="min-h-0 flex-1 pb-3 pt-3">
                         {payError && (
-                            <div className="mb-3 flex items-center gap-3 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-1.5 text-[12.5px] text-[#8a6a35]">
+                            <div className="mb-3 flex items-center gap-3 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-1.5 text-[12.5px] text-(--warn-text)">
                                 <span>{payError}</span>
                                 <Button size="small" onClick={() => setLoginOpen(true)}>
                                     {payNeedLogin ? "重新登录个税" : "登录个税"}
@@ -377,28 +375,26 @@ export function TaxIitStatsPage({ period }: { period: AccountingPeriod }) {
                                 </Button>
                             </div>
                         )}
-                        <ConfigProvider theme={TAX_THEME}>
-                            <Table<TaxIitPaymentRow>
-                                columns={paymentColumns}
-                                dataSource={payRows}
-                                rowKey="key"
-                                loading={payLoading}
-                                scroll={{ x: 1660 }}
-                                pagination={{
-                                    pageSize: 20,
-                                    showSizeChanger: true,
-                                    showTotal: (total) => `共 ${total} 条记录`,
-                                }}
-                                locale={{
-                                    emptyText: (
-                                        <span className="block py-16 text-[13px] text-slate-400">
-                                            {payLoading ? "正在获取缴税记录…" : "暂无数据"}
-                                        </span>
-                                    ),
-                                }}
-                            />
-                        </ConfigProvider>
-                        <div className="mt-2 text-[12px] text-slate-400">
+                        <Table<TaxIitPaymentRow>
+                            columns={paymentColumns}
+                            dataSource={payRows}
+                            rowKey="key"
+                            loading={payLoading}
+                            scroll={{ x: 1660 }}
+                            pagination={{
+                                pageSize: 20,
+                                showSizeChanger: true,
+                                showTotal: (total) => `共 ${total} 条记录`,
+                            }}
+                            locale={{
+                                emptyText: (
+                                    <span className="block py-16 text-[13px] text-(--muted-foreground)">
+                                        {payLoading ? "正在获取缴税记录…" : "暂无数据"}
+                                    </span>
+                                ),
+                            }}
+                        />
+                        <div className="mt-2 text-[12px] text-(--muted-foreground)">
                             缴税记录取自个税扣缴端「缴税记录查询」，是扣缴端按人按次的缴款流水；企业端的缴款信息请到「税费缴纳 › 缴款信息查询」核对。
                         </div>
                     </div>
@@ -418,6 +414,6 @@ export function TaxIitStatsPage({ period }: { period: AccountingPeriod }) {
                     }
                 }}
             />
-        </div>
+        </Card>
     );
 }

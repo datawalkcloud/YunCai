@@ -96,9 +96,9 @@ export default function ReconciliationPage() {
     const accountSetId = useCurrentAccountSetId() ?? ""
     const accountSetName = accountSets.find((s) => s.id === accountSetId)?.name ?? ""
 
-    // 会计期间（年月）+ 核对日（日）。默认当前月 1 日。
+    // 会计期间（年月）+ 核对日（日）。默认当前月当天，打开即能看到核对结果。
     const [period, setPeriod] = useState<Dayjs>(() => dayjs().startOf("month"))
-    const [day, setDay] = useState<number>(1)
+    const [day, setDay] = useState<number>(() => dayjs().date())
     const [journalId, setJournalId] = useState<string>("")
     const [onlyUnbalanced, setOnlyUnbalanced] = useState(false)
     const [page, setPage] = useState(1)
@@ -189,16 +189,16 @@ export default function ReconciliationPage() {
             title: "项目",
             dataIndex: "projectText",
             width: 140,
-            render: (_, r) => <span className="text-slate-500">{r.projectText ?? ""}</span>,
+            render: (_, r) => <span className="text-(--muted-foreground)">{r.projectText ?? ""}</span>,
         },
         {
             title: "名称",
             dataIndex: "journalName",
             render: (_, r) => (
                 <span className="flex items-center gap-2">
-                    <span className="font-medium text-[#2f6bff]">{r.journalName ?? ""}</span>
-                    {!r.balanced && <span className="rounded-sm bg-[#fef2f2] px-1.5 text-[11px] leading-5 text-[#ef4444]">不平</span>}
-                    {!r.accountCode && <span className="text-[11px] text-[#b45309]">未关联科目</span>}
+                    <span className="font-medium text-(--brand)">{r.journalName ?? ""}</span>
+                    {!r.balanced && <span className="rounded-sm bg-(--table-neg-bg) px-1.5 text-[11px] leading-5 text-(--danger)">不平</span>}
+                    {!r.accountCode && <span className="text-[11px] text-(--warn-text)">未关联科目</span>}
                 </span>
             ),
         },
@@ -211,7 +211,7 @@ export default function ReconciliationPage() {
             dataIndex: "balance",
             width: 180,
             align: "right",
-            className: `${AMOUNT_RIGHT} font-medium text-slate-700`,
+            className: `${AMOUNT_RIGHT} font-medium text-(--foreground)`,
             render: (_, r) =>
                 r.balanced ? (
                     money(r.balance)
@@ -219,7 +219,7 @@ export default function ReconciliationPage() {
                     <Tooltip title={`账面余额 ${money(r.ledgerBalance)}，差异 ${money(r.difference)}`}>
                         <span>
                             {money(r.balance)}
-                            <span className="ml-1 text-[11.5px] text-[#ef4444]">(差异 {money(r.difference)})</span>
+                            <span className="ml-1 text-[11.5px] text-(--danger)">(差异 {money(r.difference)})</span>
                         </span>
                     </Tooltip>
                 ),
@@ -228,9 +228,9 @@ export default function ReconciliationPage() {
 
     return (
         <div className="flex flex-col gap-3">
-            {error && <div className="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
+            {error && <div className="rounded border border-(--danger-border) bg-(--table-neg-bg) px-3 py-2 text-[13px] text-(--danger)">{error}</div>}
 
-            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 } }}>
+            <Card>
                 {/* 工具行一：期间 + 打印/导出/刷新 */}
                 <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 px-4 py-2.5">
                     <Space size={10} wrap>
@@ -257,7 +257,7 @@ export default function ReconciliationPage() {
                             }}
                         />
                         {data?.hasUnlinkedAccounts && (
-                            <span className="text-[12.5px] text-[#ef4444]">
+                            <span className="text-[12.5px] text-(--danger)">
                                 现金和银行账户没有关联科目，无法展示核对总账数据
                                 <Typography.Link
                                     className="ml-1 text-[12.5px]"
@@ -268,7 +268,7 @@ export default function ReconciliationPage() {
                             </span>
                         )}
                         {!data?.hasUnlinkedAccounts && rows.length > 0 && (
-                            <span className={`text-[12.5px] ${diffCount > 0 ? "text-[#b45309]" : "text-slate-400"}`}>
+                            <span className={`text-[12.5px] ${diffCount > 0 ? "text-(--warn-text)" : "text-(--muted-foreground)"}`}>
                                 {diffCount > 0
                                     ? `共 ${rows.length} 个资金账户，其中 ${diffCount} 个与总账不一致`
                                     : `共 ${rows.length} 个资金账户，出纳账与总账全部一致`}
@@ -298,7 +298,7 @@ export default function ReconciliationPage() {
                 {/* 工具行二：账户 + 只显示不平 */}
                 <div className="flex min-h-[48px] flex-wrap items-center gap-4 px-4 py-2" style={{ marginBottom: 16 }}>
                     <Space size={8}>
-                        <span className="text-[13px] text-slate-600">账户：</span>
+                        <span className="text-[13px] text-(--foreground)">账户：</span>
                         <Select
                                                        style={{ width: 150 }}
                             value={journalId}
@@ -310,7 +310,7 @@ export default function ReconciliationPage() {
                         />
                     </Space>
                     <Checkbox
-                        className="text-[13px] text-slate-600"
+                        className="text-[13px] text-(--foreground)"
                         checked={onlyUnbalanced}
                         onChange={(e) => {
                             setOnlyUnbalanced(e.target.checked)
@@ -328,11 +328,37 @@ export default function ReconciliationPage() {
                         dataSource={pagedRows}
                         rowKey={(r) => r.journalId ?? ""}
                         pagination={false}
-                                               loading={loading}
-                        locale={{ emptyText: <div className="py-10 text-[13px] text-slate-400">暂无数据</div> }}
-                        onRow={(r) => (r.balanced ? {} : { style: { background: "#fff7f7" } })}
+                        loading={loading}
+                        locale={{ emptyText: <div className="py-10 text-[13px] text-(--muted-foreground)">暂无数据</div> }}
+                        onRow={(r) => (r.balanced ? {} : { style: { background: "var(--table-neg-bg)" } })}
+                        summary={() => {
+                            // 合计按当前筛选后的全部账户统计，而不是只加当前页。
+                            const sum = (pick: (r: FundReconciliationRowDto) => number) =>
+                                visibleRows.reduce((acc, r) => acc + pick(r), 0)
+                            return (
+                                <Table.Summary fixed>
+                                    <Table.Summary.Row>
+                                        <Table.Summary.Cell index={0} colSpan={3} className="font-medium">
+                                            合计（{visibleRows.length} 个账户）
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={3} align="right" className={`${AMOUNT_RIGHT} font-medium`}>
+                                            {money(sum((r) => r.openingBalance ?? 0))}
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={4} align="right" className={`${AMOUNT_RIGHT} font-medium`}>
+                                            {money(sum((r) => r.debit ?? 0))}
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={5} align="right" className={`${AMOUNT_RIGHT} font-medium`}>
+                                            {money(sum((r) => r.credit ?? 0))}
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={6} align="right" className={`${AMOUNT_RIGHT} font-medium`}>
+                                            {money(sum((r) => r.balance ?? 0))}
+                                        </Table.Summary.Cell>
+                                    </Table.Summary.Row>
+                                </Table.Summary>
+                            )
+                        }}
                     />
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-(--muted-foreground)" style={{ marginTop: 16 }}>
                         <span>
                             显示 {visibleRows.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, visibleRows.length)}，共{" "}
                             {visibleRows.length} 条

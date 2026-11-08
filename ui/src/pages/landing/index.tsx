@@ -218,7 +218,7 @@ function Button({
       : { background: "transparent", color: C.ink, border: "1px solid #dcdcdc" };
   const cls =
     "inline-flex h-12 items-center justify-center gap-2 rounded-full px-[26px] text-[16px] font-medium transition-all duration-200 " +
-    (variant === "primary" ? "hover:bg-[#333]" : "hover:border-[#b9b9b9] hover:bg-[#fafafa]");
+    (variant === "primary" ? "hover:bg-[#333]" : "hover:border-[#b9b9b9] hover:bg-(--table-zebra-bg)");
   if (href) {
     return (
       <a href={href} className={cls} style={style}>
@@ -327,7 +327,7 @@ const MENU = ["总览", "凭证", "账簿", "报表", "资金", "发票", "工�
 function AppWindow() {
   return (
     <div
-      className="overflow-hidden rounded-[14px] bg-white"
+      className="overflow-hidden rounded-[14px] bg-(--card)"
       style={{ border: "1px solid #e9eae9", boxShadow: "0 24px 60px -32px rgba(10,40,34,.35)" }}
     >
       <div className="flex h-8 items-center gap-3 border-b px-4" style={{ borderColor: "#f2f2f2", background: "#fcfcfc" }}>
@@ -336,7 +336,7 @@ function AppWindow() {
           <span className="size-[9px] rounded-full bg-[#e6e6e6]" />
           <span className="size-[9px] rounded-full bg-[#e6e6e6]" />
         </span>
-        <span className="mx-auto rounded-[4px] bg-white px-3 py-[2px] text-[10px] font-light text-[#b5b5b5] ring-1 ring-[#efefef]">
+        <span className="mx-auto rounded-[4px] bg-(--card) px-3 py-[2px] text-[10px] font-light text-[#b5b5b5] ring-1 ring-[#efefef]">
           app.yuncai.cn / 总览
         </span>
         <span className="w-8" />
@@ -640,7 +640,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
   return (
     <div
       id="top"
-      className="flex min-h-svh scroll-smooth flex-col bg-white antialiased [font-family:'PingFang_SC','Microsoft_YaHei',-apple-system,'Segoe_UI',sans-serif]"
+      className="flex min-h-svh scroll-smooth flex-col bg-(--card) antialiased [font-family:'PingFang_SC','Microsoft_YaHei',-apple-system,'Segoe_UI',sans-serif]"
       style={{ color: C.ink }}
     >
       {/* ============ 导航 ============ */}
@@ -676,7 +676,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
               <button
                 type="button"
                 onClick={() => setLoginOpen(true)}
-                className="hidden px-[16px] py-[10px] text-[14px] transition-colors hover:text-[#1a1a1a]! sm:block"
+                className="hidden px-[16px] py-[10px] text-[14px] transition-colors hover:text-(--foreground)! sm:block"
                 style={{ color: "#3d3d3d" }}
               >
                 登录
@@ -792,7 +792,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
 
             {/* 面板：radius 20 / 白底；左 355 文本区，右视觉区 #f7fcfb */}
             <Reveal delay={100}>
-              <div className="mt-[24px] overflow-hidden rounded-[20px] bg-white md:mt-[44px]" style={{ border: `1px solid ${C.line}` }}>
+              <div className="mt-[24px] overflow-hidden rounded-[20px] bg-(--card) md:mt-[44px]" style={{ border: `1px solid ${C.line}` }}>
                 <div className="grid lg:grid-cols-[360px_1fr]">
                   <div className="flex flex-col justify-center px-6 py-10 md:px-12 md:py-12 lg:px-[48px] lg:py-[24px] lg:pr-[40px]">
                     <h3 className="text-[24px] font-light leading-[1.55] md:text-[28px]" style={{ color: C.ink }}>
@@ -828,7 +828,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
 
                   {/* 右侧视觉区：#f7fcfb 底 + 单据窗口 */}
                   <div className="relative flex flex-col justify-center gap-4 p-6 md:p-10" style={{ background: C.panel }}>
-                    <div className="rounded-[14px] bg-white px-5 py-5" style={{ border: "1px solid #eef6f2" }}>
+                    <div className="rounded-[14px] bg-(--card) px-5 py-5" style={{ border: "1px solid #eef6f2" }}>
                       <div className="flex items-center justify-between">
                         <span
                           className="rounded-[6px] px-[10px] py-[4px] font-mono text-[10.5px] tracking-wide"
@@ -859,7 +859,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
                       </pre>
                     </div>
 
-                    <div className="rounded-[14px] bg-white/70 px-4 py-3">
+                    <div className="rounded-[14px] bg-(--card)/70 px-4 py-3">
                       <p className="mb-[6px] text-[10.5px] font-light uppercase tracking-[0.14em]" style={{ color: "#a6a6a6" }}>
                         {active.mockLabel}
                       </p>
@@ -907,7 +907,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
               {CAPABILITIES.map((c, i) => (
                 <Reveal key={c.title} delay={i * 40}>
                   <div
-                    className="flex h-full flex-col justify-center rounded-[12px] bg-white px-5 py-5 transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_16px_36px_-26px_rgba(10,40,34,.35)] md:h-[104px] md:px-6"
+                    className="flex h-full flex-col justify-center rounded-[12px] bg-(--card) px-5 py-5 transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_16px_36px_-26px_rgba(10,40,34,.35)] md:h-[104px] md:px-6"
                     style={{ border: `1px solid ${C.line}` }}
                   >
                     <c.icon className="text-[19px]" style={{ color: C.brand }} />
@@ -942,7 +942,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
                 <div className="mt-[40px] grid gap-[16px] md:mt-[48px] md:grid-cols-3">
                   {SECURITY.map((s, i) => (
                     <Reveal key={s.title} delay={i * 60}>
-                      <div className="h-full rounded-[16px] bg-white p-[32px]" style={{ border: `1px solid ${C.tagLine}` }}>
+                      <div className="h-full rounded-[16px] bg-(--card) p-[32px]" style={{ border: `1px solid ${C.tagLine}` }}>
                         <s.icon className="text-[22px]" style={{ color: C.brand }} />
                         <p className="mt-[22px] text-[19px] font-normal" style={{ color: C.ink }}>
                           {s.title}

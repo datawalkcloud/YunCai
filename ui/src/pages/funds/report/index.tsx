@@ -414,14 +414,14 @@ export default function FundReportPage() {
 
     /** 组合维度的主类别小计行（次类别列为空）加底色加粗。 */
     const subtotalRowStyle = (row: FundReportRowDto) =>
-        dimension === "combo" && !row.secondaryName ? { background: "#f8fafc", fontWeight: 600 } : undefined
+        dimension === "combo" && !row.secondaryName ? { background: "var(--muted)", fontWeight: 600 } : undefined
 
     const columnsOf = (section: FundReportSectionDto): TableColumnsType<FundReportRowDto> => {
         const nameColumn = {
             title: dimension === "combo" ? (report?.primaryText ?? "收支类别") : (section.name ?? ""),
             dataIndex: "name",
             render: (_: unknown, row: FundReportRowDto) => (
-                <span className={dimension === "account" ? "font-medium text-[#2f6bff]" : "text-slate-700"}>{row.name ?? ""}</span>
+                <span className={dimension === "account" ? "font-medium text-(--brand)" : "text-(--foreground)"}>{row.name ?? ""}</span>
             ),
         }
 
@@ -436,7 +436,7 @@ export default function FundReportPage() {
             title: "编码",
             dataIndex: "code",
             width: 120,
-            render: (_: unknown, row: FundReportRowDto) => <span className="text-slate-500">{row.code ?? ""}</span>,
+            render: (_: unknown, row: FundReportRowDto) => <span className="text-(--muted-foreground)">{row.code ?? ""}</span>,
         }
 
         /** 仅账户（科目编码）与收支类别（序号）有编码列；项目 / 部门 / 往来单位登记的是自由文本。 */
@@ -448,7 +448,7 @@ export default function FundReportPage() {
                 nameColumn,
                 { title: "期初余额", dataIndex: "openingBalance", width: 116, align: "right", className: AMOUNT_RIGHT, render: (_: unknown, r: FundReportRowDto) => moneyBlankZero(r.openingBalance) },
                 ...tail.slice(0, 2),
-                { title: "余额", dataIndex: "balance", width: 116, align: "right", className: `${AMOUNT_RIGHT} font-medium text-slate-700`, render: (_: unknown, r: FundReportRowDto) => money(r.balance) },
+                { title: "余额", dataIndex: "balance", width: 116, align: "right", className: `${AMOUNT_RIGHT} font-medium text-(--foreground)`, render: (_: unknown, r: FundReportRowDto) => money(r.balance) },
                 ...tail.slice(2),
             ]
         }
@@ -481,7 +481,7 @@ export default function FundReportPage() {
             )
 
         if (dimension === "account" || dimension === "category") push("")
-        push(<span className="font-semibold text-slate-700">{section.subtotalLabel ?? "合计"}</span>)
+        push(<span className="font-semibold text-(--foreground)">{section.subtotalLabel ?? "合计"}</span>)
         if (dimension === "combo") push("")
         if (dimension === "account") push(strong(moneyBlankZero(sub?.openingBalance)), "right")
         push(strong(moneyBlankZero(sub?.totalIncome)), "right")
@@ -492,7 +492,7 @@ export default function FundReportPage() {
 
         return () => (
             <Table.Summary>
-                <Table.Summary.Row style={{ background: "#f8fafc" }}>{cells}</Table.Summary.Row>
+                <Table.Summary.Row style={{ background: "var(--muted)" }}>{cells}</Table.Summary.Row>
             </Table.Summary>
         )
     }
@@ -508,7 +508,7 @@ export default function FundReportPage() {
                 rowKey="name"
                 pagination={false}
                                showHeader={false}
-                onRow={() => ({ style: { background: "#eef4ff", fontWeight: 600 } })}
+                onRow={() => ({ style: { background: "var(--brand-soft)", fontWeight: 600 } })}
                 locale={{ emptyText: " " }}
             />
         )
@@ -520,9 +520,9 @@ export default function FundReportPage() {
 
     return (
         <div className="flex flex-col gap-3">
-            {error && <div className="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
+            {error && <div className="rounded border border-(--danger-border) bg-(--table-neg-bg) px-3 py-2 text-[13px] text-(--danger)">{error}</div>}
 
-            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 } }}>
+            <Card>
                 <Tabs
                     className="lemon-sub-tabs"
                     activeKey={dimension}
@@ -563,7 +563,7 @@ export default function FundReportPage() {
                                                                allowClear
                                 className="w-[200px]"
                                 placeholder={dimension === "combo" ? `输入${nameLabel}或${secondaryLabel}搜索` : `输入${nameLabel}搜索`}
-                                prefix={<SearchOutlined className="text-slate-400" />}
+                                prefix={<SearchOutlined className="text-(--muted-foreground)" />}
                                 value={keyword}
                                 onChange={(e) => {
                                     setKeyword(e.target.value)
@@ -573,9 +573,9 @@ export default function FundReportPage() {
                         )}
                         {dimension === "combo" && (
                             <Space size={8} wrap>
-                                <span className="text-[12.5px] text-slate-500">主类别</span>
-                                <span className="text-[13px] text-slate-700">{report?.primaryText ?? "收支类别"}</span>
-                                <span className="text-[12.5px] text-slate-500">次类别</span>
+                                <span className="text-[12.5px] text-(--muted-foreground)">主类别</span>
+                                <span className="text-[13px] text-(--foreground)">{report?.primaryText ?? "收支类别"}</span>
+                                <span className="text-[12.5px] text-(--muted-foreground)">次类别</span>
                                 <Select
                                                                        className="min-w-[110px]"
                                     value={secondary}
@@ -592,7 +592,7 @@ export default function FundReportPage() {
                     <Space size={8} wrap>
                         {dimension === "combo" && (
                             <Checkbox
-                                className="text-[13px] text-slate-600"
+                                className="text-[13px] text-(--foreground)"
                                 checked={showPrimarySubtotal}
                                 onChange={(e) => {
                                     setShowPrimarySubtotal(e.target.checked)
@@ -634,7 +634,7 @@ export default function FundReportPage() {
                 {/* 表格区 */}
                 <div className="p-3">
                     {loading && !report ? (
-                        <div className="py-16 text-center text-[13px] text-slate-400">正在加载…</div>
+                        <div className="py-16 text-center text-[13px] text-(--muted-foreground)">正在加载…</div>
                     ) : (
                         <div className="flex flex-col gap-3">
                             {visibleSections.map((section, index) => (
@@ -655,7 +655,7 @@ export default function FundReportPage() {
                             {!singleSection && visibleSections.length > 0 && renderTotalRow(visibleSections[0])}
 
                             {singleSection && (
-                                <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-(--muted-foreground)" style={{ marginTop: 16 }}>
                                     <span>
                                         显示 {rowCount === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, rowCount)}，共 {rowCount} 条
                                     </span>
@@ -681,10 +681,10 @@ export default function FundReportPage() {
                 </div>
 
                 {/* 底部说明 */}
-                {report?.currencyNote && <div className="px-4 pb-3 text-[12.5px] leading-6 text-slate-400">{report.currencyNote}</div>}
+                {report?.currencyNote && <div className="px-4 pb-3 text-[12.5px] leading-6 text-(--muted-foreground)">{report.currencyNote}</div>}
                 {report?.note && (
-                    <div className="border-t border-slate-100 px-4 py-3 text-[12.5px] leading-6 text-slate-500">
-                        <span className="text-[#ef4444]">提示：</span>
+                    <div className="border-t border-(--border) px-4 py-3 text-[12.5px] leading-6 text-(--muted-foreground)">
+                        <span className="text-(--danger)">提示：</span>
                         {report.note}
                         <Typography.Link className="ml-1 text-[12.5px]" onClick={() => setHelpOpen(true)}>
                             点击查看
@@ -701,7 +701,7 @@ export default function FundReportPage() {
                 onCancel={() => setHelpOpen(false)}
                 footer={<Button autoInsertSpace={false} onClick={() => setHelpOpen(false)}>我知道了</Button>}
             >
-                <div className="space-y-2 text-[13px] leading-6 text-slate-600">
+                <div className="space-y-2 text-[13px] leading-6 text-(--foreground)">
                     <p>内部转账指账户之间的资金划转（例如从银行提取现金、账户间互转），资金总额不变，不属于收支业务，因此不计入本表各维度的收入与支出合计。</p>
                     <p>如需查看内部转账明细，请到「资金 → 内部转账」中按日期区间查询。</p>
                 </div>
@@ -717,7 +717,7 @@ export default function FundReportPage() {
             >
                 <div className="flex flex-col items-center gap-3 py-2">
                     <QRCode value={shareUrl(dimension, range)} size={200} />
-                    <div className="break-all text-center text-[12px] text-slate-400">{shareUrl(dimension, range)}</div>
+                    <div className="break-all text-center text-[12px] text-(--muted-foreground)">{shareUrl(dimension, range)}</div>
                     <div className="flex gap-2">
                         <Button
                                                        autoInsertSpace={false}
@@ -752,10 +752,10 @@ export default function FundReportPage() {
             >
                 <div className="flex flex-col gap-3 py-1">
                     <Checkbox checked={subscribe.enabled} onChange={(e) => setSubscribe((s) => ({ ...s, enabled: e.target.checked }))}>
-                        <span className="text-[13px] text-slate-600">开启「{dimensionLabel}」自动推送</span>
+                        <span className="text-[13px] text-(--foreground)">开启「{dimensionLabel}」自动推送</span>
                     </Checkbox>
                     <div className="flex items-center gap-2">
-                        <span className="w-16 text-[13px] text-slate-500">推送周期</span>
+                        <span className="w-16 text-[13px] text-(--muted-foreground)">推送周期</span>
                         <Select
                             className="flex-1"
                             value={subscribe.cycle}
@@ -765,7 +765,7 @@ export default function FundReportPage() {
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="w-16 text-[13px] text-slate-500">推送时间</span>
+                        <span className="w-16 text-[13px] text-(--muted-foreground)">推送时间</span>
                         <Select
                             className="flex-1"
                             value={subscribe.hour}
@@ -774,7 +774,7 @@ export default function FundReportPage() {
                             options={["08:00", "09:00", "12:00", "18:00", "21:00"].map((v) => ({ value: v, label: v }))}
                         />
                     </div>
-                    <p className="text-[12px] leading-5 text-slate-400">推送内容为当前页签在所选区间内的汇总结果，推送到站内消息中心。</p>
+                    <p className="text-[12px] leading-5 text-(--muted-foreground)">推送内容为当前页签在所选区间内的汇总结果，推送到站内消息中心。</p>
                 </div>
             </Modal>
         </div>

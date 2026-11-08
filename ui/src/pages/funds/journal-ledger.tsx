@@ -13,7 +13,6 @@ import {
     Button,
     Card,
     Checkbox,
-    ConfigProvider,
     DatePicker,
     Dropdown,
     Empty,
@@ -32,7 +31,7 @@ import {
     Typography,
 } from "antd"
 import type { TableColumnsType } from "antd"
-import { DownOutlined, FilterFilled, FullscreenOutlined, PlusOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons"
+import { DownOutlined, EllipsisOutlined, FilterFilled, FullscreenOutlined, PlusOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons"
 import dayjs from "dayjs"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -41,6 +40,7 @@ import {
     AccountsApi,
     EntryCategoriesApi,
     JournalsApi,
+    VoucherWordsApi,
     VouchersApi,
     type AccountDto,
     type EntryCategoryDto,
@@ -48,10 +48,12 @@ import {
     type JournalEntryDto,
     type JournalListItemDto,
     type VoucherListItemDto,
+    type VoucherWordDto,
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtAmount, toISODate } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { CounterpartyPicker } from "@/components/assist/counterparty-picker"
 
 /** 每页条数候选，与账页页脚的分页器一致。 */
 const PAGE_SIZE_OPTIONS = [20, 50, 100]
@@ -63,6 +65,68 @@ const MERGE_OPTIONS = [
     { value: 3, label: "按收支类别分开" },
     { value: 4, label: "按收支方向分开（收入 / 支出各一张）" },
 ]
+
+/** 结算方式候选（与柠檬云现金日记账一致，允许自由输入其它方式）。 */
+const SETTLEMENT_METHODS = ["现金", "银行转账", "支票", "银行汇票", "商业汇票", "电汇", "其他"]
+
+/** 流水来源候选；历史数据没有来源时按「手工登记」展示与筛选。 */
+const SOURCE_OPTIONS = ["手工登记", "Excel导入", "内部转账", "凭证生成"]
+
+/** 默认收起的可选列：在表头齿轮里勾选后才会显示，并同步出现在行内登记行里。 */
+const DEFAULT_HIDDEN_COLUMNS = [
+    "settlementMethod",
+    "billNo",
+    "project",
+    "department",
+    "remark",
+    "source",
+    "voucherDate",
+    "voucherWord",
+]
+
+/** 收支类别下拉的显示名前缀：存的是类别名称，展示时按类别方向补「收- / 支-」。 */
+const categoryLabel = (name: string, type?: number) => `${type === 2 ? "支" : "收"}-${name}`
+
+/** 表头排序取值：数值列按数字比，其余按字符串比，空值统一排最后。 */
+function sortValueOf(e: JournalEntryDto, field: string): string | number {
+    switch (field) {
+        case "date":
+            return toISODate(e.date)
+        case "voucherDate":
+            return toISODate(e.voucherDate)
+        case "seq":
+            return e.sequence ?? 0
+        case "income":
+            return e.income ?? 0
+        case "expense":
+            return e.expense ?? 0
+        case "balance":
+            return e.balance ?? 0
+        case "voucherWord":
+            return e.voucherWord ?? ""
+        case "voucher":
+            return e.voucherNo ?? ""
+        case "category":
+            return e.category ?? ""
+        case "counterparty":
+            return e.counterparty ?? ""
+        case "settlementMethod":
+            return e.settlementMethod ?? ""
+        case "billNo":
+            return e.billNo ?? ""
+        case "project":
+            return e.project ?? ""
+        case "department":
+            return e.department ?? ""
+        case "remark":
+            return e.remark ?? ""
+        case "source":
+            return e.source ?? "手工登记"
+        case "summary":
+        default:
+            return e.summary ?? ""
+    }
+}
 
 /** 「打印列表设置」面板字段，与柠檬云的打印方向 / 页边距 / 表尾字段一致。 */
 interface ListPrintSettings {
@@ -165,7 +229,7 @@ function buildListPrintHtml(
     const totalExpense = entries.reduce((s, e) => s + (e.expense ?? 0), 0)
 
     const rows = [
-        `<tr class="opening"><td>初始化余额</td><td></td><td></td><td></td><td></td><td class="num">${money(opening)}</td><td></td><td></td></tr>`,
+        `<tr class="opening"><td>上笔余额</td><td></td><td></td><td></td><td></td><td class="num">${money(opening)}</td><td></td><td></td></tr>`,
         ...entries.map((e) => {
             const iso = new Date(e.date ?? "").toISOString().slice(0, 10)
             return `<tr>
@@ -338,24 +402,58 @@ const COLUMN_TOGGLES: Array<[string, string]> = [
     ["balance", "余额"],
     ["voucher", "关联凭证"],
     ["seq", "日记账序号"],
+    ["voucherDate", "凭证日期"],
+    ["voucherWord", "凭证字"],
+    ["settlementMethod", "结算方式"],
+    ["billNo", "票据号"],
+    ["project", "项目"],
+    ["department", "部门"],
+    ["remark", "备注"],
+    ["source", "流水来源"],
     ["ops", "操作"],
 ]
 
 /** 区间控件弹出的高级筛选：日期在面板里同步期间，其余字段与账页列头漏斗叠加生效。 */
 type VoucherState = "all" | "yes" | "no"
 
+/** 柠檬云「现金日记账」高级筛选的全部条件。 */
 interface AdvancedFilters {
-    voucherNo: string
+    /** 业务日期区间单独放在 period 里，此处只放其余条件。 */
+    voucherDate: [string, string] | null
+    voucherWord: string
+    voucherNoFrom: string
+    voucherNoTo: string
     category: string
-    counterparty: string
+    settlementMethod: string
     voucher: VoucherState
+    counterparty: string
+    billNo: string
+    project: string
+    department: string
+    summary: string
+    remark: string
+    source: string
+    amountFrom: string
+    amountTo: string
 }
 
 const EMPTY_ADVANCED: AdvancedFilters = {
-    voucherNo: "",
+    voucherDate: null,
+    voucherWord: "",
+    voucherNoFrom: "",
+    voucherNoTo: "",
     category: "",
-    counterparty: "",
+    settlementMethod: "",
     voucher: "all",
+    counterparty: "",
+    billNo: "",
+    project: "",
+    department: "",
+    summary: "",
+    remark: "",
+    source: "",
+    amountFrom: "",
+    amountTo: "",
 }
 
 const VOUCHER_STATE_OPTIONS: Array<{ value: VoucherState; label: string }> = [
@@ -377,6 +475,12 @@ interface DraftValues {
     counterparty: string
     income: string
     expense: string
+    settlementMethod: string
+    billNo: string
+    project: string
+    department: string
+    remark: string
+    source: string
 }
 
 const blankDraft = (): DraftValues => ({
@@ -386,6 +490,12 @@ const blankDraft = (): DraftValues => ({
     counterparty: "",
     income: "",
     expense: "",
+    settlementMethod: "",
+    billNo: "",
+    project: "",
+    department: "",
+    remark: "",
+    source: "手工登记",
 })
 
 /** 行内登记 / 编辑行的表单值（金额以字符串保存，避免半角小数被 Number 吃掉）。 */
@@ -397,6 +507,12 @@ function draftFromEntry(e: JournalEntryDto): DraftValues {
         counterparty: e.counterparty ?? "",
         income: e.income ? String(e.income) : "",
         expense: e.expense ? String(e.expense) : "",
+        settlementMethod: e.settlementMethod ?? "",
+        billNo: e.billNo ?? "",
+        project: e.project ?? "",
+        department: e.department ?? "",
+        remark: e.remark ?? "",
+        source: e.source ?? "手工登记",
     }
 }
 
@@ -425,14 +541,25 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
         ...EMPTY_ADVANCED,
         period: null,
     })
-    const [hidden, setHidden] = useState<Set<string>>(() => new Set())
+    const [hidden, setHidden] = useState<Set<string>>(() => new Set(DEFAULT_HIDDEN_COLUMNS))
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0])
     const [selected, setSelected] = useState<string[]>([])
+    /** 表头排序；null 表示按后端返回的自然顺序（日期 + 序号）。 */
+    const [sortInfo, setSortInfo] = useState<{ field: string; order: "ascend" | "descend" } | null>(null)
 
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState<DraftValues>(blankDraft)
     const [saving, setSaving] = useState(false)
+
+    /** 往来单位选择弹窗：行内录入 / 批量指定 / 高级筛选共用。 */
+    const [pickerTarget, setPickerTarget] = useState<"form" | "bulk" | "filter" | null>(null)
+    /** 「+点击添加」快速新增收支类别。 */
+    const [categoryQuickOpen, setCategoryQuickOpen] = useState(false)
+    const [categoryQuickForm, setCategoryQuickForm] = useState({ type: 1, name: "" })
+    const [categoryQuickSaving, setCategoryQuickSaving] = useState(false)
+    /** 凭证字候选（高级筛选「凭证字号」用）。 */
+    const [voucherWords, setVoucherWords] = useState<VoucherWordDto[]>([])
 
     const [createOpen, setCreateOpen] = useState(false)
     const [creating, setCreating] = useState(false)
@@ -514,12 +641,11 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 setDetail(next)
                 if (periodInitRef.current !== id) {
                     periodInitRef.current = id
-                    const list = next.entries ?? []
-                    setPeriod(
-                        list.length
-                            ? [toISODate(list[0].date), toISODate(list[list.length - 1].date)]
-                            : [dayjs().startOf("month").format("YYYY-MM-DD"), dayjs().endOf("month").format("YYYY-MM-DD")],
-                    )
+                    // 首屏落在本月：历史账套不会一进来就是全量流水，「显示全部」仍可看全量。
+                    setPeriod([
+                        dayjs().startOf("month").format("YYYY-MM-DD"),
+                        dayjs().endOf("month").format("YYYY-MM-DD"),
+                    ])
                 }
                 setError(null)
             } catch (err) {
@@ -543,6 +669,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
         setPeriod(null)
         setFilters(EMPTY_FILTERS)
         setAdvanced(EMPTY_ADVANCED)
+        setSortInfo(null)
         setAdvOpen(false)
         setPage(1)
         periodInitRef.current = ""
@@ -562,12 +689,19 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
             } catch {
                 setCategories([])
             }
+            try {
+                setVoucherWords(
+                    await new VoucherWordsApi(apiConfig(token)).accountsetsAccountSetIdVoucherwordsGet({ accountSetId }),
+                )
+            } catch {
+                setVoucherWords([])
+            }
         })()
     }, [token, accountSetId])
 
     useEffect(() => {
         setPage(1)
-    }, [period, filters, pageSize])
+    }, [period, filters, advanced, sortInfo, pageSize])
 
     /* ---------- 派生数据 ---------- */
 
@@ -592,11 +726,24 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
     }
 
     function applyAdvanced() {
+        const trim = (v: string) => v.trim()
         setAdvanced({
-            voucherNo: advDraft.voucherNo.trim(),
-            category: advDraft.category.trim(),
-            counterparty: advDraft.counterparty.trim(),
+            voucherDate: advDraft.voucherDate,
+            voucherWord: trim(advDraft.voucherWord),
+            voucherNoFrom: trim(advDraft.voucherNoFrom),
+            voucherNoTo: trim(advDraft.voucherNoTo),
+            category: trim(advDraft.category),
+            settlementMethod: trim(advDraft.settlementMethod),
             voucher: advDraft.voucher,
+            counterparty: trim(advDraft.counterparty),
+            billNo: trim(advDraft.billNo),
+            project: trim(advDraft.project),
+            department: trim(advDraft.department),
+            summary: trim(advDraft.summary),
+            remark: trim(advDraft.remark),
+            source: trim(advDraft.source),
+            amountFrom: trim(advDraft.amountFrom),
+            amountTo: trim(advDraft.amountTo),
         })
         setPeriod(advDraft.period)
         setAdvOpen(false)
@@ -606,28 +753,64 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
         setAdvDraft({ ...EMPTY_ADVANCED, period: dataRange })
     }
 
-    const advancedCount =
-        Number(Boolean(advanced.voucherNo)) +
-        Number(Boolean(advanced.category)) +
-        Number(Boolean(advanced.counterparty)) +
-        Number(advanced.voucher !== "all")
+    const advancedCount = (
+        [
+            advanced.voucherDate,
+            advanced.voucherWord,
+            advanced.voucherNoFrom,
+            advanced.voucherNoTo,
+            advanced.category,
+            advanced.settlementMethod,
+            advanced.counterparty,
+            advanced.billNo,
+            advanced.project,
+            advanced.department,
+            advanced.summary,
+            advanced.remark,
+            advanced.source,
+            advanced.amountFrom,
+            advanced.amountTo,
+            advanced.voucher !== "all" ? "voucher" : "",
+        ] as Array<string | [string, string] | null>
+    ).filter(Boolean).length
 
     const filtered = useMemo(() => {
+        const match = (haystack: string | null | undefined, needle: string) =>
+            !needle || (haystack ?? "").includes(needle)
+        const sourceOf = (e: JournalEntryDto) => e.source ?? "手工登记"
+        const amountOf = (e: JournalEntryDto) => (e.income ?? 0) > 0 ? (e.income ?? 0) : (e.expense ?? 0)
         return entries.filter((e) => {
             const date = toISODate(e.date)
             if (period && (date < period[0] || date > period[1])) return false
             if (filters.date && !date.includes(filters.date)) return false
-            if (filters.summary && !(e.summary ?? "").includes(filters.summary)) return false
-            if (filters.category && !(e.category ?? "").includes(filters.category)) return false
-            if (filters.counterparty && !(e.counterparty ?? "").includes(filters.counterparty)) return false
+            if (filters.summary && !match(e.summary, filters.summary)) return false
+            if (filters.category && !match(e.category, filters.category)) return false
+            if (filters.counterparty && !match(e.counterparty, filters.counterparty)) return false
             if (filters.income && !fmtAmount(e.income).includes(filters.income)) return false
             if (filters.expense && !fmtAmount(e.expense).includes(filters.expense)) return false
             if (filters.balance && !fmtAmount(e.balance).includes(filters.balance)) return false
-            if (filters.voucher && !(e.voucherNo ?? "").includes(filters.voucher)) return false
+            if (filters.voucher && !match(e.voucherNo, filters.voucher)) return false
             if (filters.seq && !seqOf(e).includes(filters.seq)) return false
-            if (advanced.voucherNo && !(e.voucherNo ?? "").includes(advanced.voucherNo)) return false
-            if (advanced.category && !(e.category ?? "").includes(advanced.category)) return false
-            if (advanced.counterparty && !(e.counterparty ?? "").includes(advanced.counterparty)) return false
+
+            // 高级筛选：凭证日期 / 字号、收支类别、结算方式、往来、票据号、项目、部门、摘要、备注、来源、金额
+            const voucherDate = toISODate(e.voucherDate)
+            if (advanced.voucherDate) {
+                if (!voucherDate || voucherDate < advanced.voucherDate[0] || voucherDate > advanced.voucherDate[1]) return false
+            }
+            if (advanced.voucherWord && e.voucherWord !== advanced.voucherWord) return false
+            if (advanced.voucherNoFrom && (e.voucherNumber ?? 0) < Number(advanced.voucherNoFrom)) return false
+            if (advanced.voucherNoTo && (e.voucherNumber ?? 0) > Number(advanced.voucherNoTo)) return false
+            if (!match(e.category, advanced.category)) return false
+            if (!match(e.settlementMethod, advanced.settlementMethod)) return false
+            if (!match(e.counterparty, advanced.counterparty)) return false
+            if (!match(e.billNo, advanced.billNo)) return false
+            if (!match(e.project, advanced.project)) return false
+            if (!match(e.department, advanced.department)) return false
+            if (!match(e.summary, advanced.summary)) return false
+            if (!match(e.remark, advanced.remark)) return false
+            if (advanced.source && sourceOf(e) !== advanced.source) return false
+            if (advanced.amountFrom && amountOf(e) < Number(advanced.amountFrom)) return false
+            if (advanced.amountTo && amountOf(e) > Number(advanced.amountTo)) return false
             if (advanced.voucher === "yes" && !e.voucherId) return false
             if (advanced.voucher === "no" && e.voucherId) return false
             return true
@@ -636,9 +819,21 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [entries, period, filters, advanced, seqPrefix])
 
-    const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+    /** 表头排序作用于筛选结果；默认（sortInfo=null）保持后端返回的日期 + 序号顺序。 */
+    const sorted = useMemo(() => {
+        if (!sortInfo) return filtered
+        const dir = sortInfo.order === "ascend" ? 1 : -1
+        return [...filtered].sort((a, b) => {
+            const av = sortValueOf(a, sortInfo.field)
+            const bv = sortValueOf(b, sortInfo.field)
+            if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir
+            return String(av).localeCompare(String(bv), "zh-CN") * dir
+        })
+    }, [filtered, sortInfo])
+
+    const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
     const current = Math.min(page, pageCount)
-    const pageRows = filtered.slice((current - 1) * pageSize, current * pageSize)
+    const pageRows = sorted.slice((current - 1) * pageSize, current * pageSize)
 
     /** 期初取筛选区间前一笔的余额（没有则为账簿期初），合计只累加区间内流水。 */
     const openingBalance = useMemo(() => {
@@ -673,15 +868,72 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
 
     const selectableIds = filtered.filter((e) => !e.voucherId).map((e) => e.id ?? "")
 
-    const categoryOptions = useMemo(() => {
-        const group = (type: number, label: string) => {
-            const options = categories
-                .filter((c) => c.type === type && c.name)
-                .map((c) => ({ value: c.name as string, label: c.name as string }))
-            return options.length > 0 ? [{ label, options }] : []
+    /** 收支类别下拉：柠檬云是一列「收-xxx / 支-xxx」平铺选项，值仍存类别名称。 */
+    const categoryOptions = useMemo(
+        () =>
+            categories
+                .filter((c) => c.name)
+                .map((c) => ({ value: c.name as string, label: categoryLabel(c.name as string, c.type) })),
+        [categories],
+    )
+
+    /** 账页展示收支类别时补方向前缀；查不到类别档案的历史数据按原名显示。 */
+    function displayCategory(name?: string | null) {
+        if (!name) return ""
+        const hit = categories.find((c) => c.name === name)
+        return hit ? categoryLabel(name, hit.type) : name
+    }
+
+    /* ---------- 往来单位选择 / 类别快速新增 ---------- */
+
+    function openPicker(target: "form" | "bulk" | "filter") {
+        setPickerTarget(target)
+    }
+
+    function handlePickerSelect(name: string) {
+        if (pickerTarget === "form") patchForm({ counterparty: name })
+        else if (pickerTarget === "bulk") setBulkText(name)
+        else if (pickerTarget === "filter") {
+            setAdvDraft((prev) => ({ ...prev, counterparty: name }))
         }
-        return [...group(1, "收入类别"), ...group(2, "支出类别")]
-    }, [categories])
+        setPickerTarget(null)
+    }
+
+    function handlePickerClear() {
+        if (pickerTarget === "form") patchForm({ counterparty: "" })
+        else if (pickerTarget === "bulk") setBulkText("")
+        else if (pickerTarget === "filter") setAdvDraft((prev) => ({ ...prev, counterparty: "" }))
+    }
+
+    function openCategoryQuick() {
+        // 已填支出时默认建「支出类别」，否则默认「收入类别」。
+        setCategoryQuickForm({ type: Number(form.expense) > 0 ? 2 : 1, name: "" })
+        setCategoryQuickOpen(true)
+    }
+
+    async function submitCategoryQuick() {
+        if (!token || !accountSetId || categoryQuickSaving) return
+        const name = categoryQuickForm.name.trim()
+        if (!name) {
+            message.warning("请填写收支类别名称。")
+            return
+        }
+        setCategoryQuickSaving(true)
+        try {
+            const created = await new EntryCategoriesApi(apiConfig(token)).accountsetsAccountSetIdEntrycategoriesPost({
+                accountSetId,
+                createEntryCategoryRequest: { type: categoryQuickForm.type, name },
+            })
+            setCategories((prev) => [...prev, created])
+            patchForm({ category: created.name ?? name })
+            setCategoryQuickOpen(false)
+            message.success(`收支类别「${created.name ?? name}」已新增。`)
+        } catch (err) {
+            message.error(await apiErrorMessage(err, "新增收支类别失败，请重试。"))
+        } finally {
+            setCategoryQuickSaving(false)
+        }
+    }
 
     /* ---------- 行内登记 / 编辑 ---------- */
 
@@ -726,6 +978,12 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 summary: form.summary.trim(),
                 category: form.category.trim() || null,
                 counterparty: form.counterparty.trim() || null,
+                project: form.project.trim() || null,
+                department: form.department.trim() || null,
+                settlementMethod: form.settlementMethod.trim() || null,
+                billNo: form.billNo.trim() || null,
+                remark: form.remark.trim() || null,
+                source: form.source.trim() || null,
                 income,
                 expense,
             }
@@ -1019,9 +1277,13 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
     }
 
     /** 打印凭据：为选中（或当前页）流水各出一张收/付款凭据。 */
-    function printReceipt() {
+    function printReceipt(entry?: JournalEntryDto) {
         if (!detail) return
-        const targets = selected.length > 0 ? filtered.filter((e) => selected.includes(e.id ?? "")) : pageRows
+        const targets = entry
+            ? [entry]
+            : selected.length > 0
+              ? filtered.filter((e) => selected.includes(e.id ?? ""))
+              : pageRows
         if (targets.length === 0) {
             message.warning("当前没有可打印的流水。")
             return
@@ -1124,8 +1386,14 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
 
     /* ---------- 列头筛选 / 列设置 ---------- */
 
+    /** 表头排序统一受控：sortInfo 为空时回到默认的「日期 + 序号」自然顺序。 */
+    const sortable = (key: string) => ({
+        sorter: true as const,
+        sortOrder: sortInfo?.field === key ? sortInfo.order : null,
+    })
+
     const textFilter = (key: FilterKey) => ({
-        filterIcon: <FilterFilled style={{ color: filters[key] ? "#2f6bff" : "#c0c4cc", fontSize: 11 }} />,
+        filterIcon: <FilterFilled style={{ color: filters[key] ? "var(--brand)" : "var(--muted-foreground)" }} />,
         filteredValue: filters[key] ? [filters[key]] : null,
         filterDropdown: ({ confirm }: { confirm: () => void }) => (
             <div className="w-[200px] p-2" onKeyDown={(e) => e.stopPropagation()}>
@@ -1158,13 +1426,14 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
 
     /** 固定列的背景不随 tr 变，单独给单元格上色，保持与整行一致。 */
     const rowBackground = (row: LedgerRow) =>
-        row.kind === "total" ? { background: "#fafafa" } : isFormRow(row) ? { background: "#f8fbff" } : undefined
+        row.kind === "total" ? { background: "var(--table-zebra-bg)" } : isFormRow(row) ? { background: "var(--brand-soft)" } : undefined
 
     const allColumns: TableColumnsType<LedgerRow> = [
         {
             key: "date",
             title: "日期",
             width: 120,
+            ...sortable("date"),
             onHeaderCell: () => ({ style: { whiteSpace: "nowrap" } }),
             ...textFilter("date"),
             render: (_, row) => {
@@ -1187,17 +1456,18 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
             key: "summary",
             title: "摘要",
             width: 200,
+            ...sortable("summary"),
             onHeaderCell: () => ({ style: { whiteSpace: "nowrap" } }),
             ...textFilter("summary"),
             render: (_, row) => {
-                if (row.kind === "opening") return "初始化余额"
+                if (row.kind === "opening") return "上笔余额"
                 if (row.kind === "total") return <span className="font-semibold">合计</span>
                 if (isFormRow(row)) {
                     return (
                         <Input
                                                        value={form.summary}
                             placeholder="填写摘要"
-                            style={{ borderColor: "#2f6bff" }}
+                            style={{ borderColor: "var(--brand)" }}
                             onChange={(e) => patchForm({ summary: e.target.value })}
                         />
                     )
@@ -1212,37 +1482,75 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
         {
             key: "category",
             title: "收支类别",
-            width: 128,
+            width: 148,
+            ...sortable("category"),
             ...textFilter("category"),
             render: (_, row) => {
                 if (isFormRow(row)) {
                     return (
                         <Select
-                                                       allowClear
+                            allowClear
                             showSearch
+                            optionFilterProp="label"
+                            popupMatchSelectWidth={false}
                             className="w-full"
+                            classNames={{ popup: { root: "journal-category-popup" } }}
                             placeholder="选择类别"
                             value={form.category || undefined}
                             options={categoryOptions}
                             onChange={(v) => patchForm({ category: v ?? "" })}
+                            popupRender={(menu) => (
+                                <>
+                                    {menu}
+                                    <div
+                                        className="border-t border-(--border) px-2 py-1"
+                                        onMouseDown={(e) => e.preventDefault()}
+                                    >
+                                        <Button
+                                            type="link"
+                                            size="small"
+                                            icon={<PlusOutlined />}
+                                            block
+                                            onClick={() => {
+                                                openCategoryQuick()
+                                            }}
+                                        >
+                                            点击添加
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
                         />
                     )
                 }
-                return row.kind === "entry" ? (row.entry?.category ?? "") : null
+                return row.kind === "entry" ? displayCategory(row.entry?.category) : null
             },
         },
         {
             key: "counterparty",
             title: "往来单位",
-            width: 128,
+            width: 168,
+            ...sortable("counterparty"),
             ...textFilter("counterparty"),
             render: (_, row) => {
                 if (isFormRow(row)) {
                     return (
                         <Input
-                                                       value={form.counterparty}
-                            placeholder="往来单位"
+                            value={form.counterparty}
+                            placeholder="输入或选择"
                             onChange={(e) => patchForm({ counterparty: e.target.value })}
+                            suffix={
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<EllipsisOutlined />}
+                                    title="选择往来单位"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        openPicker("form")
+                                    }}
+                                />
+                            }
                         />
                     )
                 }
@@ -1254,6 +1562,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
             title: "收入（借方）",
             align: "right",
             width: 116,
+            ...sortable("income"),
             className: "tabular-nums",
             onHeaderCell: () => ({ style: { whiteSpace: "nowrap" } }),
             ...textFilter("income"),
@@ -1280,6 +1589,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
             title: "支出（贷方）",
             align: "right",
             width: 116,
+            ...sortable("expense"),
             className: "tabular-nums",
             onHeaderCell: () => ({ style: { whiteSpace: "nowrap" } }),
             ...textFilter("expense"),
@@ -1306,6 +1616,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
             title: "余额",
             align: "right",
             width: 118,
+            ...sortable("balance"),
             className: "tabular-nums",
             onHeaderCell: () => ({ style: { whiteSpace: "nowrap" } }),
             ...textFilter("balance"),
@@ -1322,6 +1633,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
             key: "voucher",
             title: "关联凭证",
             width: 132,
+            ...sortable("voucher"),
             onHeaderCell: () => ({ style: { whiteSpace: "nowrap" } }),
             ...textFilter("voucher"),
             render: (_, row) =>
@@ -1339,6 +1651,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
             key: "seq",
             title: "日记账序号",
             width: 164,
+            ...sortable("seq"),
             onHeaderCell: () => ({ style: { whiteSpace: "nowrap" } }),
             ...textFilter("seq"),
             render: (_, row) => {
@@ -1346,6 +1659,114 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 return row.kind === "entry" && row.entry ? (
                     <span className="whitespace-nowrap">{seqOf(row.entry)}</span>
                 ) : null
+            },
+        },
+        /** 可选列默认收起（表头齿轮开启），开启后行内登记行同步出现输入框。 */
+        {
+            key: "settlementMethod",
+            title: "结算方式",
+            width: 120,
+            ...sortable("settlementMethod"),
+            render: (_, row) => {
+                if (isFormRow(row)) {
+                    return (
+                        <AutoComplete
+                            className="w-full"
+                            value={form.settlementMethod}
+                            options={SETTLEMENT_METHODS.map((v) => ({ value: v }))}
+                            placeholder="结算方式"
+                            onChange={(v) => patchForm({ settlementMethod: v ?? "" })}
+                        />
+                    )
+                }
+                return row.kind === "entry" ? (row.entry?.settlementMethod ?? "") : null
+            },
+        },
+        {
+            key: "billNo",
+            title: "票据号",
+            width: 120,
+            ...sortable("billNo"),
+            render: (_, row) =>
+                isFormRow(row) ? (
+                    <Input value={form.billNo} placeholder="票据号" onChange={(e) => patchForm({ billNo: e.target.value })} />
+                ) : row.kind === "entry" ? (
+                    (row.entry?.billNo ?? "")
+                ) : null,
+        },
+        {
+            key: "project",
+            title: "项目",
+            width: 120,
+            ...sortable("project"),
+            render: (_, row) =>
+                isFormRow(row) ? (
+                    <Input value={form.project} placeholder="项目" onChange={(e) => patchForm({ project: e.target.value })} />
+                ) : row.kind === "entry" ? (
+                    (row.entry?.project ?? "")
+                ) : null,
+        },
+        {
+            key: "department",
+            title: "部门",
+            width: 120,
+            ...sortable("department"),
+            render: (_, row) =>
+                isFormRow(row) ? (
+                    <Input value={form.department} placeholder="部门" onChange={(e) => patchForm({ department: e.target.value })} />
+                ) : row.kind === "entry" ? (
+                    (row.entry?.department ?? "")
+                ) : null,
+        },
+        {
+            key: "remark",
+            title: "备注",
+            width: 160,
+            ...sortable("remark"),
+            render: (_, row) =>
+                isFormRow(row) ? (
+                    <Input value={form.remark} placeholder="备注" onChange={(e) => patchForm({ remark: e.target.value })} />
+                ) : row.kind === "entry" ? (
+                    (row.entry?.remark ?? "")
+                ) : null,
+        },
+        {
+            key: "source",
+            title: "流水来源",
+            width: 120,
+            ...sortable("source"),
+            render: (_, row) => {
+                if (isFormRow(row)) {
+                    return (
+                        <Select
+                            className="w-full"
+                            value={form.source || "手工登记"}
+                            options={SOURCE_OPTIONS.map((v) => ({ value: v, label: v }))}
+                            onChange={(v) => patchForm({ source: v })}
+                        />
+                    )
+                }
+                return row.kind === "entry" ? (row.entry?.source ?? "手工登记") : null
+            },
+        },
+        {
+            key: "voucherDate",
+            title: "凭证日期",
+            width: 120,
+            ...sortable("voucherDate"),
+            render: (_, row) => {
+                if (isFormRow(row)) return null
+                return row.kind === "entry" && row.entry?.voucherDate ? toISODate(row.entry.voucherDate) : null
+            },
+        },
+        {
+            key: "voucherWord",
+            title: "凭证字",
+            width: 100,
+            ...sortable("voucherWord"),
+            render: (_, row) => {
+                if (isFormRow(row)) return null
+                return row.kind === "entry" ? (row.entry?.voucherWord ?? "") : null
             },
         },
         {
@@ -1375,7 +1796,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                         <Typography.Link type="danger" onClick={() => removeEntry(row.entry as JournalEntryDto)}>
                             删除
                         </Typography.Link>
-                        <Typography.Link onClick={() => window.print()}>打印</Typography.Link>
+                        <Typography.Link onClick={() => printReceipt(row.entry as JournalEntryDto)}>打印</Typography.Link>
                         <Typography.Link onClick={() => message.info("附件管理建设中。")}>附件</Typography.Link>
                     </Space>
                 )
@@ -1387,7 +1808,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 <Dropdown
                     trigger={["click"]}
                     popupRender={() => (
-                        <div className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                        <div className="flex flex-col gap-1 rounded-xl border border-(--border) bg-(--card) p-3 shadow-lg">
                             {COLUMN_TOGGLES.map(([key, label]) => (
                                 <Checkbox
                                     key={key}
@@ -1419,11 +1840,13 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
     ]
 
     const columns = allColumns.filter((c) => c.key === "__settings__" || !hidden.has(String(c.key)))
+    /** 横向滚动宽度随列显示设置变化；勾选额外列后表格不会挤在一起。 */
+    const tableWidth = columns.reduce((sum, c) => sum + (typeof c.width === "number" ? c.width : 0), 0) + 44
 
     /* ---------- 渲染 ---------- */
 
-    const from = filtered.length === 0 ? 0 : (current - 1) * pageSize + 1
-    const to = Math.min(current * pageSize, filtered.length)
+    const from = sorted.length === 0 ? 0 : (current - 1) * pageSize + 1
+    const to = Math.min(current * pageSize, sorted.length)
 
     /** 批量操作弹窗的文案：自由文本类（往来 / 项目 / 部门）共用一个输入框。 */
     const textBulk = bulkKind ? TEXT_BULK[bulkKind] : undefined
@@ -1432,75 +1855,181 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
 
     const advRow = (label: string, control: ReactNode) => (
         <div className="flex items-center gap-3">
-            <span className="w-20 shrink-0 text-right text-[13px] text-slate-600">{label}：</span>
+            <span className="w-[88px] shrink-0 text-right text-[13px] text-(--foreground)">{label}：</span>
             <div className="min-w-0 flex-1">{control}</div>
         </div>
     )
 
+    const advText = (key: keyof AdvancedFilters, placeholder: string) => (
+        <Input
+            allowClear
+            value={String(advDraft[key] ?? "")}
+            placeholder={placeholder}
+            onChange={(e) => setAdvDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+        />
+    )
+
+    /** 高级筛选：字段顺序与柠檬云「现金日记账」筛选面板一致。 */
     const advancedPanel = (
-        <div className="flex w-[500px] flex-col gap-3">
-            {advRow(
-                "日期",
-                <DatePicker.RangePicker
-                    className="w-full"
-                    allowClear={false}
-                    value={advDraft.period ? [dayjs(advDraft.period[0]), dayjs(advDraft.period[1])] : null}
-                    placeholder={["开始日期", "结束日期"]}
-                    onChange={(dates) =>
-                        setAdvDraft((prev) => ({
-                            ...prev,
-                            period:
-                                dates && dates[0] && dates[1]
-                                    ? [dates[0].format("YYYY-MM-DD"), dates[1].format("YYYY-MM-DD")]
-                                    : null,
-                        }))
-                    }
-                />,
-            )}
-            {advRow(
-                "凭证字号",
-                <Input
-                    allowClear
-                    value={advDraft.voucherNo}
-                    placeholder="如 记-1"
-                    onChange={(e) => setAdvDraft((prev) => ({ ...prev, voucherNo: e.target.value }))}
-                />,
-            )}
-            {advRow(
-                "收支类别",
-                <Input
-                    allowClear
-                    value={advDraft.category}
-                    placeholder="输入收支类别关键字"
-                    onChange={(e) => setAdvDraft((prev) => ({ ...prev, category: e.target.value }))}
-                />,
-            )}
-            {advRow(
-                "生成凭证",
-                <Select<VoucherState>
-                    className="w-full"
-                    value={advDraft.voucher}
-                    options={VOUCHER_STATE_OPTIONS}
-                    onChange={(v) => setAdvDraft((prev) => ({ ...prev, voucher: v }))}
-                />,
-            )}
-            {advRow(
-                "往来单位",
-                <AutoComplete
-                    className="w-full"
-                    allowClear
-                    value={advDraft.counterparty}
-                    options={counterpartyOptions}
-                    placeholder="请选择或输入"
-                    onChange={(v) => setAdvDraft((prev) => ({ ...prev, counterparty: v ?? "" }))}
-                />,
-            )}
-            <div className="mt-1 flex items-center gap-2 border-t border-slate-100 pt-3">
+        <div className="flex w-[560px] flex-col">
+            <div className="flex max-h-[68vh] flex-col gap-3 overflow-y-auto pe-1">
+                {advRow(
+                    "日期",
+                    <DatePicker.RangePicker
+                        className="w-full"
+                        allowClear={false}
+                        value={advDraft.period ? [dayjs(advDraft.period[0]), dayjs(advDraft.period[1])] : null}
+                        placeholder={["开始日期", "结束日期"]}
+                        onChange={(dates) =>
+                            setAdvDraft((prev) => ({
+                                ...prev,
+                                period:
+                                    dates && dates[0] && dates[1]
+                                        ? [dates[0].format("YYYY-MM-DD"), dates[1].format("YYYY-MM-DD")]
+                                        : null,
+                            }))
+                        }
+                    />,
+                )}
+                {advRow(
+                    "凭证日期",
+                    <DatePicker.RangePicker
+                        className="w-full"
+                        value={
+                            advDraft.voucherDate
+                                ? [dayjs(advDraft.voucherDate[0]), dayjs(advDraft.voucherDate[1])]
+                                : null
+                        }
+                        placeholder={["开始日期", "结束日期"]}
+                        onChange={(dates) =>
+                            setAdvDraft((prev) => ({
+                                ...prev,
+                                voucherDate:
+                                    dates && dates[0] && dates[1]
+                                        ? [dates[0].format("YYYY-MM-DD"), dates[1].format("YYYY-MM-DD")]
+                                        : null,
+                            }))
+                        }
+                    />,
+                )}
+                {advRow(
+                    "凭证字号",
+                    <div className="flex items-center gap-2">
+                        <Select
+                            allowClear
+                            className="w-[120px]"
+                            placeholder="请选择"
+                            value={advDraft.voucherWord || undefined}
+                            options={voucherWords.map((w) => ({ value: w.word ?? "", label: w.word ?? "" }))}
+                            onChange={(v) => setAdvDraft((prev) => ({ ...prev, voucherWord: v ?? "" }))}
+                        />
+                        <Input
+                            value={advDraft.voucherNoFrom}
+                            placeholder="起始号"
+                            onChange={(e) =>
+                                setAdvDraft((prev) => ({ ...prev, voucherNoFrom: e.target.value.replace(/[^\d]/g, "") }))
+                            }
+                        />
+                        <span className="shrink-0 text-(--muted-foreground)">至</span>
+                        <Input
+                            value={advDraft.voucherNoTo}
+                            placeholder="截止号"
+                            onChange={(e) =>
+                                setAdvDraft((prev) => ({ ...prev, voucherNoTo: e.target.value.replace(/[^\d]/g, "") }))
+                            }
+                        />
+                    </div>,
+                )}
+                {advRow("收支类别", advText("category", "输入收支类别关键字"))}
+                {advRow(
+                    "结算方式",
+                    <AutoComplete
+                        className="w-full"
+                        allowClear
+                        value={advDraft.settlementMethod}
+                        options={SETTLEMENT_METHODS.map((v) => ({ value: v }))}
+                        placeholder="请选择或输入"
+                        onChange={(v) => setAdvDraft((prev) => ({ ...prev, settlementMethod: v ?? "" }))}
+                    />,
+                )}
+                {advRow(
+                    "生成凭证",
+                    <Select<VoucherState>
+                        className="w-full"
+                        value={advDraft.voucher}
+                        options={VOUCHER_STATE_OPTIONS}
+                        onChange={(v) => setAdvDraft((prev) => ({ ...prev, voucher: v }))}
+                    />,
+                )}
+                {advRow(
+                    "往来单位",
+                    <Space.Compact className="flex w-full">
+                        <AutoComplete
+                            className="w-full"
+                            allowClear
+                            value={advDraft.counterparty}
+                            options={counterpartyOptions}
+                            placeholder="请选择或输入"
+                            onChange={(v) => setAdvDraft((prev) => ({ ...prev, counterparty: v ?? "" }))}
+                        />
+                        <Button icon={<EllipsisOutlined />} title="选择往来单位" onClick={() => openPicker("filter")} />
+                    </Space.Compact>,
+                )}
+                {advRow("票据号", advText("billNo", "输入票据号关键字"))}
+                {advRow("项目", advText("project", "输入项目关键字"))}
+                {advRow("部门", advText("department", "输入部门关键字"))}
+                {advRow("摘要", advText("summary", "输入摘要关键字"))}
+                {advRow("备注", advText("remark", "输入备注关键字"))}
+                {advRow(
+                    "流水来源",
+                    <Select
+                        allowClear
+                        className="w-full"
+                        placeholder="全部来源"
+                        value={advDraft.source || undefined}
+                        options={SOURCE_OPTIONS.map((v) => ({ value: v, label: v }))}
+                        onChange={(v) => setAdvDraft((prev) => ({ ...prev, source: v ?? "" }))}
+                    />,
+                )}
+                {advRow(
+                    "金额",
+                    <div className="flex items-center gap-2">
+                        <Input
+                            value={advDraft.amountFrom}
+                            placeholder="最小金额"
+                            onChange={(e) =>
+                                setAdvDraft((prev) => ({ ...prev, amountFrom: e.target.value.replace(/[^\d.]/g, "") }))
+                            }
+                        />
+                        <span className="shrink-0 text-(--muted-foreground)">至</span>
+                        <Input
+                            value={advDraft.amountTo}
+                            placeholder="最大金额"
+                            onChange={(e) =>
+                                setAdvDraft((prev) => ({ ...prev, amountTo: e.target.value.replace(/[^\d.]/g, "") }))
+                            }
+                        />
+                    </div>,
+                )}
+                <p className="ps-[100px] text-[12px] leading-5 text-(--muted-foreground)">
+                    结算方式 / 票据号 / 项目 / 部门 / 备注 / 流水来源 等字段可在表头齿轮中开启对应列后录入。
+                </p>
+            </div>
+            <div className="mt-3 flex items-center gap-2 border-t border-(--border) pt-3">
                 <Button type="primary" onClick={applyAdvanced}>
                     确定
                 </Button>
                 <Button onClick={() => setAdvOpen(false)}>取消</Button>
                 <Button onClick={resetAdvanced}>重置</Button>
+                <Typography.Link
+                    className="ms-auto"
+                    onClick={() => {
+                        setSortInfo(null)
+                        message.success("已恢复默认排序（按日期、序号）。")
+                    }}
+                >
+                    恢复默认排序
+                </Typography.Link>
             </div>
         </div>
     )
@@ -1525,23 +2054,22 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 placement="bottomLeft"
                 arrow={false}
                 content={advancedPanel}
-                styles={{ content: { padding: 16 } }}
             >
                 <Button
                     type="primary"
                     title="高级筛选"
                     style={{
-                        background: "#2f6bff",
-                        borderColor: "#2f6bff",
-                        boxShadow: "0 1px 2px rgba(47,107,255,0.25)",
+                        background: "var(--brand-fill)",
+                        borderColor: "var(--brand-fill)",
+                        boxShadow: "0 1px 2px rgba(39,60,243,0.25)",
                     }}
-                    className="flex items-center gap-[0.4em] hover:!bg-[#2458d6] hover:!border-[#2458d6]"
+                    className="flex items-center gap-[0.4em]"
                 >
                     <span className="tabular-nums">{period ? `${period[0]} 至 ${period[1]}` : "全部时间"}</span>
-                    <span className="h-[1em] w-px bg-white/35" />
+                    <span className="h-[1em] w-px bg-(--card)/35" />
                     <FilterFilled />
                     {advancedCount > 0 && (
-                        <span className="rounded-[2px] bg-white px-1 text-[0.75em] font-semibold leading-[1.4] text-[#2f6bff]">
+                        <span className="rounded-[2px] bg-(--card) px-1 text-[0.75em] font-semibold leading-[1.4] text-(--brand)">
                             {advancedCount}
                         </span>
                     )}
@@ -1558,12 +2086,12 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
             title: `${platform}账单导入`,
             width: 520,
             content: (
-                <div className="flex flex-col gap-2 text-[13px] leading-6 text-slate-600">
+                <div className="flex flex-col gap-2 text-[13px] leading-6 text-(--foreground)">
                     <span>
                         在{platform}导出账单明细（Excel / CSV）后，按「日期、摘要、收入、支出」整理成日记账导入模板的表头，
                         再选择文件上传即可。
                     </span>
-                    <span className="text-[12px] text-slate-400">
+                    <span className="text-[12px] text-(--muted-foreground)">
                         {platform}原始账单的列名与本系统模板不同，直接上传会被逐行跳过并给出提示。
                     </span>
                 </div>
@@ -1724,14 +2252,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
         <div className="flex flex-col gap-3">
             {error && <Alert type="error" showIcon title={error} closable onClose={() => setError(null)} />}
 
-            <Card
-                styles={{
-                    root: {
-                        border: "1px solid #f1f5f9",
-                        boxShadow: "0 1px 2px rgba(16,24,40,0.04)",
-                    },
-                }}
-            >
+            <Card>
                 <Flex justify="space-between" align="center" gap={12} wrap style={{ marginBottom: 16 }}>
                     {toolbarLeft}
                     {toolbarRight}
@@ -1763,50 +2284,75 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                     </div>
                 ) : (
                     <Spin spinning={loading || detailLoading}>
-                        <ConfigProvider
-                            theme={{
-                                token: { fontSize: 13 },
-                                components: {
-                                    Table: { headerBg: "#f8fafc", headerColor: "#475569", borderColor: "#eef2f7" },
-                                },
+                        {/* 期初/收入/支出/期末固定在表格上方：分页后不用滚到表尾才能看到汇总。 */}
+                        <div className="mb-3 flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg bg-(--table-zebra-bg) px-4 py-2.5 text-[13px]">
+                            <span className="text-(--muted-foreground)">
+                                期初余额{" "}
+                                <span className="ml-1 font-medium tabular-nums text-(--foreground)">
+                                    ¥{fmtAmount(openingBalance, true)}
+                                </span>
+                            </span>
+                            <span className="text-(--muted-foreground)">
+                                收入合计{" "}
+                                <span className="ml-1 font-medium tabular-nums text-(--success)">
+                                    {totals.income > 0 ? "+" : ""}¥{fmtAmount(totals.income, true)}
+                                </span>
+                            </span>
+                            <span className="text-(--muted-foreground)">
+                                支出合计{" "}
+                                <span className="ml-1 font-medium tabular-nums text-(--danger)">
+                                    {totals.expense > 0 ? "-" : ""}¥{fmtAmount(totals.expense, true)}
+                                </span>
+                            </span>
+                            <span className="text-(--muted-foreground)">
+                                期末余额{" "}
+                                <span className="ml-1 text-[14px] font-semibold tabular-nums text-(--foreground)">
+                                    ¥{fmtAmount(totals.closing, true)}
+                                </span>
+                            </span>
+                            <span className="ml-auto text-[12px] text-(--muted-foreground)">共 {filtered.length} 笔流水</span>
+                        </div>
+                        <Table<LedgerRow>
+                            rowKey="key"
+                            tableLayout="fixed"
+                            columns={columns}
+                            dataSource={rows}
+                            pagination={false}
+                            scroll={{ x: tableWidth }}
+                            onChange={(_pagination, _tableFilters, sorter) => {
+                                const s = Array.isArray(sorter) ? sorter[0] : sorter
+                                const field = s?.columnKey != null ? String(s.columnKey) : ""
+                                if (!s?.order || !field) setSortInfo(null)
+                                else setSortInfo({ field, order: s.order })
                             }}
-                        >
-                            <Table<LedgerRow>
-                                                               rowKey="key"
-                                tableLayout="fixed"
-                                columns={columns}
-                                dataSource={rows}
-                                pagination={false}
-                                scroll={{ x: 1464 }}
-                                rowClassName={(row) =>
-                                    cn(
-                                        row.kind === "total" && "bg-[#fafafa]",
-                                        isFormRow(row) && "bg-[#f8fbff]",
-                                    )
-                                }
-                                rowSelection={{
-                                    selectedRowKeys: selected,
-                                    onChange: (keys) => setSelected(keys.map(String)),
-                                    // 所有流水行都可勾选：批量操作里的「删除关联凭证」「批量删除」要能选中已关联凭证的行。
-                                    getCheckboxProps: (row) => ({
-                                        disabled: row.kind !== "entry" || !row.entry?.id,
-                                    }),
-                                    columnWidth: 44,
-                                }}
-                            />
-                        </ConfigProvider>
+                            rowClassName={(row) =>
+                                cn(
+                                    row.kind === "total" && "bg-(--table-zebra-bg)",
+                                    isFormRow(row) && "bg-(--brand-soft)",
+                                )
+                            }
+                            rowSelection={{
+                                selectedRowKeys: selected,
+                                onChange: (keys) => setSelected(keys.map(String)),
+                                // 所有流水行都可勾选：批量操作里的「删除关联凭证」「批量删除」要能选中已关联凭证的行。
+                                getCheckboxProps: (row) => ({
+                                    disabled: row.kind !== "entry" || !row.entry?.id,
+                                }),
+                                columnWidth: 44,
+                            }}
+                        />
                     </Spin>
                 )}
 
                 {(
                     <Flex justify="space-between" align="center" gap={16} wrap style={{ marginTop: 16 }}>
                         <Typography.Text type="secondary">
-                            显示 {from} 到 {to}，共 {filtered.length} 条
+                            显示 {from} 到 {to}，共 {sorted.length} 条
                         </Typography.Text>
                         <Pagination
                             current={current}
                             pageSize={pageSize}
-                            total={filtered.length}
+                            total={sorted.length}
                             showSizeChanger
                             pageSizeOptions={PAGE_SIZE_OPTIONS}
                             onChange={(nextPage, nextSize) => {
@@ -1873,7 +2419,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                             </label>
                         </>
                     )}
-                    <p className="ps-[96px] text-[12px] leading-5 text-slate-400">
+                    <p className="ps-[96px] text-[12px] leading-5 text-(--muted-foreground)">
                         保存后系统会自动在「{isCash ? "库存现金 1001" : "银行存款 1002"}」下建立同名明细科目并与账簿绑定。
                     </p>
                 </div>
@@ -1890,7 +2436,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 cancelText="取消"
                 confirmLoading={batchSaving}
             >
-                <p className="mb-4 text-[12.5px] text-slate-400">
+                <p className="mb-4 text-[12.5px] text-(--muted-foreground)">
                     已选 {selected.length} 笔流水；同一张凭证内相同科目、相同方向的行将自动汇总为一行。
                 </p>
                 <Radio.Group
@@ -1900,7 +2446,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                     onChange={(e) => setMergeBy(e.target.value)}
                 />
                 <div className="mt-4 flex flex-col gap-1">
-                    <span className="text-[13px] font-medium text-slate-700">对方科目</span>
+                    <span className="text-[13px] font-medium text-(--foreground)">对方科目</span>
                     <Select
                         value={counterId}
                         onChange={setCounterId}
@@ -1911,7 +2457,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                                 .map((a) => ({ value: a.id ?? "", label: `${a.code} ${a.name}` })),
                         ]}
                     />
-                    <span className="text-[12px] text-slate-400">未配置默认对方科目的流水需要在此指定统一科目。</span>
+                    <span className="text-[12px] text-(--muted-foreground)">未配置默认对方科目的流水需要在此指定统一科目。</span>
                 </div>
             </Modal>
 
@@ -1931,7 +2477,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
             >
                 <div className="flex flex-col gap-4 py-1">
                     <div className="flex items-center gap-3">
-                        <span className="w-[76px] shrink-0 text-right text-[13px] text-slate-600">打印方向：</span>
+                        <span className="w-[76px] shrink-0 text-right text-[13px] text-(--foreground)">打印方向：</span>
                         <Radio.Group
                             value={listPrint.orientation}
                             onChange={(e) => setListPrint({ ...listPrint, orientation: e.target.value })}
@@ -1942,7 +2488,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                         />
                     </div>
                     <div className="flex items-start gap-3">
-                        <span className="w-[76px] shrink-0 pt-1 text-right text-[13px] text-slate-600">页边距：</span>
+                        <span className="w-[76px] shrink-0 pt-1 text-right text-[13px] text-(--foreground)">页边距：</span>
                         <div className="grid flex-1 grid-cols-2 gap-2">
                             {(
                                 [
@@ -1953,7 +2499,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                                 ] as const
                             ).map(([key, label]) => (
                                 <label key={key} className="flex items-center gap-2 text-[13px]">
-                                    <span className="w-4 text-slate-600">{label}</span>
+                                    <span className="w-4 text-(--foreground)">{label}</span>
                                     <InputNumber
                                         className="flex-1"
                                         min={0}
@@ -1967,7 +2513,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
-                        <span className="w-[76px] shrink-0 text-right text-[13px] text-slate-600">其他选项：</span>
+                        <span className="w-[76px] shrink-0 text-right text-[13px] text-(--foreground)">其他选项：</span>
                         <div className="flex flex-1 flex-col gap-1">
                             <Checkbox
                                 checked={listPrint.showPrintDate}
@@ -1984,7 +2530,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
-                        <span className="w-[76px] shrink-0 pt-1 text-right text-[13px] text-slate-600">表尾字段：</span>
+                        <span className="w-[76px] shrink-0 pt-1 text-right text-[13px] text-(--foreground)">表尾字段：</span>
                         <Checkbox.Group
                             className="flex flex-1 flex-col gap-1"
                             value={listPrint.footerFields}
@@ -1997,7 +2543,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                             ))}
                         </Checkbox.Group>
                     </div>
-                    <p className="ps-[88px] text-[12px] leading-5 text-slate-400">
+                    <p className="ps-[88px] text-[12px] leading-5 text-(--muted-foreground)">
                         设置按账套保存在本机，打印列表时生效；表尾字段取账套与当前登录用户信息。
                     </p>
                 </div>
@@ -2018,7 +2564,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 cancelText="取消"
             >
                 <div className="flex flex-col gap-3 py-1">
-                    <span className="text-[13px] text-slate-600">其他选项：</span>
+                    <span className="text-[13px] text-(--foreground)">其他选项：</span>
                     <div className="flex flex-col gap-1 ps-3">
                         {(
                             [
@@ -2037,12 +2583,12 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                             >
                                 {label}
                                 {(key === "showDept" || key === "showProject") && (
-                                    <span className="text-[12px] text-slate-400">（未启用部门 / 项目核算）</span>
+                                    <span className="text-[12px] text-(--muted-foreground)">（未启用部门 / 项目核算）</span>
                                 )}
                             </Checkbox>
                         ))}
                     </div>
-                    <p className="text-[12px] leading-5 text-slate-400">
+                    <p className="text-[12px] leading-5 text-(--muted-foreground)">
                         打印凭据会为每笔勾选的流水输出一张收款 / 付款凭据；未勾选时打印当前页。
                     </p>
                 </div>
@@ -2060,12 +2606,23 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 confirmLoading={bulkBusy}
             >
                 <div className="flex flex-col gap-3 py-1">
-                    <p className="text-[12.5px] text-slate-400">已选 {selected.length} 笔流水</p>
+                    <p className="text-[12.5px] text-(--muted-foreground)">已选 {selected.length} 笔流水</p>
                     {(bulkKind === "summary" || textBulk) && (
                         <Input
                             value={bulkText}
                             placeholder={bulkKind === "summary" ? "请输入新的摘要" : `请输入${textBulk?.label}，留空表示清除`}
                             onChange={(e) => setBulkText(e.target.value)}
+                            suffix={
+                                bulkKind === "counterparty" ? (
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<EllipsisOutlined />}
+                                        title="选择往来单位"
+                                        onClick={() => openPicker("bulk")}
+                                    />
+                                ) : undefined
+                            }
                         />
                     )}
                     {bulkKind === "category" && (
@@ -2095,11 +2652,64 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                                 }))}
                                 notFoundContent={linkLoading ? "加载中…" : "当前期间没有凭证"}
                             />
-                            <span className="text-[12px] text-slate-400">
+                            <span className="text-[12px] text-(--muted-foreground)">
                                 候选为当前账套的全部凭证，可按凭证字号或日期检索；关联后行内「关联凭证」列会显示凭证号。
                             </span>
                         </>
                     )}
+                </div>
+            </Modal>
+
+            {/* 选择往来单位：客户 / 供应商 / 职员档案 */}
+            <CounterpartyPicker
+                open={pickerTarget !== null}
+                accountSetId={accountSetId}
+                token={token ?? ""}
+                onSelect={handlePickerSelect}
+                onClear={pickerTarget === "form" || pickerTarget === "bulk" ? handlePickerClear : undefined}
+                onClose={() => setPickerTarget(null)}
+            />
+
+            {/* 「+点击添加」快速新增收支类别 */}
+            <Modal
+                open={categoryQuickOpen}
+                title="新增收支类别"
+                width={420}
+                onCancel={() => setCategoryQuickOpen(false)}
+                onOk={() => void submitCategoryQuick()}
+                okText="保存"
+                cancelText="取消"
+                confirmLoading={categoryQuickSaving}
+                mask={{ closable: false }}
+            >
+                <div className="flex flex-col gap-3 py-2">
+                    <div className="flex items-center gap-3 text-[13px]">
+                        <span className="w-[84px] shrink-0 text-right text-(--foreground)">类别方向：</span>
+                        <Radio.Group
+                            value={categoryQuickForm.type}
+                            onChange={(e) =>
+                                setCategoryQuickForm((prev) => ({ ...prev, type: Number(e.target.value) }))
+                            }
+                            options={[
+                                { value: 1, label: "收入" },
+                                { value: 2, label: "支出" },
+                            ]}
+                        />
+                    </div>
+                    <label className="flex items-center gap-3 text-[13px]">
+                        <span className="w-[84px] shrink-0 text-right text-(--foreground)">类别名称：</span>
+                        <Input
+                            className="flex-1"
+                            autoFocus
+                            value={categoryQuickForm.name}
+                            placeholder="如：销售收入"
+                            onChange={(e) => setCategoryQuickForm((prev) => ({ ...prev, name: e.target.value }))}
+                            onPressEnter={() => void submitCategoryQuick()}
+                        />
+                    </label>
+                    <p className="ps-[96px] text-[12px] leading-5 text-(--muted-foreground)">
+                        编码由系统自动编号，保存后可在「收支类别」里补充默认对方科目与智能匹配关键字。
+                    </p>
                 </div>
             </Modal>
         </div>

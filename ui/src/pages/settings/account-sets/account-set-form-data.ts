@@ -161,7 +161,7 @@ export function formFromDto(set: AccountSetDto): AccountSetForm {
  * 表单校验：只有决定账套结构、填错就得重建的字段才拦提交，
  * 税务与登录资料允许留空（一键登录税局时另有提示）。
  */
-export function validateAccountSet(values: AccountSetForm, isEditing: boolean): AccountSetErrors {
+export function validateAccountSet(values: AccountSetForm): AccountSetErrors {
     const errors: AccountSetErrors = {}
     if (!values.name) errors.name = "请填写账套名称"
     if (!values.company) errors.company = "请填写公司名称"
@@ -171,7 +171,6 @@ export function validateAccountSet(values: AccountSetForm, isEditing: boolean): 
     } else if (!CODING_SCHEME_PATTERN.test(values.codingScheme)) {
         errors.codingScheme = "格式须如 4-2-2-2，每级 1-2 位数字，最多 10 级"
     }
-    if (isEditing && !values.voucherWords) errors.voucherWords = "请填写凭证字"
     return errors
 }
 
@@ -184,7 +183,7 @@ export const FORM_TABS = [
 
 /** 每个 Tab 需要展示哪些错误，切到别的 Tab 时不显示其它 Tab 的红字。 */
 const TAB_FIELDS: Record<string, (keyof AccountSetForm)[]> = {
-    basic: ["name", "startPeriod", "codingScheme", "voucherWords"],
+    basic: ["name", "startPeriod", "codingScheme"],
     function: [],
     tax: ["company"],
 }

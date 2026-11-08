@@ -23,7 +23,11 @@ namespace KuaiJi.Modules.Funds.Domain
             string? department,
             decimal income,
             decimal expense,
-            Guid? voucherId)
+            Guid? voucherId,
+            string? settlementMethod = null,
+            string? billNo = null,
+            string? remark = null,
+            string? source = null)
         {
             Id = id;
             JournalId = journalId;
@@ -36,6 +40,10 @@ namespace KuaiJi.Modules.Funds.Domain
             Income = income;
             Expense = expense;
             VoucherId = voucherId;
+            SettlementMethod = settlementMethod;
+            BillNo = billNo;
+            Remark = remark;
+            Source = source;
         }
 
         /// <summary>分录标识。</summary>
@@ -76,6 +84,18 @@ namespace KuaiJi.Modules.Funds.Domain
 
         /// <summary>关联凭证标识，可空（由凭证过账生成的分录会带上来源凭证）。</summary>
         public Guid? VoucherId { get; private set; }
+
+        /// <summary>结算方式（现金 / 转账 / 支票 / 汇票等），可空。</summary>
+        public string? SettlementMethod { get; private set; }
+
+        /// <summary>票据号，可空。</summary>
+        public string? BillNo { get; private set; }
+
+        /// <summary>备注，可空。</summary>
+        public string? Remark { get; private set; }
+
+        /// <summary>流水来源：手工登记 / Excel导入 / 内部转账 / 凭证生成，可空表示历史数据（按手工登记展示）。</summary>
+        public string? Source { get; private set; }
 
         /// <summary>由所属账簿设置序号与余额。</summary>
         internal void SetComputed(int sequence, decimal balance)
@@ -139,6 +159,18 @@ namespace KuaiJi.Modules.Funds.Domain
             {
                 VoucherId = vid;
             }
+        }
+
+        /// <summary>
+        /// 修改流水的附加信息（结算方式 / 票据号 / 备注 / 流水来源）。
+        /// 与 <see cref="Update"/> 分开，避免影响凭证生成、内部转账等只改核心字段的既有调用点。
+        /// </summary>
+        internal void SetExtras(string? settlementMethod, string? billNo, string? remark, string? source)
+        {
+            SettlementMethod = settlementMethod;
+            BillNo = billNo;
+            Remark = remark;
+            Source = source;
         }
 
         /// <summary>由所属账簿更新分录内容（更新后需由账簿重算序号与余额）。</summary>

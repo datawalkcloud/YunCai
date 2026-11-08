@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
 import type { Key } from "react"
 import {
     Alert,
@@ -10,7 +10,6 @@ import {
     DatePicker,
     Drawer,
     Dropdown,
-    Empty,
     Flex,
     Input,
     InputNumber,
@@ -21,24 +20,24 @@ import {
     Segmented,
     Select,
     Space,
-    Spin,
+    Table,
     Tag,
     Tooltip,
     Typography,
 } from "antd"
-import type { MenuProps } from "antd"
+import type { MenuProps, TableColumnsType } from "antd"
 import {
     DeleteOutlined,
     DownOutlined,
     FileExcelOutlined,
     FileTextOutlined,
     FilterOutlined,
-    PaperClipOutlined,
     PlusOutlined,
     PrinterOutlined,
     ReloadOutlined,
     RightOutlined,
     RollbackOutlined,
+    SearchOutlined,
     UploadOutlined,
 } from "@ant-design/icons"
 import dayjs from "dayjs"
@@ -61,7 +60,7 @@ import { fmtAmount, toISODate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Tile } from "@/components/page/tile"
 import { StatusPill as StatusPillBase } from "@/components/page/status-pill"
-import { ICON_STYLE, SOFT_PANEL, voucherStatusTone } from "@/components/page/styles"
+import { AMOUNT_COL, ICON_STYLE, SOFT_PANEL, voucherStatusTone } from "@/components/page/styles"
 import { PrintVoucherSheet } from "@/pages/closing/print-sheet"
 import VoucherForm from "./voucher-form"
 
@@ -116,6 +115,39 @@ const EMPTY_FILTERS: VoucherFilters = {
     numberTo: null,
     sortBy: "date",
     sortDesc: false,
+}
+
+/** 首屏默认落在本月：直接看当期凭证，也避免一进页就拉全量历史。 */
+function defaultFilters(): VoucherFilters {
+    const month = dayjs().format("YYYY-MM")
+    return { ...EMPTY_FILTERS, periodFrom: month, periodTo: month }
+}
+
+/** 快捷期间：把起止月份压成 本月 / 本季 / 本年 / 全部，用于筛选按钮旁的 Segmented。 */
+type PeriodPreset = "month" | "quarter" | "year" | "all"
+
+function periodPreset(filters: VoucherFilters): PeriodPreset | "custom" {
+    if (!filters.periodFrom && !filters.periodTo) return "all"
+    const presets = (["month", "quarter", "year"] as const).map((key) => ({ key, ...presetRange(key) }))
+    const hit = presets.find((p) => p.periodFrom === filters.periodFrom && p.periodTo === filters.periodTo)
+    return hit?.key ?? "custom"
+}
+
+function presetRange(preset: PeriodPreset): Pick<VoucherFilters, "periodFrom" | "periodTo"> {
+    if (preset === "all") return { periodFrom: null, periodTo: null }
+    const now = dayjs()
+    if (preset === "month") {
+        return { periodFrom: now.startOf("month").format("YYYY-MM"), periodTo: now.endOf("month").format("YYYY-MM") }
+    }
+    if (preset === "year") {
+        return { periodFrom: now.startOf("year").format("YYYY-MM"), periodTo: now.endOf("year").format("YYYY-MM") }
+    }
+    // dayjs 核心不认 quarter，自己算：季度首月 = 向下取整到 3 的倍数。
+    const firstMonth = Math.floor(now.month() / 3) * 3
+    return {
+        periodFrom: now.month(firstMonth).startOf("month").format("YYYY-MM"),
+        periodTo: now.month(firstMonth + 2).endOf("month").format("YYYY-MM"),
+    }
 }
 
 /** 三态转接口参数：全部返回 undefined，不参与过滤。 */
@@ -182,19 +214,47 @@ function activeFilterCount(filters: VoucherFilters): number {
 
 const ACCEPT = ".xls,.xlsx"
 
-/** 勾选 / 摘要 / 科目 / 借方 / 贷方 / 操作，表头、分录行与合计行共用同一份栅格。 */
-const LINE_GRID = "grid grid-cols-[40px_minmax(0,1fr)_240px_150px_150px_minmax(0,1fr)] items-center"
-
-/** 金额列右对齐、等宽数字。 */
-const NUM_CELL = "pr-2 text-right tabular-nums"
-
 /** 借贷金额文本：负数用红色标注，零与空值留白（口径同 fmtAmount）。 */
-function AmountCell({ value }: { value: number | undefined }) {
-    return (
-        <span className={cn(NUM_CELL, (value ?? 0) < 0 ? "text-[#ef4444]" : "text-slate-700")}>
-            {fmtAmount(value)}
-        </span>
-    )
+function AmountText({ value }: { value: number | undefined }) {
+    return <span className={(value ?? 0) < 0 ? "text-(--danger)" : undefined}>{fmtAmount(value)}</span>
+}
+
+/**
+ * 列表的表格行：一张凭证的分录行 + 一行凭证级合计，凭证级字段（日期、字号、状态、操作…）
+ * 用 rowSpan 合并到整张凭证的高度，口径与序时账等账页表格一致。
+ */
+type VoucherRow = {
+    key: string
+    voucher: VoucherListItemDto
+    entry?: VoucherEntryDto
+    /** 是否为该凭证的首行（凭证级合并单元格从这里起算）。 */
+    isFirst: boolean
+    /** 该凭证占用的总行数（分录行 + 合计行）。 */
+    groupSize: number
+    isTotal: boolean
+}
+
+/** 把凭证列表摊平成表格行；无分录的凭证也占一行，保证合计行仍有归属。 */
+function toVoucherRows(vouchers: VoucherListItemDto[]): VoucherRow[] {
+    const rows: VoucherRow[] = []
+    for (const voucher of vouchers) {
+        const entries = voucher.entries ?? []
+        const groupSize = Math.max(entries.length, 1) + 1
+        if (entries.length === 0) {
+            rows.push({ key: `${voucher.id}-0`, voucher, isFirst: true, groupSize, isTotal: false })
+        } else {
+            entries.forEach((entry, i) =>
+                rows.push({ key: `${voucher.id}-${i}`, voucher, entry, isFirst: i === 0, groupSize, isTotal: false }),
+            )
+        }
+        rows.push({ key: `${voucher.id}-sum`, voucher, isFirst: false, groupSize, isTotal: true })
+    }
+    return rows
+}
+
+/** 凭证级列的单元格：首行整组合并，其余行（含合计行）让位给合并格。 */
+function metaCell(row: VoucherRow) {
+    return { rowSpan: row.isFirst ? row.groupSize : 0 }
 }
 
 /** 状态胶囊：配色口径见共享的 voucherStatusTone。 */
@@ -226,7 +286,7 @@ function toolbarDropdown(
 function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex items-center gap-2">
-            <span className="w-[72px] shrink-0 text-right text-[13px] text-slate-500">{label}</span>
+            <span className="w-[72px] shrink-0 text-right text-[13px] text-(--muted-foreground)">{label}</span>
             <div className="flex min-w-0 flex-1 items-center gap-1">{children}</div>
         </div>
     )
@@ -262,7 +322,7 @@ function FilterPanel({
                     onChange={(d) => patch({ periodFrom: d ? d.format("YYYY-MM") : null })}
                     style={{ flex: 1 }}
                 />
-                <span className="text-[12px] text-slate-400">至</span>
+                <span className="text-[12px] text-(--muted-foreground)">至</span>
                 <DatePicker
                     picker="month"
                     allowClear
@@ -348,7 +408,7 @@ function FilterPanel({
                     value={value.amountFrom ?? undefined}
                     onChange={(v) => patch({ amountFrom: v ?? null })}
                 />
-                <span className="text-[12px] text-slate-400">至</span>
+                <span className="text-[12px] text-(--muted-foreground)">至</span>
                 <InputNumber
                     style={{ flex: 1 }}
                     placeholder="到"
@@ -363,7 +423,7 @@ function FilterPanel({
                     value={value.numberFrom ?? undefined}
                     onChange={(v) => patch({ numberFrom: v ?? null })}
                 />
-                <span className="text-[12px] text-slate-400">至</span>
+                <span className="text-[12px] text-(--muted-foreground)">至</span>
                 <InputNumber
                     style={{ flex: 1 }}
                     placeholder="到"
@@ -395,29 +455,36 @@ function FilterPanel({
     )
 }
 
-/** 单张凭证卡片：元信息 + 行内操作 + 分录行 + 合计条。 */
-function VoucherCard({
-    record,
-    checked,
-    openingId,
-    deletingId,
-    onCheck,
-    onEdit,
-    onDelete,
-    onInsert,
-    onPrint,
-    onCopy,
-    onReverse,
-    onSaveTemplate,
-    recycleMode,
-    onRestore,
-    onPurge,
+/** 表格行内动作：文字链接（口径同设置页/出纳台账），功能名一眼可读，不靠图标猜。 */
+function ActionLink({
+    label,
+    onClick,
+    danger,
+    loading,
+    tip,
 }: {
-    record: VoucherListItemDto
-    checked: boolean
+    label: string
+    onClick: () => void
+    danger?: boolean
+    loading?: boolean
+    tip?: string
+}) {
+    const button = (
+        <Button type="link" danger={danger} loading={loading} style={{ paddingInline: 0 }} onClick={onClick}>
+            {label}
+        </Button>
+    )
+    return tip ? <Tooltip title={tip}>{button}</Tooltip> : button
+}
+
+/** 凭证列表表格的列定义所需的外部能力。 */
+interface VoucherColumnActions {
+    selectedKeys: Key[]
     openingId: string | null
     deletingId: string | null
-    onCheck: (checked: boolean) => void
+    recycleMode: boolean
+    selectAll: { checked: boolean; indeterminate: boolean; onChange: (checked: boolean) => void }
+    onToggleSelect: (id: string, checked: boolean) => void
     onEdit: (v: VoucherListItemDto) => void
     onDelete: (v: VoucherListItemDto) => void
     onInsert: (v: VoucherListItemDto) => void
@@ -425,113 +492,161 @@ function VoucherCard({
     onCopy: (v: VoucherListItemDto) => void
     onReverse: (v: VoucherListItemDto) => void
     onSaveTemplate: (v: VoucherListItemDto) => void
-    /** 回收站视图：行内操作换成「还原 / 彻底删除」。 */
-    recycleMode: boolean
     onRestore: (v: VoucherListItemDto) => void
     onPurge: (v: VoucherListItemDto) => void
-}) {
-    return (
-        <div className="overflow-hidden border border-[#f0f0f0] bg-white transition-colors hover:border-[#d9d9d9]">
-            <div className="voucher-meta flex flex-wrap items-center border-b border-[#f0f0f0] bg-[#f5f5f5] py-1.5 pr-4 pl-3">
-                <div className="w-10 shrink-0">
-                    <Checkbox checked={checked} onChange={(event) => onCheck(event.target.checked)} />
+}
+
+/**
+ * 凭证列表的列：分录逐行展示，凭证级字段（勾选/日期/字号/附件/制单/审核/状态/操作）
+ * 用 rowSpan 合并成一格，每张凭证末尾补一行合计，配色交给 antd 表格主题。
+ */
+function buildVoucherColumns(x: VoucherColumnActions): TableColumnsType<VoucherRow> {
+    return [
+        {
+            key: "select",
+            width: 44,
+            align: "center",
+            title: (
+                <Checkbox
+                    checked={x.selectAll.checked}
+                    indeterminate={x.selectAll.indeterminate}
+                    onChange={(event) => x.selectAll.onChange(event.target.checked)}
+                />
+            ),
+            onCell: metaCell,
+            render: (_, row) => (
+                <Checkbox
+                    checked={x.selectedKeys.includes(row.voucher.id ?? "")}
+                    onChange={(event) => x.onToggleSelect(row.voucher.id ?? "", event.target.checked)}
+                />
+            ),
+        },
+        { key: "date", title: "日期", width: 110, onCell: metaCell, render: (_, row) => toISODate(row.voucher.date) },
+        {
+            key: "no",
+            title: "凭证字号",
+            width: 96,
+            onCell: metaCell,
+            render: (_, row) => (
+                <div className="flex flex-col items-start gap-1">
+                    <span className="font-medium">{row.voucher.voucherNo}</span>
+                    <StatusPill record={row.voucher} />
                 </div>
-                <Flex align="center" gap={24} wrap style={{ flex: 1, minWidth: 0 }}>
-                    <span>
-                        <Typography.Text type="secondary">日期：</Typography.Text>
-                        <Typography.Text strong>{toISODate(record.date)}</Typography.Text>
-                    </span>
-                    <span>
-                        <Typography.Text type="secondary">凭证字号：</Typography.Text>
-                        <Tag color="blue" style={{ marginInlineEnd: 0 }}>
-                            {record.voucherNo}
-                        </Tag>
-                    </span>
-                    <StatusPill record={record} />
-                    <Typography.Text type="secondary">
-                        <PaperClipOutlined /> 附件 {record.attachmentCount ?? 0}
-                    </Typography.Text>
-                    <Typography.Text type="secondary">
-                        制单：{record.preparer ?? "—"}
-                        {record.reviewer ? ` · 审核：${record.reviewer}` : ""}
-                    </Typography.Text>
-                </Flex>
-                <Space size={0}>
-                    {recycleMode ? (
-                        <>
-                            <Button type="link" onClick={() => onRestore(record)}>
-                                还原
-                            </Button>
-                            <Button type="link" danger onClick={() => onPurge(record)}>
-                                彻底删除
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Button type="link" loading={openingId === record.id} onClick={() => onEdit(record)}>
-                                修改
-                            </Button>
-                            <Button type="link" onClick={() => onCopy(record)}>
-                                复制
-                            </Button>
-                            <Button type="link" danger loading={deletingId === record.id} onClick={() => onDelete(record)}>
-                                删除
-                            </Button>
-                            <Button type="link" onClick={() => onInsert(record)}>
-                                插入
-                            </Button>
-                            <Button type="link" onClick={() => onReverse(record)}>
-                                红冲
-                            </Button>
-                            <Button type="link" onClick={() => onSaveTemplate(record)}>
-                                存为模板
-                            </Button>
-                            <Button type="link" onClick={() => onPrint(record)}>
-                                打印
-                            </Button>
-                        </>
-                    )}
-                </Space>
-            </div>
-
-            <div>
-                {(record.entries ?? []).map((e: VoucherEntryDto) => (
-                    <div key={e.id} className={cn(LINE_GRID, "min-h-10 border-b border-[#f5f5f5] py-0.5 pr-4 pl-3 text-[14px]")}>
-                        <span />
-                        <span className="truncate pr-4 text-slate-600">{e.summary}</span>
-                        <span className="text-slate-600">
-                            <span className="text-slate-400">{e.accountCode} </span>
-                            {e.accountName}
+            ),
+        },
+        {
+            key: "summary",
+            title: "摘要",
+            ellipsis: true,
+            onCell: (row) => (row.isTotal ? { className: "font-medium" } : {}),
+            render: (_, row) => (row.isTotal ? "合计" : row.entry?.summary),
+        },
+        {
+            key: "account",
+            title: "科目",
+            width: 200,
+            render: (_, row) => {
+                if (!row.isTotal) {
+                    return (
+                        <span>
+                            <span className="text-(--muted-foreground)">{row.entry?.accountCode} </span>
+                            {row.entry?.accountName}
                         </span>
-                        <AmountCell value={e.debit} />
-                        <AmountCell value={e.credit} />
-                        <span />
-                    </div>
-                ))}
-            </div>
-
-            <div className={cn(LINE_GRID, "min-h-10 bg-[#f6ffed] px-3")}>
-                <span />
-                <Typography.Text strong>合计</Typography.Text>
-                <span>
-                    {record.isBalanced === false ? (
-                        <Typography.Text type="danger">
-                            差额 {fmtAmount(Math.abs((record.totalDebit ?? 0) - (record.totalCredit ?? 0)))}
-                        </Typography.Text>
-                    ) : (
-                        <Typography.Text type="success">借贷平衡</Typography.Text>
-                    )}
-                </span>
-                <Typography.Text strong className={NUM_CELL}>
-                    {fmtAmount(record.totalDebit, true)}
-                </Typography.Text>
-                <Typography.Text strong className={NUM_CELL}>
-                    {fmtAmount(record.totalCredit, true)}
-                </Typography.Text>
-                <span />
-            </div>
-        </div>
-    )
+                    )
+                }
+                const diff = Math.abs((row.voucher.totalDebit ?? 0) - (row.voucher.totalCredit ?? 0))
+                return row.voucher.isBalanced === false ? (
+                    <Typography.Text type="danger">差额 {fmtAmount(diff)}</Typography.Text>
+                ) : (
+                    <Typography.Text type="success">借贷平衡</Typography.Text>
+                )
+            },
+        },
+        {
+            key: "debit",
+            title: "借方金额",
+            width: 118,
+            ...AMOUNT_COL,
+            render: (_, row) =>
+                row.isTotal ? (
+                    <span className="font-medium">{fmtAmount(row.voucher.totalDebit, true)}</span>
+                ) : (
+                    <AmountText value={row.entry?.debit} />
+                ),
+        },
+        {
+            key: "credit",
+            title: "贷方金额",
+            width: 118,
+            ...AMOUNT_COL,
+            render: (_, row) =>
+                row.isTotal ? (
+                    <span className="font-medium">{fmtAmount(row.voucher.totalCredit, true)}</span>
+                ) : (
+                    <AmountText value={row.entry?.credit} />
+                ),
+        },
+        {
+            key: "attachment",
+            title: "附件",
+            width: 64,
+            align: "center",
+            onCell: metaCell,
+            render: (_, row) => (row.voucher.attachmentCount ? row.voucher.attachmentCount : "—"),
+        },
+        { key: "preparer", title: "制单人", width: 84, onCell: metaCell, render: (_, row) => row.voucher.preparer ?? "—" },
+        {
+            key: "ops",
+            title: "操作",
+            width: 200,
+            onCell: metaCell,
+            render: (_, row) => {
+                const v = row.voucher
+                if (x.recycleMode) {
+                    return (
+                        <Space size={[6, 4]} wrap>
+                            <ActionLink label="还原" onClick={() => x.onRestore(v)} />
+                            <ActionLink label="彻底删除" danger onClick={() => x.onPurge(v)} />
+                        </Space>
+                    )
+                }
+                return (
+                    <Space size={[6, 4]} wrap>
+                        <ActionLink label="修改" loading={x.openingId === v.id} onClick={() => x.onEdit(v)} />
+                        <ActionLink label="复制" onClick={() => x.onCopy(v)} />
+                        <ActionLink
+                            label="删除"
+                            danger
+                            loading={x.deletingId === v.id}
+                            onClick={() => x.onDelete(v)}
+                        />
+                        {/* 低频动作收进「更多」：操作列从 7 个链接缩到 3 个，行高与横向宽度都更省。 */}
+                        <Dropdown
+                            trigger={["click"]}
+                            menu={{
+                                items: [
+                                    { key: "insert", label: "插入凭证" },
+                                    { key: "reverse", label: "红冲" },
+                                    { key: "template", label: "存为模板" },
+                                    { key: "print", label: "打印" },
+                                ],
+                                onClick: ({ key }) => {
+                                    if (key === "insert") x.onInsert(v)
+                                    else if (key === "reverse") x.onReverse(v)
+                                    else if (key === "template") x.onSaveTemplate(v)
+                                    else if (key === "print") x.onPrint(v)
+                                },
+                            }}
+                        >
+                            <Button type="link" style={{ paddingInline: 0 }}>
+                                更多
+                            </Button>
+                        </Dropdown>
+                    </Space>
+                )
+            },
+        },
+    ]
 }
 
 export default function VoucherManagePage() {
@@ -541,6 +656,7 @@ export default function VoucherManagePage() {
     const currentSet = accountSets.find((s) => s.id === accountSetId)
     const { message, modal } = App.useApp()
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
 
     const [vouchers, setVouchers] = useState<VoucherListItemDto[]>([])
     const [accounts, setAccounts] = useState<AccountDto[]>([])
@@ -564,11 +680,25 @@ export default function VoucherManagePage() {
     const [printVoucherId, setPrintVoucherId] = useState<string | null>(null)
     /** 连续打印的凭证清单（打印「直接打印」用），为空表示只打印单张。 */
     const [printVoucherIds, setPrintVoucherIds] = useState<string[] | null>(null)
+    /** 账簿提示跳进来时带原查询区间，否则落本月。 */
+    const initialFilters = (): VoucherFilters => {
+        const from = searchParams.get("periodFrom")
+        const to = searchParams.get("periodTo")
+        if (from || to) return { ...EMPTY_FILTERS, periodFrom: from, periodTo: to }
+        return defaultFilters()
+    }
     /** 已生效的筛选条件。 */
-    const [filters, setFilters] = useState<VoucherFilters>(EMPTY_FILTERS)
+    const [filters, setFilters] = useState<VoucherFilters>(initialFilters)
     /** 筛选面板里正在编辑、尚未点「确定」的条件。 */
-    const [draftFilters, setDraftFilters] = useState<VoucherFilters>(EMPTY_FILTERS)
+    const [draftFilters, setDraftFilters] = useState<VoucherFilters>(initialFilters)
     const [filterOpen, setFilterOpen] = useState(false)
+    /** 表头上方的即时筛选：关键字（凭证号/摘要/金额）与状态，都在已加载结果内过滤，不发请求。 */
+    const [quickKeyword, setQuickKeyword] = useState("")
+    // 账簿页的未入账提示会带 ?status=draft 跳进来，直接落到草稿视图。
+    const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "posted">(() => {
+        const status = searchParams.get("status")
+        return status === "draft" || status === "posted" ? status : "all"
+    })
     /** 回收站视图：只看已删除的凭证。 */
     const [recycleMode, setRecycleMode] = useState(false)
     const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
@@ -802,7 +932,14 @@ export default function VoucherManagePage() {
                     ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
                 body: JSON.stringify({
-                    ids: scope === "ids" ? selectedKeys.map(String) : undefined,
+                    // 表头上方的关键字/状态筛选只在本地生效，导出「当前查询」时用结果集 ids 对齐，
+                    // 否则导出的内容会比屏幕上多。
+                    ids:
+                        scope === "ids"
+                            ? selectedKeys.map(String)
+                            : scope === "query" && (quickKeyword.trim() || statusFilter !== "all")
+                              ? visibleVouchers.map((v) => v.id ?? "").filter(Boolean)
+                              : undefined,
                     query: scope === "all" ? undefined : toQueryParams(filters, recycleMode),
                 }),
             })
@@ -1011,15 +1148,51 @@ export default function VoucherManagePage() {
         }
     }
 
+    /** 即时筛选后的结果：关键字匹配凭证号、摘要、科目名与金额，状态区分已过账/草稿。 */
+    const visibleVouchers = useMemo(() => {
+        const keyword = quickKeyword.trim().toLowerCase()
+        return vouchers.filter((v) => {
+            if (statusFilter === "posted" && v.status !== 3) return false
+            if (statusFilter === "draft" && v.status === 3) return false
+            if (!keyword) return true
+            const haystack = [
+                v.voucherNo,
+                v.word,
+                v.preparer,
+                v.totalDebit != null ? fmtAmount(v.totalDebit, true) : "",
+                v.totalCredit != null ? fmtAmount(v.totalCredit, true) : "",
+                ...(v.entries ?? []).flatMap((e) => [e.summary, e.accountCode, e.accountName]),
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase()
+            return haystack.includes(keyword)
+        })
+    }, [vouchers, quickKeyword, statusFilter])
+
+    /** 本次筛选结果的借贷合计：页脚一眼可见，不用等导出。 */
+    const listTotals = useMemo(
+        () =>
+            visibleVouchers.reduce(
+                (acc, v) => {
+                    acc.debit += v.totalDebit ?? 0
+                    acc.credit += v.totalCredit ?? 0
+                    return acc
+                },
+                { debit: 0, credit: 0 },
+            ),
+        [visibleVouchers],
+    )
+
     // 数据变少时把页码夹回有效范围，避免停留在空页。
-    const pageCount = Math.max(1, Math.ceil(vouchers.length / pageSize))
+    const pageCount = Math.max(1, Math.ceil(visibleVouchers.length / pageSize))
     const currentPage = Math.min(page, pageCount)
     const pageRows = useMemo(
-        () => vouchers.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize),
-        [vouchers, currentPage, pageSize],
+        () => visibleVouchers.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize),
+        [visibleVouchers, currentPage, pageSize],
     )
-    const from = vouchers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
-    const to = Math.min(currentPage * pageSize, vouchers.length)
+    const from = visibleVouchers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+    const to = Math.min(currentPage * pageSize, visibleVouchers.length)
 
     /** 制单人候选：取自当前结果，避免为下拉再单独开接口。 */
     const preparers = useMemo(
@@ -1044,86 +1217,104 @@ export default function VoucherManagePage() {
         })
     }
 
+    /** 表格行：当前页的凭证摊平成「分录行 + 合计行」。 */
+    const voucherRows = toVoucherRows(pageRows)
+
+    const voucherColumns = buildVoucherColumns({
+        selectedKeys,
+        openingId,
+        deletingId,
+        recycleMode,
+        selectAll: {
+            checked: allSelected,
+            indeterminate: someSelected,
+            onChange: (checked) => setSelectedKeys(checked ? pageRows.map((v) => v.id ?? "") : []),
+        },
+        onToggleSelect: toggleSelect,
+        onEdit: handleEdit,
+        onDelete: confirmDelete,
+        onInsert: handleInsert,
+        onPrint: (r) => setPrintVoucherId(r.id ?? null),
+        onCopy: (r) => void handleCopy(r),
+        onReverse: (r) => void handleReverse(r),
+        onSaveTemplate: handleSaveTemplate,
+        onRestore: (r) => void handleRestore(r),
+        onPurge: (r) => void handlePurge(r),
+    })
+
     return (
         <div className="flex flex-col gap-3">
             {error && <Alert type="error" showIcon title={error} />}
 
-            <Card
-                styles={{
-                    root: {
-                        border: "1px solid #f1f5f9",
-                        boxShadow: "0 1px 2px rgba(16,24,40,0.04)",
-                    },
-                }}
-            >
-                {/* 第一行：筛选条件入口（点开与柠檬云一致的下拉筛选面板） */}
-                <Flex justify="space-between" align="center" gap={12} wrap style={{ marginBottom: 10 }}>
-                    <Popover
-                        open={filterOpen}
-                        trigger="click"
-                        placement="bottomLeft"
-                        onOpenChange={(next) => {
-                            setFilterOpen(next)
-                            // 展开时用当前生效条件初始化草稿，避免上次未确认的编辑残留。
-                            if (next) setDraftFilters(filters)
-                        }}
-                        content={
-                            <div className="flex w-[420px] flex-col">
-                                <FilterPanel
-                                    value={draftFilters}
-                                    onChange={setDraftFilters}
-                                    accounts={allAccounts}
-                                    words={voucherWords}
-                                    preparers={preparers}
-                                />
-                                <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-100 pt-2">
-                                <Button
-                                    type="link"
-                                    style={{ paddingInline: 0 }}
-                                    onClick={() => {
-                                        setDraftFilters(EMPTY_FILTERS)
-                                        setFilters(EMPTY_FILTERS)
-                                        setFilterOpen(false)
-                                        setPage(1)
-                                    }}
-                                >
-                                    恢复默认排序
-                                </Button>
-                                <Space size={8}>
-                                    <Button onClick={() => setFilterOpen(false)}>
-                                        取消
-                                    </Button>
+            <Card>
+                {/* 工具行：左侧筛选入口 + 右侧操作按钮，单行排布（与柠檬云一致） */}
+                <Flex justify="space-between" align="center" gap={12} wrap style={{ marginBottom: 16 }}>
+                    <Space size={8} wrap>
+                        <Popover
+                            open={filterOpen}
+                            trigger="click"
+                            placement="bottomLeft"
+                            onOpenChange={(next) => {
+                                setFilterOpen(next)
+                                // 展开时用当前生效条件初始化草稿，避免上次未确认的编辑残留。
+                                if (next) setDraftFilters(filters)
+                            }}
+                            content={
+                                <div className="flex w-[420px] flex-col">
+                                    <FilterPanel
+                                        value={draftFilters}
+                                        onChange={setDraftFilters}
+                                        accounts={allAccounts}
+                                        words={voucherWords}
+                                        preparers={preparers}
+                                    />
+                                    <div className="mt-2 flex items-center justify-between gap-3 border-t border-(--border) pt-2">
                                     <Button
+                                        type="link"
+                                        style={{ paddingInline: 0 }}
                                         onClick={() => {
-                                            setDraftFilters(EMPTY_FILTERS)
-                                        }}
-                                    >
-                                        重置
-                                    </Button>
-                                    <Button
-                                        type="primary"
-                                        onClick={() => {
-                                            setFilters(draftFilters)
+                                            setDraftFilters(defaultFilters())
+                                            setFilters(defaultFilters())
                                             setFilterOpen(false)
                                             setPage(1)
                                         }}
                                     >
-                                        确定
+                                        恢复默认排序
                                     </Button>
-                                    </Space>
+                                    <Space size={8}>
+                                        <Button onClick={() => setFilterOpen(false)}>
+                                            取消
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                setDraftFilters(defaultFilters())
+                                            }}
+                                        >
+                                            重置
+                                        </Button>
+                                        <Button
+                                            type="primary"
+                                            onClick={() => {
+                                                setFilters(draftFilters)
+                                                setFilterOpen(false)
+                                                setPage(1)
+                                            }}
+                                        >
+                                            确定
+                                        </Button>
+                                        </Space>
+                                    </div>
                                 </div>
-                            </div>
-                        }
-                    >
-                        <Button type={activeFilterCount(filters) > 0 ? "primary" : "default"} ghost={activeFilterCount(filters) > 0}>
-                            <FilterOutlined />
-                            {periodText(filters)}
-                            {activeFilterCount(filters) > 0 && (
-                                <span className="ml-1 rounded-full bg-white/25 px-1.5 text-[11px]">{activeFilterCount(filters)}</span>
-                            )}
-                        </Button>
-                    </Popover>
-                    <Space size={8}>
+                            }
+                        >
+                            <Button type={activeFilterCount(filters) > 0 ? "primary" : "default"} ghost={activeFilterCount(filters) > 0}>
+                                <FilterOutlined />
+                                {periodText(filters)}
+                                {activeFilterCount(filters) > 0 && (
+                                    <span className="ml-1 rounded-full bg-(--card)/25 px-1.5 text-[11px]">{activeFilterCount(filters)}</span>
+                                )}
+                            </Button>
+                        </Popover>
                         {selectedKeys.length > 0 && (
                             <Typography.Text type="secondary">已选 {selectedKeys.length} 张</Typography.Text>
                         )}
@@ -1131,180 +1322,211 @@ export default function VoucherManagePage() {
                             <Tag color="orange">回收站</Tag>
                         )}
                     </Space>
-                </Flex>
-
-                {/* 第二行：工具栏（与柠檬云一致的按钮顺序） */}
-                <Flex justify="flex-end" align="center" gap={8} wrap style={{ marginBottom: 16 }}>
-                    {recycleMode ? (
-                        <>
-                            <Button onClick={() => setRecycleMode(false)}>返回</Button>
-                            <Button danger onClick={clearRecycleBin}>
-                                清空回收站
-                            </Button>
-                            <Button danger disabled={selectedKeys.length === 0} onClick={batchSoftDelete}>
-                                批量删除
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Button type="primary" icon={<PlusOutlined />} disabled={!accountSetId} onClick={handleCreate}>
-                                新增凭证
-                            </Button>
-                            {toolbarDropdown(
-                                "打印",
-                                [
-                                    { key: "direct", label: "直接打印", icon: <PrinterOutlined /> },
-                                    { key: "settings", label: "打印设置" },
-                                ],
-                                ({ key }) => {
-                                    if (key === "direct") printCurrentList()
-                                    // 打印设置与单张打印共用同一个面板，打开任意一张凭证即可调整版式。
-                                    else if (vouchers[0]?.id) setPrintVoucherId(vouchers[0].id)
-                                    else message.warning("当前没有可打印的凭证")
-                                },
-                            )}
-                            <Tooltip title="跳到明细账，按当前期间查看电子账簿">
-                                <Button onClick={() => navigate(`/${accountSetId}/ledger/subsidiary`)}>电子账簿</Button>
-                            </Tooltip>
-                            {toolbarDropdown(
-                                "导出",
-                                [
-                                    { key: "ids", label: "选中凭证", disabled: selectedKeys.length === 0 },
-                                    { key: "query", label: "当前查询凭证" },
-                                    { key: "all", label: "所有凭证" },
-                                ],
-                                ({ key }) => void handleExport(key as "ids" | "query" | "all"),
-                            )}
-                            <Button disabled={!accountSetId} onClick={() => setImportOpen(true)}>
-                                导入凭证
-                            </Button>
-                            <Button
-                                onClick={() => {
-                                    setTidyPeriod(filters.periodFrom ?? dayjs().format("YYYY-MM"))
-                                    setTidyWord(null)
-                                    setTidyByDate(false)
-                                    setTidyOpen(true)
-                                }}
-                            >
-                                整理凭证
-                            </Button>
-                            {toolbarDropdown(
-                                "批量操作",
-                                [
-                                    { key: "copy", label: "批量复制", disabled: selectedKeys.length === 0 },
-                                    { key: "delete", label: "批量删除", icon: <DeleteOutlined />, disabled: selectedKeys.length === 0 },
-                                    { key: "modify", label: "批量修改", disabled: true },
-                                    { key: "sort", label: "凭证号排序" },
-                                    { key: "adjust", label: "凭证号调整", disabled: true },
-                                    { key: "merge", label: "凭证合并", disabled: true },
-                                ],
-                                ({ key }) => {
-                                    if (key === "copy") void batchCopy()
-                                    else if (key === "delete") batchSoftDelete()
-                                    else if (key === "sort") {
+                    <Flex justify="flex-end" align="center" gap={8} wrap flex="1 1 auto" style={{ minWidth: 0 }}>
+                        {recycleMode ? (
+                            <>
+                                <Button onClick={() => setRecycleMode(false)}>返回</Button>
+                                <Button danger onClick={clearRecycleBin}>
+                                    清空回收站
+                                </Button>
+                                <Button danger disabled={selectedKeys.length === 0} onClick={batchSoftDelete}>
+                                    批量删除
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button type="primary" icon={<PlusOutlined />} disabled={!accountSetId} onClick={handleCreate}>
+                                    新增凭证
+                                </Button>
+                                {toolbarDropdown(
+                                    "打印",
+                                    [
+                                        { key: "direct", label: "直接打印", icon: <PrinterOutlined /> },
+                                        { key: "settings", label: "打印设置" },
+                                    ],
+                                    ({ key }) => {
+                                        if (key === "direct") printCurrentList()
+                                        // 打印设置与单张打印共用同一个面板，打开任意一张凭证即可调整版式。
+                                        else if (vouchers[0]?.id) setPrintVoucherId(vouchers[0].id)
+                                        else message.warning("当前没有可打印的凭证")
+                                    },
+                                )}
+                                <Tooltip title="跳到明细账，按当前期间查看电子账簿">
+                                    <Button onClick={() => navigate(`/${accountSetId}/ledger/subsidiary`)}>电子账簿</Button>
+                                </Tooltip>
+                                {toolbarDropdown(
+                                    "导出",
+                                    [
+                                        { key: "ids", label: "选中凭证", disabled: selectedKeys.length === 0 },
+                                        { key: "query", label: "当前查询凭证" },
+                                        { key: "all", label: "所有凭证" },
+                                    ],
+                                    ({ key }) => void handleExport(key as "ids" | "query" | "all"),
+                                )}
+                                <Button disabled={!accountSetId} onClick={() => setImportOpen(true)}>
+                                    导入凭证
+                                </Button>
+                                <Button
+                                    onClick={() => {
                                         setTidyPeriod(filters.periodFrom ?? dayjs().format("YYYY-MM"))
                                         setTidyWord(null)
                                         setTidyByDate(false)
                                         setTidyOpen(true)
-                                    }
-                                },
-                            )}
-                            <Dropdown
-                                trigger={["click"]}
-                                popupRender={() => (
-                                    <div className="min-w-56 rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
-                                        <div className="flex flex-col gap-2">
-                                            <Checkbox disabled>显示数量单价</Checkbox>
-                                            <Checkbox disabled>显示原币汇率</Checkbox>
-                                        </div>
-                                        <div className="mt-2 text-[12px] text-slate-400">
-                                            需先在「设置 · 科目」启用数量核算 / 外币核算
-                                        </div>
-                                    </div>
-                                )}
-                            >
-                                <Button>
-                                    更多
-                                    <DownOutlined style={{ fontSize: 10 }} />
+                                    }}
+                                >
+                                    整理凭证
                                 </Button>
-                            </Dropdown>
-                            <Button onClick={() => setRecycleMode(true)}>回收站</Button>
-                            <Tooltip title="刷新">
-                                <Button
-                                    icon={<ReloadOutlined spin={loading} />}
-                                    disabled={!accountSetId || loading}
-                                    onClick={() => void load()}
-                                />
-                            </Tooltip>
-                        </>
-                    )}
-                </Flex>
-                <Spin spinning={loading && vouchers.length > 0}>
-                    {vouchers.length === 0 ? (
-                        <Empty
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            description={
-                                loading
-                                    ? "加载中…"
-                                        : recycleMode
-                                        ? "回收站是空的。"
-                                        : "没有符合条件的凭证，可调整筛选条件或点击「新增凭证」开始记账。"
-                            }
-                            style={{ padding: "56px 0" }}
-                        />
-                    ) : (
-                        <>
-                            <div className={cn(LINE_GRID, "mb-2 h-10 border border-[#f0f0f0] bg-[#fafafa] py-0 pr-4 pl-3 text-[13px] text-[#595959]")}>
-                                <Checkbox
-                                    checked={allSelected}
-                                    indeterminate={someSelected}
-                                    onChange={(event) =>
-                                        setSelectedKeys(
-                                            event.target.checked ? pageRows.map((v) => v.id ?? "") : [],
-                                        )
-                                    }
-                                />
-                                <span>摘要</span>
-                                <span>科目</span>
-                                <span className="pr-2 text-right">借方金额</span>
-                                <span className="pr-2 text-right">贷方金额</span>
-                                <span />
-                            </div>
-
-                            <div className="flex flex-col gap-2">
-                                {pageRows.map((v) => (
-                                    <VoucherCard
-                                        key={v.id}
-                                        record={v}
-                                        checked={selectedKeys.includes(v.id ?? "")}
-                                        openingId={openingId}
-                                        deletingId={deletingId}
-                                        onCheck={(checked) => toggleSelect(v.id ?? "", checked)}
-                                        onEdit={handleEdit}
-                                        onDelete={confirmDelete}
-                                        onInsert={handleInsert}
-                                        onPrint={(r) => setPrintVoucherId(r.id ?? null)}
-                                        onCopy={(r) => void handleCopy(r)}
-                                        onReverse={(r) => void handleReverse(r)}
-                                        onSaveTemplate={handleSaveTemplate}
-                                        recycleMode={recycleMode}
-                                        onRestore={(r) => void handleRestore(r)}
-                                        onPurge={(r) => void handlePurge(r)}
+                                {toolbarDropdown(
+                                    "批量操作",
+                                    [
+                                        { key: "copy", label: "批量复制", disabled: selectedKeys.length === 0 },
+                                        { key: "delete", label: "批量删除", icon: <DeleteOutlined />, disabled: selectedKeys.length === 0 },
+                                        { key: "modify", label: "批量修改", disabled: true },
+                                        { key: "sort", label: "凭证号排序" },
+                                        { key: "adjust", label: "凭证号调整", disabled: true },
+                                        { key: "merge", label: "凭证合并", disabled: true },
+                                    ],
+                                    ({ key }) => {
+                                        if (key === "copy") void batchCopy()
+                                        else if (key === "delete") batchSoftDelete()
+                                        else if (key === "sort") {
+                                            setTidyPeriod(filters.periodFrom ?? dayjs().format("YYYY-MM"))
+                                            setTidyWord(null)
+                                            setTidyByDate(false)
+                                            setTidyOpen(true)
+                                        }
+                                    },
+                                )}
+                                <Dropdown
+                                    trigger={["click"]}
+                                    popupRender={() => (
+                                        <div className="min-w-56 rounded-lg border border-(--border) bg-(--card) p-3 shadow-lg">
+                                            <div className="flex flex-col gap-2">
+                                                <Checkbox disabled>显示数量单价</Checkbox>
+                                                <Checkbox disabled>显示原币汇率</Checkbox>
+                                            </div>
+                                            <div className="mt-2 text-[12px] text-(--muted-foreground)">
+                                                需先在「设置 · 科目」启用数量核算 / 外币核算
+                                            </div>
+                                        </div>
+                                    )}
+                                >
+                                    <Button>
+                                        更多
+                                        <DownOutlined style={{ fontSize: 10 }} />
+                                    </Button>
+                                </Dropdown>
+                                <Button onClick={() => setRecycleMode(true)}>回收站</Button>
+                                <Tooltip title="刷新">
+                                    <Button
+                                        icon={<ReloadOutlined spin={loading} />}
+                                        disabled={!accountSetId || loading}
+                                        onClick={() => void load()}
                                     />
-                                ))}
-                            </div>
-                        </>
+                                </Tooltip>
+                            </>
+                        )}
+                    </Flex>
+                </Flex>
+                {/* 表头上方的即时筛选：快捷期间 / 状态 / 关键字都在本地过滤，改完立即出结果，
+                    不必进筛选面板再点「确定」。右侧同步给出本次结果的张数与借贷合计。 */}
+                <Flex
+                    justify="space-between"
+                    align="center"
+                    gap={12}
+                    wrap
+                    style={{ marginBottom: 12, padding: "8px 10px", background: "var(--muted)", borderRadius: 8 }}
+                >
+                    <Space size={8} wrap>
+                        <Segmented
+                            size="small"
+                            value={periodPreset(filters) === "custom" ? undefined : periodPreset(filters)}
+                            options={[
+                                { value: "month", label: "本月" },
+                                { value: "quarter", label: "本季" },
+                                { value: "year", label: "本年" },
+                                { value: "all", label: "全部" },
+                            ]}
+                            onChange={(value) => {
+                                const next = { ...filters, ...presetRange(value as PeriodPreset) }
+                                setFilters(next)
+                                setDraftFilters(next)
+                                setPage(1)
+                            }}
+                        />
+                        <Segmented
+                            size="small"
+                            value={statusFilter}
+                            options={[
+                                { value: "all", label: "全部状态" },
+                                { value: "draft", label: "草稿" },
+                                { value: "posted", label: "已过账" },
+                            ]}
+                            onChange={(value) => {
+                                setStatusFilter(value as typeof statusFilter)
+                                setPage(1)
+                            }}
+                        />
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined className="text-(--muted-foreground)" />}
+                            placeholder="搜索凭证号 / 摘要 / 科目 / 金额"
+                            value={quickKeyword}
+                            onChange={(event) => {
+                                setQuickKeyword(event.target.value)
+                                setPage(1)
+                            }}
+                            style={{ width: 250 }}
+                        />
+                    </Space>
+                    <span className="text-[13px] text-(--muted-foreground)">
+                        共 <span className="font-medium text-(--foreground)">{visibleVouchers.length}</span> 张 · 借方{" "}
+                        <span className="font-medium tabular-nums text-(--foreground)">{fmtAmount(listTotals.debit, true)}</span>
+                        {" "}· 贷方{" "}
+                        <span className="font-medium tabular-nums text-(--foreground)">{fmtAmount(listTotals.credit, true)}</span>
+                    </span>
+                </Flex>
+                <Table<VoucherRow>
+                    columns={voucherColumns}
+                    dataSource={voucherRows}
+                    rowKey="key"
+                    pagination={false}
+                    loading={loading}
+                    sticky
+                    scroll={{ x: "max-content" }}
+                    summary={() => (
+                        <Table.Summary fixed>
+                            <Table.Summary.Row>
+                                <Table.Summary.Cell index={0} colSpan={5} className="font-medium">
+                                    合计（{visibleVouchers.length} 张）
+                                </Table.Summary.Cell>
+                                <Table.Summary.Cell index={5} align="right" className="tabular-nums font-medium">
+                                    {fmtAmount(listTotals.debit, true)}
+                                </Table.Summary.Cell>
+                                <Table.Summary.Cell index={6} align="right" className="tabular-nums font-medium">
+                                    {fmtAmount(listTotals.credit, true)}
+                                </Table.Summary.Cell>
+                                <Table.Summary.Cell index={7} colSpan={4} />
+                            </Table.Summary.Row>
+                        </Table.Summary>
                     )}
-                </Spin>
+                    locale={{
+                        emptyText: recycleMode
+                            ? "回收站是空的。"
+                            : periodPreset(filters) === "month" && !quickKeyword.trim() && statusFilter === "all"
+                              ? "本月暂无凭证：可点上方「本年」或「全部」查看历史凭证，或点「新增凭证」开始记账。"
+                              : "没有符合条件的凭证，可调整筛选条件或点击「新增凭证」开始记账。",
+                    }}
+                />
 
                 <Flex justify="space-between" align="center" gap={16} wrap style={{ marginTop: 16 }}>
                     <Typography.Text type="secondary">
-                        显示 {from} 到 {to}，共 {vouchers.length} 条
+                        显示 {from} 到 {to}，共 {visibleVouchers.length} 条
                     </Typography.Text>
                     <Pagination
                         current={currentPage}
                         pageSize={pageSize}
-                        total={vouchers.length}
+                        total={visibleVouchers.length}
                         showSizeChanger
                         pageSizeOptions={PAGE_SIZE_OPTIONS}
                         onChange={(nextPage, nextSize) => {
@@ -1340,7 +1562,7 @@ export default function VoucherManagePage() {
                         token={token ?? undefined}
                         initial={editing ?? undefined}
                         initialDate={insertSeed?.date}
-                        initialWord={insertSeed?.word}
+                        initialWord={insertSeed?.word ?? voucherWords[0]}
                         onSaved={handleSaved}
                         onCancel={() => {
                             setOpen(false)
@@ -1364,11 +1586,11 @@ export default function VoucherManagePage() {
             >
                 <div className="flex flex-col gap-4 py-2">
                     <div className="flex items-center gap-3">
-                        <span className="w-[72px] text-right text-[13px] text-slate-500">模板名称：</span>
+                        <span className="w-[72px] text-right text-[13px] text-(--muted-foreground)">模板名称：</span>
                         <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="请输入模板名称" />
                     </div>
                     <div className="flex items-center gap-3">
-                        <span className="w-[72px] text-right text-[13px] text-slate-500">模板类型：</span>
+                        <span className="w-[72px] text-right text-[13px] text-(--muted-foreground)">模板类型：</span>
                         <Select
                             style={{ width: 160 }}
                             value={templateType}
@@ -1381,7 +1603,7 @@ export default function VoucherManagePage() {
                             ]}
                         />
                     </div>
-                    <div className="text-[12px] text-slate-400">模板只记录摘要、科目与借贷方向，不记金额。</div>
+                    <div className="text-[12px] text-(--muted-foreground)">模板只记录摘要、科目与借贷方向，不记金额。</div>
                 </div>
             </Modal>
 
@@ -1413,7 +1635,7 @@ export default function VoucherManagePage() {
             >
                 <div className="flex flex-col gap-4 py-2">
                     <div className="flex items-center gap-3">
-                        <span className="w-[72px] text-right text-[13px] text-slate-500">整理期间：</span>
+                        <span className="w-[72px] text-right text-[13px] text-(--muted-foreground)">整理期间：</span>
                         <DatePicker
                             picker="month"
                             allowClear
@@ -1424,7 +1646,7 @@ export default function VoucherManagePage() {
                         />
                     </div>
                     <div className="flex items-center gap-3">
-                        <span className="w-[72px] text-right text-[13px] text-slate-500">凭证字：</span>
+                        <span className="w-[72px] text-right text-[13px] text-(--muted-foreground)">凭证字：</span>
                         <Select
                             style={{ width: 160 }}
                             value={tidyWord ?? "__all__"}
@@ -1438,7 +1660,7 @@ export default function VoucherManagePage() {
                             <Radio value="date">按凭证日期重新顺次编号</Radio>
                         </div>
                     </Radio.Group>
-                    <div className="text-[12px] text-slate-400">
+                    <div className="text-[12px] text-(--muted-foreground)">
                         编号从 1 开始重新连续编排，已删除（回收站）的凭证不占号；范围内含已过账凭证时不允许重排。
                     </div>
                 </div>
@@ -1455,14 +1677,14 @@ export default function VoucherManagePage() {
                 }}
                 styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
             >
-                <p className="text-[12.5px] text-slate-400">
+                <p className="text-[12.5px] text-(--muted-foreground)">
                     支持导入其他平台导出的记账凭证文件（.xls / .xlsx）。系统按凭证号聚合分录、自动补建缺失科目，
                     借贷金额原样保留。
                 </p>
 
                 <div className="flex flex-col gap-1">
                     <span className="font-medium">导入到账套</span>
-                    <span className="text-[12.5px] text-slate-400">
+                    <span className="text-[12.5px] text-(--muted-foreground)">
                         {currentSet?.name ?? accountSetId}
                         {currentSet?.isCurrent ? "（当前）" : ""}
                     </span>
@@ -1470,7 +1692,7 @@ export default function VoucherManagePage() {
 
                 {/* 冲突策略 */}
                 <div className="flex flex-col gap-2">
-                    <span className="text-[13px] font-semibold text-slate-700">重复凭证处理</span>
+                    <span className="text-[13px] font-semibold text-(--foreground)">重复凭证处理</span>
                     <Segmented
                         value={String(importConflict)}
                         options={[
@@ -1497,21 +1719,21 @@ export default function VoucherManagePage() {
                     onDrop={onImportDrop}
                     className={cn(
                         "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors",
-                        importDragging ? "border-[#bfdbfe] bg-[#eef4ff]" : "border-slate-200",
+                        importDragging ? "border-(--brand-border) bg-(--brand-soft)" : "border-(--border)",
                     )}
                 >
                     <FileExcelOutlined className="text-[40px]" style={ICON_STYLE.placeholder} />
                     {importFile ? (
                         <div className="flex flex-col gap-1">
                             <span className="font-medium">{importFile.name}</span>
-                            <span className="text-sm leading-normal font-normal text-slate-400">
+                            <span className="text-sm leading-normal font-normal text-(--muted-foreground)">
                                 {(importFile.size / 1024).toFixed(1)} KB · 点击可重新选择
                             </span>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-1">
                             <span className="font-medium">点击选择，或拖拽文件到此处</span>
-                            <span className="text-sm leading-normal font-normal text-slate-400">支持 .xls / .xlsx，最大 10MB</span>
+                            <span className="text-sm leading-normal font-normal text-(--muted-foreground)">支持 .xls / .xlsx，最大 10MB</span>
                         </div>
                     )}
                     <input
@@ -1541,7 +1763,7 @@ export default function VoucherManagePage() {
                 {/* 导入结果 */}
                 {importResult && (
                     <div className={cn(SOFT_PANEL, "flex flex-col gap-4 p-4")}>
-                        <h3 className="text-[13px] font-semibold text-slate-800">导入结果</h3>
+                        <h3 className="text-[13px] font-semibold text-(--foreground)">导入结果</h3>
                         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                             <Tile label="解析行数" value={importResult.totalRows ?? 0} tone="blue" icon={FileExcelOutlined} />
                             <Tile label="导入凭证" value={importResult.importedVouchers ?? 0} tone="green" icon={FileTextOutlined} />
@@ -1555,10 +1777,10 @@ export default function VoucherManagePage() {
 
                         {importResult.warnings && importResult.warnings.length > 0 && (
                             <div className="flex flex-col gap-2">
-                                <span className="text-[12.5px] text-slate-400">
+                                <span className="text-[12.5px] text-(--muted-foreground)">
                                     告警（{importResult.warnings.length}）
                                 </span>
-                                <ul className="max-h-64 overflow-auto rounded-lg border border-slate-100 bg-white p-3 text-[12.5px] text-slate-500">
+                                <ul className="max-h-64 overflow-auto rounded-lg border border-(--border) bg-(--card) p-3 text-[12.5px] text-(--muted-foreground)">
                                     {importResult.warnings.map((w, i) => (
                                         <li key={i} className="py-0.5">
                                             · {w}

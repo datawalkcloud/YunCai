@@ -27,21 +27,13 @@ export function Stat({
       : String(value)
 
   return (
-    <SectionCard className={className} bodyClassName="p-4">
+    <SectionCard className={className}>
+      {/* 字号与留白用 antd Statistic 默认，正文颜色跟随全局文字色；muted 只是把整块压暗一档。 */}
       <Statistic
         title={label}
         value={display}
         prefix={prefix}
-        styles={{
-          title: { fontSize: 14 },
-          content: {
-            marginTop: 4,
-            fontSize: 24,
-            fontWeight: 500,
-            fontVariantNumeric: "tabular-nums",
-            color: muted ? "#94a3b8" : "#1e293b",
-          },
-        }}
+        className={muted ? "text-(--muted-foreground)" : undefined}
       />
     </SectionCard>
   )

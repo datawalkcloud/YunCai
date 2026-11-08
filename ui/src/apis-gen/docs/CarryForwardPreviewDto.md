@@ -12,6 +12,9 @@ Name | Type
 `alreadyCarried` | boolean
 `needsCarry` | boolean
 `profitAmount` | number
+`retainedProfitAmount` | number
+`hasRetainedVoucher` | boolean
+`retainedVoucher` | [CarryPreviewVoucherDto](CarryPreviewVoucherDto.md)
 `vouchers` | [Array&lt;CarryPreviewVoucherDto&gt;](CarryPreviewVoucherDto.md)
 `warnings` | Array&lt;string&gt;
 
@@ -28,6 +31,9 @@ const example = {
   "alreadyCarried": null,
   "needsCarry": null,
   "profitAmount": null,
+  "retainedProfitAmount": null,
+  "hasRetainedVoucher": null,
+  "retainedVoucher": null,
   "vouchers": null,
   "warnings": null,
 } satisfies CarryForwardPreviewDto

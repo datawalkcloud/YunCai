@@ -7,11 +7,10 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 
-import { App, Button, ConfigProvider, Input, Modal, Select, Tooltip } from "antd";
+import { App, Button, Input, Modal, Select, Tooltip } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 
 import type { AccountSetDto } from "@/api/accountSets";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 /** 尚未接入税局取数的字段占位。 */
 const NOT_SYNCED = "—";
@@ -73,10 +72,10 @@ function taxAuthority(region?: string | null): string {
 function FieldRow({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
     return (
         <div className="flex items-center gap-4">
-            <span className="flex w-[150px] shrink-0 items-center justify-end gap-1 text-[13px] text-slate-600">
+            <span className="flex w-[150px] shrink-0 items-center justify-end gap-1 text-[13px] text-(--foreground)">
                 {hint && (
                     <Tooltip title={hint}>
-                        <QuestionCircleOutlined className="cursor-help text-[13px] text-slate-400" />
+                        <QuestionCircleOutlined className="cursor-help text-[13px] text-(--muted-foreground)" />
                     </Tooltip>
                 )}
                 {label}：
@@ -119,67 +118,64 @@ export function CompanyInfoModal({
     };
 
     return (
-        <ConfigProvider theme={TAX_THEME}>
-            <Modal
-                open={open}
-                onCancel={onClose}
-                width={900}
-                centered
-                title={<div className="text-center text-[15px] font-semibold text-slate-800">公司信息</div>}
-                styles={{ footer: { borderTop: "1px solid #f0f0f0", paddingTop: 16 } }}
-                footer={
-                    <div className="flex items-center justify-center gap-3">
-                        <Button  onClick={save}>
-                            保存
-                        </Button>
-                        <Button type="primary"  onClick={syncCompanyInfo}>
-                            更新公司信息
-                        </Button>
-                    </div>
-                }
-            >
-                <div className="flex flex-col gap-4 pb-1 pt-2">
-                    <FieldRow label="公司名称">
-                        <Input size="large" disabled value={accountSet?.companyName ?? ""} />
-                    </FieldRow>
-                    <FieldRow label="统一信用代码">
-                        <Input size="large" disabled value={accountSet?.taxpayerNumber ?? ""} />
-                    </FieldRow>
-                    <FieldRow label="纳税人资格类型">
-                        <Input size="large" disabled value={taxpayerLabel(accountSet?.taxpayerType)} />
-                    </FieldRow>
-                    <FieldRow label="登记注册类型">
-                        <Input size="large" disabled value={NOT_SYNCED} />
-                    </FieldRow>
-                    <FieldRow label="税务登记日期">
-                        <Input size="large" disabled value={NOT_SYNCED} />
-                    </FieldRow>
-                    <FieldRow label="主管税务机关">
-                        <Input size="large" disabled value={taxAuthority(accountSet?.taxRegion)} />
-                    </FieldRow>
-                    <FieldRow label="是否出口企业" hint="出口企业需先办理出口退（免）税备案，是否出口以电子税务局登记为准。">
-                        <Select
-                            size="large"
-                            className="w-full"
-                            options={EXPORT_OPTIONS}
-                            value={snapshot.exportEnterprise}
-                            onChange={(value) => patch({ exportEnterprise: value })}
-                        />
-                    </FieldRow>
-                    <FieldRow label="总分支机构类型">
-                        <Select
-                            size="large"
-                            className="w-full"
-                            options={BRANCH_OPTIONS}
-                            value={snapshot.branchType}
-                            onChange={(value) => patch({ branchType: value })}
-                        />
-                    </FieldRow>
+        <Modal
+            open={open}
+            onCancel={onClose}
+            width={900}
+            centered
+            title="公司信息"
+            footer={
+                <div className="flex items-center justify-center gap-3">
+                    <Button  onClick={save}>
+                        保存
+                    </Button>
+                    <Button type="primary"  onClick={syncCompanyInfo}>
+                        更新公司信息
+                    </Button>
                 </div>
-                <p className="mt-2 text-[12px] leading-5 text-slate-400">
-                    登记注册类型与税务登记日期由电子税务局返回，完成「一键登录税局」后自动同步。
-                </p>
-            </Modal>
-        </ConfigProvider>
+            }
+        >
+            <div className="flex flex-col gap-4 pb-1 pt-2">
+                <FieldRow label="公司名称">
+                    <Input size="large" disabled value={accountSet?.companyName ?? ""} />
+                </FieldRow>
+                <FieldRow label="统一信用代码">
+                    <Input size="large" disabled value={accountSet?.taxpayerNumber ?? ""} />
+                </FieldRow>
+                <FieldRow label="纳税人资格类型">
+                    <Input size="large" disabled value={taxpayerLabel(accountSet?.taxpayerType)} />
+                </FieldRow>
+                <FieldRow label="登记注册类型">
+                    <Input size="large" disabled value={NOT_SYNCED} />
+                </FieldRow>
+                <FieldRow label="税务登记日期">
+                    <Input size="large" disabled value={NOT_SYNCED} />
+                </FieldRow>
+                <FieldRow label="主管税务机关">
+                    <Input size="large" disabled value={taxAuthority(accountSet?.taxRegion)} />
+                </FieldRow>
+                <FieldRow label="是否出口企业" hint="出口企业需先办理出口退（免）税备案，是否出口以电子税务局登记为准。">
+                    <Select
+                        size="large"
+                        className="w-full"
+                        options={EXPORT_OPTIONS}
+                        value={snapshot.exportEnterprise}
+                        onChange={(value) => patch({ exportEnterprise: value })}
+                    />
+                </FieldRow>
+                <FieldRow label="总分支机构类型">
+                    <Select
+                        size="large"
+                        className="w-full"
+                        options={BRANCH_OPTIONS}
+                        value={snapshot.branchType}
+                        onChange={(value) => patch({ branchType: value })}
+                    />
+                </FieldRow>
+            </div>
+            <p className="mt-2 text-[12px] leading-5 text-(--muted-foreground)">
+                登记注册类型与税务登记日期由电子税务局返回，完成「一键登录税局」后自动同步。
+            </p>
+        </Modal>
     );
 }

@@ -1,27 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import {
-    CheckOutlined,
-    CloseOutlined,
-    DownOutlined,
-    LeftOutlined,
-    RightOutlined,
-} from "@ant-design/icons";
-import { Button, Dropdown } from "antd";
+import { CheckOutlined, DownOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { Dropdown } from "antd";
 
 import { cn } from "@/lib/utils";
 import { ICON_STYLE } from "@/components/page/styles";
-import { ROUTE_TITLES } from "./menu-model";
+import { findCategoryOf, ROUTE_TITLES } from "./menu-model";
 import { KEEP_ALIVE_STATE, useRouteTabs } from "./route-tabs-context";
 
 /**
- * 顶部页签条（Route Tabs）：首页常驻，进过的页面自动登记，可逐个关闭，溢出时可横向滚动或用「全部页签」下拉。
+ * 顶部页签条（Route Tabs）：记账分类的首页常驻，进过的页面自动登记，可逐个关闭，溢出时可横向滚动或用「全部页签」下拉。
  * 点击页签带上 keepAlive 状态，由 KeepAliveOutlet 复用已有面板、不重新取数。
+ * 视觉为停车平台风格：浅灰底上浮白色页签、当前页蓝色文字。
  */
 export function RouteTabs() {
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { tabs, activeKey, closeTab } = useRouteTabs();
+    const category = findCategoryOf(activeKey);
     const listRef = useRef<HTMLDivElement>(null);
     const [overflow, setOverflow] = useState(false);
 
@@ -49,13 +45,13 @@ export function RouteTabs() {
     }
 
     return (
-        <div className="flex h-10 items-center gap-1 border-b border-slate-100 bg-[#f7f9fc] px-2">
+        <div className="flex h-8 shrink-0 items-center border-b border-(--pk-border) bg-(--pk-gray-bg)">
             {overflow && <ScrollArrow direction="left" onClick={() => scrollBy(-160)} />}
             <div
                 ref={listRef}
-                className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="flex min-w-0 flex-1 items-center self-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-                <TabChip label="首页" active={!activeKey} onClick={() => go("")} />
+                {category.home !== false && <TabChip label="首页" active={!activeKey} onClick={() => go("")} />}
                 {tabs.map((key) => (
                     <TabChip
                         key={key}
@@ -67,7 +63,6 @@ export function RouteTabs() {
                     />
                 ))}
             </div>
-            {overflow && <ScrollArrow direction="right" onClick={() => scrollBy(160)} />}
             {tabs.length > 0 && (
                 <Dropdown
                     trigger={["click"]}
@@ -76,15 +71,19 @@ export function RouteTabs() {
                         style: { minWidth: 160 },
                         selectable: false,
                         items: [
-                            {
-                                key: "",
-                                label: (
-                                    <span className="flex items-center justify-between gap-3">
-                                        首页
-                                        {!activeKey && <CheckOutlined style={ICON_STYLE.brand} />}
-                                    </span>
-                                ),
-                            },
+                            ...(category.home === false
+                                ? []
+                                : [
+                                      {
+                                          key: "",
+                                          label: (
+                                              <span className="flex items-center justify-between gap-3">
+                                                  首页
+                                                  {!activeKey && <CheckOutlined style={ICON_STYLE.brand} />}
+                                              </span>
+                                          ),
+                                      },
+                                  ]),
                             ...tabs.map((key) => ({
                                 key,
                                 label: (
@@ -98,30 +97,32 @@ export function RouteTabs() {
                         onClick: ({ key }) => go(key),
                     }}
                 >
-                    <Button
-                        shape="circle"
-                        size="small"
+                    <button
+                        type="button"
                         title="全部页签"
-                        className="!text-slate-500 hover:!border-[#2f6bff] hover:!text-[#2f6bff]"
-                        icon={<DownOutlined className="text-[9px]" />}
-                    />
+                        className="mx-1.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-(--pk-border) bg-(--pk-surface) text-(--pk-text-2) hover:border-(--pk-brand-text) hover:text-(--pk-brand-text)"
+                    >
+                        <DownOutlined className="text-[9px]" />
+                    </button>
                 </Dropdown>
             )}
+            {overflow && <ScrollArrow direction="right" onClick={() => scrollBy(160)} />}
         </div>
     );
 }
 
 function ScrollArrow({ direction, onClick }: { direction: "left" | "right"; onClick: () => void }) {
     return (
-        <Button
-            type="text"
-            size="small"
+        <button
+            type="button"
             onClick={onClick}
-            className="!text-slate-400 hover:!text-slate-600"
-            icon={
-                direction === "left" ? <LeftOutlined className="text-[10px]" /> : <RightOutlined className="text-[10px]" />
-            }
-        />
+            className={cn(
+                "hidden h-full w-9 shrink-0 cursor-pointer items-center justify-center self-stretch text-(--pk-text-2) hover:text-(--pk-brand-text) md:flex",
+                direction === "left" ? "border-r border-(--pk-border)" : "border-l border-(--pk-border)",
+            )}
+        >
+            {direction === "left" ? <LeftOutlined className="text-[10px]" /> : <RightOutlined className="text-[10px]" />}
+        </button>
     );
 }
 
@@ -142,11 +143,8 @@ function TabChip({
         <div
             data-tab={tabKey ?? ""}
             className={cn(
-                "inline-flex h-7 shrink-0 items-center gap-1 rounded-md border pl-2.5 text-[12.5px] transition-colors",
-                onClose ? "pr-1" : "pr-2.5",
-                active
-                    ? "border-[#2f6bff] bg-[#2f6bff] text-white shadow-[0_1px_2px_rgba(47,107,255,0.3)]"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-[#2f6bff]/40 hover:text-[#2f6bff]",
+                "flex h-full shrink-0 items-center gap-1.5 border-r border-(--pk-border) bg-(--pk-surface) px-3.5 text-[13px] whitespace-nowrap",
+                active ? "text-(--pk-brand-text)" : "text-(--pk-text) hover:text-(--pk-brand-text)",
             )}
         >
             <button type="button" className="cursor-pointer" onClick={onClick}>
@@ -156,18 +154,13 @@ function TabChip({
                 <button
                     type="button"
                     title={`关闭${label}`}
-                    className={cn(
-                        "flex size-4 items-center justify-center rounded-full transition-colors",
-                        active
-                            ? "text-white/70 hover:bg-white/25 hover:text-white"
-                            : "text-slate-400 hover:bg-slate-200/70 hover:text-slate-600",
-                    )}
+                    className="flex size-4 cursor-pointer items-center justify-center text-[10px] text-(--pk-text-2) hover:text-(--pk-red)"
                     onClick={(e) => {
                         e.stopPropagation();
                         onClose();
                     }}
                 >
-                    <CloseOutlined className="text-[9px]" />
+                    ✕
                 </button>
             )}
         </div>

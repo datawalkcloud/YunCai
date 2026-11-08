@@ -7,7 +7,7 @@
  * 成功后自动重新取数。真实申报仍需到电子税务局办理。
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { App, Button, ConfigProvider, Select, Table, Tag } from "antd";
+import { Card, App, Button, Select, Table, Tag } from "antd";
 import type { TableColumnsType } from "antd";
 import {
     AppstoreOutlined,
@@ -19,11 +19,10 @@ import {
 } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router";
 
-import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
+import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxDeclarations, type TaxDeclarationRow } from "@/lib/tax-portal";
 import { deadlineFor, filingDeadline, formatDate, formatAmount, pad } from "@/lib/tax-format";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
 
@@ -49,21 +48,21 @@ const DIRECT_GROUPS: Array<{
     {
         key: "quick",
         title: "快捷入口",
-        color: "#f59e0b",
+        color: "var(--warn-icon)",
         icon: <AppstoreOutlined />,
         items: ["电子税务局", "税种核定（应申报税费种信息报告）", "征纳互动", "账户中心", "申报智能自检"],
     },
     {
         key: "common",
         title: "常办业务",
-        color: "#2f6bff",
+        color: "var(--brand)",
         icon: <ProfileOutlined />,
         items: ["社保业务", "财产和行为税合并申报", "办税进度及结果查询", "出口退税申报"],
     },
     {
         key: "einvoice",
         title: "数电票业务",
-        color: "#10b981",
+        color: "var(--success)",
         icon: <FileTextOutlined />,
         items: ["开票业务", "票种核定（发票用票需求申请）", "税务数字账户"],
     },
@@ -75,7 +74,7 @@ const columns: TableColumnsType<DeclareRow> = [
     { title: "所属期起", dataIndex: "periodStart", key: "periodStart", width: 110 },
     { title: "所属期止", dataIndex: "periodEnd", key: "periodEnd", width: 110 },
     { title: "申报期限", dataIndex: "deadline", key: "deadline", width: 110 },
-    { title: "操作", key: "op", width: 80, render: () => <span className="text-slate-400">—</span> },
+    { title: "操作", key: "op", width: 80, render: () => <span className="text-(--muted-foreground)">—</span> },
     {
         title: "申报状态",
         dataIndex: "status",
@@ -106,13 +105,8 @@ const columns: TableColumnsType<DeclareRow> = [
     },
 ];
 
-export function TaxDeclarePage({
-    period,
-    onOpenTaxKinds,
-}: {
-    period: AccountingPeriod;
-    onOpenTaxKinds: () => void;
-}) {
+export function TaxDeclarePage() {
+    const period = useTaxPeriod();
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { message } = App.useApp();
@@ -185,150 +179,145 @@ export function TaxDeclarePage({
     }, [refresh]);
 
     return (
-        <ConfigProvider theme={TAX_THEME}>
-            <div className="px-6 py-4">
-                <div className="flex flex-wrap items-start justify-between gap-4" style={{ marginBottom: 16 }}>
-                    <div className="flex max-w-[860px] items-start gap-2 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-4 py-3 text-[13px] leading-6 text-[#8a6a35]">
-                        <ContainerOutlined className="mt-1 shrink-0 text-[15px] text-[#e6a23c]" />
+        <Card>
+            <div className="flex flex-wrap items-start justify-between gap-4" style={{ marginBottom: 16 }}>
+                <div className="flex max-w-[860px] items-start gap-2 rounded-md border border-(--warn-border) bg-(--warn-bg) px-4 py-3 text-[13px] leading-6 text-(--warn-text)">
+                    <ContainerOutlined className="mt-1 shrink-0 text-[15px] text-(--warn-icon)" />
+                    <div>
                         <div>
-                            <div>
-                                温馨提示：1、当期税款所属期的申报时间在{" "}
-                                <span className="font-medium text-[#2f6bff]">{deadlineText}</span> 截止，
-                                {remaining > 0 ? (
-                                    <>
-                                        还有 <span className="font-medium text-[#e6a23c]">{remaining}</span> 天，
-                                        请及时进行申报
-                                    </>
-                                ) : remaining === 0 ? (
-                                    "今天是申报截止日，请及时进行申报"
-                                ) : (
-                                    <span className="text-[#ef4444]">已超期 {-remaining} 天，请尽快办理</span>
-                                )}
-                            </div>
-                            <div>
-                                2、如需增加或删除【税种申报】下的税种信息，可在{" "}
-                                <Button
-                                    type="link"
-                                    className="!text-[#2f6bff]"
-                                    onClick={onOpenTaxKinds}
-                                >
-                                    【税费种管理】
-                                </Button>{" "}
-                                中进行调整
-                            </div>
-                            <div>
-                                3、系统报税或更新数据过程中{" "}
-                                <span className="text-[#ef4444]">请勿登录电子税务局</span>
-                            </div>
+                            温馨提示：1、当期税款所属期的申报时间在{" "}
+                            <span className="font-medium text-(--brand)">{deadlineText}</span> 截止，
+                            {remaining > 0 ? (
+                                <>
+                                    还有 <span className="font-medium text-(--warn-icon)">{remaining}</span> 天，
+                                    请及时进行申报
+                                </>
+                            ) : remaining === 0 ? (
+                                "今天是申报截止日，请及时进行申报"
+                            ) : (
+                                <span className="text-(--danger)">已超期 {-remaining} 天，请尽快办理</span>
+                            )}
                         </div>
-                    </div>
-
-                    <div className="flex shrink-0 flex-wrap items-center gap-3">
-                        <Button
-                            type="text"
-                            onClick={() => message.info("申报前请先在【税费种管理】确认税费种核定，报税过程中请勿登录电子税务局。")}
-                            className="!text-slate-600 hover:!text-[#2f6bff]"
-                            icon={
-                                <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-[#10b981] text-[10px] text-white">
-                                    <BookOutlined />
-                                </span>
-                            }
-                        >
-                            帮助手册
-                        </Button>
-                        <span className="flex items-center gap-1 text-[13px] text-slate-500">
-                            征收类型：
-                            <Select disabled className="w-[120px]" placeholder="未初始化" />
-                        </span>
-                        {needLogin && (
-                            <Button icon={<LoginOutlined />} onClick={() => setLoginOpen(true)}>
-                                登录电子税务局
-                            </Button>
-                        )}
-                        <Button loading={loading} onClick={() => void refresh({ promptLogin: true })}>
-                            更新申报结果
-                        </Button>
-                        <Button
-                            type="primary"
-                            onClick={() => message.info("申报办理请前往电子税务局；本页用于查看税局的申报记录。")}
-                        >
-                            申报
-                        </Button>
+                        <div>
+                            2、如需增加或删除【税种申报】下的税种信息，可在{" "}
+                            <Button
+                                type="link"
+                                onClick={() => navigate(`/${accountSetId}/tax/kinds`)}
+                            >
+                                【税费种管理】
+                            </Button>{" "}
+                            中进行调整
+                        </div>
+                        <div>
+                            3、系统报税或更新数据过程中{" "}
+                            <span className="text-(--danger)">请勿登录电子税务局</span>
+                        </div>
                     </div>
                 </div>
 
-                <Table<DeclareRow>
-                    columns={columns}
-                    dataSource={rows}
-                    rowKey="key"
-                    loading={loading}
-                    pagination={false}
-                    tableLayout="fixed"
-                    scroll={{ x: 1200 }}
-                    locale={{
-                        emptyText: (
-                            <div className="py-16 text-center text-[13px] text-slate-500">
-                                {needLogin ? (
-                                    <>
-                                        尚未登录电子税务局，请先登录后再查看申报结果
+                <div className="flex shrink-0 flex-wrap items-center gap-3">
+                    <Button
+                        type="text"
+                        onClick={() => message.info("申报前请先在【税费种管理】确认税费种核定，报税过程中请勿登录电子税务局。")}
+                        icon={
+                            <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-(--success) text-[10px] text-white">
+                                <BookOutlined />
+                            </span>
+                        }
+                    >
+                        帮助手册
+                    </Button>
+                    <span className="flex items-center gap-1 text-[13px] text-(--muted-foreground)">
+                        征收类型：
+                        <Select disabled className="w-[120px]" placeholder="未初始化" />
+                    </span>
+                    {needLogin && (
+                        <Button icon={<LoginOutlined />} onClick={() => setLoginOpen(true)}>
+                            登录电子税务局
+                        </Button>
+                    )}
+                    <Button loading={loading} onClick={() => void refresh({ promptLogin: true })}>
+                        更新申报结果
+                    </Button>
+                    <Button
+                        type="primary"
+                        onClick={() => message.info("申报办理请前往电子税务局；本页用于查看税局的申报记录。")}
+                    >
+                        申报
+                    </Button>
+                </div>
+            </div>
+
+            <Table<DeclareRow>
+                columns={columns}
+                dataSource={rows}
+                rowKey="key"
+                loading={loading}
+                pagination={false}
+                tableLayout="fixed"
+                scroll={{ x: 1200 }}
+                locale={{
+                    emptyText: (
+                        <div className="py-16 text-center text-[13px] text-(--muted-foreground)">
+                            {needLogin ? (
+                                <>
+                                    尚未登录电子税务局，请先登录后再查看申报结果
+                                    <Button
+                                        type="link"
+                                        onClick={() => setLoginOpen(true)}
+                                    >
+                                        【登录电子税务局】
+                                    </Button>
+                                </>
+                            ) : (
+                                emptyHint || "所选税款所属期暂无申报记录"
+                            )}
+                        </div>
+                    ),
+                }}
+            />
+
+            <section className="mt-4 rounded-lg border border-(--border)">
+                <div className="flex items-center gap-2 px-5 pb-1 pt-4">
+                    <span className="text-[14px] font-medium text-(--foreground)">税局直达专区</span>
+                    <span className="rounded-sm bg-(--danger) px-1.5 py-[1px] text-[10px] font-medium leading-4 text-white">
+                        HOT
+                    </span>
+                </div>
+                <div className="grid grid-cols-1 gap-6 px-5 py-4 md:grid-cols-3">
+                    {DIRECT_GROUPS.map((group) => (
+                        <div key={group.key}>
+                            <div className="mb-2 flex items-center gap-2 text-[13.5px] font-medium text-(--foreground)">
+                                <span style={{ color: group.color }}>{group.icon}</span>
+                                {group.title}
+                            </div>
+                            <ul className="space-y-1.5">
+                                {group.items.map((item) => (
+                                    <li key={item}>
                                         <Button
                                             type="link"
-                                            onClick={() => setLoginOpen(true)}
+                                            title="前往一键登录税局后办理"
+                                            onClick={toTaxLogin}
                                         >
-                                            【登录电子税务局】
+                                            {item} <span className="text-(--brand)/70">›</span>
                                         </Button>
-                                    </>
-                                ) : (
-                                    emptyHint || "所选税款所属期暂无申报记录"
-                                )}
-                            </div>
-                        ),
-                    }}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {accountSetId && (
+                <TaxLoginPrompt
+                    open={loginOpen}
+                    accountSetId={accountSetId}
+                    reason="查看申报结果需要读取电子税务局，当前的税局登录状态已失效。服务器会用账套里保存的税局资料重新登录，你只需要填一次短信验证码。"
+                    onClose={() => setLoginOpen(false)}
+                    onSuccess={handleLoginSuccess}
                 />
-
-                <section className="mt-4 rounded-lg border border-slate-200">
-                    <div className="flex items-center gap-2 px-5 pb-1 pt-4">
-                        <span className="text-[14px] font-medium text-slate-800">税局直达专区</span>
-                        <span className="rounded-sm bg-[#ef4444] px-1.5 py-[1px] text-[10px] font-medium leading-4 text-white">
-                            HOT
-                        </span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-6 px-5 py-4 md:grid-cols-3">
-                        {DIRECT_GROUPS.map((group) => (
-                            <div key={group.key}>
-                                <div className="mb-2 flex items-center gap-2 text-[13.5px] font-medium text-slate-700">
-                                    <span style={{ color: group.color }}>{group.icon}</span>
-                                    {group.title}
-                                </div>
-                                <ul className="space-y-1.5">
-                                    {group.items.map((item) => (
-                                        <li key={item}>
-                                            <Button
-                                                type="link"
-                                                title="前往一键登录税局后办理"
-                                                onClick={toTaxLogin}
-                                                className="!text-left hover:!underline"
-                                            >
-                                                {item} <span className="text-[#2f6bff]/70">›</span>
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
-                {accountSetId && (
-                    <TaxLoginPrompt
-                        open={loginOpen}
-                        accountSetId={accountSetId}
-                        reason="查看申报结果需要读取电子税务局，当前的税局登录状态已失效。服务器会用账套里保存的税局资料重新登录，你只需要填一次短信验证码。"
-                        onClose={() => setLoginOpen(false)}
-                        onSuccess={handleLoginSuccess}
-                    />
-                )}
-            </div>
-        </ConfigProvider>
+            )}
+        </Card>
     );
 }

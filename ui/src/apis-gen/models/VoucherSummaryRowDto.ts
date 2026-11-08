@@ -33,6 +33,12 @@ export interface VoucherSummaryRowDto {
     name: string;
     /**
      * 
+     * @type {string}
+     * @memberof VoucherSummaryRowDto
+     */
+    parentCode?: string | null;
+    /**
+     * 
      * @type {number}
      * @memberof VoucherSummaryRowDto
      */
@@ -72,6 +78,7 @@ export function VoucherSummaryRowDtoFromJSONTyped(json: any, ignoreDiscriminator
         
         'code': json['code'],
         'name': json['name'],
+        'parentCode': json['parentCode'] == null ? undefined : json['parentCode'],
         'voucherCount': json['voucherCount'] == null ? undefined : json['voucherCount'],
         'debit': json['debit'] == null ? undefined : json['debit'],
         'credit': json['credit'] == null ? undefined : json['credit'],
@@ -91,6 +98,7 @@ export function VoucherSummaryRowDtoToJSONTyped(value?: VoucherSummaryRowDto | n
         
         'code': value['code'],
         'name': value['name'],
+        'parentCode': value['parentCode'],
         'voucherCount': value['voucherCount'],
         'debit': value['debit'],
         'credit': value['credit'],

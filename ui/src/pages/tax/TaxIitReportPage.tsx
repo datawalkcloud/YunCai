@@ -7,17 +7,16 @@
  * 因此这些列保留税局表头、内容留空；正式申报同样引导到「一键登录税局」。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { App, Button, ConfigProvider, Dropdown, Input, Modal, Radio, Table, Tooltip } from "antd";
+import { Card, App, Button, Dropdown, Input, Modal, Radio, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { DownOutlined, FilterFilled, QuestionCircleOutlined } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router";
 
-import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
+import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
 import { downloadCsv } from "@/lib/tax-csv";
 import { formatAmount } from "@/lib/tax-format";
 import { fetchIitReport, type TaxIitReportRow } from "@/lib/tax-portal";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 /** 金额列宽度；未接入的列只占位，等税局取数后填充。 */
 const LEAF_WIDTH = 112;
@@ -131,11 +130,8 @@ const SUMMARY_NOTES = [
     "本期免税收入、险种明细、专项附加扣除、个人养老金、捐赠与减免需登录电子税务局取回，当前留空。",
 ];
 
-interface ReportPageProps {
-    period: AccountingPeriod;
-}
-
-export function TaxIitReportPage({ period }: ReportPageProps) {
+export function TaxIitReportPage() {
+    const period = useTaxPeriod();
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { token } = useAuth();
@@ -232,7 +228,7 @@ export function TaxIitReportPage({ period }: ReportPageProps) {
         keyword: string,
         setKeyword: (value: string) => void,
     ) => ({
-        filterIcon: <FilterFilled style={{ color: keyword ? "#2f6bff" : "#c0c4cc", fontSize: 11 }} />,
+        filterIcon: <FilterFilled style={{ color: keyword ? "var(--brand)" : "var(--muted-foreground)" }} />,
         filterDropdown: ({ confirm }: { confirm: () => void }) => (
             <div className="w-[200px] p-2" onKeyDown={(event) => event.stopPropagation()}>
                 <Input
@@ -292,7 +288,7 @@ export function TaxIitReportPage({ period }: ReportPageProps) {
                         <span className="inline-flex items-center gap-1">
                             {spec.title}
                             <Tooltip title={spec.tip}>
-                                <QuestionCircleOutlined className="text-[11px] text-slate-400" />
+                                <QuestionCircleOutlined className="text-[11px] text-(--muted-foreground)" />
                             </Tooltip>
                         </span>
                     ) : (
@@ -316,46 +312,46 @@ export function TaxIitReportPage({ period }: ReportPageProps) {
             render: (_: unknown, row: TaxIitReportRow) => {
                 const text = cellText(row, leaf);
                 return text ? (
-                    <span className={leaf.field === "refundable" ? "font-medium text-slate-800" : undefined}>
+                    <span className={leaf.field === "refundable" ? "font-medium text-(--foreground)" : undefined}>
                         {text}
                     </span>
                 ) : (
-                    <span className="text-slate-300">—</span>
+                    <span className="text-(--muted-foreground)">—</span>
                 );
             },
         };
     }
 
     return (
-        <div className="flex h-full flex-col">
-            <div className="flex shrink-0 items-center border-b border-slate-200 px-6">
+        <Card>
+            <div className="flex shrink-0 items-center border-b border-(--border)">
                 <button
                     type="button"
-                    className="relative h-[46px] text-[13px] font-medium text-slate-800"
+                    className="relative h-[46px] text-[13px] font-medium text-(--foreground)"
                 >
                     综合工资薪金所得
-                    <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[#2f6bff]" />
+                    <span className="absolute inset-x-0 bottom-0 h-[2px] bg-(--brand-fill)" />
                 </button>
             </div>
 
-            <div className="flex shrink-0 flex-wrap items-center gap-6 px-6 pt-3 text-[13px]">
-                <span className="text-slate-500">
+            <div className="flex shrink-0 flex-wrap items-center gap-6 pt-3 text-[13px]">
+                <span className="text-(--muted-foreground)">
                     税款所属期：
-                    <span className="font-medium text-slate-800">
+                    <span className="font-medium text-(--foreground)">
                         {period.year}年{period.month}月
                     </span>
                 </span>
-                <span className="text-slate-500">
+                <span className="text-(--muted-foreground)">
                     申报总人数：
-                    <span className="font-medium text-slate-800">{headcountText}</span> 人
+                    <span className="font-medium text-(--foreground)">{headcountText}</span> 人
                 </span>
-                <span className="text-slate-500">
+                <span className="text-(--muted-foreground)">
                     收入总额：
-                    <span className="font-medium text-slate-800">{totalIncomeText}</span> 元
+                    <span className="font-medium text-(--foreground)">{totalIncomeText}</span> 元
                 </span>
-                <span className="text-slate-500">
+                <span className="text-(--muted-foreground)">
                     应补（退）税额：
-                    <span className="font-medium text-slate-800">{totalRefundableText}</span> 元
+                    <span className="font-medium text-(--foreground)">{totalRefundableText}</span> 元
                 </span>
 
                 <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -417,8 +413,8 @@ export function TaxIitReportPage({ period }: ReportPageProps) {
             </div>
 
             {hint && !error && (
-                <div className="shrink-0 px-6 pt-3">
-                    <div className="flex items-center gap-3 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-1.5 text-[12.5px] text-[#8a6a35]">
+                <div className="shrink-0 pt-3">
+                    <div className="flex items-center gap-3 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-1.5 text-[12.5px] text-(--warn-text)">
                         <span>{hint}</span>
                         <Button size="small" onClick={toSalaryBills}>
                             去工资表
@@ -427,44 +423,42 @@ export function TaxIitReportPage({ period }: ReportPageProps) {
                 </div>
             )}
 
-            <div className="min-h-0 flex-1 px-6 pb-3 pt-3 [&_.ant-table-body]:min-h-[calc(100vh-360px)] [&_.ant-table-body]:!overflow-y-auto">
+            <div className="min-h-0 flex-1 pb-3 pt-3 [&_.ant-table-body]:min-h-[calc(100vh-360px)] [&_.ant-table-body]:!overflow-y-auto">
                 {error && (
-                    <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-[12.5px] text-red-600">
+                    <div className="mb-3 rounded-md border border-(--warn-border) bg-(--table-neg-bg) px-3 py-1.5 text-[12.5px] text-(--danger)">
                         {error}
                     </div>
                 )}
-                <ConfigProvider theme={TAX_THEME}>
-                    <Table<TaxIitReportRow>
-                        columns={columns}
-                        dataSource={visibleRows}
-                        rowKey="key"
-                        loading={loading}
-                        tableLayout="fixed"
-                        scroll={{ x: TABLE_WIDTH, y: "calc(100vh - 360px)" }}
-                        rowSelection={{
-                            selectedRowKeys: selected,
-                            onChange: (keys) => setSelected(keys.map(String)),
-                            columnWidth: 40,
-                            fixed: true,
-                        }}
-                        pagination={{
-                            pageSize: 20,
-                            pageSizeOptions: [20, 50, 100],
-                            showSizeChanger: true,
-                            showTotal: (total, [from, to]) =>
-                                total === 0
-                                    ? "显示 0 到 0，共 0 条记录"
-                                    : `显示 ${from} 到 ${to}，共 ${total} 条记录`,
-                        }}
-                        locale={{
-                            emptyText: (
-                                <span className="block py-16 text-[13px] text-slate-400">
-                                    暂无申报表数据，点「生成申报表」从工资表取数
-                                </span>
-                            ),
-                        }}
-                    />
-                </ConfigProvider>
+                <Table<TaxIitReportRow>
+                    columns={columns}
+                    dataSource={visibleRows}
+                    rowKey="key"
+                    loading={loading}
+                    tableLayout="fixed"
+                    scroll={{ x: TABLE_WIDTH, y: "calc(100vh - 360px)" }}
+                    rowSelection={{
+                        selectedRowKeys: selected,
+                        onChange: (keys) => setSelected(keys.map(String)),
+                        columnWidth: 40,
+                        fixed: true,
+                    }}
+                    pagination={{
+                        pageSize: 20,
+                        pageSizeOptions: [20, 50, 100],
+                        showSizeChanger: true,
+                        showTotal: (total, [from, to]) =>
+                            total === 0
+                                ? "显示 0 到 0，共 0 条记录"
+                                : `显示 ${from} 到 ${to}，共 ${total} 条记录`,
+                    }}
+                    locale={{
+                        emptyText: (
+                            <span className="block py-16 text-[13px] text-(--muted-foreground)">
+                                暂无申报表数据，点「生成申报表」从工资表取数
+                            </span>
+                        ),
+                    }}
+                />
             </div>
 
             <Modal
@@ -480,7 +474,7 @@ export function TaxIitReportPage({ period }: ReportPageProps) {
                 }}
             >
                 <div className="flex gap-4 py-3">
-                    <span className="shrink-0 pt-0.5 text-[13px] text-slate-500">选择：</span>
+                    <span className="shrink-0 pt-0.5 text-[13px] text-(--muted-foreground)">选择：</span>
                     <Radio.Group
                         value={source}
                         onChange={(event) => setSource(String(event.target.value))}
@@ -498,18 +492,18 @@ export function TaxIitReportPage({ period }: ReportPageProps) {
                         </Radio>
                     </Radio.Group>
                 </div>
-                <div className="text-[12px] leading-5 text-slate-400">
+                <div className="text-[12px] leading-5 text-(--muted-foreground)">
                     当前仅支持从本系统工资表生成，其余方式依赖电子税务局取数，接入后开放。
                 </div>
             </Modal>
 
             <Modal open={notesOpen} title="填报说明" width={560} footer={null} onCancel={() => setNotesOpen(false)}>
-                <ul className="m-0 flex list-disc flex-col gap-2 pl-5 text-[13px] leading-6 text-slate-600">
+                <ul className="m-0 flex list-disc flex-col gap-2 pl-5 text-[13px] leading-6 text-(--foreground)">
                     {SUMMARY_NOTES.map((note) => (
                         <li key={note}>{note}</li>
                     ))}
                 </ul>
             </Modal>
-        </div>
+        </Card>
     );
 }

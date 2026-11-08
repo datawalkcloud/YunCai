@@ -10,9 +10,9 @@
  * 未登录时点击会先弹登录提示。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, App, Button, Modal, Spin, Table, Tooltip } from "antd";
+import { Alert, App, Button, Card, Modal, Table, Tooltip, Typography } from "antd";
 import type { TableColumnsType } from "antd";
-import { CheckCircleFilled, QuestionCircleOutlined, ReloadOutlined } from "@ant-design/icons";
+import { QuestionCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router";
 
 import type { InvoiceDto } from "@/apis-gen";
@@ -21,8 +21,10 @@ import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { useAuth } from "@/auth/AuthContext";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import { resumeTaxPortalLogin, syncTaxInvoices } from "@/lib/tax-portal";
+import { AMOUNT_COL } from "@/components/page/styles";
 import { cn } from "@/lib/utils";
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
+import { useTaxPeriod } from "./tax-period";
 
 type TabKey = "sales" | "purchase" | "purchase-stats";
 
@@ -257,7 +259,8 @@ const belongsToPeriod = (invoice: InvoiceDto, period: AccountingPeriod) => {
     return inPeriod(invoice.authDate ?? invoice.issueDate, period);
 };
 
-export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
+export function InvoiceFetchPage() {
+    const period = useTaxPeriod();
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { token } = useAuth();
@@ -335,21 +338,29 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
         return [...rows, buildTotalRow(rows)];
     }, [tab, salesRows, purchaseRows]);
 
-    /** 斑马纹与合计行底色在 antd 单元格上只能用内联样式，类名会被单元格样式盖掉。 */
-    const stripe = (row: unknown, index = 0) => {
-        if ((row as { isTotal?: boolean }).isTotal) return { style: { background: "#fafbfd", fontWeight: 500 } };
-        if (index % 2 === 1) return { style: { background: "#fafbfd" } };
-        return {};
-    };
+    /** 合计行只标出状态，底色与加粗由 index.css 的 .pk-row-total 统一给出。 */
+    const stripe = (row: unknown) => ((row as { isTotal?: boolean }).isTotal ? { className: "pk-row-total" } : {});
+
+    /** 票种名：本期没有发票的行压一档灰，有数据的行才加粗。 */
+    const kindLabel = (value: string, count: number) => (
+        <span className={count === 0 ? "text-(--pk-text-2)" : "font-medium text-(--pk-text)"}>{value}</span>
+    );
+
+    /** 金额单元格：0 表示该类本期没有票，不该和真实金额一样抢眼。 */
+    const money = (value: number) => (
+        <span className={value === 0 ? "tabular-nums text-(--pk-text-2) opacity-60" : "tabular-nums"}>
+            {fmtMoney(value)}
+        </span>
+    );
 
     const opColumn: TableColumnsType<DisplayKindRow>[number] = {
         title: "功能",
         key: "op",
-        width: "4%",
+        width: "9%",
         onCell: stripe,
         render: (_, row) =>
             row.isTotal ? (
-                <span className="text-slate-400">--</span>
+                <span className="text-(--pk-text-2) opacity-60">—</span>
             ) : (
                 <Button type="link" onClick={() => setDetail(row)}>
                     操作
@@ -362,48 +373,27 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
             title: "发票种类",
             dataIndex: "label",
             key: "label",
-            width: "32%",
+            width: "27%",
             onCell: stripe,
-            render: (value: string) => <span className="text-slate-700">{value}</span>,
+            render: (value: string, row) => kindLabel(value, row.normal + row.red),
         },
         {
             title: "发票份数",
             key: "count",
-            width: "20%",
+            width: "17%",
             onCell: stripe,
-            render: (_, row) => (
-                <span className="text-[13px] text-slate-600">
-                    正常{row.normal}份，红冲{row.red}份
-                </span>
-            ),
+            render: (_, row) => {
+                const empty = row.normal + row.red === 0;
+                return (
+                    <span className={cn("text-[12.5px] tabular-nums", empty && "text-(--pk-text-2) opacity-60")}>
+                        正常{row.normal}份，红冲{row.red}份
+                    </span>
+                );
+            },
         },
-        {
-            title: "金额",
-            dataIndex: "amount",
-            key: "amount",
-            width: "15%",
-            align: "right",
-            onCell: stripe,
-            render: (value: number) => fmtMoney(value),
-        },
-        {
-            title: "税额",
-            dataIndex: "tax",
-            key: "tax",
-            width: "15%",
-            align: "right",
-            onCell: stripe,
-            render: (value: number) => fmtMoney(value),
-        },
-        {
-            title: "价税合计",
-            dataIndex: "total",
-            key: "total",
-            width: "14%",
-            align: "right",
-            onCell: stripe,
-            render: (value: number) => fmtMoney(value),
-        },
+        { title: "金额", dataIndex: "amount", key: "amount", width: "15%", onCell: stripe, ...AMOUNT_COL, render: money },
+        { title: "税额", dataIndex: "tax", key: "tax", width: "14%", onCell: stripe, ...AMOUNT_COL, render: money },
+        { title: "价税合计", dataIndex: "total", key: "total", width: "15%", onCell: stripe, ...AMOUNT_COL, render: money },
         opColumn,
     ];
 
@@ -412,35 +402,40 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
             title: "发票种类",
             dataIndex: "label",
             key: "label",
-            width: "34%",
+            width: "32%",
             onCell: stripe,
-            render: (value: string) => <span className="text-slate-700">{value}</span>,
+            render: (value: string, row) => kindLabel(value, row.normal + row.red),
         },
         {
             title: "认证发票份数",
             key: "count",
-            width: "23%",
+            width: "14%",
             align: "center",
             onCell: stripe,
-            render: (_, row) => <span className="text-[13px] text-slate-600">{row.normal + row.red}</span>,
+            render: (_, row) => {
+                const count = row.normal + row.red;
+                return (
+                    <span className={cn("tabular-nums", count === 0 && "text-(--pk-text-2) opacity-60")}>{count}</span>
+                );
+            },
         },
         {
             title: "认证发票金额",
             dataIndex: "amount",
             key: "amount",
-            width: "20%",
-            align: "right",
+            width: "18%",
             onCell: stripe,
-            render: (value: number) => fmtMoney(value),
+            ...AMOUNT_COL,
+            render: money,
         },
         {
             title: "认证发票有效抵扣税额",
             dataIndex: "tax",
             key: "tax",
-            width: "19%",
-            align: "right",
+            width: "26%",
             onCell: stripe,
-            render: (value: number) => fmtMoney(value),
+            ...AMOUNT_COL,
+            render: money,
         },
         opColumn,
     ];
@@ -452,14 +447,19 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
             title: "进项抵扣类型",
             dataIndex: "label",
             key: "label",
-            width: "40%",
+            width: "36%",
             onCell: stripe,
             render: (value: string, row) => (
-                <span className="flex items-center gap-1 text-slate-700">
+                <span
+                    className={cn(
+                        "flex items-center gap-1",
+                        row.count === 0 ? "text-(--pk-text-2)" : "font-medium text-(--pk-text)",
+                    )}
+                >
                     {value}
                     {row.hint && (
                         <Tooltip title={row.hint}>
-                            <QuestionCircleOutlined className="text-[12px] text-slate-400" />
+                            <QuestionCircleOutlined className="text-[12px] opacity-50" />
                         </Tooltip>
                     )}
                 </span>
@@ -469,39 +469,44 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
             title: "份数",
             dataIndex: "count",
             key: "count",
-            width: "18%",
+            width: "14%",
             onCell: stripe,
-            render: (value: number) => value,
+            render: (value: number) => (
+                <span className={cn("tabular-nums", value === 0 && "text-(--pk-text-2) opacity-60")}>{value}</span>
+            ),
         },
         {
             title: "金额",
             dataIndex: "amount",
             key: "amount",
-            width: "21%",
-            align: "right",
+            width: "22%",
             onCell: stripe,
-            render: (value: number, row) => (row.amountNotApplicable && value === 0 ? "--" : fmtMoney(value)),
+            ...AMOUNT_COL,
+            render: (value: number, row) =>
+                row.amountNotApplicable && value === 0 ? (
+                    <span className="text-(--pk-text-2) opacity-60">—</span>
+                ) : (
+                    money(value)
+                ),
         },
-        {
-            title: "税额",
-            dataIndex: "tax",
-            key: "tax",
-            width: "21%",
-            align: "right",
-            onCell: stripe,
-            render: (value: number) => fmtMoney(value),
-        },
+        { title: "税额", dataIndex: "tax", key: "tax", width: "22%", onCell: stripe, ...AMOUNT_COL, render: money },
     ];
 
     const detailColumns = useMemo<TableColumnsType<InvoiceDto>>(() => {
         const columns: TableColumnsType<InvoiceDto> = [
-            { title: "发票号码", dataIndex: "invoiceNo", key: "invoiceNo", width: 150 },
+            {
+                title: "发票号码",
+                dataIndex: "invoiceNo",
+                key: "invoiceNo",
+                width: 150,
+                render: (value: string | null | undefined) => <span className="tabular-nums">{value ?? "—"}</span>,
+            },
             {
                 title: "开票日期",
                 dataIndex: "issueDate",
                 key: "issueDate",
                 width: 100,
-                render: (value) => fmtDate(value),
+                render: (value) => <span className="tabular-nums">{fmtDate(value)}</span>,
             },
             {
                 title: tab === "purchase" ? "供应商名称" : "客户名称",
@@ -509,28 +514,14 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                 key: "partnerName",
                 width: 180,
             },
-            {
-                title: "金额",
-                dataIndex: "totalAmount",
-                key: "totalAmount",
-                width: 110,
-                align: "right",
-                render: (value: number) => fmtMoney(value ?? 0),
-            },
-            {
-                title: "税额",
-                dataIndex: "totalTax",
-                key: "totalTax",
-                width: 100,
-                align: "right",
-                render: (value: number) => fmtMoney(value ?? 0),
-            },
+            { title: "金额", dataIndex: "totalAmount", key: "totalAmount", width: 110, ...AMOUNT_COL, render: (value: number) => fmtMoney(value ?? 0) },
+            { title: "税额", dataIndex: "totalTax", key: "totalTax", width: 100, ...AMOUNT_COL, render: (value: number) => fmtMoney(value ?? 0) },
             {
                 title: "价税合计",
                 dataIndex: "totalWithTax",
                 key: "totalWithTax",
                 width: 120,
-                align: "right",
+                ...AMOUNT_COL,
                 render: (value: number) => fmtMoney(value ?? 0),
             },
         ];
@@ -541,7 +532,7 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                     dataIndex: "authDate",
                     key: "authDate",
                     width: 100,
-                    render: (value) => fmtDate(value),
+                    render: (value) => <span className="tabular-nums">{fmtDate(value)}</span>,
                 },
                 {
                     title: "税款所属期",
@@ -549,7 +540,7 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                     key: "taxPeriod",
                     width: 100,
                     render: (value: number | null | undefined) =>
-                        value ? `${Math.floor(value / 100)}-${String(value % 100).padStart(2, "0")}` : "—",
+                        value ? <span className="tabular-nums">{`${Math.floor(value / 100)}-${String(value % 100).padStart(2, "0")}`}</span> : "—",
                 },
             );
         }
@@ -616,9 +607,9 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
     };
 
     return (
-        <div>
-            <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6" style={{ marginBottom: 16 }}>
-                <div className="flex items-center gap-6">
+        <>
+            <Card>
+                <div className="flex shrink-0 items-center gap-6 border-b border-(--pk-border)">
                     {TABS.map((item) => (
                         <button
                             key={item.key}
@@ -628,70 +619,45 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                                 setDetail(null);
                             }}
                             className={cn(
-                                "relative h-[46px] text-[13px] transition-colors",
+                                "relative h-[42px] text-[13px] transition-colors",
                                 tab === item.key
-                                    ? "font-medium text-slate-800"
-                                    : "text-slate-500 hover:text-slate-700",
+                                    ? "font-medium text-(--pk-text)"
+                                    : "text-(--pk-text-2) hover:text-(--pk-text)",
                             )}
                         >
                             {item.label}
-                            {tab === item.key && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[#2f6bff]" />}
+                            {tab === item.key && (
+                                <span className="absolute inset-x-0 bottom-0 h-[2px] bg-(--pk-brand-text)" />
+                            )}
                         </button>
                     ))}
                 </div>
 
-                <div className="ml-auto flex flex-wrap items-center gap-2 py-2">
-                    <div className="flex items-center gap-1 rounded-md border border-slate-200 px-3 py-[5px] text-[13px]">
-                        <span className="text-slate-600">税局登录状态：</span>
-                        {portalState === "checking" && (
-                            <span className="flex items-center gap-1 text-slate-500">
-                                <Spin size="small" />
-                                确认中…
-                            </span>
-                        )}
-                        {portalState === "valid" && (
-                            <span className="flex items-center gap-1 font-medium text-[#16a34a]">
-                                <CheckCircleFilled className="text-[12px]" />
-                                已登录
-                            </span>
-                        )}
-                        {portalState === "expired" && (
-                            <>
-                                <span className="font-medium text-[#ef4444]">未登录</span>
-                                <Button type="link" onClick={() => setLoginOpen(true)}>
-                                    前往认证
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                    <Button onClick={() => navigate(`/${accountSetId}/invoices/${tab === "sales" ? "sales" : "purchase"}`)}>
-                        {tab === "sales" ? "记账销项" : "记账进项"}
-                    </Button>
-                    <Tooltip title={portalState === "valid" ? "从电子税务局获取本期的销项与进项发票" : "请先登录电子税务局"}>
+                <div className="flex shrink-0 flex-wrap items-center gap-2 py-3">
+                    <PortalState state={portalState} onVerify={() => setLoginOpen(true)} />
+                    <div className="ml-auto flex flex-wrap items-center gap-2">
                         <Button
-                            type="primary"
-                            loading={syncing}
-                            onClick={() => void handleFetchInvoices()}
+                            onClick={() => navigate(`/${accountSetId}/invoices/${tab === "sales" ? "sales" : "purchase"}`)}
                         >
-                            一键取票
+                            {tab === "sales" ? "记账销项" : "记账进项"}
                         </Button>
-                    </Tooltip>
-                    <Button disabled title="生成申报表需税局取数完成，当前尚未接入">
-                        生成申报表
-                    </Button>
-                    <Tooltip title="刷新">
-                        <Button type="text" icon={<ReloadOutlined />} aria-label="刷新" onClick={() => void reload()} />
-                    </Tooltip>
-                </div>
-            </div>
-
-            <div className="px-6">
-                {error && (
-                    <div className="mb-3">
-                        <Alert type="error" showIcon title={error} />
+                        <Tooltip
+                            title={portalState === "valid" ? "从电子税务局获取本期的销项与进项发票" : "请先登录电子税务局"}
+                        >
+                            <Button type="primary" loading={syncing} onClick={() => void handleFetchInvoices()}>
+                                一键取票
+                            </Button>
+                        </Tooltip>
+                        <Button disabled title="生成申报表需税局取数完成，当前尚未接入">
+                            生成申报表
+                        </Button>
+                        <Tooltip title="刷新">
+                            <Button type="text" icon={<ReloadOutlined />} aria-label="刷新" onClick={() => void reload()} />
+                        </Tooltip>
                     </div>
-                )}
-                {loading && <div className="py-1 text-[12.5px] text-slate-400">加载中…</div>}
+                </div>
+
+                {error && <Alert type="error" showIcon title={error} className="mb-3" />}
 
                 {tab === "purchase-stats" ? (
                     <>
@@ -701,12 +667,16 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                             rowKey="key"
                             pagination={false}
                             tableLayout="fixed"
+                            loading={loading}
+                            sticky
                         />
-                        <div className="mt-4 rounded-lg bg-[#f7f8fa] px-4 py-3 text-[12.5px] leading-6 text-slate-500">
-                            <div className="mb-1 font-medium text-slate-600">说明：</div>
+                        <div className="mb-4 mt-4 rounded-md bg-(--pk-gray-bg) px-4 py-3 text-[12.5px] leading-6 text-(--pk-text-2)">
+                            <div className="mb-1 font-medium text-(--pk-text)">说明：</div>
                             <div>1、以上数据源自【发票获取--进项发票】已认证发票统计得出；</div>
                             <div>2、生成申报表时，附表二对应项目按此填充；</div>
-                            <div>3、系统暂不支持农产品、海关缴款书、代扣代缴完税凭证等场景的智能取数填表，请手工核对。</div>
+                            <div>
+                                3、系统暂不支持农产品、海关缴款书、代扣代缴完税凭证等场景的智能取数填表，请手工核对。
+                            </div>
                         </div>
                     </>
                 ) : (
@@ -716,25 +686,24 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                         rowKey="key"
                         pagination={false}
                         tableLayout="fixed"
+                        loading={loading}
+                        sticky
                     />
                 )}
 
-                <div className="flex flex-wrap items-center gap-2 py-3 text-[13px] text-slate-500">
+                <p className="pt-3 pb-4 text-[12.5px] leading-5 text-(--pk-text-2)">
+                    {tab !== "purchase-stats" && (
+                        <>
+                            销项按开票日期归属本期；进项按认证时登记的税款所属期（未登记则按认证日期，税局取票的发票按开票日期）归属本期。
+                            本页只展示「一键取票」从电子税务局取回并落库的发票，手工录入 / 导入的发票请到「记账销项 / 记账进项」查看。
+                        </>
+                    )}
                     快捷入口：
-                    <Button
-                        type="link"
-                        onClick={() => navigate(`/${accountSetId}/tax/login`)}
-                    >
+                    <Typography.Link onClick={() => navigate(`/${accountSetId}/tax/login`)}>
                         税务数字账户
-                    </Button>
-                </div>
-                {tab !== "purchase-stats" && (
-                    <p className="pb-5 text-[12.5px] leading-5 text-slate-400">
-                        销项按开票日期归属本期；进项按认证时登记的税款所属期（未登记则按认证日期，税局取票的发票按开票日期）归属本期。
-                        本页只展示「一键取票」从电子税务局取回并落库的发票，手工录入 / 导入的发票请到「记账销项 / 记账进项」查看。
-                    </p>
-                )}
-            </div>
+                    </Typography.Link>
+                </p>
+            </Card>
 
             <TaxLoginPrompt
                 open={loginOpen}
@@ -763,11 +732,36 @@ export function InvoiceFetchPage({ period }: { period: AccountingPeriod }) {
                         scroll={{ x: "max-content" }}
                     />
                 ) : (
-                    <div className="py-8 text-center text-[13px] text-slate-400">
-                        {tab === "purchase" ? "本期该类发票没有已认证记录" : "本期该类发票没有记录"}
-                    </div>
+                    <div className="py-8 text-center text-[13px] text-(--pk-text-2)">{tab === "purchase" ? "本期该类发票没有已认证记录" : "本期该类发票没有记录"}</div>
                 )}
             </Modal>
-        </div>
+        </>
+    );
+}
+
+/** 税局登录态：一个圆点 + 结论，失效时才多给一个认证入口。 */
+function PortalState({ state, onVerify }: { state: "checking" | "valid" | "expired"; onVerify: () => void }) {
+    if (state === "checking") {
+        return (
+            <span className="flex items-center gap-2 text-[12.5px] text-(--pk-text-2)">
+                <span className="size-1.5 rounded-full bg-(--pk-text-2) opacity-40" />
+                正在确认税局登录态…
+            </span>
+        );
+    }
+    if (state === "valid") {
+        return (
+            <span className="flex items-center gap-2 text-[12.5px] text-(--pk-green)">
+                <span className="size-1.5 rounded-full bg-(--pk-green)" />
+                税局已登录
+            </span>
+        );
+    }
+    return (
+        <span className="flex items-center gap-2 text-[12.5px] text-(--pk-red)">
+            <span className="size-1.5 rounded-full bg-(--pk-red)" />
+            税局未登录
+            <Typography.Link onClick={onVerify}>前往认证</Typography.Link>
+        </span>
     );
 }

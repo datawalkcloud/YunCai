@@ -10,8 +10,8 @@ Name | Type
 `name` | string
 `phone` | string
 `email` | string
-`role` | number
-`roleText` | string
+`roleId` | string
+`roleName` | string
 `permissionText` | string
 `enabled` | boolean
 `isOwner` | boolean
@@ -28,8 +28,8 @@ const example = {
   "name": null,
   "phone": null,
   "email": null,
-  "role": null,
-  "roleText": null,
+  "roleId": null,
+  "roleName": null,
   "permissionText": null,
   "enabled": null,
   "isOwner": null,

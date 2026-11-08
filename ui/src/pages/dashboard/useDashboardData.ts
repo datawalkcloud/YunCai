@@ -11,7 +11,11 @@ import {
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { useAuth } from "@/auth/AuthContext"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
-import { useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet"
+import {
+    makePeriod,
+    useDefaultAccountingPeriod,
+    type AccountingPeriod,
+} from "@/accountSets/useCurrentAccountSet"
 
 /** 凭证状态：草稿 1 / 已过账 3（与后端 VoucherStatus 对齐；保存即入账，没有审核态）。 */
 export const V_STATUS = {
@@ -100,4 +104,89 @@ export function countByStatus(vouchers: VoucherListItemDto[]) {
         else if (v.status === V_STATUS.posted) posted++
     }
     return { draft, posted, unposted: draft, total: vouchers.length }
+}
+
+/* ------------------------------------------------------------------ */
+/*  首页趋势：现金类科目（1001/1002/1012）按月汇总收付发生额              */
+/* ------------------------------------------------------------------ */
+
+/** 现金及现金等价物一级科目编码，与后端资金收入/支付口径一致。 */
+const CASH_CODE_PREFIXES = ["1001", "1002", "1012"]
+
+export interface CashTrendPoint {
+    year: number
+    month: number
+    /** 展示用月份，如「8月」。 */
+    label: string
+    /** 现金类科目借方发生额（资金收入）。 */
+    inflow: number
+    /** 现金类科目贷方发生额（资金支付）。 */
+    outflow: number
+}
+
+/**
+ * 生成截至 end 的近 months 个月资金收付趋势。
+ * 只统计已过账凭证；口径与后端「资金收入/资金支付」一致——先按现金科目净额结算，
+ * 再按方向分别计入收入/支付。日期按后端 DateOnly 的 UTC 口径取年月，避免时区偏移。
+ */
+export function buildCashTrend(
+    vouchers: VoucherListItemDto[],
+    end: AccountingPeriod,
+    months = 6,
+): CashTrendPoint[] {
+    const points: CashTrendPoint[] = []
+    const byPeriod = new Map<number, CashTrendPoint>()
+    for (let i = months - 1; i >= 0; i--) {
+        const p = makePeriod(end.year, end.month - i)
+        const point: CashTrendPoint = { year: p.year, month: p.month, label: `${p.month}月`, inflow: 0, outflow: 0 }
+        points.push(point)
+        byPeriod.set(p.period, point)
+    }
+
+    // 期间 → 现金科目 → 当月净额（借 - 贷）
+    const nets = new Map<number, Map<string, number>>()
+    for (const voucher of vouchers) {
+        if (voucher.status !== V_STATUS.posted || !voucher.date) continue
+        const date = new Date(voucher.date)
+        const period = date.getUTCFullYear() * 100 + date.getUTCMonth() + 1
+        if (!byPeriod.has(period)) continue
+        let bucket = nets.get(period)
+        if (!bucket) {
+            bucket = new Map()
+            nets.set(period, bucket)
+        }
+        for (const entry of voucher.entries ?? []) {
+            if (!CASH_CODE_PREFIXES.some((prefix) => entry.accountCode?.startsWith(prefix))) continue
+            const account = entry.accountId ?? entry.accountCode ?? ""
+            bucket.set(account, (bucket.get(account) ?? 0) + (entry.debit ?? 0) - (entry.credit ?? 0))
+        }
+    }
+
+    for (const [period, bucket] of nets) {
+        const point = byPeriod.get(period)
+        if (!point) continue
+        for (const net of bucket.values()) {
+            if (net > 0) point.inflow += net
+            else point.outflow += -net
+        }
+    }
+
+    return points
+}
+
+/** 最近的凭证：按日期、凭证号倒序截取。 */
+export function latestVouchers(vouchers: VoucherListItemDto[], count: number): VoucherListItemDto[] {
+    return [...vouchers]
+        .sort((a, b) => {
+            const dateDiff = (b.date ? new Date(b.date).getTime() : 0) - (a.date ? new Date(a.date).getTime() : 0)
+            return dateDiff !== 0 ? dateDiff : (b.number ?? 0) - (a.number ?? 0)
+        })
+        .slice(0, count)
+}
+
+/** 凭证日期是否落在指定会计期间（按 DateOnly 的 UTC 口径取年月）。 */
+export function isInPeriod(date: Date | undefined, period: AccountingPeriod): boolean {
+    if (!date) return false
+    const d = new Date(date)
+    return d.getUTCFullYear() === period.year && d.getUTCMonth() + 1 === period.month
 }

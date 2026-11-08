@@ -184,12 +184,12 @@ function ReportTool({
 
 /** 顶部加载中文案。 */
 function LoadTip({ text = "加载中…" }: { text?: string }) {
-    return <div className="px-4 pb-2 text-[13px] text-slate-400">{text}</div>;
+    return <div className="px-4 pb-2 text-[13px] text-(--muted-foreground)">{text}</div>;
 }
 
 /** 错误提示行（加载中与失败均可见，不再吞错）。 */
 function ErrorTip({ text }: { text: string }) {
-    return <div className="px-4 pb-2 text-[13px] text-[#ef4444]">{text}</div>;
+    return <div className="px-4 pb-2 text-[13px] text-(--danger)">{text}</div>;
 }
 
 /** 金额格式化：千分位 + 两位小数；空值返回空串。 */
@@ -235,7 +235,7 @@ function item(
     return {
         item: (
             <span className={opts.indent ? "pl-6" : ""}>
-                {opts.check && <CheckCircleOutlined className="mr-1 text-[14px]" style={{ color: "#10b981" }} />}
+                {opts.check && <CheckCircleOutlined className="mr-1 text-[14px]" style={{ color: "var(--tone-green)" }} />}
                 {label}
             </span>
         ),
@@ -251,7 +251,7 @@ const SEQ_COL: Col = {
     key: "seq",
     title: "行次",
     width: "70px",
-    render: (row) => <span className="text-slate-400">{String(row.seq ?? "")}</span>,
+    render: (row) => <span className="text-(--muted-foreground)">{String(row.seq ?? "")}</span>,
 };
 
 const INCOME_COLS = (curTitle: string, withMark = true, withLastYear = false): Col[] => [
@@ -394,7 +394,6 @@ export function LemonIncomeQuarter() {
                 onNext={onNext}
                 right={
                     <>
-                        <CheckBox label="显示本年所有季度" />
                         <CheckBox
                             label="显示上年累计金额"
                             checked={showLastYear}
@@ -575,7 +574,7 @@ function CashFlowPage({
         const group = l.group ?? 1;
         if (group !== lastGroup) {
             supplementRows.push({
-                item: <span className="font-medium text-slate-600">{SUPPLEMENT_GROUPS[group] ?? ""}</span>,
+                item: <span className="font-medium text-(--foreground)">{SUPPLEMENT_GROUPS[group] ?? ""}</span>,
                 seq: "",
             });
             lastGroup = group;
@@ -585,7 +584,7 @@ function CashFlowPage({
             seq: String(l.line ?? ""),
             ytd: nf(l.yearToDate),
             cur: nf(l.current),
-            __style: l.isTotal ? { background: "#f8fafc", fontWeight: 600 } : undefined,
+            __style: l.isTotal ? { background: "var(--muted)", fontWeight: 600 } : undefined,
         });
     }
     const supplementCols: Col[] = [
@@ -631,7 +630,7 @@ function CashFlowPage({
             item: <span className="font-medium">合计</span>,
             open: nf(opening.data.openingTotal),
             close: nf(opening.data.closingTotal),
-            __style: { background: "#f8fafc", fontWeight: 600 },
+            __style: { background: "var(--muted)", fontWeight: 600 },
         });
     }
     const openingCols: Col[] = [
@@ -644,7 +643,8 @@ function CashFlowPage({
             <ToolRow
                 left={
                     <>
-                        {variant === "standard" && <FakeSelect text="月报" className="w-[90px]" />}
+                        {/* antd 输入框自带 width:100%，Tailwind 的 w-[90px] 压不过，宽度只能走内联样式 */}
+                        {variant === "standard" && <FakeSelect text="月报" style={{ width: 90 }} />}
                         <PeriodStepper text={variant === "quarter" ? quarterText(period) : monthText(period)} onPrev={onPrev} onNext={onNext} />
                         {variant === "month" && (
                             <Select
@@ -659,7 +659,7 @@ function CashFlowPage({
                         )}
                         {variant === "month" && (
                             <span
-                                className="flex items-center gap-1 text-[13px] text-slate-400"
+                                className="flex items-center gap-1 text-[13px] text-(--muted-foreground)"
                                 title="直接法/公式法口径与取数说明见本页表格上方文案"
                             >
                                 <InfoCircleOutlined className="text-[14px]" /> 帮助
@@ -667,7 +667,7 @@ function CashFlowPage({
                         )}
                         {variant === "standard" && (
                             <span
-                                className="flex items-center gap-1 text-[13px] text-slate-400"
+                                className="flex items-center gap-1 text-[13px] text-(--muted-foreground)"
                                 title="标准表与「现金流量表」读取同一接口，差异仅在展示行次，详见表格上方口径说明"
                             >
                                 <InfoCircleOutlined className="text-[14px]" /> 报表说明
@@ -716,7 +716,7 @@ function CashFlowPage({
             />
             {/* 口径说明：月报与标准表同源，差异仅在展示行次，如实标注来源 */}
             {variant !== "quarter" && (
-                <div className="px-4 pb-2 text-[12.5px] leading-5 text-slate-400">
+                <div className="px-4 pb-2 text-[12.5px] leading-5 text-(--muted-foreground)">
                     {variant === "standard"
                         ? "口径说明：本表与「现金流量表」读取同一后端接口 /reports/cash-flow（直接法简化工作底稿，仅统计已过账凭证），按企业会计准则主表行次 1-35 排列；表下「补充资料」走间接法（/reports/cash-flow-supplement），行次 36-60。"
                         : "口径说明：主表取 /reports/cash-flow 直接法简化工作底稿（仅统计已过账凭证），按企业会计准则主表行次 1-35 展示（与柠檬云一致）；「报表底稿」逐凭证列出分摊明细，可核对主表行次金额的来源。"}
@@ -727,16 +727,16 @@ function CashFlowPage({
             {supplementError && <ErrorTip text={supplementError} />}
             <div className="flex-1 px-4 pb-4">
                 {method === "direct" && <Table cols={cols} rows={rows} zebra={false} />}
-                {variant === "standard" && (
+                {(variant === "standard" || method === "indirect") && variant !== "quarter" && (
                     <div className={method === "direct" ? "mt-6" : ""}>
-                        <div className="mb-2 flex items-center gap-2 text-[13px] font-medium text-slate-600">
-                            补充资料
-                            <span className="text-[12.5px] font-normal text-slate-400">
-                                （间接法：将净利润调节为经营活动现金流量）
+                        <div className="mb-2 flex items-center gap-2 text-[13px] font-medium text-(--foreground)">
+                            {variant === "standard" ? "补充资料" : "公式法（间接法）"}
+                            <span className="text-[12.5px] font-normal text-(--muted-foreground)">
+                                （将净利润调节为经营活动现金流量）
                             </span>
                         </div>
                         <Table cols={supplementCols} rows={supplementRows} zebra={false} />
-                        <div className={`py-2 text-[12.5px] ${reconciled ? "text-slate-400" : "text-amber-600"}`}>
+                        <div className={`py-2 text-[12.5px] ${reconciled ? "text-(--muted-foreground)" : "text-(--warn-text)"}`}>
                             勾稽：补充资料调节净额 {nf(supplementNet)} 元，主表「经营活动产生的现金流量净额」{" "}
                             {nf(supplement?.mainTableOperatingNet ?? 0)} 元，差异 {nf(supplement?.difference ?? 0)} 元
                             {reconciled ? "（完全勾稽）。" : "（口径差异，多因收支归类不同，可结合明细核对）。"}
@@ -755,7 +755,7 @@ function CashFlowPage({
                         </Btn>
                     }
                 >
-                    <div className="mb-2 flex flex-wrap gap-x-6 gap-y-1 text-[12.5px] text-slate-500">
+                    <div className="mb-2 flex flex-wrap gap-x-6 gap-y-1 text-[12.5px] text-(--muted-foreground)">
                         <span>分摊行数 {wp?.rows?.length ?? 0}</span>
                         <span>流入合计 {nf(wp?.inflowTotal ?? 0)} 元</span>
                         <span>流出合计 {nf(wp?.outflowTotal ?? 0)} 元</span>
@@ -770,7 +770,7 @@ function CashFlowPage({
                         scrollY={380}
                         empty={<EmptyTip text={workpaper.loading ? "加载中…" : "本期没有现金收付凭证"} />}
                     />
-                    <div className="mt-3 text-[12.5px] leading-5 text-slate-400">
+                    <div className="mt-3 text-[12.5px] leading-5 text-(--muted-foreground)">
                         口径：现金科目取 1001 库存现金 / 1002 银行存款 / 1012 其他货币资金；每张凭证的现金净收付按非现金分录金额比例分摊到对手方科目，
                         再按对手方科目归类到标准主表行次（仅统计已过账凭证）；底稿小计与主表「经营活动产生的现金流量净额」同源。
                     </div>
@@ -795,7 +795,7 @@ function CashFlowPage({
                         zebra={false}
                         empty={<EmptyTip text={opening.loading ? "加载中…" : "暂无现金科目余额"} />}
                     />
-                    <div className="mt-3 text-[12.5px] leading-5 text-slate-400">
+                    <div className="mt-3 text-[12.5px] leading-5 text-(--muted-foreground)">
                         口径：期初余额为期间起始日前的累计余额（含科目启用期初），期末余额为期初加本期净增加额；
                         合计分别对应主表「期初现金及现金等价物余额」「期末现金及现金等价物余额」两行。
                     </div>
@@ -874,7 +874,7 @@ export function LemonDepartmentIncome() {
                     <>
                         <PeriodStepper text={monthText(period)} onPrev={onPrev} onNext={onNext} />
                         <span
-                            className="flex items-center gap-1 text-[13px] text-slate-400"
+                            className="flex items-center gap-1 text-[13px] text-(--muted-foreground)"
                             title="按部门辅助核算归集收入与费用，仅统计已过账凭证；完整口径见导出报表"
                         >
                             <InfoCircleOutlined className="text-[14px]" /> 帮助
@@ -899,7 +899,7 @@ export function LemonDepartmentIncome() {
                     locale={{ emptyText: "暂无数据" }}
                     columns={[
                         { title: "项目", dataIndex: "item", align: "left" },
-                        { title: "行次", dataIndex: "line", width: 60, align: "center", className: "text-slate-400" },
+                        { title: "行次", dataIndex: "line", width: 60, align: "center", className: "text-(--muted-foreground)" },
                         ...departments.map((d, i) => ({
                             title: d.name,
                             align: "center" as const,
@@ -1168,7 +1168,7 @@ export function LemonPivot() {
             title: "操作",
             width: "100px",
             render: (row: Row) => (
-                <span className="flex gap-2 text-[13px] text-[#2f6bff]">
+                <span className="flex gap-2 text-[13px] text-(--brand)">
                     <span
                         className="cursor-pointer hover:underline"
                         onClick={() => {
@@ -1251,10 +1251,10 @@ export function LemonPivot() {
                     }
                 >
                     <div className="flex items-center gap-8">
-                        <div className="flex h-[160px] w-[240px] shrink-0 items-center justify-center rounded-lg bg-[#fafbfd] text-[13px] text-slate-400">
+                        <div className="flex h-[160px] w-[240px] shrink-0 items-center justify-center rounded-lg bg-(--table-zebra-bg) text-[13px] text-(--muted-foreground)">
                             插画
                         </div>
-                        <div className="flex flex-col gap-3 leading-6 text-slate-500">
+                        <div className="flex flex-col gap-3 leading-6 text-(--muted-foreground)">
                             <span>
                                 您可以通过数据透视表将会计科目、辅助核算类别、取值金额等字段通过拖拽方式，自定义会计区间来查看不同级别的明细数据；
                             </span>
@@ -1342,7 +1342,7 @@ export function LemonPivot() {
                         dataSource={rendered?.rows ?? []}
                         scroll={{ x: "max-content", y: "calc(56vh - 40px)" }}
                         locale={{ emptyText: `${renderTarget.year} 年无数据` }}
-                        rowClassName={(_, i) => (i % 2 === 1 ? "bg-[#fafbfd]" : "")}
+                        rowClassName={(_, i) => (i % 2 === 1 ? "bg-(--table-zebra-bg)" : "")}
                         columns={[
                             { title: "科目编码", dataIndex: "code", align: "left" },
                             { title: "科目名称", dataIndex: "name", align: "left" },
@@ -1350,7 +1350,7 @@ export function LemonPivot() {
                                 title: `${m + 1}月`,
                                 align: "right" as const,
                                 render: (_: unknown, r: PivotRow) => (
-                                    <span className={(r.months?.[m] ?? 0) < 0 ? "text-[#ef4444]" : "text-slate-700"}>
+                                    <span className={(r.months?.[m] ?? 0) < 0 ? "text-(--danger)" : "text-(--foreground)"}>
                                         {nf(r.months?.[m])}
                                     </span>
                                 ),
@@ -1359,7 +1359,7 @@ export function LemonPivot() {
                                 title: "合计",
                                 align: "right",
                                 render: (_: unknown, r: PivotRow) => (
-                                    <span className={`font-medium ${(r.total ?? 0) < 0 ? "text-[#ef4444]" : "text-slate-800"}`}>
+                                    <span className={`font-medium ${(r.total ?? 0) < 0 ? "text-(--danger)" : "text-(--foreground)"}`}>
                                         {nf(r.total)}
                                     </span>
                                 ),
@@ -1497,8 +1497,12 @@ export function LemonEquityChange() {
     ];
 
     const total = byName.get(EQ_ITEMS[4]);
-    const balanced =
-        total != null && Math.abs((total.currentBegin ?? 0) + ((total.currentEnd ?? 0) - (total.currentBegin ?? 0)) - (total.currentEnd ?? 0)) < 0.01;
+    // 勾稽：四个权益桶之和应等于「所有者权益合计」行（期初、期末各校验一次）。
+    const bucketSum = (pick: "currentBegin" | "currentEnd") =>
+        EQ_ITEMS.slice(0, 4).reduce((s, name) => s + (byName.get(name)?.[pick] ?? 0), 0);
+    const beginGap = total ? bucketSum("currentBegin") - (total.currentBegin ?? 0) : 0;
+    const endGap = total ? bucketSum("currentEnd") - (total.currentEnd ?? 0) : 0;
+    const balanced = Math.abs(beginGap) < 0.01 && Math.abs(endGap) < 0.01;
 
     /** 权益桶列组：本年/上年各 11 列（实收资本 + 其他权益工具 3 列 + 其余 7 列）。 */
     const equityYearColumns = (prior: boolean) => [
@@ -1530,17 +1534,21 @@ export function LemonEquityChange() {
             <ToolRow
                 left={
                     <>
-                        <span className="text-[13px] text-slate-500">会计年度：</span>
+                        <span className="text-[13px] text-(--muted-foreground)">会计年度：</span>
                         <PeriodStepper text={`${period.year}年`} onPrev={onPrev} onNext={onNext} />
                         <span
-                            className="flex items-center gap-1 text-[13px] text-slate-400"
+                            className="flex items-center gap-1 text-[13px] text-(--muted-foreground)"
                             title="按年度列示实收资本、资本公积、盈余公积与未分配利润的期初期末及变动，仅统计已过账凭证"
                         >
                             <InfoCircleOutlined className="text-[14px]" /> 报表说明
                         </span>
                         {!balanced && !loading && !error && (
-                            <span className="text-[13px] text-[#ef4444]">
-                                报表不平，（未分配利润）本年年初余额+本年增加变动金额不等于本年年末...
+                            <span
+                                className="text-[13px] text-(--danger)"
+                                title={`各权益科目之和与合计行的差额：期初 ${nf(beginGap)}，期末 ${nf(endGap)}`}
+                            >
+                                报表不平：各权益科目之和与「所有者权益合计」不一致（期初差 {nf(beginGap)}，期末差{" "}
+                                {nf(endGap)}），请核查期初余额与凭证。
                             </span>
                         )}
                     </>

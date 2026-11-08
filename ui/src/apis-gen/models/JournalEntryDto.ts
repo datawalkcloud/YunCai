@@ -97,6 +97,48 @@ export interface JournalEntryDto {
      * @memberof JournalEntryDto
      */
     voucherNo?: string | null;
+    /**
+     * 
+     * @type {Date}
+     * @memberof JournalEntryDto
+     */
+    voucherDate?: Date | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryDto
+     */
+    voucherWord?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof JournalEntryDto
+     */
+    voucherNumber?: number | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryDto
+     */
+    settlementMethod?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryDto
+     */
+    billNo?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryDto
+     */
+    remark?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof JournalEntryDto
+     */
+    source?: string | null;
 }
 
 /**
@@ -129,6 +171,13 @@ export function JournalEntryDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'balance': json['balance'] == null ? undefined : json['balance'],
         'voucherId': json['voucherId'] == null ? undefined : json['voucherId'],
         'voucherNo': json['voucherNo'] == null ? undefined : json['voucherNo'],
+        'voucherDate': json['voucherDate'] == null ? undefined : (new Date(json['voucherDate'])),
+        'voucherWord': json['voucherWord'] == null ? undefined : json['voucherWord'],
+        'voucherNumber': json['voucherNumber'] == null ? undefined : json['voucherNumber'],
+        'settlementMethod': json['settlementMethod'] == null ? undefined : json['settlementMethod'],
+        'billNo': json['billNo'] == null ? undefined : json['billNo'],
+        'remark': json['remark'] == null ? undefined : json['remark'],
+        'source': json['source'] == null ? undefined : json['source'],
     };
 }
 
@@ -156,6 +205,13 @@ export function JournalEntryDtoToJSONTyped(value?: JournalEntryDto | null, ignor
         'balance': value['balance'],
         'voucherId': value['voucherId'],
         'voucherNo': value['voucherNo'],
+        'voucherDate': value['voucherDate'] == null ? value['voucherDate'] : value['voucherDate'].toISOString().substring(0,10),
+        'voucherWord': value['voucherWord'],
+        'voucherNumber': value['voucherNumber'],
+        'settlementMethod': value['settlementMethod'],
+        'billNo': value['billNo'],
+        'remark': value['remark'],
+        'source': value['source'],
     };
 }
 

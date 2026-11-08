@@ -6,7 +6,7 @@
  * 新增 / 删除只改本页内存，刷新后以税局核定为准。
  */
 import { useCallback, useEffect, useState } from "react";
-import { App, Button, ConfigProvider, DatePicker, Form, Input, Modal, Select, Table, Tooltip } from "antd";
+import { Card, App, Button, DatePicker, Form, Input, Modal, Select, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { BookOutlined, ExclamationCircleFilled, LoginOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
@@ -14,7 +14,6 @@ import dayjs, { type Dayjs } from "dayjs";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxKinds, type TaxKindRow as ApiTaxKindRow } from "@/lib/tax-portal";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
 
@@ -109,12 +108,12 @@ export function TaxKindsPage() {
         try {
             const result = await fetchTaxKinds(accountSetId, token);
             if (result.needLogin) {
-                // 税局登录态缺失或过期：直接弹出登录表单，用户补一次短信验证码后继续取数。
+                // 税局登录态缺失或过期：只在用户主动点「更新」时弹登录框，进页面只标注未登录，登录要用户明确点击。
                 setRows([]);
                 setLevyType("");
                 setSelectedKeys([]);
                 setNeedLogin(true);
-                setLoginOpen(true);
+                if (!silent) setLoginOpen(true);
                 return;
             }
 
@@ -210,7 +209,7 @@ export function TaxKindsPage() {
                 <span className="inline-flex items-center gap-1">
                     申报选项
                     <Tooltip title="申报选项用于区分自行申报、代扣代缴等申报方式，随税费种认定信息由税局下发。">
-                        <QuestionCircleOutlined className="text-[12px] text-slate-400" />
+                        <QuestionCircleOutlined className="text-[12px] text-(--muted-foreground)" />
                     </Tooltip>
                 </span>
             ),
@@ -224,20 +223,19 @@ export function TaxKindsPage() {
     ];
 
     return (
-        <ConfigProvider theme={TAX_THEME}>
-            <div className="flex h-full flex-col px-6 pt-4">
+        <>
+            <Card>
                 <div className="flex flex-wrap items-start justify-between gap-4" style={{ marginBottom: 16 }}>
-                    <div className="flex max-w-[1180px] items-start gap-2 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-4 py-3 text-[13px] leading-6 text-[#8a6a35]">
-                        <ExclamationCircleFilled className="mt-1 shrink-0 text-[14px] text-[#e6a23c]" />
+                    <div className="flex max-w-[1180px] items-start gap-2 rounded-md border border-(--warn-border) bg-(--warn-bg) px-4 py-3 text-[13px] leading-6 text-(--warn-text)">
+                        <ExclamationCircleFilled className="mt-1 shrink-0 text-[14px] text-(--warn-icon)" />
                         <div>
                             温馨提示：1、若税费种认定信息或财务会计制度备案信息有
-                            <span className="mx-1 font-medium text-[#e6a23c]">变更</span>，
+                            <span className="mx-1 font-medium text-(--warn-icon)">变更</span>，
                             可以点击
                             <Button
                                 type="link"
                                 loading={refreshing}
                                 onClick={() => void refreshTaxKinds()}
-                                className="!text-[#2f6bff]"
                             >
                                 【更新税费种认定】
                             </Button>
@@ -248,7 +246,6 @@ export function TaxKindsPage() {
                                 type="text"
                                 aria-label="税费种认定说明"
                                 onClick={() => message.info("税费种认定以电子税务局核定为准；变更后请更新认定信息，取数不全时可手动新增。")}
-                                className="!text-[#2f6bff] hover:!bg-[#fff1d6]"
                                 icon={<BookOutlined className="text-[14px]" />}
                             />
                         </Tooltip>
@@ -257,9 +254,9 @@ export function TaxKindsPage() {
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                         {levyType && (
                             <Tooltip title="征收类型由电子税务局按户认定（服务型 / 货物型等），决定税局给企业推送哪套申报表与征收品目；随税费种认定信息一并取回，税局没回时不显示。">
-                                <span className="inline-flex h-8 cursor-help items-center gap-1 rounded-md border border-[#dfe5f0] bg-white px-3 text-[13px] text-slate-500">
+                                <span className="inline-flex h-8 cursor-help items-center gap-1 rounded-md border border-(--border) bg-(--card) px-3 text-[13px] text-(--muted-foreground)">
                                     征收类型：
-                                    <span className="font-medium text-slate-700">{levyType}</span>
+                                    <span className="font-medium text-(--foreground)">{levyType}</span>
                                 </span>
                             </Tooltip>
                         )}
@@ -289,14 +286,14 @@ export function TaxKindsPage() {
                             selectedRowKeys: selectedKeys,
                             onChange: (keys) => setSelectedKeys(keys.map(String)),
                         }}
-                        locale={{ emptyText: <span className="block py-10 text-[13px] text-slate-400">{needLogin ? "尚未登录电子税务局：请点击「登录电子税务局」补一次短信验证码，随后会自动更新。" : "暂无税费种认定信息"}</span> }}
+                        locale={{ emptyText: <span className="block py-10 text-[13px] text-(--muted-foreground)">{needLogin ? "尚未登录电子税务局：请点击「登录电子税务局」补一次短信验证码，随后会自动更新。" : "暂无税费种认定信息"}</span> }}
                     />
                 </div>
 
-                <p className="pb-5 pt-3 text-[12.5px] leading-5 text-slate-400">
+                <p className="pb-5 pt-3 text-[12.5px] leading-5 text-(--muted-foreground)">
                     税费种认定信息来自电子税务局，需先完成税局登录；新增与删除仅在本页生效，刷新后以税局核定为准。
                 </p>
-            </div>
+            </Card>
 
             <Modal
                 open={detail !== null}
@@ -315,12 +312,12 @@ export function TaxKindsPage() {
                             pagination={false}
                             scroll={{ x: 720 }}
                         />
-                        <p className="mt-3 text-[12.5px] leading-5 text-slate-400">
+                        <p className="mt-3 text-[12.5px] leading-5 text-(--muted-foreground)">
                             征收品目随税费种认定信息一并从税局获取。
                         </p>
                     </>
                 ) : (
-                    <div className="py-8 text-center text-[13px] text-slate-400">该征收项目没有可查看的征收品目。</div>
+                    <div className="py-8 text-center text-[13px] text-(--muted-foreground)">该征收项目没有可查看的征收品目。</div>
                 )}
             </Modal>
 
@@ -334,7 +331,7 @@ export function TaxKindsPage() {
                 onCancel={() => setAddOpen(false)}
                 destroyOnHidden
             >
-                <div className="mb-3 rounded-lg bg-[#f6f9ff] px-3 py-2 text-[12.5px] leading-5 text-slate-500">
+                <div className="mb-3 rounded-lg bg-(--brand-soft) px-3 py-2 text-[12.5px] leading-5 text-(--muted-foreground)">
                     手动新增用于补全税局取数不全的税费种，仅保存在本页；实际申报仍以电子税务局核定为准。
                 </div>
                 <Form<AddFormValues>
@@ -376,14 +373,14 @@ export function TaxKindsPage() {
                             label="认定有效期起"
                             rules={[{ required: true, message: "请选择认定有效期起" }]}
                         >
-                            <DatePicker className="!w-full" format="YYYY-MM-DD" />
+                            <DatePicker className="w-full" format="YYYY-MM-DD" />
                         </Form.Item>
                         <Form.Item
                             name="validTo"
                             label="认定有效期止"
                             rules={[{ required: true, message: "请选择认定有效期止" }]}
                         >
-                            <DatePicker className="!w-full" format="YYYY-MM-DD" />
+                            <DatePicker className="w-full" format="YYYY-MM-DD" />
                         </Form.Item>
                     </div>
                 </Form>
@@ -398,6 +395,6 @@ export function TaxKindsPage() {
                     onSuccess={handleLoginSuccess}
                 />
             )}
-        </ConfigProvider>
+        </>
     );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 
-import { ROUTE_TITLES } from "./menu-model";
+import { findCategoryOf, ROUTE_TITLES } from "./menu-model";
 import {
     KEEP_ALIVE_STATE,
     RouteTabsContext,
@@ -11,7 +11,7 @@ import {
 
 /** 页签持久化：只存页签键，刷新浏览器后恢复同一批页签。 */
 const STORAGE_KEY = "kuaiji.route-tabs.v1";
-/** 页签上限：超出后丢最早的记录，首页永远常驻。 */
+/** 页签上限：超出后丢最早的记录（首页不在页签列表里）。 */
 const MAX_TABS = 12;
 
 function loadTabs(): string[] {
@@ -31,6 +31,7 @@ function loadTabs(): string[] {
  */
 export function RouteTabsProvider({ children }: { children: ReactNode }) {
     const { accountSetId = "" } = useParams();
+    const base = `/${accountSetId}`;
     const location = useLocation();
     const navigate = useNavigate();
     const [tabs, setTabs] = useState<string[]>(loadTabs);
@@ -53,16 +54,16 @@ export function RouteTabsProvider({ children }: { children: ReactNode }) {
             setTabs((prev) => prev.filter((item) => item !== key));
             // 关掉当前页签后落到相邻页签：仍属页签切换，保留对方现场。
             if (key === activeKey) {
-                navigate(neighbor ? `/${accountSetId}/${neighbor}` : `/${accountSetId}`, { state: KEEP_ALIVE_STATE });
+                // 报税分类没有首页，没有相邻页签时退回该分类的第一个页面。
+                const category = findCategoryOf(key);
+                const fallback = category.home === false ? `${base}/${category.to}` : base;
+                navigate(neighbor ? `${base}/${neighbor}` : fallback, { state: KEEP_ALIVE_STATE });
             }
         },
-        [tabs, activeKey, accountSetId, navigate],
+        [tabs, activeKey, base, navigate],
     );
 
-    const cachedPaths = useMemo(() => {
-        const base = `/${accountSetId}`;
-        return new Set([base, ...tabs.map((key) => `${base}/${key}`)]);
-    }, [accountSetId, tabs]);
+    const cachedPaths = useMemo(() => new Set([base, ...tabs.map((key) => `${base}/${key}`)]), [base, tabs]);
 
     const value = useMemo<RouteTabsValue>(
         () => ({ tabs, activeKey, cachedPaths, closeTab }),

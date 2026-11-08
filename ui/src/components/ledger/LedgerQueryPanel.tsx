@@ -1,12 +1,10 @@
-import type { ReactNode } from "react"
-import { ReloadOutlined, SearchOutlined } from "@ant-design/icons"
-import { Button, Checkbox, Input, Select, Spin } from "antd"
+import { useRef, useState, type ReactNode } from "react"
 import dayjs from "dayjs"
+import { FilterOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons"
+import { Button, Checkbox, DatePicker, Input, Popover, Radio, Select, Spin } from "antd"
 
 import type { AccountDto, AssistItemDto } from "@/apis-gen"
 import { cn } from "@/lib/utils"
-import { SOFT_PANEL } from "@/components/page/styles"
-import { DateRangeField, parseDate } from "@/components/fields/date-fields"
 import {
     ASSIST_TYPES,
     SORT_BY_OPTIONS,
@@ -35,6 +33,8 @@ export interface LedgerQueryPanelProps {
      */
     onChange: (patch: Partial<LedgerConditions>, immediate?: boolean) => void
     onQuery: () => void
+    /** 丢弃未提交的编辑，回到已提交条件。 */
+    onCancel?: () => void
     onReset: () => void
     /** 本账页需要显示的条件项。 */
     fields?: readonly LedgerField[]
@@ -48,15 +48,17 @@ export interface LedgerQueryPanelProps {
     accounts?: AccountDto[]
     loading?: boolean
     disabled?: boolean
-    /** 账页自补的额外条件（如导出、打印等按钮）。 */
+    /** 账页自补的额外操作（导出、打印等按钮）。 */
     extra?: ReactNode
+    /** 收起条上、期间之后的说明（如「类别：客户」）。 */
+    caption?: ReactNode
     className?: string
 }
 
 const DEFAULT_FIELDS: readonly LedgerField[] = ["date"]
 
 /**
- * 账簿查询面板：一组受控条件 + 查询 / 重置。
+ * 账簿查询面板：收起态只有一条期间 + 筛选图标，完整表单一律浮层展开、不占首屏。
  * 每个账页用 fields / switches 声明自己需要哪些条件，未声明的不渲染。
  * 「不限」一律用 value=undefined 表示（配合 allowClear 回到未选）。
  */
@@ -64,6 +66,7 @@ export function LedgerQueryPanel({
     value,
     onChange,
     onQuery,
+    onCancel,
     onReset,
     fields = DEFAULT_FIELDS,
     switches,
@@ -73,70 +76,89 @@ export function LedgerQueryPanel({
     loading,
     disabled,
     extra,
+    caption,
     className,
 }: LedgerQueryPanelProps) {
+    const [open, setOpen] = useState(false)
+    /** 确定 / 重置会提交条件，关闭浮层时不能再按「取消」回滚。 */
+    const submitted = useRef(false)
     const show = (field: LedgerField) => fields.includes(field)
-    /** 这些条件缺失会让后端直接报错，选定后立即提交重查，不必再点查询。 */
+    /** 这些条件缺失会让后端直接报错，选定后立即提交重查，不必再点确定。 */
     const apply = (patch: Partial<LedgerConditions>) => onChange(patch, true)
     const assistOptions = (
         enabledAssistTypes ? ASSIST_TYPES.filter((t) => enabledAssistTypes.includes(t.value)) : ASSIST_TYPES
     ).map((t) => ({ value: t.value, label: t.label }))
     const levelCount = accounts?.length ? Math.max(...accounts.map((a) => a.level ?? 1), 1) : 4
 
-    const control = (label: string, node: ReactNode) => (
-        <div key={label} className="flex items-center gap-1.5">
-            <span className="text-[12.5px] text-slate-500">{label}：</span>
-            {node}
+    /** 收起态只留一条期间，其余条件都收在浮层里。 */
+    const periodText = value.startDate
+        ? `${dayjs(value.startDate).format("YYYY年M月")}—${value.endDate ? dayjs(value.endDate).format("YYYY年M月") : "至今"}`
+        : "全部期间"
+
+    const row = (label: string, control: ReactNode) => (
+        <div className="flex items-center gap-2">
+            <span className="w-24 shrink-0 text-right text-[13px] text-(--foreground)">{label}</span>
+            <div className="min-w-0 flex-1">{control}</div>
         </div>
     )
 
-    return (
+    const confirm = () => {
+        submitted.current = true
+        onQuery()
+        setOpen(false)
+    }
+
+    const close = () => {
+        if (!submitted.current) onCancel?.()
+        submitted.current = false
+        setOpen(false)
+    }
+
+    const form = (
         <form
-            className={cn(SOFT_PANEL, "flex flex-wrap items-center gap-x-3 gap-y-2.5 px-4 py-3", className)}
+            className="flex w-[360px] flex-col gap-3"
             onSubmit={(e) => {
                 e.preventDefault()
-                onQuery()
+                confirm()
             }}
         >
             {show("date") &&
-                control(
-                    "日期范围",
-                    <DateRangeField
-                        className="w-56"
-                        value={
-                            value.startDate
-                                ? { from: parseDate(value.startDate), to: parseDate(value.endDate) }
-                                : undefined
-                        }
-                        onChange={(range) =>
-                            onChange(
-                                range?.from
-                                    ? {
-                                          startDate: dayjs(range.from).format("YYYY-MM-DD"),
-                                          endDate: range.to ? dayjs(range.to).format("YYYY-MM-DD") : undefined,
-                                      }
-                                    : { startDate: undefined, endDate: undefined },
-                            )
-                        }
+                row(
+                    "会计期间",
+                    <DatePicker.RangePicker
+                        className="w-full"
+                        picker="month"
+                        format="YYYY年M月"
+                        allowEmpty={[true, true]}
                         disabled={disabled}
-                        allowClear
+                        value={[
+                            value.startDate ? dayjs(value.startDate) : null,
+                            value.endDate ? dayjs(value.endDate) : null,
+                        ]}
+                        onChange={(dates) => {
+                            const [from, to] = dates ?? []
+                            onChange({
+                                startDate: from ? from.startOf("month").format("YYYY-MM-DD") : undefined,
+                                endDate: to ? to.endOf("month").format("YYYY-MM-DD") : undefined,
+                            })
+                        }}
                     />,
                 )}
 
             {show("accountRange") &&
-                control(
+                row(
                     "科目区间",
                     <div className="flex items-center gap-1">
                         <Input
-                            className="w-28"
+                            className="flex-1"
                             placeholder="起始编码"
                             value={value.accountFrom ?? ""}
                             disabled={disabled}
                             onChange={(e) => onChange({ accountFrom: e.target.value || undefined })}
                         />
-                        <span className="text-slate-400">~</span>
+                        <span className="text-(--muted-foreground)">~</span>
                         <Input
-                            className="w-28"
+                            className="flex-1"
                             placeholder="终止编码"
                             value={value.accountTo ?? ""}
                             disabled={disabled}
@@ -146,10 +168,10 @@ export function LedgerQueryPanel({
                 )}
 
             {show("maxLevel") &&
-                control(
-                    "级次",
+                row(
+                    "科目级次",
                     <Select
-                        className="w-24"
+                        className="w-full"
                         placeholder="全部"
                         allowClear
                         disabled={disabled}
@@ -163,10 +185,10 @@ export function LedgerQueryPanel({
                 )}
 
             {show("summary") &&
-                control(
-                    "摘要关键字",
+                row(
+                    "摘要",
                     <Input
-                        className="w-40"
+                        className="w-full"
                         placeholder="按摘要筛选"
                         value={value.summaryKeyword ?? ""}
                         disabled={disabled}
@@ -175,22 +197,21 @@ export function LedgerQueryPanel({
                 )}
 
             {show("sortBy") &&
-                control(
-                    "排序",
-                    <Select
-                        className="w-32"
+                row(
+                    "排序方式",
+                    <Radio.Group
                         disabled={disabled}
                         value={value.sortBy ?? SORT_BY_OPTIONS[0].value}
-                        onChange={(next) => onChange({ sortBy: next })}
+                        onChange={(e) => onChange({ sortBy: e.target.value })}
                         options={SORT_BY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                     />,
                 )}
 
             {show("assistType") &&
-                control(
+                row(
                     "辅助核算类别",
                     <Select
-                        className="w-28"
+                        className="w-full"
                         placeholder="请选择"
                         disabled={disabled}
                         value={value.assistType}
@@ -200,10 +221,10 @@ export function LedgerQueryPanel({
                 )}
 
             {show("secondaryAssistType") &&
-                control(
+                row(
                     "交叉类别",
                     <Select
-                        className="w-28"
+                        className="w-full"
                         placeholder="请选择"
                         disabled={disabled}
                         value={value.secondaryAssistType}
@@ -213,10 +234,10 @@ export function LedgerQueryPanel({
                 )}
 
             {show("assistItem") &&
-                control(
+                row(
                     "核算项目",
                     <Select
-                        className="w-44"
+                        className="w-full"
                         placeholder="全部档案"
                         allowClear
                         showSearch
@@ -232,10 +253,10 @@ export function LedgerQueryPanel({
                 )}
 
             {show("account") &&
-                control(
+                row(
                     "科目",
                     <Select
-                        className="w-52"
+                        className="w-full"
                         placeholder="请选择科目"
                         showSearch
                         optionFilterProp="label"
@@ -249,38 +270,76 @@ export function LedgerQueryPanel({
                     />,
                 )}
 
-            {switches?.length
-                ? control(
-                      "选项",
-                      <div className="flex flex-wrap items-center gap-3">
-                          {switches.map((key) => (
-                              <Checkbox
-                                  key={key}
-                                  className="text-slate-500"
-                                  checked={Boolean(value[key])}
-                                  disabled={disabled}
-                                  onChange={(e) =>
-                                      onChange({ [key]: e.target.checked } as Partial<LedgerConditions>)
-                                  }
-                              >
-                                  {SWITCH_LABELS[key]}
-                              </Checkbox>
-                          ))}
-                      </div>,
-                  )
-                : null}
+            {switches?.length ? (
+                <div className="flex flex-col gap-1.5 border-t border-(--border) pt-2">
+                    {switches.map((key) => (
+                        <Checkbox
+                            key={key}
+                            className="text-[13px] text-(--foreground)"
+                            checked={Boolean(value[key])}
+                            disabled={disabled}
+                            onChange={(e) =>
+                                onChange({ [key]: e.target.checked } as Partial<LedgerConditions>)
+                            }
+                        >
+                            {SWITCH_LABELS[key]}
+                        </Checkbox>
+                    ))}
+                </div>
+            ) : null}
 
-            {extra}
-
-            <div className="ml-auto flex items-center gap-2">
-                {loading && <Spin />}
+            <div className="flex items-center gap-2 border-t border-(--border) pt-3">
                 <Button type="primary" htmlType="submit" disabled={disabled} icon={<SearchOutlined />}>
-                    查询
+                    确定
                 </Button>
-                <Button type="default" disabled={disabled} onClick={onReset} icon={<ReloadOutlined />}>
+                <Button type="default" disabled={disabled} onClick={close}>
+                    取消
+                </Button>
+                <Button
+                    type="default"
+                    disabled={disabled}
+                    icon={<ReloadOutlined />}
+                    onClick={() => {
+                        submitted.current = true
+                        onReset()
+                        setOpen(false)
+                    }}
+                >
                     重置
                 </Button>
             </div>
         </form>
+    )
+
+    return (
+        <div className={cn("py-1", className)}>
+            <div className="flex flex-wrap items-center gap-2">
+                <Popover
+                    open={open}
+                    onOpenChange={(next) => (next ? (submitted.current = false, setOpen(true)) : close())}
+                    trigger="click"
+                    placement="bottomLeft"
+                    arrow={false}
+                    content={form}
+                >
+                    <button
+                        type="button"
+                        disabled={disabled}
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-(--border) bg-(--card) px-2.5 py-1 text-[12.5px] text-(--foreground) transition-colors hover:border-(--brand) hover:text-(--brand) disabled:cursor-not-allowed disabled:opacity-60"
+                        title="点击编辑查询条件"
+                    >
+                        {periodText}
+                        <FilterOutlined className="text-[12px] opacity-60" />
+                    </button>
+                </Popover>
+
+                {caption ? <span className="truncate text-[12.5px] text-(--muted-foreground)">{caption}</span> : null}
+
+                <div className="ml-auto flex items-center gap-2">
+                    {loading && <Spin size="small" />}
+                    {extra}
+                </div>
+            </div>
+        </div>
     )
 }

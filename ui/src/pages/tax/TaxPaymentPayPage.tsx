@@ -7,7 +7,7 @@
  * 在线扣款仍需三方协议，批量缴款只做校验提示，不产生真实扣款。
  */
 import { useCallback, useEffect, useMemo, useState, type Key } from "react";
-import { App, Button, ConfigProvider, DatePicker, Select, Table } from "antd";
+import { Card, App, Button, DatePicker, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
     CalendarOutlined,
@@ -19,10 +19,9 @@ import {
 import dayjs, { type Dayjs } from "dayjs";
 import { useNavigate, useParams } from "react-router";
 
-import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
+import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxPayables, type TaxPayableRow } from "@/lib/tax-portal";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
 
@@ -37,7 +36,8 @@ const STATUS_OPTIONS = [
 const fmtMoney = (value: number) =>
     value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
+export function TaxPaymentPayPage() {
+    const period = useTaxPeriod();
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { message } = App.useApp();
@@ -177,9 +177,9 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
     ];
 
     return (
-        <div className="flex h-full flex-col px-6 pt-4">
+        <Card>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-3" style={{ marginBottom: 16 }}>
-                <span className="flex items-center gap-2 text-[13px] text-slate-600">
+                <span className="flex items-center gap-2 text-[13px] text-(--foreground)">
                     税款所属期：
                     <DatePicker
                         picker="month"
@@ -196,7 +196,7 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
                         }}
                     />
                 </span>
-                <span className="flex items-center gap-2 text-[13px] text-slate-600">
+                <span className="flex items-center gap-2 text-[13px] text-(--foreground)">
                     缴税状态：
                     <Select
                         value={status}
@@ -217,8 +217,8 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
                 <Button type="primary" loading={loading} onClick={search}>
                     搜索
                 </Button>
-                <span className="flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1 text-[12.5px] text-slate-500">
-                    <ExclamationCircleFilled style={{ color: "#faad14" }} />
+                <span className="flex items-center gap-1.5 rounded-md border border-(--border) px-3 py-1 text-[12.5px] text-(--muted-foreground)">
+                    <ExclamationCircleFilled className="text-(--warn-icon)" />
                     仅支持当期税种进行缴税，往期或未开通三方协议的请前往税局缴款
                 </span>
                 <div className="ml-auto flex items-center gap-2">
@@ -230,33 +230,31 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
             </div>
 
             {hint && rows.length > 0 && (
-                <div className="mb-2 flex items-center gap-1.5 text-[12.5px] text-slate-500">
-                    <InfoCircleOutlined className="text-[#2f6bff]" />
+                <div className="mb-2 flex items-center gap-1.5 text-[12.5px] text-(--muted-foreground)">
+                    <InfoCircleOutlined className="text-(--brand)" />
                     {hint}
                 </div>
             )}
 
             <div className="min-h-0 flex-1">
-                <ConfigProvider theme={TAX_THEME}>
-                    <Table<PayRow>
-                        rowSelection={{
-                            selectedRowKeys: selectedKeys,
-                            onChange: (keys) => setSelectedKeys(keys),
-                        }}
-                        columns={columns}
-                        dataSource={filtered}
-                        rowKey="key"
-                        tableLayout="fixed"
-                        pagination={false}
-                        scroll={{ x: 1330 }}
-                        loading={loading}
-                        locale={{
-                            emptyText: (
-                                <span className="block py-16 text-[13px] text-slate-400">{hint ?? "暂无数据"}</span>
-                            ),
-                        }}
-                    />
-                </ConfigProvider>
+                <Table<PayRow>
+                    rowSelection={{
+                        selectedRowKeys: selectedKeys,
+                        onChange: (keys) => setSelectedKeys(keys),
+                    }}
+                    columns={columns}
+                    dataSource={filtered}
+                    rowKey="key"
+                    tableLayout="fixed"
+                    pagination={false}
+                    scroll={{ x: 1330 }}
+                    loading={loading}
+                    locale={{
+                        emptyText: (
+                            <span className="block py-16 text-[13px] text-(--muted-foreground)">{hint ?? "暂无数据"}</span>
+                        ),
+                    }}
+                />
             </div>
 
             <TaxLoginPrompt
@@ -269,6 +267,6 @@ export function TaxPaymentPayPage({ period }: { period: AccountingPeriod }) {
                     void load(monthKey);
                 }}
             />
-        </div>
+        </Card>
     );
 }

@@ -15,6 +15,9 @@ namespace KuaiJi.Modules.AccountSets.Domain
         /// <summary>新增凭证字。</summary>
         Task AddAsync(VoucherWord word, CancellationToken cancellationToken = default);
 
+        /// <summary>把账套内除指定凭证字外的默认标记全部取消（随下一次 SaveChanges 落库）。</summary>
+        Task ClearDefaultAsync(Guid accountSetId, Guid? excludeId = null, CancellationToken cancellationToken = default);
+
         /// <summary>删除凭证字。</summary>
         void Remove(VoucherWord word);
 

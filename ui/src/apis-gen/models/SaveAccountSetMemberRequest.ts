@@ -39,10 +39,10 @@ export interface SaveAccountSetMemberRequest {
     email?: string | null;
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof SaveAccountSetMemberRequest
      */
-    role?: number;
+    roleId?: string;
 }
 
 /**
@@ -65,7 +65,7 @@ export function SaveAccountSetMemberRequestFromJSONTyped(json: any, ignoreDiscri
         'name': json['name'] == null ? undefined : json['name'],
         'phone': json['phone'] == null ? undefined : json['phone'],
         'email': json['email'] == null ? undefined : json['email'],
-        'role': json['role'] == null ? undefined : json['role'],
+        'roleId': json['roleId'] == null ? undefined : json['roleId'],
     };
 }
 
@@ -83,7 +83,7 @@ export function SaveAccountSetMemberRequestToJSONTyped(value?: SaveAccountSetMem
         'name': value['name'],
         'phone': value['phone'],
         'email': value['email'],
-        'role': value['role'],
+        'roleId': value['roleId'],
     };
 }
 

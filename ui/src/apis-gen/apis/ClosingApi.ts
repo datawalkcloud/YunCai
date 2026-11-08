@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CancelCarryResultDto,
+  CarryBatchResultDto,
   CarryForwardPreviewDto,
   CarryForwardRequest,
   CarryForwardResultDto,
@@ -29,10 +30,13 @@ import type {
   GeneratePreCloseResultDto,
   PreCloseListDto,
   SaveClosingTemplateRequest,
+  TransferRetainedResultDto,
 } from '../models/index';
 import {
     CancelCarryResultDtoFromJSON,
     CancelCarryResultDtoToJSON,
+    CarryBatchResultDtoFromJSON,
+    CarryBatchResultDtoToJSON,
     CarryForwardPreviewDtoFromJSON,
     CarryForwardPreviewDtoToJSON,
     CarryForwardRequestFromJSON,
@@ -59,11 +63,17 @@ import {
     PreCloseListDtoToJSON,
     SaveClosingTemplateRequestFromJSON,
     SaveClosingTemplateRequestToJSON,
+    TransferRetainedResultDtoFromJSON,
+    TransferRetainedResultDtoToJSON,
 } from '../models/index';
 
 export interface AccountsetsAccountSetIdClosingCancelCarryPostRequest {
     accountSetId: string;
     closingPeriodRequest: ClosingPeriodRequest;
+}
+
+export interface AccountsetsAccountSetIdClosingCarryBatchPostRequest {
+    accountSetId: string;
 }
 
 export interface AccountsetsAccountSetIdClosingCarryForwardPostRequest {
@@ -110,6 +120,11 @@ export interface AccountsetsAccountSetIdClosingReopenPostRequest {
     accountSetId: string;
     year?: number;
     month?: number;
+}
+
+export interface AccountsetsAccountSetIdClosingRetainedEarningsPostRequest {
+    accountSetId: string;
+    closingPeriodRequest: ClosingPeriodRequest;
 }
 
 export interface AccountsetsAccountSetIdClosingTemplatesGetRequest {
@@ -167,6 +182,27 @@ export interface ClosingApiInterface {
     /**
      */
     accountsetsAccountSetIdClosingCancelCarryPost(requestParameters: AccountsetsAccountSetIdClosingCancelCarryPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CancelCarryResultDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdClosingCarryBatchPost without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingCarryBatchPostRequestOpts(requestParameters: AccountsetsAccountSetIdClosingCarryBatchPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingCarryBatchPostRaw(requestParameters: AccountsetsAccountSetIdClosingCarryBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CarryBatchResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdClosingCarryBatchPost(requestParameters: AccountsetsAccountSetIdClosingCarryBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CarryBatchResultDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdClosingCarryForwardPost without sending the request
@@ -378,6 +414,29 @@ export interface ClosingApiInterface {
     accountsetsAccountSetIdClosingReopenPost(requestParameters: AccountsetsAccountSetIdClosingReopenPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClosingStatusDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdClosingRetainedEarningsPost without sending the request
+     * @param {string} accountSetId 
+     * @param {ClosingPeriodRequest} closingPeriodRequest 
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingRetainedEarningsPostRequestOpts(requestParameters: AccountsetsAccountSetIdClosingRetainedEarningsPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {ClosingPeriodRequest} closingPeriodRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ClosingApiInterface
+     */
+    accountsetsAccountSetIdClosingRetainedEarningsPostRaw(requestParameters: AccountsetsAccountSetIdClosingRetainedEarningsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TransferRetainedResultDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdClosingRetainedEarningsPost(requestParameters: AccountsetsAccountSetIdClosingRetainedEarningsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TransferRetainedResultDto>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdClosingTemplatesGet without sending the request
      * @param {string} accountSetId 
      * @throws {RequiredError}
@@ -551,6 +610,49 @@ export class ClosingApi extends runtime.BaseAPI implements ClosingApiInterface {
      */
     async accountsetsAccountSetIdClosingCancelCarryPost(requestParameters: AccountsetsAccountSetIdClosingCancelCarryPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CancelCarryResultDto> {
         const response = await this.accountsetsAccountSetIdClosingCancelCarryPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdClosingCarryBatchPost without sending the request
+     */
+    async accountsetsAccountSetIdClosingCarryBatchPostRequestOpts(requestParameters: AccountsetsAccountSetIdClosingCarryBatchPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdClosingCarryBatchPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/closing/carry-batch`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingCarryBatchPostRaw(requestParameters: AccountsetsAccountSetIdClosingCarryBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CarryBatchResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdClosingCarryBatchPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CarryBatchResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingCarryBatchPost(requestParameters: AccountsetsAccountSetIdClosingCarryBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CarryBatchResultDto> {
+        const response = await this.accountsetsAccountSetIdClosingCarryBatchPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1002,6 +1104,59 @@ export class ClosingApi extends runtime.BaseAPI implements ClosingApiInterface {
      */
     async accountsetsAccountSetIdClosingReopenPost(requestParameters: AccountsetsAccountSetIdClosingReopenPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClosingStatusDto> {
         const response = await this.accountsetsAccountSetIdClosingReopenPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdClosingRetainedEarningsPost without sending the request
+     */
+    async accountsetsAccountSetIdClosingRetainedEarningsPostRequestOpts(requestParameters: AccountsetsAccountSetIdClosingRetainedEarningsPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdClosingRetainedEarningsPost().'
+            );
+        }
+
+        if (requestParameters['closingPeriodRequest'] == null) {
+            throw new runtime.RequiredError(
+                'closingPeriodRequest',
+                'Required parameter "closingPeriodRequest" was null or undefined when calling accountsetsAccountSetIdClosingRetainedEarningsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/closing/retained-earnings`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ClosingPeriodRequestToJSON(requestParameters['closingPeriodRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingRetainedEarningsPostRaw(requestParameters: AccountsetsAccountSetIdClosingRetainedEarningsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TransferRetainedResultDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdClosingRetainedEarningsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TransferRetainedResultDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdClosingRetainedEarningsPost(requestParameters: AccountsetsAccountSetIdClosingRetainedEarningsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TransferRetainedResultDto> {
+        const response = await this.accountsetsAccountSetIdClosingRetainedEarningsPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

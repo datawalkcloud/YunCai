@@ -75,6 +75,9 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
 
         public DbSet<AccountSetMember> AccountSetMembers { get; set; } = null!;
 
+        /// <summary>账套角色（预置 + 自建），权限以「模块.操作」键文本保存。</summary>
+        public DbSet<AccountSetRole> AccountSetRoles { get; set; } = null!;
+
         public DbSet<Invoice> Invoices { get; set; } = null!;
 
         public DbSet<InvoiceLine> InvoiceLines { get; set; } = null!;
@@ -90,6 +93,9 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
         public DbSet<SalaryVoucherSetting> SalaryVoucherSettings { get; set; } = null!;
 
         public DbSet<ArchiveItem> ArchiveItems { get; set; } = null!;
+
+        /// <summary>会计电子档案分类树节点。</summary>
+        public DbSet<ArchiveCategory> ArchiveCategories { get; set; } = null!;
 
         public DbSet<OperationLog> OperationLogs { get; set; } = null!;
 
@@ -488,6 +494,10 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Expense).HasColumnName("expense").HasColumnType("numeric(18,2)").IsRequired();
                 entity.Property(e => e.Balance).HasColumnName("balance").HasColumnType("numeric(18,2)").IsRequired();
                 entity.Property(e => e.VoucherId).HasColumnName("voucher_id");
+                entity.Property(e => e.SettlementMethod).HasColumnName("settlement_method").HasMaxLength(50);
+                entity.Property(e => e.BillNo).HasColumnName("bill_no").HasMaxLength(50);
+                entity.Property(e => e.Remark).HasColumnName("remark").HasMaxLength(200);
+                entity.Property(e => e.Source).HasColumnName("source").HasMaxLength(50);
 
                 entity.HasIndex(e => e.JournalId);
                 entity.HasIndex(e => e.VoucherId);
@@ -838,13 +848,41 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(20);
                 entity.Property(e => e.Phone).HasColumnName("phone").IsRequired().HasMaxLength(20);
                 entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(100);
-                entity.Property(e => e.Role).HasColumnName("role").HasConversion<int>().IsRequired();
+                entity.Property(e => e.RoleId).HasColumnName("role_id").IsRequired();
                 entity.Property(e => e.Enabled).HasColumnName("enabled").IsRequired();
                 entity.Property(e => e.IsOwner).HasColumnName("is_owner").IsRequired();
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
 
                 entity.HasIndex(e => new { e.AccountSetId, e.Phone });
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne<AccountSetRole>()
+                      .WithMany()
+                      .HasForeignKey(e => e.RoleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AccountSetRole>(entity =>
+            {
+                entity.ToTable("account_set_roles");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(AccountSetRole.MaxNameLength);
+                entity.Property(e => e.IsSystem).HasColumnName("is_system").IsRequired();
+                entity.Property(e => e.IsAdmin).HasColumnName("is_admin").IsRequired();
+                entity.Property(e => e.Permissions).HasColumnName("permissions").IsRequired().HasMaxLength(1000);
+                entity.Property(e => e.SortOrder).HasColumnName("sort_order").IsRequired();
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Name }).IsUnique();
 
                 entity.HasOne<AccountSet>()
                       .WithMany()
@@ -1050,7 +1088,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
                 entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
                 entity.Property(e => e.FileName).HasColumnName("file_name").IsRequired().HasMaxLength(ArchiveItem.MaxFileNameLength);
-                entity.Property(e => e.Category).HasColumnName("category").HasMaxLength(50);
+                entity.Property(e => e.Category).HasColumnName("category").HasMaxLength(ArchiveItem.MaxCategoryPathLength);
                 entity.Property(e => e.DocType).HasColumnName("doc_type").HasMaxLength(50);
                 entity.Property(e => e.Content).HasColumnName("content");
                 entity.Property(e => e.FileSize).HasColumnName("file_size").IsRequired();
@@ -1073,6 +1111,32 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.HasOne<AccountSet>()
                       .WithMany()
                       .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ArchiveCategory>(entity =>
+            {
+                entity.ToTable("archive_categories");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.ParentId).HasColumnName("parent_id");
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(ArchiveCategory.MaxNameLength);
+                entity.Property(e => e.SortOrder).HasColumnName("sort_order").IsRequired();
+                entity.Property(e => e.IsSystem).HasColumnName("is_system").IsRequired();
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+
+                entity.HasIndex(e => new { e.AccountSetId, e.ParentId });
+
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<ArchiveCategory>()
+                      .WithMany()
+                      .HasForeignKey(e => e.ParentId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
 

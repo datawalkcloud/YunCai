@@ -7,7 +7,7 @@
  * 排查取数问题先看这一列。
  */
 import { useCallback, useEffect, useState } from "react";
-import { Button, ConfigProvider, DatePicker, Table } from "antd";
+import { Card, Button, DatePicker, Table } from "antd";
 import {
     CheckCircleFilled,
     CloseCircleFilled,
@@ -22,7 +22,6 @@ import { useParams } from "react-router";
 import { useAuth } from "@/auth/AuthContext";
 import { EMPTY_CELL } from "@/lib/tax-format";
 import { fetchTaxTasks, type TaxTaskRow } from "@/lib/tax-portal";
-import { TAX_THEME } from "@/lib/tax-theme";
 
 /** 默认看最近一个月：台账只增不删，区间拉太长会把当期问题淹在历史记录里。 */
 const DEFAULT_DAYS = 30;
@@ -42,7 +41,7 @@ function formatTime(value: string): string {
     return time.isValid() ? time.format(TIME_FORMAT) : EMPTY_CELL;
 }
 
-const TEXT_DASH = <span className="text-slate-400">{EMPTY_CELL}</span>;
+const TEXT_DASH = <span className="text-(--muted-foreground)">{EMPTY_CELL}</span>;
 
 const columns: TableColumnsType<TaxTaskRow> = [
     { title: "税款所属期", key: "period", width: 120, render: (_: unknown, row) => formatPeriod(row.period) },
@@ -53,15 +52,15 @@ const columns: TableColumnsType<TaxTaskRow> = [
         width: 120,
         render: (_: unknown, row) =>
             row.status === "running" ? (
-                <span className="inline-flex items-center gap-1.5 text-[#2563eb]">
+                <span className="inline-flex items-center gap-1.5 text-(--brand)">
                     <LoadingOutlined spin />进行中
                 </span>
             ) : row.status === "success" ? (
-                <span className="inline-flex items-center gap-1.5 text-[#16a34a]">
+                <span className="inline-flex items-center gap-1.5 text-(--success)">
                     <CheckCircleFilled />成功
                 </span>
             ) : (
-                <span className="inline-flex items-center gap-1.5 text-[#dc2626]">
+                <span className="inline-flex items-center gap-1.5 text-(--danger)">
                     <CloseCircleFilled />失败
                 </span>
             ),
@@ -69,7 +68,7 @@ const columns: TableColumnsType<TaxTaskRow> = [
     {
         title: "解决建议",
         key: "suggestion",
-        render: (_: unknown, row) => (row.suggestion ? <span className="text-[#b45309]">{row.suggestion}</span> : TEXT_DASH),
+        render: (_: unknown, row) => (row.suggestion ? <span className="text-(--warn-text)">{row.suggestion}</span> : TEXT_DASH),
     },
     { title: "任务提交时间", key: "submittedAt", width: 180, render: (_: unknown, row) => formatTime(row.submittedAt) },
     {
@@ -122,9 +121,9 @@ export function TaxTaskCenterPage() {
     }, [hasRunning, reload]);
 
     return (
-        <div className="flex h-full flex-col">
-            <div className="flex shrink-0 flex-wrap items-center gap-3 px-6 pt-3 text-[13px]">
-                <span className="text-slate-500">提交时间：</span>
+        <Card>
+            <div className="flex shrink-0 flex-wrap items-center gap-3 text-[13px]">
+                <span className="text-(--muted-foreground)">提交时间：</span>
                 <DatePicker.RangePicker
                     allowClear={false}
                     className="w-[252px]"
@@ -135,43 +134,41 @@ export function TaxTaskCenterPage() {
                 <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void reload()}>
                     刷新
                 </Button>
-                <div className="ml-auto flex items-center gap-2 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-1.5 text-[12.5px] text-[#8a6a35]">
+                <div className="ml-auto flex items-center gap-2 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-1.5 text-[12.5px] text-(--warn-text)">
                     <ExclamationCircleFilled />
                     <span>如对任务结果有疑问，请先按「解决建议」处理，仍解决不了请联系技术支持。</span>
                 </div>
             </div>
 
-            <div className="min-h-0 flex-1 px-6 pb-3 pt-3">
+            <div className="min-h-0 flex-1 pb-3 pt-3">
                 {error && (
-                    <div className="mb-3 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-1.5 text-[12.5px] text-[#8a6a35]">
+                    <div className="mb-3 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-1.5 text-[12.5px] text-(--warn-text)">
                         {error}
                     </div>
                 )}
-                <ConfigProvider theme={TAX_THEME}>
-                    <Table<TaxTaskRow>
-                        columns={columns}
-                        dataSource={rows}
-                        rowKey="key"
-                        loading={loading}
-                        scroll={{ x: 1120 }}
-                        pagination={{
-                            pageSize: 20,
-                            showSizeChanger: true,
-                            showTotal: (total) => `共 ${total} 条记录`,
-                        }}
-                        locale={{
-                            emptyText: (
-                                <span className="block py-16 text-[13px] text-slate-400">
-                                    {loading ? "正在读取任务列表…" : "该区间还没有税局任务记录"}
-                                </span>
-                            ),
-                        }}
-                    />
-                </ConfigProvider>
-                <div className="mt-2 text-[12px] text-slate-400">
+                <Table<TaxTaskRow>
+                    columns={columns}
+                    dataSource={rows}
+                    rowKey="key"
+                    loading={loading}
+                    scroll={{ x: 1120 }}
+                    pagination={{
+                        pageSize: 20,
+                        showSizeChanger: true,
+                        showTotal: (total) => `共 ${total} 条记录`,
+                    }}
+                    locale={{
+                        emptyText: (
+                            <span className="block py-16 text-[13px] text-(--muted-foreground)">
+                                {loading ? "正在读取任务列表…" : "该区间还没有税局任务记录"}
+                            </span>
+                        ),
+                    }}
+                />
+                <div className="mt-2 text-[12px] text-(--muted-foreground)">
                     任务由服务器在税局侧执行，只登记实际办过的操作，不会预生成。
                 </div>
             </div>
-        </div>
+        </Card>
     );
 }

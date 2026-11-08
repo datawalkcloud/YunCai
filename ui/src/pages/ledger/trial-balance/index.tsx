@@ -1,25 +1,32 @@
-import { PrinterOutlined } from "@ant-design/icons"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router"
-import { Button, Alert, Checkbox, Spin, Table } from "antd";
+import { PrinterOutlined } from "@ant-design/icons"
+import { Button, Alert, Table } from "antd";
 import type { TableColumnsType, TableColumnType } from "antd"
-import dayjs from "dayjs"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type TrialBalanceRowDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
-import { cn } from "@/lib/utils"
-import { DateRangeField, parseDate } from "@/components/fields/date-fields"
-import { AMOUNT_COL, SOFT_PANEL } from "@/components/page/styles"
+import { fmtAmount } from "@/lib/format"
+import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerTable } from "@/components/ledger/LedgerTable"
-import { LedgerTabs } from "@/components/ledger/LedgerTabs"
 import { SectionCard } from "@/components/page/section"
+import { TrialBalanceFilter } from "@/components/ledger/TrialBalanceFilter"
+import { useAccounts } from "@/components/ledger/useLedgerOptions"
+import type { LedgerConditions } from "@/components/ledger/types"
 
-/** 选定的日期范围。 */
-interface DateRange {
-    startDate: string
-    endDate: string
+/** 科目余额表进入页面时的默认查询条件（不做任何裁剪）。 */
+const DEFAULT_CONDITIONS: LedgerConditions = {
+    startDate: undefined,
+    endDate: undefined,
+    accountFrom: undefined,
+    accountTo: undefined,
+    minLevel: 1,
+    maxLevel: undefined,
+    showAssist: false,
+    hideZeroBalance: true,
+    hideNoActivity: false,
 }
 
 const AMOUNT_KEYS = [
@@ -36,19 +43,11 @@ type AmountKey = (typeof AMOUNT_KEYS)[number]
 /** 树形行：后端给出 level / parentCode，这里按 parentCode 把平表挂成 children。 */
 type TreeRow = TrialBalanceRowDto & { children?: TreeRow[] }
 
-function fmt(value: number, force = false): string {
-    if (value === 0 && !force) return ""
-    return value.toLocaleString("zh-CN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    })
-}
-
 /** 金额列（借贷方向）右对齐并使用等宽数字，表头与单元格一致。 */
 const amount = (dataIndex: AmountKey, title: string): TableColumnType<TreeRow> => ({
     title,
     dataIndex,
-    render: (v) => fmt(v ?? 0),
+    render: (v) => fmtAmount(v ?? 0),
     ...AMOUNT_COL,
 })
 
@@ -79,7 +78,10 @@ export default function TrialBalancePage() {
     const { accountSetId: routeId } = useParams<{ accountSetId: string }>()
     const navigate = useNavigate()
 
-    const [dateRange, setDateRange] = useState<DateRange | null>(null)
+    const allAccounts = useAccounts(accountSetId, token)
+
+    const [committed, setCommitted] = useState<LedgerConditions>(DEFAULT_CONDITIONS)
+    const [draft, setDraft] = useState<LedgerConditions>(DEFAULT_CONDITIONS)
     const [rows, setRows] = useState<TrialBalanceRowDto[]>([])
     const [periodText, setPeriodText] = useState("")
     const [loading, setLoading] = useState(false)
@@ -87,33 +89,49 @@ export default function TrialBalancePage() {
     const [expandAll, setExpandAll] = useState(true)
     const [expandedKeys, setExpandedKeys] = useState<string[]>([])
 
-    const load = useCallback(async () => {
+    // 提交条件变化时重查；draft 只用于面板内编辑，不影响取数。
+    useEffect(() => {
         if (!accountSetId) return
+        let cancelled = false
         setLoading(true)
         setError(null)
-        try {
-            const res = await new ReportsApi(apiConfig(token)).accountsetsAccountSetIdReportsTrialBalanceGet({
+        new ReportsApi(apiConfig(token))
+            .accountsetsAccountSetIdReportsTrialBalanceGet({
                 accountSetId,
-                startDate: dateRange?.startDate ? new Date(dateRange.startDate) : undefined,
-                endDate: dateRange?.endDate ? new Date(dateRange.endDate) : undefined,
+                startDate: committed.startDate ? new Date(committed.startDate) : undefined,
+                endDate: committed.endDate ? new Date(committed.endDate) : undefined,
+                accountFrom: committed.accountFrom || undefined,
+                accountTo: committed.accountTo || undefined,
+                minLevel: committed.minLevel,
+                maxLevel: committed.maxLevel,
+                hideZeroBalance: committed.hideZeroBalance,
+                hideNoActivity: committed.hideNoActivity,
             })
-            setRows(res.rows ?? [])
-            setPeriodText(res.periodText ?? "")
-            // 首次未指定日期范围时，采用后端解析出的日期范围。
-            if (dateRange === null && res.startDate && res.endDate) {
-                setDateRange({ startDate: res.startDate, endDate: res.endDate })
-            }
-        } catch (err) {
-            setError(await apiErrorMessage(err, "加载科目余额表失败，请重试。"))
-            setRows([])
-        } finally {
-            setLoading(false)
+            .then((res) => {
+                if (cancelled) return
+                setRows(res.rows ?? [])
+                const text = res.periodText ?? ""
+                setPeriodText(text)
+                // 未指定期间时把后端解析出的区间回填到面板，浮层里不会一片空白。
+                const range = text.match(/(\d{4}-\d{2}-\d{2})\s*至\s*(\d{4}-\d{2}-\d{2})/)
+                if (range) {
+                    setDraft((d) =>
+                        d.startDate || d.endDate ? d : { ...d, startDate: range[1], endDate: range[2] },
+                    )
+                }
+            })
+            .catch(async (err) => {
+                if (cancelled) return
+                setError(await apiErrorMessage(err, "加载科目余额表失败，请重试。"))
+                setRows([])
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false)
+            })
+        return () => {
+            cancelled = true
         }
-    }, [accountSetId, token, dateRange])
-
-    useEffect(() => {
-        void load()
-    }, [load])
+    }, [accountSetId, token, committed])
 
     // 平表按 parentCode 挂成树；后端已按编码排序，子行天然有序。
     const treeRows = useMemo(() => {
@@ -190,64 +208,38 @@ export default function TrialBalancePage() {
     function goSubsidiary(code: string | undefined) {
         if (!code || !routeId) return
         const params = new URLSearchParams({ account: code })
-        if (dateRange?.startDate) params.set("startDate", dateRange.startDate)
-        if (dateRange?.endDate) params.set("endDate", dateRange.endDate)
+        if (committed.startDate) params.set("startDate", committed.startDate)
+        if (committed.endDate) params.set("endDate", committed.endDate)
         navigate(`/${routeId}/ledger/subsidiary?${params.toString()}`)
     }
 
     return (
         <div className="flex flex-col gap-4">
-            <LedgerTabs current="trial-balance" />
-
             <SectionCard bodyClassName="flex flex-col gap-4">
-                <div className={cn(SOFT_PANEL, "flex flex-wrap items-center justify-between gap-2 px-4 py-3")}>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[12.5px] text-slate-500">日期范围：</span>
-                        <DateRangeField
-                            className="w-56"
-                            value={
-                                dateRange
-                                    ? {
-                                          from: parseDate(dateRange.startDate),
-                                          to: parseDate(dateRange.endDate),
-                                      }
-                                    : undefined
-                            }
-                            onChange={(range) => {
-                                if (range?.from && range.to) {
-                                    setDateRange({
-                                        startDate: dayjs(range.from).format("YYYY-MM-DD"),
-                                        endDate: dayjs(range.to).format("YYYY-MM-DD"),
-                                    })
-                                } else if (!range?.from) {
-                                    // 清除后回到后端解析出的默认区间。
-                                    setDateRange(null)
-                                }
-                            }}
-                            disabled={!accountSetId}
-                            allowClear
-                        />
-                        <Checkbox
-                            className="ml-2 text-[12.5px]"
-                            checked={expandAll}
-                            disabled={allParentKeys.length === 0}
-                            onChange={(e) => {
-                                const on = e.target.checked
-                                setExpandAll(on)
-                                setExpandedKeys(on ? allParentKeys : [])
-                            }}
-                        >
-                            展开所有级次
-                        </Checkbox>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {loading && <Spin />}
-                        <span className="text-[12.5px] text-slate-400">单位：元</span>
+                <TrialBalanceFilter
+                    value={draft}
+                    onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+                    onQuery={() => setCommitted(draft)}
+                    onCancel={() => setDraft(committed)}
+                    onReset={() => {
+                        setDraft(DEFAULT_CONDITIONS)
+                        setCommitted(DEFAULT_CONDITIONS)
+                    }}
+                    accounts={allAccounts}
+                    periodText={periodText}
+                    expandAll={expandAll}
+                    onExpandAllChange={(checked) => {
+                        setExpandAll(checked)
+                        setExpandedKeys(checked ? allParentKeys : [])
+                    }}
+                    loading={loading}
+                    disabled={!accountSetId}
+                    extra={
                         <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
                             打印
                         </Button>
-                    </div>
-                </div>
+                    }
+                />
 
                 {error && <Alert type="error" showIcon title={error} />}
 
@@ -277,7 +269,7 @@ export default function TrialBalancePage() {
                             </Table.Summary.Cell>
                             {AMOUNT_KEYS.map((key, i) => (
                                 <Table.Summary.Cell key={key} index={2 + i} {...AMOUNT_COL}>
-                                    {fmt(totals[key], true)}
+                                    {fmtAmount(totals[key], true)}
                                 </Table.Summary.Cell>
                             ))}
                         </Table.Summary.Row>
@@ -285,11 +277,15 @@ export default function TrialBalancePage() {
                 />
 
                 {rows.length > 0 && (
-                    <span className={cn("text-[12.5px] text-slate-400", !balanced && "text-[#ef4444]")}>
-                        {balanced
-                            ? `试算平衡：借方合计 = 贷方合计（${periodText}）`
-                            : "试算不平衡，请核对数据"}
-                    </span>
+                    <Alert
+                        type={balanced ? "success" : "error"}
+                        showIcon
+                        title={
+                            balanced
+                                ? `试算平衡：借方合计 = 贷方合计（${periodText}）`
+                                : "试算不平衡，请核对数据"
+                        }
+                    />
                 )}
             </SectionCard>
         </div>

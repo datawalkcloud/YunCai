@@ -41,6 +41,18 @@ namespace KuaiJi.Modules.AccountSets.Infrastructure
             await _context.VoucherWords.AddAsync(word, cancellationToken);
         }
 
+        public async Task ClearDefaultAsync(Guid accountSetId, Guid? excludeId = null, CancellationToken cancellationToken = default)
+        {
+            // 必须加载为跟踪实体：默认标记的取消依赖下一次 SaveChanges 落库。
+            var defaults = await _context.VoucherWords
+                .Where(w => w.AccountSetId == accountSetId && w.IsDefault && (excludeId == null || w.Id != excludeId))
+                .ToListAsync(cancellationToken);
+            foreach (var item in defaults)
+            {
+                item.MarkNotDefault();
+            }
+        }
+
         public void Remove(VoucherWord word)
         {
             _context.VoucherWords.Remove(word);

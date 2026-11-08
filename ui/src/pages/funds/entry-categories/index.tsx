@@ -319,32 +319,32 @@ export default function EntryCategoriesPage() {
             title: "编码",
             dataIndex: "code",
             width: 120,
-            render: (_, r) => <span className="text-slate-500">{r.code}</span>,
+            render: (_, r) => <span className="text-(--muted-foreground)">{r.code}</span>,
         },
         {
             title: "名称",
             dataIndex: "name",
             render: (_, r) => (
                 <span className="flex items-center gap-2">
-                    <span className="font-medium text-slate-700">{r.name}</span>
-                    {r.parentName && <span className="text-[11.5px] text-slate-400">（上级：{r.parentName}）</span>}
+                    <span className="font-medium text-(--foreground)">{r.name}</span>
+                    {r.parentName && <span className="text-[11.5px] text-(--muted-foreground)">（上级：{r.parentName}）</span>}
                 </span>
             ),
         },
         {
             title: (
                 <Tooltip title="导入流水时，摘要包含任一关键字即可自动归入该类别；不同关键字用逗号隔开。">
-                    <span className="border-b border-dashed border-slate-300">智能匹配关键字</span>
+                    <span className="border-b border-dashed border-(--border)">智能匹配关键字</span>
                 </Tooltip>
             ),
             dataIndex: "smartKeywords",
-            render: (_, r) => r.smartKeywords || <span className="text-slate-300">—</span>,
+            render: (_, r) => r.smartKeywords || <span className="text-(--muted-foreground)">—</span>,
         },
         {
             title: "关联现金流",
             dataIndex: "cashFlowName",
             width: 160,
-            render: (_, r) => r.cashFlowName || <span className="text-slate-300">—</span>,
+            render: (_, r) => r.cashFlowName || <span className="text-(--muted-foreground)">—</span>,
         },
         {
             title: "启用状态",
@@ -364,7 +364,7 @@ export default function EntryCategoriesPage() {
                     <Typography.Link className="text-[13px]" onClick={() => openEdit(r)}>
                         编辑
                     </Typography.Link>
-                    <Typography.Link className="text-[13px] text-[#ef4444]" onClick={() => removeCategory(r)}>
+                    <Typography.Link className="text-[13px] text-(--danger)" onClick={() => removeCategory(r)}>
                         删除
                     </Typography.Link>
                 </Space>
@@ -386,9 +386,9 @@ export default function EntryCategoriesPage() {
 
     return (
         <div className="flex flex-col gap-3">
-            {error && <div className="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#ef4444]">{error}</div>}
+            {error && <div className="rounded border border-(--danger-border) bg-(--table-neg-bg) px-3 py-2 text-[13px] text-(--danger)">{error}</div>}
 
-            <Card styles={{ root: { border: "1px solid #f1f5f9", borderRadius: 8 } }}>
+            <Card>
                 <Tabs
                     className="lemon-sub-tabs"
                     activeKey={String(type)}
@@ -406,12 +406,12 @@ export default function EntryCategoriesPage() {
                 {/* 工具行 */}
                 <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-3 px-4 py-2.5" style={{ marginBottom: 16 }}>
                     <Space size={8} wrap>
-                        <span className="text-[13px] text-slate-600">输入编码或名称：</span>
+                        <span className="text-[13px] text-(--foreground)">输入编码或名称：</span>
                         <Input
                                                        allowClear
                             className="w-[220px]"
                             value={keyword}
-                            prefix={<SearchOutlined className="text-slate-400" />}
+                            prefix={<SearchOutlined className="text-(--muted-foreground)" />}
                             onChange={(e) => setKeyword(e.target.value)}
                             onPressEnter={() => {
                                 setApplied(keyword)
@@ -454,9 +454,9 @@ export default function EntryCategoriesPage() {
                         rowKey={(r) => r.id ?? ""}
                         pagination={false}
                                                loading={loading}
-                        locale={{ emptyText: <div className="py-10 text-[13px] text-slate-400">暂无数据</div> }}
+                        locale={{ emptyText: <div className="py-10 text-[13px] text-(--muted-foreground)">暂无数据</div> }}
                     />
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-slate-500" style={{ marginTop: 16 }}>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-(--muted-foreground)" style={{ marginTop: 16 }}>
                         <span>
                             显示 {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, filtered.length)}，共{" "}
                             {filtered.length} 条
@@ -530,7 +530,7 @@ export default function EntryCategoriesPage() {
                             onChange={(e) => setForm({ ...form, smartKeywords: e.target.value })}
                         />
                     </FieldRow>
-                    <ul className="pl-5 text-[12px] leading-6 text-[#b45309]">
+                    <ul className="pl-5 text-[12px] leading-6 text-(--warn-text)">
                         <li>当日记账的摘要中有对应关键字时，可以自动匹配出收支类别</li>
                         <li>不同关键字之间用逗号隔开</li>
                     </ul>
@@ -554,7 +554,7 @@ export default function EntryCategoriesPage() {
                     </Space>
                 }
             >
-                <div className="flex flex-col gap-3 py-2 text-[13px] leading-6 text-slate-600">
+                <div className="flex flex-col gap-3 py-2 text-[13px] leading-6 text-(--foreground)">
                     <p>1.请选择下面任意一种方式导入收支类别</p>
                     <p className="pl-4">
                         (1)在收支类别列表导出所需数据，确认后直接导入
@@ -592,11 +592,11 @@ export default function EntryCategoriesPage() {
                         </Button>
                     }
                 >
-                    <p className="text-[13px] text-slate-600">
+                    <p className="text-[13px] text-(--foreground)">
                         共 {importResult.totalRows} 行，成功导入 {importResult.imported} 条，跳过 {importResult.skipped} 条。
                     </p>
                     {(importResult.warnings ?? []).length > 0 && (
-                        <ul className="mt-2 max-h-[240px] overflow-y-auto pl-5 text-[12.5px] leading-6 text-[#b45309]">
+                        <ul className="mt-2 max-h-[240px] overflow-y-auto pl-5 text-[12.5px] leading-6 text-(--warn-text)">
                             {(importResult.warnings ?? []).map((w, i) => (
                                 <li key={i}>{w}</li>
                             ))}
@@ -612,8 +612,8 @@ export default function EntryCategoriesPage() {
 function FieldRow({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
     return (
         <div className="flex items-start gap-3">
-            <span className="w-[92px] shrink-0 pt-1.5 text-right text-[13px] text-slate-600">
-                {required && <span className="mr-1 text-[#ef4444]">*</span>}
+            <span className="w-[92px] shrink-0 pt-1.5 text-right text-[13px] text-(--foreground)">
+                {required && <span className="mr-1 text-(--danger)">*</span>}
                 {label}
             </span>
             <div className="min-w-0 flex-1">{children}</div>

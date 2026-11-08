@@ -15,6 +15,15 @@ namespace KuaiJi.Modules.Archives.Domain
         /// <summary>统计已用空间（字节）。</summary>
         Task<long> GetTotalSizeAsync(Guid accountSetId, CancellationToken cancellationToken = default);
 
+        /// <summary>是否存在挂在指定分类路径（含其子树）下的档案；leafName 用于兼容早期只存单层名称的历史数据。</summary>
+        Task<bool> AnyInCategoryAsync(Guid accountSetId, string path, string leafName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 把档案分类路径中的 oldPath 前缀替换为 newPath（分类重命名时同步）。
+        /// 只更新受跟踪实体、不提交，由调用方与分类改动一起 SaveChanges。
+        /// </summary>
+        Task<int> ReplaceCategoryPathAsync(Guid accountSetId, string oldPath, string newPath, CancellationToken cancellationToken = default);
+
         /// <summary>新增档案。</summary>
         Task AddAsync(ArchiveItem item, CancellationToken cancellationToken = default);
 

@@ -9,12 +9,23 @@
       // 在 React 挂载前应用主题，避免首屏闪烁（FOUC）。
       (function () {
         try {
+          var root = document.documentElement;
           var stored = localStorage.getItem("kuaiji.theme");
           var isDark =
             stored === "dark" ||
             ((!stored || stored === "system") &&
               window.matchMedia("(prefers-color-scheme: dark)").matches);
-          document.documentElement.classList.toggle("dark", isDark);
+          root.classList.toggle("dark", isDark);
+
+          // 圆角与主题色同样先落到 CSS 变量，取值限定在档位表 / 十六进制颜色内。
+          var radius = localStorage.getItem("kuaiji.radius");
+          if (radius === "4" || radius === "8" || radius === "12") {
+            root.style.setProperty("--seed-radius", radius + "px");
+          }
+          var primary = localStorage.getItem("kuaiji.primary");
+          if (primary && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(primary)) {
+            root.style.setProperty("--seed-primary", primary);
+          }
         } catch (e) {}
       })();
     </script>

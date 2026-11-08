@@ -1,6 +1,6 @@
 import { PrinterOutlined } from "@ant-design/icons"
 import { useMemo, useState } from "react"
-import { Button } from "antd"
+import { Button, Table } from "antd"
 import type { TableColumnsType } from "antd"
 import { useSearchParams } from "react-router"
 
@@ -11,45 +11,38 @@ import { apiConfig } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
 import { kindRowClass } from "@/components/ledger/format"
 import { AMOUNT_COL } from "@/components/page/styles"
-import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
+import { LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
-import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
+import { SubsidiaryLedgerFilter } from "@/components/ledger/SubsidiaryLedgerFilter"
 import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
+import { QuickAccountSwitch } from "@/components/ledger/QuickAccountSwitch"
+import { useAccounts } from "@/components/ledger/useLedgerOptions"
 import { ROW_KIND, SORT_BY, asDate, type LedgerConditions } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 import { useVoucherLookup } from "@/components/ledger/useVoucherLookup"
 import { VoucherDetailSheet } from "@/components/ledger/VoucherDetailSheet"
 
-/** 明细账的一行了加上稳定行键。 */
-type SubRow = SubsidiaryLedgerRowDto & { rowKey: string }
+/** 明细账的一行了加上稳定行键与所属科目。 */
+type SubRow = SubsidiaryLedgerRowDto & { rowKey: string; accountLabel: string }
 
-const FIELDS: readonly LedgerField[] = [
-    "date",
-    "accountRange",
-    "maxLevel",
-    "summary",
-    "sortBy",
-]
-
-const SWITCHES = [
-    "showCounterAccount",
-    "showOnlyLeaf",
-    "hideZeroBalance",
-    "hideNoActivity",
-    "includeIdleAccounts",
-] as const
-
-function buildColumns(showCounterAccount: boolean, accountLabel = ""): TableColumnsType<SubRow> {
+function buildColumns(showCounterAccount: boolean): TableColumnsType<SubRow> {
+    const nowrap = { style: { whiteSpace: "nowrap" as const } }
     return [
-        { title: "日期", dataIndex: "date" },
-        { title: "凭证字号", dataIndex: "voucherNo" },
+        { title: "日期", dataIndex: "date", width: 108, onCell: () => nowrap },
+        {
+            title: "凭证字号",
+            dataIndex: "voucherNo",
+            width: 96,
+            onCell: () => nowrap,
+            render: (value) => (value ? <span className="text-(--brand)">{value}</span> : null),
+        },
         // 与柠檬云一致：科目列按分录行重复显示所属科目编码与名称
-        { title: "科目", width: "180px", render: () => accountLabel },
+        { title: "科目", dataIndex: "accountLabel", width: 180 },
         { title: "摘要", dataIndex: "summary" },
         ...(showCounterAccount ? [{ title: "对方科目", dataIndex: "counterAccount" }] : []),
         { title: "借方", dataIndex: "debit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
         { title: "贷方", dataIndex: "credit", render: (v) => fmtAmount(v), ...AMOUNT_COL },
-        { title: "方向", dataIndex: "direction" },
+        { title: "方向", dataIndex: "direction", width: 64, align: "center" as const, onCell: () => nowrap },
         { title: "余额", dataIndex: "balance", render: (v) => fmtAmount(v), ...AMOUNT_COL },
     ]
 }
@@ -71,35 +64,85 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
                 accountFrom: conditions.accountFrom,
                 accountTo: conditions.accountTo,
                 maxLevel: conditions.maxLevel,
+                minLevel: conditions.minLevel,
                 summaryKeyword: conditions.summaryKeyword,
                 sortBy: conditions.sortBy ?? SORT_BY.voucherNumber,
+                showAssist: conditions.showAssist,
                 showCounterAccount: conditions.showCounterAccount ?? true,
                 showOnlyLeaf: conditions.showOnlyLeaf ?? true,
                 hideZeroBalance: conditions.hideZeroBalance,
                 hideNoActivity: conditions.hideNoActivity,
+                hideTotalsNoActivity: conditions.hideTotalsNoActivity,
                 includeIdleAccounts: conditions.includeIdleAccounts,
             }),
     })
 
     const lookup = useVoucherLookup(accountSetId, token)
     const [voucherId, setVoucherId] = useState<string | null>(null)
+    const allAccounts = useAccounts(accountSetId, token)
 
     const showCounterAccount = query.conditions.showCounterAccount ?? false
     const columns = useMemo(() => buildColumns(showCounterAccount), [showCounterAccount])
-    const accounts = query.data?.accounts ?? []
+    const accounts = useMemo(() => query.data?.accounts ?? [], [query.data])
+    // 快速切换只在「起止科目同为一条编码」时高亮，手工输入区间则不选中任何节点。
+    const selectedAccount =
+        query.conditions.accountFrom && query.conditions.accountFrom === query.conditions.accountTo
+            ? query.conditions.accountFrom
+            : undefined
+
+    // 信息行「科目：1001 库存现金」，与柠檬云表头上方一致。
+    const caption = useMemo(() => {
+        const { accountFrom: from, accountTo: to } = query.committed
+        if (from && to && from === to) {
+            const name = (allAccounts.find((account) => account.code === from) ?? accounts.find((account) => account.code === from))?.name
+            return `${from} ${name ?? ""}`.trim()
+        }
+        if (from || to) return `${from ?? ""} 至 ${to ?? ""}`.trim()
+        return "所有"
+    }, [query.committed, allAccounts, accounts])
+
+    // 柠檬云明细账是一张连续表：科目按行重复，横向滚动与分页都在同一张表上。
+    const rows = useMemo<SubRow[]>(
+        () =>
+            accounts.flatMap((account) =>
+                (account.rows ?? []).map((row, index) => ({
+                    ...row,
+                    accountLabel: `${account.code} ${account.name}`,
+                    rowKey: `${account.code}-${index}`,
+                })),
+            ),
+        [accounts],
+    )
+
+    // 合计只累加发生额行：期初/本月合计/本年累计行本身是汇总，重复计入会把金额翻倍。
+    const totals = useMemo(
+        () =>
+            rows.reduce(
+                (acc, row) => {
+                    if (row.kind === ROW_KIND.entry) {
+                        acc.debit += row.debit ?? 0
+                        acc.credit += row.credit ?? 0
+                    }
+                    return acc
+                },
+                { debit: 0, credit: 0 },
+            ),
+        [rows],
+    )
 
     return (
         <LedgerPageShell
-            page="subsidiary"
             panel={
-                <LedgerQueryPanel
+                <SubsidiaryLedgerFilter
                     value={query.conditions}
                     onChange={query.patch}
                     onQuery={query.query}
+                    onCancel={query.cancel}
                     onReset={query.reset}
-                    fields={FIELDS}
-                    switches={SWITCHES}
+                    accounts={allAccounts}
                     loading={query.loading}
+                    disabled={!accountSetId}
+                    caption={`科目：${caption}`}
                     extra={
                         <>
                             <LedgerExportButton
@@ -113,56 +156,52 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
                             </Button>
                         </>
                     }
-                    disabled={!accountSetId}
                 />
             }
             meta={query.meta}
             error={query.error}
-        >
-            {accounts.length === 0 && !query.loading ? (
-                // 空数据也渲染表头与页脚（与柠檬云一致），仅表体提示
-                <LedgerTable<SubRow>
-                    columns={columns}
-                    data={[]}
-                    emptyText={accountSetId ? "该期间暂无明细账数据，请确认凭证已过账。" : "请先选择账套。"}
-                    rowKey={(row) => row.rowKey}
+            side={
+                <QuickAccountSwitch
+                    accounts={allAccounts}
+                    value={selectedAccount}
+                    disabled={!accountSetId}
+                    onChange={(code) => query.patch({ accountFrom: code, accountTo: code }, true)}
                 />
-            ) : (
-                accounts.map((account) => {
-                    const rows: SubRow[] = (account.rows ?? []).map((row, index) => ({
-                        ...row,
-                        rowKey: `${account.code}-${index}`,
-                    }))
-                    // 柠檬云的「科目」列按分录行重复显示所属科目
-                    const accountLabel = `${account.code} ${account.name}`
-                    return (
-                        <LedgerSection
-                            key={account.code}
-                            heading={`${account.code} ${account.name}`}
-                            extra={
-                                <span>
-                                    借方 {fmtAmount(account.totalDebit, true)} ／ 贷方{" "}
-                                    {fmtAmount(account.totalCredit, true)}
-                                </span>
-                            }
-                        >
-                            <LedgerTable
-                                columns={buildColumns(showCounterAccount, accountLabel)}
-                                data={rows}
-                                loading={query.loading}
-                                emptyText="本科目该期间无发生额。"
-                                rowKey={(row) => row.rowKey}
-                                rowClassName={(row) => kindRowClass(row.kind)}
-                                onRowClick={(row) => {
-                                    if (row.kind !== ROW_KIND.entry || !row.voucherNo) return
-                                    const id = lookup.resolveId(row.date, row.voucherNo)
-                                    if (id) setVoucherId(id)
-                                }}
-                            />
-                        </LedgerSection>
-                    )
-                })
-            )}
+            }
+        >
+            <LedgerTable<SubRow>
+                columns={columns}
+                data={rows}
+                loading={query.loading}
+                emptyText={accountSetId ? "该期间暂无明细账数据，请确认凭证已过账。" : "请先选择账套。"}
+                rowKey={(row) => row.rowKey}
+                rowClassName={(row) => kindRowClass(row.kind)}
+                onRowClick={(row) => {
+                    if (row.kind !== ROW_KIND.entry || !row.voucherNo) return
+                    const id = lookup.resolveId(row.date, row.voucherNo)
+                    if (id) setVoucherId(id)
+                }}
+                pagination={{
+                    pageSize: 20,
+                    showSizeChanger: true,
+                    pageSizeOptions: [20, 50, 100],
+                    showTotal: (total, range) => `显示 ${range[0]} 到 ${range[1]}，共 ${total} 条记录`,
+                }}
+                footer={
+                    <Table.Summary.Row>
+                        <Table.Summary.Cell index={0} colSpan={showCounterAccount ? 5 : 4} className="font-medium">
+                            合计
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={showCounterAccount ? 5 : 4} {...AMOUNT_COL} className="font-medium tabular-nums">
+                            {fmtAmount(totals.debit, true)}
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={showCounterAccount ? 6 : 5} {...AMOUNT_COL} className="font-medium tabular-nums">
+                            {fmtAmount(totals.credit, true)}
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={showCounterAccount ? 7 : 6} colSpan={2} />
+                    </Table.Summary.Row>
+                }
+            />
 
             <VoucherDetailSheet
                 accountSetId={accountSetId}

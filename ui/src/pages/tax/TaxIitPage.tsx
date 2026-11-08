@@ -11,7 +11,7 @@
  * 行内给「登记到工资模块」入口。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, App, Button, Checkbox, ConfigProvider, Dropdown, Input, Table, Tooltip } from "antd";
+import { Card, Alert, App, Button, Checkbox, Dropdown, Input, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import {
     DownOutlined,
@@ -31,7 +31,6 @@ import {
     type TaxIitDeductionRow,
     type TaxIitPersonnelRow,
 } from "@/lib/tax-iit";
-import { TAX_THEME } from "@/lib/tax-theme";
 import { cn } from "@/lib/utils";
 
 import { IitLoginModal } from "./IitLoginModal";
@@ -400,7 +399,7 @@ export function TaxIitPage() {
     }
 
     const nameColumnFilter = {
-        filterIcon: <FilterFilled style={{ color: nameKeyword ? "#2f6bff" : "#c0c4cc", fontSize: 11 }} />,
+        filterIcon: <FilterFilled style={{ color: nameKeyword ? "var(--brand)" : "var(--muted-foreground)" }} />,
         filterDropdown: ({ confirm }: { confirm: () => void }) => (
             <div className="w-[200px] p-2" onKeyDown={(event) => event.stopPropagation()}>
                 <Input
@@ -429,7 +428,7 @@ export function TaxIitPage() {
     };
 
     const phoneColumnFilter = {
-        filterIcon: <FilterFilled style={{ color: phoneKeyword ? "#2f6bff" : "#c0c4cc", fontSize: 11 }} />,
+        filterIcon: <FilterFilled style={{ color: phoneKeyword ? "var(--brand)" : "var(--muted-foreground)" }} />,
         filterDropdown: ({ confirm }: { confirm: () => void }) => (
             <div className="w-[200px] p-2" onKeyDown={(event) => event.stopPropagation()}>
                 <Input
@@ -476,7 +475,7 @@ export function TaxIitPage() {
                     row.unregistered ? (
                         <span className="inline-flex items-center gap-1.5">
                             {value}
-                            <span className="rounded bg-[#fdf6ec] px-1 text-[11px] leading-[18px] text-[#e6a23c]">未登记</span>
+                            <span className="rounded bg-(--warn-bg) px-1 text-[11px] leading-[18px] text-(--warn-icon)">未登记</span>
                         </span>
                     ) : (
                         value
@@ -533,7 +532,7 @@ export function TaxIitPage() {
                     <span className="inline-flex items-center gap-1">
                         报送状态
                         <Tooltip title="点「同步税局人员信息」后取个税系统的报送状态；未同步时按待报送显示。">
-                            <QuestionCircleOutlined className="text-[11px] text-slate-400" />
+                            <QuestionCircleOutlined className="text-[11px] text-(--muted-foreground)" />
                         </Tooltip>
                     </span>
                 ),
@@ -553,7 +552,7 @@ export function TaxIitPage() {
                     <span className="inline-flex items-center gap-1">
                         验证状态
                         <Tooltip title="未同步时按居民身份证校验位本地校验；同步后取个税系统的身份验证状态。">
-                            <QuestionCircleOutlined className="text-[11px] text-slate-400" />
+                            <QuestionCircleOutlined className="text-[11px] text-(--muted-foreground)" />
                         </Tooltip>
                     </span>
                 ),
@@ -573,10 +572,10 @@ export function TaxIitPage() {
                             className={cn(
                                 "h-1.5 w-1.5 rounded-full",
                                 value === "验证通过"
-                                    ? "bg-[#10b981]"
+                                    ? "bg-(--success)"
                                     : value === "验证不通过"
-                                        ? "bg-[#ef4444]"
-                                        : "bg-slate-300",
+                                        ? "bg-(--danger)"
+                                        : "bg-(--muted)",
                             )}
                         />
                         {value}
@@ -601,7 +600,6 @@ export function TaxIitPage() {
                 row.unregistered ? (
                     <Button
                         type="link"
-                        className="!px-0"
                         title="税局名单里有这个人，但本账套工资模块还没有档案；去工资模块补一条即可（税局只回脱敏证件号，需手工填写）"
                         onClick={toSalaryEmployees}
                     >
@@ -692,8 +690,8 @@ export function TaxIitPage() {
     ];
 
     return (
-        <div className="flex h-full flex-col">
-            <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-slate-200 px-6">
+        <Card>
+            <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-(--border)">
                 <div className="flex items-center gap-6">
                     {TABS.map((item) => (
                         <button
@@ -707,18 +705,18 @@ export function TaxIitPage() {
                             className={cn(
                                 "relative h-[46px] text-[13px] transition-colors",
                                 tab === item.key
-                                    ? "font-medium text-slate-800"
-                                    : "text-slate-500 hover:text-slate-700",
+                                    ? "font-medium text-(--foreground)"
+                                    : "text-(--muted-foreground) hover:text-(--foreground)",
                             )}
                         >
                             {item.label}
-                            {tab === item.key && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[#2f6bff]" />}
+                            {tab === item.key && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-(--brand-fill)" />}
                         </button>
                     ))}
                 </div>
                 {tab === "people" && (
-                    <div className="ml-6 flex min-w-0 flex-1 items-center gap-2 rounded-md border border-[#f0d7a8] bg-[#fff9ef] px-3 py-1.5 text-[12.5px] leading-5 text-[#8a6a35]">
-                        <InfoCircleOutlined className="shrink-0 text-[#e6a23c]" />
+                    <div className="ml-6 flex min-w-0 flex-1 items-center gap-2 rounded-md border border-(--warn-border) bg-(--warn-bg) px-3 py-1.5 text-[12.5px] leading-5 text-(--warn-text)">
+                        <InfoCircleOutlined className="shrink-0 text-(--warn-icon)" />
                         <span>
                             人员信息列表数据与财务软件账套工资模块的员工信息数据为互通数据，新增或修改人员信息会同步更新工资模块的员工信息。
                         </span>
@@ -728,11 +726,11 @@ export function TaxIitPage() {
 
             {tab === "deduction" ? (
                 <div className="flex min-h-0 flex-1 flex-col">
-                    <div className="flex shrink-0 flex-wrap items-center gap-3 px-6 pt-3" style={{ marginBottom: 16 }}>
-                        <span className="text-[13px] text-slate-500">
-                            共 <span className="font-medium text-[#e6a23c]">{deductions.length}</span> 条扣除记录
+                    <div className="flex shrink-0 flex-wrap items-center gap-3 pt-3" style={{ marginBottom: 16 }}>
+                        <span className="text-[13px] text-(--muted-foreground)">
+                            共 <span className="font-medium text-(--warn-icon)">{deductions.length}</span> 条扣除记录
                             {deductions.length > 0 && (
-                                <span className="ml-2 text-slate-400">
+                                <span className="ml-2 text-(--muted-foreground)">
                                     每月合计 {deductions.reduce((sum, row) => sum + row.monthlyAmount, 0).toLocaleString("zh-CN")} 元
                                 </span>
                             )}
@@ -755,31 +753,29 @@ export function TaxIitPage() {
                             </Tooltip>
                         </div>
                     </div>
-                    <div className="min-h-0 flex-1 px-6 pb-3">
+                    <div className="min-h-0 flex-1 pb-3">
                         {deductionError && <Alert type="warning" showIcon title={deductionError} className="mb-3" />}
-                        <ConfigProvider theme={TAX_THEME}>
-                            <Table<TaxIitDeductionRow>
-                                columns={deductionColumns}
-                                dataSource={deductions}
-                                rowKey="key"
-                                loading={deductionState === "loading"}
-                                tableLayout="fixed"
-                                scroll={{ x: 1620, y: "calc(100vh - 320px)" }}
-                                pagination={TABLE_PAGINATION}
-                                locale={{
-                                    emptyText: (
-                                        <span className="block py-16 text-[13px] text-slate-400">
-                                            暂无扣除记录，点击「同步专项附加扣除」从个税系统取回
-                                        </span>
-                                    ),
-                                }}
-                            />
-                        </ConfigProvider>
+                        <Table<TaxIitDeductionRow>
+                            columns={deductionColumns}
+                            dataSource={deductions}
+                            rowKey="key"
+                            loading={deductionState === "loading"}
+                            tableLayout="fixed"
+                            scroll={{ x: 1620, y: "calc(100vh - 320px)" }}
+                            pagination={TABLE_PAGINATION}
+                            locale={{
+                                emptyText: (
+                                    <span className="block py-16 text-[13px] text-(--muted-foreground)">
+                                        暂无扣除记录，点击「同步专项附加扣除」从个税系统取回
+                                    </span>
+                                ),
+                            }}
+                        />
                     </div>
                 </div>
             ) : (
                 <>
-                    <div className="flex shrink-0 flex-wrap items-center gap-3 px-6 pt-3" style={{ marginBottom: 16 }}>
+                    <div className="flex shrink-0 flex-wrap items-center gap-3 pt-3" style={{ marginBottom: 16 }}>
                         <Dropdown
                             trigger={["click"]}
                             menu={{
@@ -799,7 +795,7 @@ export function TaxIitPage() {
                                 },
                             }}
                         >
-                            <Button className="!text-[#2f6bff]">
+                            <Button>
                                 筛选 <DownOutlined className="text-[9px]" />
                             </Button>
                         </Dropdown>
@@ -811,24 +807,24 @@ export function TaxIitPage() {
                             }}
                             className={cn(
                                 statusFilter === "在职"
-                                    ? "font-medium !text-[#2f6bff]"
-                                    : "!text-slate-600 hover:!text-[#2f6bff]",
+                                    ? "font-medium"
+                                    : undefined,
                             )}
                         >
                             在职：
-                            <span className="font-medium text-[#e6a23c]">{activeCount}</span>人
+                            <span className="font-medium text-(--warn-icon)">{activeCount}</span>人
                         </Button>
                         <Button
                             type="link"
                             onClick={() => setOnlyUnreported((prev) => !prev)}
                             className={cn(
                                 onlyUnreported
-                                    ? "font-medium !text-[#2f6bff]"
-                                    : "!text-slate-600 hover:!text-[#2f6bff]",
+                                    ? "font-medium"
+                                    : undefined,
                             )}
                         >
                             未报送成功：
-                            <span className="font-medium text-[#e6a23c]">{unreportedCount}</span>人
+                            <span className="font-medium text-(--warn-icon)">{unreportedCount}</span>人
                         </Button>
 
                         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -846,7 +842,7 @@ export function TaxIitPage() {
                                     同步税局人员信息
                                 </Button>
                                 <Tooltip title="从自然人电子税务局取回人员信息；需先登录个税。">
-                                    <QuestionCircleOutlined className="text-[12px] text-slate-400" />
+                                    <QuestionCircleOutlined className="text-[12px] text-(--muted-foreground)" />
                                 </Tooltip>
                             </span>
                             <Button type="primary" onClick={openReport}>
@@ -888,35 +884,33 @@ export function TaxIitPage() {
                         </div>
                     </div>
 
-                    <div className="min-h-0 flex-1 px-6 pb-3 [&_.ant-table-body]:min-h-[calc(100vh-320px)] [&_.ant-table-body]:!overflow-y-auto">
+                    <div className="min-h-0 flex-1 pb-3 [&_.ant-table-body]:min-h-[calc(100vh-320px)] [&_.ant-table-body]:!overflow-y-auto">
                         {error && (
                             <Alert type="error" showIcon title={error} className="mb-3" />
                         )}
-                        <ConfigProvider theme={TAX_THEME}>
-                            <Table<IitRow>
-                                columns={columns}
-                                dataSource={visibleRows}
-                                rowKey="key"
-                                loading={loading}
-                                tableLayout="fixed"
-                                scroll={{ x: showAll ? 2080 : 1640, y: "calc(100vh - 320px)" }}
-                                rowSelection={{
-                                    selectedRowKeys: selected,
-                                    onChange: (keys) => setSelected(keys.map(String)),
-                                    columnWidth: 40,
-                                    // 未登记行在本地没有员工档案，勾选后批量删除 / 报送都无从下手。
-                                    getCheckboxProps: (row) => ({ disabled: row.unregistered }),
-                                }}
-                                pagination={TABLE_PAGINATION}
-                                locale={{
-                                    emptyText: (
-                                        <span className="block py-16 text-[13px] text-slate-400">
-                                            暂无人员信息，请到工资模块新增员工
-                                        </span>
-                                    ),
-                                }}
-                            />
-                        </ConfigProvider>
+                        <Table<IitRow>
+                            columns={columns}
+                            dataSource={visibleRows}
+                            rowKey="key"
+                            loading={loading}
+                            tableLayout="fixed"
+                            scroll={{ x: showAll ? 2080 : 1640, y: "calc(100vh - 320px)" }}
+                            rowSelection={{
+                                selectedRowKeys: selected,
+                                onChange: (keys) => setSelected(keys.map(String)),
+                                columnWidth: 40,
+                                // 未登记行在本地没有员工档案，勾选后批量删除 / 报送都无从下手。
+                                getCheckboxProps: (row) => ({ disabled: row.unregistered }),
+                            }}
+                            pagination={TABLE_PAGINATION}
+                            locale={{
+                                emptyText: (
+                                    <span className="block py-16 text-[13px] text-(--muted-foreground)">
+                                        暂无人员信息，请到工资模块新增员工
+                                    </span>
+                                ),
+                            }}
+                        />
                     </div>
                 </>
             )}
@@ -932,6 +926,6 @@ export function TaxIitPage() {
                     if (tab === "deduction") void loadDeductions();
                 }}
             />
-        </div>
+        </Card>
     );
 }

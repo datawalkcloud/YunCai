@@ -322,7 +322,19 @@ namespace KuaiJi.Modules.Funds.Application
 
             try
             {
-                journal.AddEntry(request.Date, request.Summary, request.Income, request.Expense, request.Category, request.Counterparty, request.Project, request.Department);
+                journal.AddEntry(
+                    request.Date,
+                    request.Summary,
+                    request.Income,
+                    request.Expense,
+                    request.Category,
+                    request.Counterparty,
+                    request.Project,
+                    request.Department,
+                    settlementMethod: request.SettlementMethod,
+                    billNo: request.BillNo,
+                    remark: request.Remark,
+                    source: request.Source ?? "手工登记");
             }
             catch (ArgumentException ex)
             {
@@ -348,6 +360,13 @@ namespace KuaiJi.Modules.Funds.Application
             try
             {
                 journal.UpdateEntry(entryId, request.Date, request.Summary, request.Income, request.Expense, request.Category, request.Counterparty, request.Project, request.Department, existing.VoucherId);
+                // 附加字段：请求未带时保持原值；显式传空字符串表示清空。
+                journal.SetEntryExtras(
+                    entryId,
+                    request.SettlementMethod ?? existing.SettlementMethod,
+                    request.BillNo ?? existing.BillNo,
+                    request.Remark ?? existing.Remark,
+                    request.Source ?? existing.Source ?? "手工登记");
             }
             catch (ArgumentException ex)
             {

@@ -31,6 +31,13 @@ namespace KuaiJi.Modules.AccountSets.Infrastructure
                 .FirstOrDefaultAsync(m => m.AccountSetId == accountSetId && m.Id == id, cancellationToken);
         }
 
+        public Task<bool> AnyWithRoleAsync(Guid accountSetId, Guid roleId, CancellationToken cancellationToken = default)
+        {
+            return _context.AccountSetMembers
+                .AsNoTracking()
+                .AnyAsync(m => m.AccountSetId == accountSetId && m.RoleId == roleId, cancellationToken);
+        }
+
         public async Task AddAsync(AccountSetMember member, CancellationToken cancellationToken = default)
         {
             await _context.AccountSetMembers.AddAsync(member, cancellationToken);

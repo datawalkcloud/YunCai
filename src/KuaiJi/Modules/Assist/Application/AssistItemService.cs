@@ -337,9 +337,17 @@ namespace KuaiJi.Modules.Assist.Application
             }
         }
 
-        /// <summary>校验该类别已在账套启用。</summary>
+        /// <summary>
+        /// 校验该类别已在账套启用。客户 / 供应商 / 职员同时是资金模块「往来单位」的基础档案，
+        /// 现金日记账要能直接新增往来单位（与柠檬云一致），因此这三类不依赖账套的辅助核算启用开关。
+        /// </summary>
         private static void EnsureCategoryEnabled(AccountSet accountSet, AssistType type)
         {
+            if (type is AssistType.Customer or AssistType.Vendor or AssistType.Employee)
+            {
+                return;
+            }
+
             if (!accountSet.EnabledAssistTypeList().Contains(type))
             {
                 throw new AssistanceException($"账套未启用「{AssistTypeText.Of(type)}」辅助核算，请先在账套设置中开启该类别。");

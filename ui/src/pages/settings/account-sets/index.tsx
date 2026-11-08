@@ -47,8 +47,8 @@ import {
 function KeyValue({ label, children }: { label: string, children: ReactNode }) {
     return (
         <div className="flex items-start justify-between gap-2 text-[12.5px]">
-            <span className="shrink-0 text-slate-400">{label}</span>
-            <span className="min-w-0 text-right text-slate-700">{children}</span>
+            <span className="shrink-0 text-(--muted-foreground)">{label}</span>
+            <span className="min-w-0 text-right text-(--foreground)">{children}</span>
         </div>
     )
 }
@@ -108,12 +108,12 @@ export default function AccountSetsPage() {
     function setFormValue<K extends keyof AccountSetForm>(key: K, value: AccountSetForm[K]) {
         const next: AccountSetForm = { ...formValues, [key]: value }
         setFormValues(next)
-        if (Object.keys(formErrors).length > 0) setFormErrors(validateAccountSet(next, !!editing))
+        if (Object.keys(formErrors).length > 0) setFormErrors(validateAccountSet(next))
     }
 
     /** 提交前校验：有错时把抽屉切到出错字段所在的页签，避免改了 A 页看不见 B 页的红字。 */
     function checkForm() {
-        const next = validateAccountSet(formValues, !!editing)
+        const next = validateAccountSet(formValues)
         setFormErrors(next)
         const first = Object.keys(next)[0] as keyof AccountSetForm | undefined
         if (first) setActiveTab(tabOfField(first))
@@ -247,7 +247,6 @@ export default function AccountSetsPage() {
                         vatRate: values.vatRate ?? undefined,
                         incomeTaxRate: values.incomeTaxRate ?? undefined,
                         isExportEnterprise: values.isExport ?? false,
-                        voucherWords: values.voucherWords?.trim() || undefined,
                         taxRegion: values.taxRegion || undefined,
                         taxLoginType: values.taxLoginType || undefined,
                         taxIdentityType: values.taxIdentityType || undefined,
@@ -296,7 +295,7 @@ export default function AccountSetsPage() {
     return (
         <div className="flex w-full flex-col gap-5">
             <SectionCard
-                title={<h3 className="text-[14px] font-semibold text-slate-800">账套列表</h3>}
+                title={<h3 className="text-[14px] font-semibold text-(--foreground)">账套列表</h3>}
                 action={
                     <div className="flex items-center gap-2">
                         <Button
@@ -330,18 +329,18 @@ export default function AccountSetsPage() {
                             <div
                                 key={set.id}
                                 className={cn(
-                                    "flex flex-col gap-3 rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
-                                    set.isCurrent ? "border-[#bfdbfe] ring-1 ring-[#dbeafe]" : "border-slate-100",
+                                    "flex flex-col gap-3 rounded-2xl border bg-(--card) p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
+                                    set.isCurrent ? "border-(--brand-border) ring-1 ring-(--brand-border)" : "border-(--border)",
                                 )}
                             >
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="flex min-w-0 items-center gap-2">
-                                        <div className="flex size-9 shrink-0 items-center justify-center bg-[#eef4ff] text-[20px] text-[#2f6bff]">
+                                        <div className="flex size-9 shrink-0 items-center justify-center bg-(--brand-soft) text-[20px] text-(--brand)">
                                             <BankOutlined />
                                         </div>
                                         <div className="flex min-w-0 flex-col">
-                                            <span className="truncate text-[13px] font-medium text-slate-800">{set.name}</span>
-                                            <span className="truncate text-[12px] text-slate-400">{set.companyName}</span>
+                                            <span className="truncate text-[13px] font-medium text-(--foreground)">{set.name}</span>
+                                            <span className="truncate text-[12px] text-(--muted-foreground)">{set.companyName}</span>
                                         </div>
                                     </div>
                                     {set.isCurrent && (
