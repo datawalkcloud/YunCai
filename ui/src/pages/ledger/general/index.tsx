@@ -1,4 +1,4 @@
-import { DownOutlined, PrinterOutlined, RightOutlined } from "@ant-design/icons"
+import { DownOutlined, RightOutlined } from "@ant-design/icons"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "antd"
 import type { TableColumnsType } from "antd"
@@ -13,7 +13,7 @@ import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { GeneralLedgerFilter } from "@/components/ledger/GeneralLedgerFilter"
-import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
+import { LedgerPrintButton, LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import { useAccounts } from "@/components/ledger/useLedgerOptions"
 import { asDate, type LedgerConditions } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
@@ -332,9 +332,12 @@ export default function GeneralLedgerPage() {
                                 token={token}
                                 conditions={query.committed}
                             />
-                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-                                打印
-                            </Button>
+                            <LedgerPrintButton
+                                kind="general"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
                         </>
                     }
                     disabled={!accountSetId}

@@ -1,5 +1,7 @@
+using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Funds.Application;
 using KuaiJi.Modules.Funds.Infrastructure;
+using KuaiJi.SharedKernel.Infrastructure.Pdf;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,10 +17,12 @@ namespace KuaiJi.Modules.Funds.Api
     public class FundReportsController : ControllerBase
     {
         private readonly FundReportService _fundReportService;
+        private readonly IAccountSetRepository _accountSetRepository;
 
-        public FundReportsController(FundReportService fundReportService)
+        public FundReportsController(FundReportService fundReportService, IAccountSetRepository accountSetRepository)
         {
             _fundReportService = fundReportService;
+            _accountSetRepository = accountSetRepository;
         }
 
         /// <summary>
@@ -73,6 +77,38 @@ namespace KuaiJi.Modules.Funds.Api
             }
         }
 
+        /// <summary>
+        /// 打印资金报表为 PDF：分段标题行、小计行与合计行按页面表格 1:1 还原，
+        /// 查询参数与 GET / 导出保持一致，组合维度的「显示主类型合计」由 showPrimarySubtotal 带入。
+        /// </summary>
+        [HttpGet("pdf")]
+        public async Task<IActionResult> Pdf(
+            Guid accountSetId,
+            [FromQuery] string? dimension,
+            [FromQuery] DateOnly? startDate,
+            [FromQuery] DateOnly? endDate,
+            [FromQuery] Guid? journalId,
+            [FromQuery] string? keyword,
+            [FromQuery] string? secondary,
+            [FromQuery] bool? showPrimarySubtotal,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var report = await _fundReportService.GetReportAsync(
+                    accountSetId, dimension, startDate, endDate, journalId, keyword, secondary, cancellationToken);
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var sheet = FundsPdfProjector.Report(report, showPrimarySubtotal ?? false, context);
+                var bytes = PrintSheetPdfBuilder.Build(sheet);
+                return File(bytes, PrintSheetPdfBuilder.ContentType,
+                    PrintSheetPdfBuilder.BuildFileName(sheet.Title, context.AccountSetName, PeriodSuffixOf(startDate, endDate)));
+            }
+            catch (FundReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>核对总账：截至 date（默认今天）按会计期间逐账户列示期初/借方/贷方/余额与总账差异。</summary>
         [HttpGet("reconciliation")]
         public async Task<ActionResult<FundReconciliationDto>> GetReconciliation(
@@ -110,6 +146,52 @@ namespace KuaiJi.Modules.Funds.Api
             {
                 return BadRequest(new { message = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// 打印出纳核对表为 PDF：与页面表格同列（不平账户标注「（不平）」与差异额），
+        /// onlyUnbalanced 对应页面的「只显示不平」勾选。
+        /// </summary>
+        [HttpGet("reconciliation/pdf")]
+        public async Task<IActionResult> PdfReconciliation(
+            Guid accountSetId,
+            [FromQuery] DateOnly? date,
+            [FromQuery] Guid? journalId,
+            [FromQuery] bool? onlyUnbalanced,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var data = await _fundReportService.GetReconciliationAsync(accountSetId, date, journalId, cancellationToken);
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var sheet = FundsPdfProjector.Reconciliation(data, onlyUnbalanced ?? false, context);
+                var bytes = PrintSheetPdfBuilder.Build(sheet);
+                return File(bytes, PrintSheetPdfBuilder.ContentType,
+                    PrintSheetPdfBuilder.BuildFileName(sheet.Title, context.AccountSetName, date?.ToString("yyyyMM")));
+            }
+            catch (FundReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>页头与文件名需要的账套名 / 编制单位。</summary>
+        private async Task<FundPrintContext> PrintContextAsync(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken);
+            return new FundPrintContext(accountSet?.Name ?? string.Empty, accountSet?.CompanyName);
+        }
+
+        /// <summary>文件名里的期间后缀，如 202601-202603；未选区间时为空。</summary>
+        private static string PeriodSuffixOf(DateOnly? startDate, DateOnly? endDate)
+        {
+            if (startDate is not null && endDate is not null)
+            {
+                return $"{startDate.Value:yyyyMM}-{endDate.Value:yyyyMM}";
+            }
+
+            var single = startDate ?? endDate;
+            return single is null ? string.Empty : $"{single.Value:yyyyMM}";
         }
     }
 }

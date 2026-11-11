@@ -1,5 +1,7 @@
+using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Funds.Application;
 using KuaiJi.Modules.Funds.Infrastructure;
+using KuaiJi.SharedKernel.Infrastructure.Pdf;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,11 +19,16 @@ namespace KuaiJi.Modules.Funds.Api
     {
         private readonly TransferService _transferService;
         private readonly TransferImportService _transferImportService;
+        private readonly IAccountSetRepository _accountSetRepository;
 
-        public TransfersController(TransferService transferService, TransferImportService transferImportService)
+        public TransfersController(
+            TransferService transferService,
+            TransferImportService transferImportService,
+            IAccountSetRepository accountSetRepository)
         {
             _transferService = transferService;
             _transferImportService = transferImportService;
+            _accountSetRepository = accountSetRepository;
         }
 
         /// <summary>获取账套内全部内部转账。</summary>
@@ -98,6 +105,31 @@ namespace KuaiJi.Modules.Funds.Api
             }
         }
 
+        /// <summary>
+        /// 打印转账台账为 PDF：列、筛选结果与合计行按页面表格 1:1 还原，
+        /// 「显示全部」与列头漏斗条件由查询参数原样带入。
+        /// </summary>
+        [HttpGet("pdf")]
+        public async Task<IActionResult> Pdf(
+            Guid accountSetId,
+            [FromQuery] TransferPrintQuery? query,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var transfers = await _transferService.ListAsync(accountSetId, cancellationToken);
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var sheet = FundsPdfProjector.Transfers(transfers, query, context);
+                var bytes = PrintSheetPdfBuilder.Build(sheet);
+                return File(bytes, PrintSheetPdfBuilder.ContentType,
+                    PrintSheetPdfBuilder.BuildFileName(sheet.Title, context.AccountSetName, PeriodSuffixOf(query)));
+            }
+            catch (JournalException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>下载内部转账导入模板（.xlsx）。</summary>
         [HttpGet("import/template")]
         public IActionResult DownloadTemplate()
@@ -160,6 +192,32 @@ namespace KuaiJi.Modules.Funds.Api
             {
                 return BadRequest(new { message = ex.Message });
             }
+        }
+
+        /// <summary>页头与文件名需要的账套名 / 编制单位。</summary>
+        private async Task<FundPrintContext> PrintContextAsync(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken);
+            return new FundPrintContext(accountSet?.Name ?? string.Empty, accountSet?.CompanyName);
+        }
+
+        /// <summary>文件名里的期间后缀，如 202601-202603；勾选「显示全部」或未选区间时为空。</summary>
+        private static string PeriodSuffixOf(TransferPrintQuery? query)
+        {
+            if (query?.ShowAll == true)
+            {
+                return string.Empty;
+            }
+
+            var start = query?.StartDate;
+            var end = query?.EndDate;
+            if (start is not null && end is not null)
+            {
+                return $"{start.Value:yyyyMM}-{end.Value:yyyyMM}";
+            }
+
+            var single = start ?? end;
+            return single is null ? string.Empty : $"{single.Value:yyyyMM}";
         }
     }
 }

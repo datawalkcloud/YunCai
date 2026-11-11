@@ -1,5 +1,7 @@
+using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Funds.Application;
 using KuaiJi.Modules.Funds.Infrastructure;
+using KuaiJi.SharedKernel.Infrastructure.Pdf;
 using MiniExcelLibs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,13 +19,23 @@ namespace KuaiJi.Modules.Funds.Api
         private readonly JournalService _journalService;
         private readonly JournalImportService _importService;
         private readonly JournalAccountImportService _accountImportService;
+        private readonly EntryCategoryService _entryCategoryService;
+        private readonly IAccountSetRepository _accountSetRepository;
         private readonly ILogger<JournalsController> _logger;
 
-        public JournalsController(JournalService journalService, JournalImportService importService, JournalAccountImportService accountImportService, ILogger<JournalsController> logger)
+        public JournalsController(
+            JournalService journalService,
+            JournalImportService importService,
+            JournalAccountImportService accountImportService,
+            EntryCategoryService entryCategoryService,
+            IAccountSetRepository accountSetRepository,
+            ILogger<JournalsController> logger)
         {
             _journalService = journalService;
             _importService = importService;
             _accountImportService = accountImportService;
+            _entryCategoryService = entryCategoryService;
+            _accountSetRepository = accountSetRepository;
             _logger = logger;
         }
 
@@ -268,6 +280,73 @@ namespace KuaiJi.Modules.Funds.Api
             return File(bytes, JournalExportBuilder.ContentType, JournalExportBuilder.BuildFileName(journal.Name));
         }
 
+        /// <summary>
+        /// 打印账页为 PDF：列与筛选条件由页面原样传来，服务端按屏幕表格 1:1 渲染。
+        /// 查询参数名与页面的列头漏斗 / 高级筛选一一对应，省略即不过滤。
+        /// </summary>
+        [HttpGet("{id:guid}/pdf")]
+        public async Task<IActionResult> Pdf(
+            Guid accountSetId,
+            Guid id,
+            [FromQuery] JournalPrintQuery? query,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var journal = await _journalService.GetAsync(accountSetId, id, cancellationToken);
+                if (journal is null)
+                {
+                    return NotFound();
+                }
+
+                var categories = await _entryCategoryService.ListAsync(accountSetId, cancellationToken);
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var sheet = FundsPdfProjector.JournalList(journal, categories, query, context);
+                var bytes = PrintSheetPdfBuilder.Build(sheet);
+                return File(bytes, PrintSheetPdfBuilder.ContentType, PrintSheetPdfBuilder.BuildFileName(sheet.Title, context.AccountSetName, PeriodSuffixOf(query)));
+            }
+            catch (JournalException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 打印收 / 付款凭据为 PDF（A5 单据版式，一笔流水一张）。
+        /// <paramref name="entryIds"/> 为勾选的流水标识（逗号分隔），省略时打印整本日记账。
+        /// </summary>
+        [HttpGet("{id:guid}/entries/receipt/pdf")]
+        public async Task<IActionResult> ReceiptPdf(
+            Guid accountSetId,
+            Guid id,
+            [FromQuery] string? entryIds,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var journal = await _journalService.GetAsync(accountSetId, id, cancellationToken);
+                if (journal is null)
+                {
+                    return NotFound();
+                }
+
+                // 前端把勾选的流水标识按勾选顺序拼成 csv 传过来，非法值直接忽略。
+                var ids = new List<Guid>();
+                foreach (var raw in (entryIds ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (Guid.TryParse(raw, out var entryId)) ids.Add(entryId);
+                }
+
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var bytes = FundReceiptPdfBuilder.Build(journal, FundsPdfProjector.ReceiptEntries(journal, ids));
+                return File(bytes, FundReceiptPdfBuilder.ContentType, FundReceiptPdfBuilder.BuildFileName(context.AccountSetName, journal.Name));
+            }
+            catch (JournalException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>导出所有账户的全部流水（.xlsx，含「账户」列）。</summary>
         [HttpGet("export/all")]
         public async Task<IActionResult> ExportAll(Guid accountSetId, CancellationToken cancellationToken)
@@ -321,6 +400,27 @@ namespace KuaiJi.Modules.Funds.Api
                 _logger.LogError(ex, "导入日记账流水文件「{FileName}」时发生未预期的错误。", file.FileName);
                 return StatusCode(500, new { message = "导入日记账流水时发生错误，请稍后重试。" });
             }
+        }
+
+        /// <summary>页头与文件名需要的账套名 / 编制单位。</summary>
+        private async Task<FundPrintContext> PrintContextAsync(Guid accountSetId, CancellationToken cancellationToken)
+        {
+            var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken);
+            return new FundPrintContext(accountSet?.Name ?? string.Empty, accountSet?.CompanyName);
+        }
+
+        /// <summary>文件名里的期间后缀，如 202601-202603；未选区间时为空。</summary>
+        private static string PeriodSuffixOf(JournalPrintQuery? query)
+        {
+            var start = query?.StartDate;
+            var end = query?.EndDate;
+            if (start is not null && end is not null)
+            {
+                return $"{start.Value:yyyyMM}-{end.Value:yyyyMM}";
+            }
+
+            var single = start ?? end;
+            return single is null ? string.Empty : $"{single.Value:yyyyMM}";
         }
     }
 

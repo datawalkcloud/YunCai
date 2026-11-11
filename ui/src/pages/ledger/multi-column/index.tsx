@@ -1,6 +1,5 @@
-import { PrinterOutlined } from "@ant-design/icons"
 import { useMemo, useState } from "react"
-import { Button } from "antd"
+
 import type { TableColumnsType } from "antd"
 import { useSearchParams } from "react-router"
 
@@ -18,7 +17,7 @@ import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
-import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
+import { LedgerPrintButton, LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import { ROW_KIND, asDate, type LedgerConditions } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 import { useAccounts } from "@/components/ledger/useLedgerOptions"
@@ -145,9 +144,12 @@ function MultiColumnLedger({
                                 token={token}
                                 conditions={query.committed}
                             />
-                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-                                打印
-                            </Button>
+                            <LedgerPrintButton
+                                kind="multi-column"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
                         </>
                     }
                     disabled={!accountSetId}

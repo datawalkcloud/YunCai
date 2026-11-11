@@ -18,7 +18,6 @@ import {
     Empty,
     Flex,
     Input,
-    InputNumber,
     Modal,
     Pagination,
     Popover,
@@ -31,10 +30,11 @@ import {
     Typography,
 } from "antd"
 import type { TableColumnsType } from "antd"
+import { FilterTriggerButton } from "@/components/page/filter-trigger-button"
 import { DownOutlined, EllipsisOutlined, FilterFilled, FullscreenOutlined, PlusOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons"
 import dayjs from "dayjs"
 
-import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import {
     AccountsApi,
@@ -52,6 +52,7 @@ import {
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtAmount, toISODate } from "@/lib/format"
+import { printPdf } from "@/lib/print-pdf"
 import { cn } from "@/lib/utils"
 import { CounterpartyPicker } from "@/components/assist/counterparty-picker"
 
@@ -86,6 +87,27 @@ const DEFAULT_HIDDEN_COLUMNS = [
 
 /** 收支类别下拉的显示名前缀：存的是类别名称，展示时按类别方向补「收- / 支-」。 */
 const categoryLabel = (name: string, type?: number) => `${type === 2 ? "支" : "收"}-${name}`
+
+/** 打印列的顺序，与后端 FundsPdfProjector 的账页列定义一致；「操作」「设置」两列不参与打印。 */
+const PRINT_COLUMN_KEYS = [
+    "date",
+    "summary",
+    "category",
+    "counterparty",
+    "income",
+    "expense",
+    "balance",
+    "voucher",
+    "seq",
+    "settlementMethod",
+    "billNo",
+    "project",
+    "department",
+    "remark",
+    "source",
+    "voucherDate",
+    "voucherWord",
+]
 
 /** 表头排序取值：数值列按数字比，其余按字符串比，空值统一排最后。 */
 function sortValueOf(e: JournalEntryDto, field: string): string | number {
@@ -127,254 +149,6 @@ function sortValueOf(e: JournalEntryDto, field: string): string | number {
             return e.summary ?? ""
     }
 }
-
-/** 「打印列表设置」面板字段，与柠檬云的打印方向 / 页边距 / 表尾字段一致。 */
-interface ListPrintSettings {
-    orientation: "portrait" | "landscape"
-    marginTop: number
-    marginBottom: number
-    marginLeft: number
-    marginRight: number
-    showPrintDate: boolean
-    showPageNo: boolean
-    footerFields: string[]
-}
-
-/** 「打印凭据设置」面板字段。 */
-interface ReceiptPrintSettings {
-    showDept: boolean
-    showProject: boolean
-    showDivider: boolean
-    showPrintDate: boolean
-    showPageNo: boolean
-}
-
-const DEFAULT_LIST_PRINT: ListPrintSettings = {
-    orientation: "landscape",
-    marginTop: 10,
-    marginBottom: 20,
-    marginLeft: 0,
-    marginRight: 0,
-    showPrintDate: true,
-    showPageNo: true,
-    footerFields: ["账套名称"],
-}
-
-const DEFAULT_RECEIPT_PRINT: ReceiptPrintSettings = {
-    showDept: false,
-    showProject: false,
-    showDivider: true,
-    showPrintDate: true,
-    showPageNo: true,
-}
-
-/** 表尾可选字段（打印列表设置里的「表尾字段设置」）。 */
-const FOOTER_FIELD_OPTIONS = ["账套名称", "账户名称", "制表人", "审核人", "记账人", "单位负责人"]
-
-/** 读取按账套持久化的打印设置。 */
-function readPrintSetting<T>(key: string, fallback: T): T {
-    if (typeof window === "undefined") return fallback
-    try {
-        const raw = window.localStorage.getItem(key)
-        return raw ? { ...fallback, ...(JSON.parse(raw) as T) } : fallback
-    } catch {
-        return fallback
-    }
-}
-
-/** 写入打印设置。 */
-function writePrintSetting(key: string, value: unknown) {
-    try {
-        window.localStorage.setItem(key, JSON.stringify(value))
-    } catch {
-        // 隐私模式下写入失败时忽略，仅当次生效。
-    }
-}
-
-/** 打印用 HTML 转义。 */
-function escHtml(text: string): string {
-    return text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c)
-}
-
-/** 金额千分位。 */
-function money(value: number): string {
-    return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-/** 打开打印窗口并写入 HTML，加载完成后自动唤起打印对话框。 */
-function openPrintWindow(html: string) {
-    const win = window.open("", "_blank", "width=1100,height=800")
-    if (!win) return false
-    win.document.open()
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.setTimeout(() => win.print(), 400)
-    return true
-}
-
-/** 组装「打印列表」的多页 HTML：按设置的方向、页边距、页脚与日期页码输出。 */
-function buildListPrintHtml(
-    title: string,
-    accountName: string,
-    periodText: string,
-    entries: JournalEntryDto[],
-    opening: number,
-    settings: ListPrintSettings,
-    footerValues: Record<string, string>,
-    seqPrefix: string,
-): string {
-    const horizontalPadding = settings.orientation === "landscape" ? 12 : 16
-    const totalIncome = entries.reduce((s, e) => s + (e.income ?? 0), 0)
-    const totalExpense = entries.reduce((s, e) => s + (e.expense ?? 0), 0)
-
-    const rows = [
-        `<tr class="opening"><td>上笔余额</td><td></td><td></td><td></td><td></td><td class="num">${money(opening)}</td><td></td><td></td></tr>`,
-        ...entries.map((e) => {
-            const iso = new Date(e.date ?? "").toISOString().slice(0, 10)
-            return `<tr>
-                <td>${escHtml(e.summary ?? "")}</td>
-                <td>${escHtml(e.category ?? "")}</td>
-                <td>${escHtml(e.counterparty ?? "")}</td>
-                <td class="num">${e.income ? money(e.income) : ""}</td>
-                <td class="num">${e.expense ? money(e.expense) : ""}</td>
-                <td class="num">${money(e.balance ?? 0)}</td>
-                <td>${escHtml(e.voucherNo ?? "")}</td>
-                <td class="num">${iso ? `${seqPrefix}-${iso.replaceAll("-", "")}-${e.sequence ?? ""}` : ""}</td>
-            </tr>`
-        }),
-        `<tr class="total"><td>合计</td><td></td><td></td><td class="num">${money(totalIncome)}</td><td class="num">${money(totalExpense)}</td><td class="num">${money(opening + totalIncome - totalExpense)}</td><td></td><td></td></tr>`,
-    ].join("")
-
-    const footer = settings.footerFields
-        .map((f) => `<span>${escHtml(f)}：${escHtml(footerValues[f] ?? "")}</span>`)
-        .join("")
-
-    return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${escHtml(title)}</title>
-<style>
-    @page { size: A4 ${settings.orientation}; margin: ${settings.marginTop}mm ${settings.marginRight}mm ${settings.marginBottom}mm ${settings.marginLeft}mm; }
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 8mm ${horizontalPadding}mm 0; font-family: "Microsoft YaHei", SimSun, sans-serif; color: #111; }
-    h1 { margin: 0 0 4px; font-size: 16pt; text-align: center; font-weight: 600; }
-    .meta { display: flex; justify-content: space-between; font-size: 9pt; color: #444; margin-bottom: 6px; }
-    table { width: 100%; border-collapse: collapse; font-size: 9pt; }
-    th, td { border: 1px solid #333; padding: 3px 4px; }
-    th { background: #f1f5f9; font-weight: 600; text-align: center; white-space: nowrap; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    tr.opening td, tr.total td { background: #f8fafc; font-weight: 600; }
-    .foot { margin-top: 8px; display: flex; justify-content: space-between; font-size: 9pt; color: #333; gap: 16px; flex-wrap: wrap; }
-    .pageno { font-size: 9pt; color: #666; text-align: right; margin-top: 2px; }
-</style></head><body>
-    <h1>${escHtml(title)}</h1>
-    <div class="meta"><span>${escHtml(accountName)}</span><span>${escHtml(periodText)}</span></div>
-    <table>
-        <thead><tr><th>摘要</th><th>收支类别</th><th>往来单位</th><th>收入（借方）</th><th>支出（贷方）</th><th>余额</th><th>关联凭证</th><th>日记账序号</th></tr></thead>
-        <tbody>${rows}</tbody>
-    </table>
-    <div class="foot">${footer}${settings.showPrintDate ? `<span>打印日期：${new Date().toLocaleString("zh-CN")}</span>` : ""}</div>
-    ${settings.showPageNo ? '<div class="pageno">第 1 页 / 共 1 页</div>' : ""}
-</body></html>`
-}
-
-/** 组装「打印凭据」HTML：每笔流水一张收款/付款凭据，可选打印部门、项目、分割线。 */
-function buildReceiptPrintHtml(
-    title: string,
-    accountName: string,
-    entries: JournalEntryDto[],
-    settings: ReceiptPrintSettings,
-    projectName: string,
-    deptName: string,
-): string {
-    const cards = entries
-        .map((e, i) => {
-            const isIncome = (e.income ?? 0) > 0
-            const amount = isIncome ? (e.income ?? 0) : (e.expense ?? 0)
-            const date = new Date(e.date ?? "").toISOString().slice(0, 10)
-            const extra = [
-                settings.showDept ? `<span>部门：${escHtml(deptName)}</span>` : "",
-                settings.showProject ? `<span>项目：${escHtml(projectName)}</span>` : "",
-            ]
-                .filter(Boolean)
-                .join("")
-            return `<section class="receipt"${i > 0 && settings.showDivider ? ' style="border-top:1px dashed #999;padding-top:10px;margin-top:10px"' : ""}>
-                <h2>${escHtml(isIncome ? "收 款 凭 据" : "付 款 凭 据")}</h2>
-                <div class="line"><span>日期：${date}</span><span>${escHtml(accountName)}</span>${extra}</div>
-                <table>
-                    <tr><th style="width:22%">摘要</th><td>${escHtml(e.summary ?? "")}</td><th style="width:16%">收支类别</th><td>${escHtml(e.category ?? "")}</td></tr>
-                    <tr><th>往来单位</th><td>${escHtml(e.counterparty ?? "")}</td><th>金额</th><td class="num">￥${money(amount)}</td></tr>
-                    <tr><th>大写金额</th><td colspan="3">${escHtml(toChineseAmount(amount))}</td></tr>
-                </table>
-                <div class="sign"><span>记账：____________</span><span>出纳：____________</span><span>经办人：____________</span></div>
-            </section>`
-        })
-        .join("")
-
-    return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${escHtml(title)}</title>
-<style>
-    @page { size: A5 portrait; margin: 12mm; }
-    body { margin: 0; font-family: "Microsoft YaHei", SimSun, sans-serif; color: #111; }
-    .receipt { page-break-inside: avoid; }
-    h2 { margin: 0 0 8px; font-size: 15pt; text-align: center; letter-spacing: 4px; }
-    .line { display: flex; gap: 16px; font-size: 9pt; color: #333; margin-bottom: 6px; }
-    table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
-    th, td { border: 1px solid #333; padding: 5px 6px; }
-    th { background: #f8fafc; font-weight: 600; text-align: left; white-space: nowrap; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; }
-    .sign { display: flex; justify-content: space-between; margin-top: 14px; font-size: 9pt; color: #333; }
-    .pageno { font-size: 8.5pt; color: #666; text-align: right; margin-top: 6px; }
-    .pdate { font-size: 8.5pt; color: #666; margin-top: 4px; }
-</style></head><body>
-    ${cards}
-    ${settings.showPrintDate ? `<div class="pdate">打印日期：${new Date().toLocaleString("zh-CN")}</div>` : ""}
-    ${settings.showPageNo ? '<div class="pageno">第 1 页 / 共 1 页</div>' : ""}
-</body></html>`
-}
-
-/** 金额转人民币大写（打印凭据里的「大写金额」）。 */
-function toChineseAmount(value: number): string {
-    if (!Number.isFinite(value) || value === 0) return "零元整"
-    const digits = "零壹贰叁肆伍陆柒捌玖"
-    const units = ["", "拾", "佰", "仟"]
-    const bigUnits = ["", "万", "亿", "兆"]
-    const negative = value < 0
-    const fixed = Math.abs(value).toFixed(2)
-    const [intPart, decPart] = fixed.split(".")
-    let result = ""
-    let zeroPending = false
-    const groups = intPart.replace(/\B(?=(\d{4})+(?!\d))/g, ",").split(",")
-    groups.forEach((group, gi) => {
-        const groupIndex = groups.length - 1 - gi
-        let groupText = ""
-        let groupZero = false
-        for (let i = 0; i < group.length; i++) {
-            const d = Number(group[i])
-            const unitIndex = group.length - 1 - i
-            if (d === 0) {
-                groupZero = true
-            } else {
-                if ((zeroPending || groupZero) && result) groupText += "零"
-                groupText += digits[d] + units[unitIndex]
-                groupZero = false
-                zeroPending = false
-            }
-        }
-        if (groupText) {
-            result += groupText + bigUnits[groupIndex]
-        } else if (result) {
-            zeroPending = true
-        }
-    })
-    result = result || "零"
-    const jiao = Number(decPart[0])
-    const fen = Number(decPart[1])
-    let decimal = ""
-    if (jiao === 0 && fen === 0) decimal = "整"
-    else {
-        decimal = (jiao > 0 ? digits[jiao] + "角" : fen > 0 ? "零" : "") + (fen > 0 ? digits[fen] + "分" : "")
-    }
-    return `${negative ? "负" : ""}${result}元${decimal}`
-}
-
 
 /** 可被列头漏斗筛选的列。 */
 type FilterKey = "date" | "summary" | "category" | "counterparty" | "income" | "expense" | "balance" | "voucher" | "seq"
@@ -517,11 +291,8 @@ function draftFromEntry(e: JournalEntryDto): DraftValues {
 }
 
 export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 | 2; seqPrefix: string }) {
-    const { token, user } = useAuth()
-    const { accountSets } = useAccountSets()
+    const { token } = useAuth()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    /** 表尾 / 打印标题用的账套名称。 */
-    const accountSetName = accountSets.find((s) => s.id === accountSetId)?.name ?? ""
     const navigate = useNavigate()
     const { message, modal } = App.useApp()
 
@@ -577,13 +348,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
 
     /* ---------- 打印 / 批量操作 ---------- */
 
-    const printKey = `kuaiji.funds.print.${accountSetId}`
-    const [listPrintOpen, setListPrintOpen] = useState(false)
-    const [receiptPrintOpen, setReceiptPrintOpen] = useState(false)
-    const [listPrint, setListPrint] = useState<ListPrintSettings>(() => readPrintSetting(`${printKey}.list`, DEFAULT_LIST_PRINT))
-    const [receiptPrint, setReceiptPrint] = useState<ReceiptPrintSettings>(() =>
-        readPrintSetting(`${printKey}.receipt`, DEFAULT_RECEIPT_PRINT),
-    )
+    const [printing, setPrinting] = useState(false)
 
     /** 当前批量操作种类：除删除外都需要弹窗输入值。 */
     type BulkKind = "delete" | "summary" | "category" | "counterparty" | "project" | "department" | "unlink-voucher" | "link-voucher"
@@ -1249,49 +1014,77 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
 
     /* ---------- 打印 ---------- */
 
-    /** 打印列表：把当前筛选结果按设置输出为可打印账页。 */
-    function printList() {
-        if (!detail) return
-        const accountName = `${detail.accountCode ?? ""} - ${detail.accountName ?? ""}`.replace(/^ - /, "")
-        const periodText = period ? `${period[0]} 至 ${period[1]}` : "全部期间"
-        const html = buildListPrintHtml(
-            `${typeLabel}`,
-            accountName,
-            periodText,
-            filtered,
-            openingBalance,
-            listPrint,
-            {
-                账套名称: accountSetName,
-                账户名称: accountName,
-                制表人: user?.displayName ?? "",
-                审核人: "",
-                记账人: user?.displayName ?? "",
-                单位负责人: "",
-            },
-            seqPrefix,
-        )
-        if (!openPrintWindow(html)) {
-            message.warning("浏览器拦截了新窗口，请允许弹出窗口后重试。")
+    /** 打印列表：期间、列头漏斗、高级筛选与可见列原样传给后端，由后端渲染账页 PDF。 */
+    async function printList() {
+        if (!accountSetId || !journalId || printing) return
+        setPrinting(true)
+        try {
+            const qs = new URLSearchParams()
+            if (period) {
+                qs.set("startDate", period[0])
+                qs.set("endDate", period[1])
+            }
+            qs.set("seqPrefix", seqPrefix)
+            const visible = PRINT_COLUMN_KEYS.filter((key) => !hidden.has(key))
+            if (visible.length > 0) qs.set("columns", visible.join(","))
+            for (const [key, value] of Object.entries(filters)) {
+                if (value.trim()) qs.set(key, value.trim())
+            }
+            const [vFrom, vTo] = advanced.voucherDate ?? [null, null]
+            if (vFrom) qs.set("advVoucherDateFrom", vFrom)
+            if (vTo) qs.set("advVoucherDateTo", vTo)
+            const advancedPairs: Array<[string, string]> = [
+                ["advVoucherWord", advanced.voucherWord],
+                ["advVoucherNoFrom", advanced.voucherNoFrom],
+                ["advVoucherNoTo", advanced.voucherNoTo],
+                ["advCategory", advanced.category],
+                ["advSettlementMethod", advanced.settlementMethod],
+                ["advCounterparty", advanced.counterparty],
+                ["advBillNo", advanced.billNo],
+                ["advProject", advanced.project],
+                ["advDepartment", advanced.department],
+                ["advSummary", advanced.summary],
+                ["advRemark", advanced.remark],
+                ["advSource", advanced.source],
+                ["advAmountFrom", advanced.amountFrom],
+                ["advAmountTo", advanced.amountTo],
+            ]
+            for (const [key, value] of advancedPairs) {
+                if (value.trim()) qs.set(key, value.trim())
+            }
+            if (advanced.voucher !== "all") qs.set("advHasVoucher", advanced.voucher)
+            await printPdf(`/api/accountsets/${accountSetId}/journals/${journalId}/pdf?${qs.toString()}`, token)
+        } catch (err) {
+            message.warning(await apiErrorMessage(err, "生成打印稿失败，请重试。"))
+        } finally {
+            setPrinting(false)
         }
     }
 
-    /** 打印凭据：为选中（或当前页）流水各出一张收/付款凭据。 */
-    function printReceipt(entry?: JournalEntryDto) {
-        if (!detail) return
-        const targets = entry
-            ? [entry]
+    /** 打印凭据：为勾选（或当前页）流水各出一张收 / 付款凭据；传 entry 时只打印该笔。 */
+    async function printReceipt(entry?: JournalEntryDto) {
+        if (!accountSetId || !journalId || printing) return
+        const ids = entry
+            ? [entry.id ?? ""]
             : selected.length > 0
-              ? filtered.filter((e) => selected.includes(e.id ?? ""))
-              : pageRows
+              ? filtered.filter((e) => selected.includes(e.id ?? "")).map((e) => e.id ?? "")
+              : pageRows.map((entry) => entry.id ?? "")
+        const targets = ids.filter(Boolean)
         if (targets.length === 0) {
             message.warning("当前没有可打印的流水。")
             return
         }
-        const accountName = `${detail.accountCode ?? ""} - ${detail.accountName ?? ""}`.replace(/^ - /, "")
-        const html = buildReceiptPrintHtml("记账凭据", accountName, targets, receiptPrint, "", "")
-        if (!openPrintWindow(html)) {
-            message.warning("浏览器拦截了新窗口，请允许弹出窗口后重试。")
+        setPrinting(true)
+        try {
+            const qs = new URLSearchParams({ entryIds: targets.join(",") })
+            await printPdf(
+                `/api/accountsets/${accountSetId}/journals/${journalId}/entries/receipt/pdf?${qs.toString()}`,
+                token,
+            )
+        } catch (err) {
+            message.warning(await apiErrorMessage(err, "生成打印稿失败，请重试。"))
+        } finally {
+            setPrinting(false)
         }
     }
 
@@ -1796,7 +1589,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                         <Typography.Link type="danger" onClick={() => removeEntry(row.entry as JournalEntryDto)}>
                             删除
                         </Typography.Link>
-                        <Typography.Link onClick={() => printReceipt(row.entry as JournalEntryDto)}>打印</Typography.Link>
+                        <Typography.Link onClick={() => void printReceipt(row.entry as JournalEntryDto)}>打印</Typography.Link>
                         <Typography.Link onClick={() => message.info("附件管理建设中。")}>附件</Typography.Link>
                     </Space>
                 )
@@ -2055,25 +1848,11 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 arrow={false}
                 content={advancedPanel}
             >
-                <Button
-                    type="primary"
+                <FilterTriggerButton
                     title="高级筛选"
-                    style={{
-                        background: "var(--brand-fill)",
-                        borderColor: "var(--brand-fill)",
-                        boxShadow: "0 1px 2px rgba(39,60,243,0.25)",
-                    }}
-                    className="flex items-center gap-[0.4em]"
-                >
-                    <span className="tabular-nums">{period ? `${period[0]} 至 ${period[1]}` : "全部时间"}</span>
-                    <span className="h-[1em] w-px bg-(--card)/35" />
-                    <FilterFilled />
-                    {advancedCount > 0 && (
-                        <span className="rounded-[2px] bg-(--card) px-1 text-[0.75em] font-semibold leading-[1.4] text-(--brand)">
-                            {advancedCount}
-                        </span>
-                    )}
-                </Button>
+                    label={period ? `${period[0]} 至 ${period[1]}` : "全部时间"}
+                    count={advancedCount}
+                />
             </Popover>
             <Checkbox checked={period === null} onChange={(e) => setPeriod(e.target.checked ? null : dataRange)}>
                 显示全部
@@ -2103,7 +1882,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
 
     const toolbarRight = (
         <Space size={8} wrap>
-            <Button onClick={() => setCreateOpen(true)} disabled={!accountSetId}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} disabled={!accountSetId}>
                 新增日记账
             </Button>
             <Dropdown
@@ -2111,19 +1890,15 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 menu={{
                     items: [
                         { key: "list", label: "打印列表" },
-                        { key: "list-settings", label: "打印列表设置" },
                         { key: "receipt", label: "打印凭据" },
-                        { key: "receipt-settings", label: "打印凭据设置" },
                     ],
                     onClick: ({ key }) => {
-                        if (key === "list") printList()
-                        else if (key === "list-settings") setListPrintOpen(true)
-                        else if (key === "receipt") printReceipt()
-                        else setReceiptPrintOpen(true)
+                        if (key === "list") void printList()
+                        else void printReceipt()
                     },
                 }}
             >
-                <Button disabled={!detail}>
+                <Button disabled={!detail} loading={printing}>
                     打印 <DownOutlined className="text-[10px]" />
                 </Button>
             </Dropdown>
@@ -2458,139 +2233,6 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                         ]}
                     />
                     <span className="text-[12px] text-(--muted-foreground)">未配置默认对方科目的流水需要在此指定统一科目。</span>
-                </div>
-            </Modal>
-
-            {/* 打印列表设置 */}
-            <Modal
-                open={listPrintOpen}
-                title="打印列表设置"
-                width={520}
-                onCancel={() => setListPrintOpen(false)}
-                onOk={() => {
-                    writePrintSetting(`${printKey}.list`, listPrint)
-                    setListPrintOpen(false)
-                    message.success("打印设置已保存。")
-                }}
-                okText="确定"
-                cancelText="取消"
-            >
-                <div className="flex flex-col gap-4 py-1">
-                    <div className="flex items-center gap-3">
-                        <span className="w-[76px] shrink-0 text-right text-[13px] text-(--foreground)">打印方向：</span>
-                        <Radio.Group
-                            value={listPrint.orientation}
-                            onChange={(e) => setListPrint({ ...listPrint, orientation: e.target.value })}
-                            options={[
-                                { value: "portrait", label: "纵向" },
-                                { value: "landscape", label: "横向" },
-                            ]}
-                        />
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <span className="w-[76px] shrink-0 pt-1 text-right text-[13px] text-(--foreground)">页边距：</span>
-                        <div className="grid flex-1 grid-cols-2 gap-2">
-                            {(
-                                [
-                                    ["marginTop", "上"],
-                                    ["marginBottom", "下"],
-                                    ["marginLeft", "左"],
-                                    ["marginRight", "右"],
-                                ] as const
-                            ).map(([key, label]) => (
-                                <label key={key} className="flex items-center gap-2 text-[13px]">
-                                    <span className="w-4 text-(--foreground)">{label}</span>
-                                    <InputNumber
-                                        className="flex-1"
-                                        min={0}
-                                        max={100}
-                                        value={listPrint[key]}
-                                        onChange={(v: number | null) => setListPrint({ ...listPrint, [key]: Number(v ?? 0) })}
-                                        addonAfter="mm"
-                                    />
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <span className="w-[76px] shrink-0 text-right text-[13px] text-(--foreground)">其他选项：</span>
-                        <div className="flex flex-1 flex-col gap-1">
-                            <Checkbox
-                                checked={listPrint.showPrintDate}
-                                onChange={(e) => setListPrint({ ...listPrint, showPrintDate: e.target.checked })}
-                            >
-                                显示打印日期
-                            </Checkbox>
-                            <Checkbox
-                                checked={listPrint.showPageNo}
-                                onChange={(e) => setListPrint({ ...listPrint, showPageNo: e.target.checked })}
-                            >
-                                显示页码
-                            </Checkbox>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <span className="w-[76px] shrink-0 pt-1 text-right text-[13px] text-(--foreground)">表尾字段：</span>
-                        <Checkbox.Group
-                            className="flex flex-1 flex-col gap-1"
-                            value={listPrint.footerFields}
-                            onChange={(v) => setListPrint({ ...listPrint, footerFields: v as string[] })}
-                        >
-                            {FOOTER_FIELD_OPTIONS.map((f) => (
-                                <Checkbox key={f} value={f}>
-                                    {f}
-                                </Checkbox>
-                            ))}
-                        </Checkbox.Group>
-                    </div>
-                    <p className="ps-[88px] text-[12px] leading-5 text-(--muted-foreground)">
-                        设置按账套保存在本机，打印列表时生效；表尾字段取账套与当前登录用户信息。
-                    </p>
-                </div>
-            </Modal>
-
-            {/* 打印凭据设置 */}
-            <Modal
-                open={receiptPrintOpen}
-                title="打印凭据设置"
-                width={420}
-                onCancel={() => setReceiptPrintOpen(false)}
-                onOk={() => {
-                    writePrintSetting(`${printKey}.receipt`, receiptPrint)
-                    setReceiptPrintOpen(false)
-                    message.success("打印设置已保存。")
-                }}
-                okText="确定"
-                cancelText="取消"
-            >
-                <div className="flex flex-col gap-3 py-1">
-                    <span className="text-[13px] text-(--foreground)">其他选项：</span>
-                    <div className="flex flex-col gap-1 ps-3">
-                        {(
-                            [
-                                ["showDept", "打印部门"],
-                                ["showProject", "打印项目"],
-                                ["showDivider", "打印分割线"],
-                                ["showPrintDate", "显示打印日期"],
-                                ["showPageNo", "显示页码"],
-                            ] as const
-                        ).map(([key, label]) => (
-                            <Checkbox
-                                key={key}
-                                checked={receiptPrint[key]}
-                                onChange={(e) => setReceiptPrint({ ...receiptPrint, [key]: e.target.checked })}
-                                disabled={key === "showDept" || key === "showProject"}
-                            >
-                                {label}
-                                {(key === "showDept" || key === "showProject") && (
-                                    <span className="text-[12px] text-(--muted-foreground)">（未启用部门 / 项目核算）</span>
-                                )}
-                            </Checkbox>
-                        ))}
-                    </div>
-                    <p className="text-[12px] leading-5 text-(--muted-foreground)">
-                        打印凭据会为每笔勾选的流水输出一张收款 / 付款凭据；未勾选时打印当前页。
-                    </p>
                 </div>
             </Modal>
 

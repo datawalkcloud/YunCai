@@ -1,8 +1,9 @@
 import { useState } from "react"
-import { DownloadOutlined } from "@ant-design/icons"
+import { DownloadOutlined, PrinterOutlined } from "@ant-design/icons"
 import { Button } from "antd"
 
 import { apiErrorMessage } from "@/lib/api-client"
+import { printPdf } from "@/lib/print-pdf"
 import { toISODate } from "@/lib/format"
 import type { LedgerConditions } from "./types"
 
@@ -122,6 +123,42 @@ export function LedgerExportButton({
                 onClick={() => void download()}
                 icon={<DownloadOutlined />}
             >
+                {label}
+            </Button>
+            {error && <span className="text-[12.5px] text-(--danger)">{error}</span>}
+        </div>
+    )
+}
+
+export interface LedgerPrintButtonProps extends Omit<LedgerExportButtonProps, "label"> {
+    /** 打印按钮显示用的一句话，如「明细账」。 */
+    label?: string
+}
+
+/**
+ * 账页打印：按当前条件让后端渲染 PDF，在新窗口打开预览。
+ * 版式（A4、页码、打印时间）由后端 PrintSheetPdfBuilder 统一负责，前端不再有打印设置。
+ */
+export function LedgerPrintButton({ kind, label = "打印", accountSetId, token, conditions }: LedgerPrintButtonProps) {
+    const [busy, setBusy] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    async function print() {
+        if (!accountSetId || busy) return
+        setBusy(true)
+        setError(null)
+        try {
+            await printPdf(`/api/accountsets/${accountSetId}/Ledgers/${kind}/pdf${buildQuery(conditions)}`, token)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "生成打印稿失败，请重试。")
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    return (
+        <div className="flex items-center gap-2">
+            <Button loading={busy} disabled={!accountSetId} onClick={() => void print()} icon={<PrinterOutlined />}>
                 {label}
             </Button>
             {error && <span className="text-[12.5px] text-(--danger)">{error}</span>}

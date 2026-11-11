@@ -31,7 +31,7 @@ import type { TableColumnsType } from "antd"
 import { ReloadOutlined, SearchOutlined } from "@ant-design/icons"
 import dayjs, { type Dayjs } from "dayjs"
 
-import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import {
     FundReportsApi,
@@ -42,6 +42,7 @@ import {
     type JournalListItemDto,
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { printPdf } from "@/lib/print-pdf"
 
 /** 报表维度（与后端 FundReportDimensions 对齐）。 */
 type Dimension = "account" | "category" | "counterparty" | "project" | "department" | "combo"
@@ -65,16 +66,6 @@ const SECONDARIES: { key: Secondary; label: string }[] = [
     { key: "counterparty", label: "往来单位" },
     { key: "category", label: "收支类别" },
 ]
-
-/** 打印表头里名称列的文案（分段名已经作为该表的标题行）。 */
-const PRINT_NAME_LABEL: Record<Dimension, string> = {
-    account: "账户",
-    category: "收支类别",
-    counterparty: "往来单位",
-    project: "项目",
-    department: "部门",
-    combo: "收支类别",
-}
 
 /** 单页条数候选（与柠檬云分页器一致）。 */
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200]
@@ -112,106 +103,6 @@ function countText(value: number | null | undefined): string {
 const AMOUNT_RIGHT = "whitespace-nowrap text-right tabular-nums"
 const COUNT_LEFT = "whitespace-nowrap text-left tabular-nums"
 
-/** 打印用 HTML 转义。 */
-function escHtml(text: string): string {
-    return text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c)
-}
-
-/** 打印窗口的金额口径：0 显示为 0（与页面一致）。 */
-function printMoney(value: number | null | undefined): string {
-    if (value === null || value === undefined) return ""
-    if (value === 0) return "0"
-    return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-/** 组装打印用的整页 HTML（标题 + 期间 + 分段表 + 合计 + 提示）。 */
-function buildPrintHtml(report: FundReportDto, title: string, accountSetName: string): string {
-    const dim = report.dimension ?? "account"
-    const sections = report.sections ?? []
-    /** 仅账户（科目编码）与收支类别（序号）有编码列，其余维度的值是流水上登记的自由文本。 */
-    const withCode = dim === "account" || dim === "category"
-    const withOpening = dim === "account"
-    const isCombo = dim === "combo"
-    const nameLabel = isCombo ? (report.primaryText ?? PRINT_NAME_LABEL.combo) : (PRINT_NAME_LABEL as Record<string, string>)[dim] ?? "名称"
-    const secondaryLabel = report.secondaryText ?? "项目"
-    const headCells = [
-        ...(withCode ? ["编码"] : []),
-        nameLabel,
-        ...(isCombo ? [secondaryLabel] : []),
-        ...(withOpening ? ["期初余额"] : []),
-        "收入总额",
-        "支出总额",
-        ...(withOpening ? ["余额"] : []),
-        "收入笔数",
-        "支出笔数",
-    ]
-
-    const cellsOf = (row: FundReportRowDto | undefined): string[] => {
-        if (!row) return []
-        const text = (v: string | null | undefined) => `<td>${escHtml(v ?? "")}</td>`
-        const num = (v: number | null | undefined) => `<td class="num">${printMoney(v)}</td>`
-        const cnt = (v: number | undefined) => `<td class="num">${v ?? 0}</td>`
-        return [
-            ...(withCode ? [text(row.code)] : []),
-            text(row.name),
-            ...(isCombo ? [text(row.secondaryName)] : []),
-            ...(withOpening ? [num(row.openingBalance)] : []),
-            num(row.totalIncome),
-            num(row.totalExpense),
-            ...(withOpening ? [num(row.balance)] : []),
-            cnt(row.incomeCount),
-            cnt(row.expenseCount),
-        ]
-    }
-
-    const head = `<tr><th colspan="${headCells.length}">${escHtml(sections[0]?.name ?? "")}</th></tr><tr>${headCells.map((h) => `<th>${escHtml(h)}</th>`).join("")}</tr>`
-    const body = sections
-        .map((section) => {
-            const rows = (section.rows ?? []).map((row) => `<tr>${cellsOf(row).join("")}</tr>`).join("")
-            const sub = `<tr class="sub">${cellsOf(section.subtotal).join("")}</tr>`
-            return `<table>${head}${rows}${sub}</table>`
-        })
-        .join("")
-    const total =
-        sections.length > 1 && report.total
-            ? `<table><tr class="total">${cellsOf(report.total).join("")}</tr></table>`
-            : ""
-    const note = report.note ? `<p class="note">提示：${escHtml(report.note)}</p>` : ""
-    const currency = report.currencyNote ? `<p class="note">${escHtml(report.currencyNote)}</p>` : ""
-    const start = report.startDate ? new Date(report.startDate).toISOString().slice(0, 10) : ""
-    const end = report.endDate ? new Date(report.endDate).toISOString().slice(0, 10) : ""
-
-    return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${escHtml(title)}</title>
-<style>
-    @page { size: A4 landscape; margin: 12mm; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Microsoft YaHei", SimSun, sans-serif; color: #111; }
-    h1 { margin: 0 0 4px; font-size: 16pt; text-align: center; font-weight: 600; }
-    .meta { display: flex; justify-content: space-between; font-size: 9pt; color: #444; margin-bottom: 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 10px; }
-    th, td { border: 1px solid #999; padding: 4px 6px; }
-    th { background: #eef4ff; font-weight: 600; text-align: center; white-space: nowrap; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    tr.sub td, tr.total td { background: #f8fafc; font-weight: 600; }
-    .note { font-size: 9pt; color: #555; margin: 6px 0 0; }
-</style></head><body>
-<h1>${escHtml(title)}</h1>
-<div class="meta"><span>账套：${escHtml(accountSetName)}</span><span>期间：${escHtml(start)} 至 ${escHtml(end)}</span></div>
-${body}${total}${currency}${note}
-</body></html>`
-}
-
-/** 打开打印窗口并自动唤起打印对话框。 */
-function openPrintWindow(html: string): void {
-    const win = window.open("", "_blank", "width=1180,height=760")
-    if (!win) return
-    win.document.open()
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.setTimeout(() => win.print(), 400)
-}
-
 /** 从地址栏还原维度与区间（扫码分享打开的链接可直接落到同一张报表）。 */
 function readInitialState(): { dimension: Dimension; start: string; end: string } {
     const qs = new URLSearchParams(window.location.search)
@@ -229,9 +120,7 @@ function readInitialState(): { dimension: Dimension; start: string; end: string 
 export default function FundReportPage() {
     const { message } = App.useApp()
     const { token } = useAuth()
-    const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const accountSetName = accountSets.find((s) => s.id === accountSetId)?.name ?? ""
 
     const initial = useMemo(readInitialState, [])
     const [dimension, setDimension] = useState<Dimension>(initial.dimension)
@@ -249,6 +138,7 @@ export default function FundReportPage() {
 
     const [report, setReport] = useState<FundReportDto | null>(null)
     const [loading, setLoading] = useState(false)
+    const [printing, setPrinting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     const [journals, setJournals] = useState<JournalListItemDto[]>([])
@@ -329,12 +219,33 @@ export default function FundReportPage() {
         setRange({ ...draft })
     }
 
-    const exportReport = async () => {
-        if (!accountSetId) return
+    /** 页面当前的取数条件，导出与打印共用。 */
+    const buildQuery = () => {
         const qs = new URLSearchParams({ dimension, startDate: range.start, endDate: range.end })
         if (journalId) qs.set("journalId", journalId)
         if (dimension !== "account" && keyword.trim()) qs.set("keyword", keyword.trim())
         if (dimension === "combo") qs.set("secondary", secondary)
+        return qs
+    }
+
+    /** 打印：条件原样交给后端，由后端渲染成与页面同版式的 PDF。 */
+    const printReport = async () => {
+        if (!accountSetId || printing) return
+        setPrinting(true)
+        try {
+            const qs = buildQuery()
+            qs.set("showPrimarySubtotal", String(showPrimarySubtotal))
+            await printPdf(`/api/accountsets/${accountSetId}/fund-reports/pdf?${qs.toString()}`, token)
+        } catch (err) {
+            message.error(err instanceof Error ? err.message : "生成打印稿失败，请重试。")
+        } finally {
+            setPrinting(false)
+        }
+    }
+
+    const exportReport = async () => {
+        if (!accountSetId) return
+        const qs = buildQuery()
         try {
             const res = await fetch(`/api/accountsets/${accountSetId}/fund-reports/export?${qs.toString()}`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -603,12 +514,10 @@ export default function FundReportPage() {
                             </Checkbox>
                         )}
                         <Button
-                                                       autoInsertSpace={false}
+                            autoInsertSpace={false}
                             disabled={!report}
-                            onClick={() => {
-                                // 打印与页面/导出同口径：带上搜索过滤后的分段与合计。
-                                if (report) openPrintWindow(buildPrintHtml({ ...report, sections: visibleSections, total: totalRow ?? report.total }, dimensionLabel, accountSetName || "当前账套"))
-                            }}
+                            loading={printing}
+                            onClick={() => void printReport()}
                         >
                             打印
                         </Button>

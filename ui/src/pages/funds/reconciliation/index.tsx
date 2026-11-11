@@ -11,7 +11,7 @@ import type { TableColumnsType } from "antd"
 import { ReloadOutlined } from "@ant-design/icons"
 import dayjs, { type Dayjs } from "dayjs"
 
-import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import {
     FundReportsApi,
@@ -21,6 +21,7 @@ import {
     type JournalListItemDto,
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { printPdf } from "@/lib/print-pdf"
 
 /** 金额：0 显示为 0，其余两位小数。 */
 function money(value: number | null | undefined): string {
@@ -36,65 +37,10 @@ function moneyBlankZero(value: number | null | undefined): string {
 
 const AMOUNT_RIGHT = "whitespace-nowrap text-right tabular-nums"
 
-/** 打印用 HTML 转义。 */
-function escHtml(text: string): string {
-    return text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c)
-}
-
-/** 组装核对总账的打印 HTML。 */
-function buildPrintHtml(data: FundReconciliationDto, accountSetName: string, periodText: string): string {
-    const rows = data.rows ?? []
-    const body = rows
-        .map(
-            (r) => `<tr>
-        <td>${escHtml(r.projectText ?? "")}</td>
-        <td>${escHtml(r.journalName ?? "")}${r.balanced ? "" : "（不平）"}</td>
-        <td>${escHtml(r.currency ?? "人民币")}</td>
-        <td class="num">${money(r.openingBalance)}</td>
-        <td class="num">${money(r.debit)}</td>
-        <td class="num">${money(r.credit)}</td>
-        <td class="num">${money(r.balance)}</td>
-        <td class="num">${r.balanced ? "" : money(r.difference)}</td>
-    </tr>`,
-        )
-        .join("")
-    const total = `<tr class="total"><td>合计</td><td></td><td></td><td class="num">${money(rows.reduce((s, r) => s + (r.openingBalance ?? 0), 0))}</td><td class="num">${money(rows.reduce((s, r) => s + (r.debit ?? 0), 0))}</td><td class="num">${money(rows.reduce((s, r) => s + (r.credit ?? 0), 0))}</td><td class="num">${money(rows.reduce((s, r) => s + (r.balance ?? 0), 0))}</td><td class="num">${money(rows.reduce((s, r) => s + (r.balanced ? 0 : (r.difference ?? 0)), 0))}</td></tr>`
-
-    return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>核对总账</title>
-<style>
-    @page { size: A4 landscape; margin: 12mm; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Microsoft YaHei", SimSun, sans-serif; color: #111; }
-    h1 { margin: 0 0 4px; font-size: 16pt; text-align: center; font-weight: 600; }
-    .meta { display: flex; justify-content: space-between; font-size: 9pt; color: #444; margin-bottom: 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 9pt; }
-    th, td { border: 1px solid #999; padding: 4px 6px; }
-    th { background: #f0f7f0; font-weight: 600; text-align: center; white-space: nowrap; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    tr.total td { background: #f8fafc; font-weight: 600; }
-</style></head><body>
-<h1>核对总账</h1>
-<div class="meta"><span>账套：${escHtml(accountSetName)}</span><span>会计期间：${escHtml(periodText)}</span></div>
-<table><tr><th>项目</th><th>名称</th><th>币别</th><th>期初余额</th><th>借方(收入)</th><th>贷方(支出)</th><th>余额</th><th>差异</th></tr>${body}${total}</table>
-</body></html>`
-}
-
-function openPrintWindow(html: string): void {
-    const win = window.open("", "_blank", "width=1180,height=760")
-    if (!win) return
-    win.document.open()
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.setTimeout(() => win.print(), 400)
-}
-
 export default function ReconciliationPage() {
     const { message } = App.useApp()
     const { token } = useAuth()
-    const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const accountSetName = accountSets.find((s) => s.id === accountSetId)?.name ?? ""
 
     // 会计期间（年月）+ 核对日（日）。默认当前月当天，打开即能看到核对结果。
     const [period, setPeriod] = useState<Dayjs>(() => dayjs().startOf("month"))
@@ -107,6 +53,7 @@ export default function ReconciliationPage() {
     const [data, setData] = useState<FundReconciliationDto | null>(null)
     const [journals, setJournals] = useState<JournalListItemDto[]>([])
     const [loading, setLoading] = useState(false)
+    const [printing, setPrinting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     /** 核对日 = 会计期间当年当月 + 选中的日。 */
@@ -156,7 +103,21 @@ export default function ReconciliationPage() {
     const pagedRows = visibleRows.slice((page - 1) * pageSize, page * pageSize)
 
     const diffCount = rows.filter((r) => !r.balanced).length
-    const periodText = `${period.format("YYYY年MM月")}${day}日`
+
+    const printReport = async () => {
+        if (!accountSetId) return
+        setPrinting(true)
+        try {
+            const qs = new URLSearchParams({ date: asOf })
+            if (journalId) qs.set("journalId", journalId)
+            if (onlyUnbalanced) qs.set("onlyUnbalanced", "true")
+            await printPdf(`/api/accountsets/${accountSetId}/fund-reports/reconciliation/pdf?${qs.toString()}`, token)
+        } catch (err) {
+            message.error(err instanceof Error ? err.message : "生成打印稿失败，请重试。")
+        } finally {
+            setPrinting(false)
+        }
+    }
 
     const exportReport = async () => {
         if (!accountSetId) return
@@ -277,13 +238,7 @@ export default function ReconciliationPage() {
                     </Space>
 
                     <Space size={8} wrap>
-                        <Button
-                                                       autoInsertSpace={false}
-                            disabled={!data}
-                            onClick={() => {
-                                if (data) openPrintWindow(buildPrintHtml(data, accountSetName || "当前账套", periodText))
-                            }}
-                        >
+                        <Button loading={printing} disabled={!data} autoInsertSpace={false} onClick={() => void printReport()}>
                             打印
                         </Button>
                         <Button autoInsertSpace={false} onClick={() => void exportReport()}>

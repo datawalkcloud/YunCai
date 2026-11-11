@@ -776,7 +776,7 @@ export function BillLedgerPage() {
                         >
                             <QuestionCircleOutlined /> 如何管理票据？
                         </Typography.Link>
-                        <Button icon={<PlusOutlined />} onClick={openCreate}>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                             新增
                         </Button>
                         <Dropdown menu={generateMenu} disabled={busy}>

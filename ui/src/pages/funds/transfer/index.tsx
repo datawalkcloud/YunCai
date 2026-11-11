@@ -19,6 +19,7 @@ import {
     type TransferDto,
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { printPdf } from "@/lib/print-pdf"
 import { fmtMoney, toISODate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useConfirm } from "@/hooks/useConfirm"
@@ -48,102 +49,6 @@ interface TransferDraft {
     remark: string
 }
 
-/** 打印设置（对齐柠檬云「打印设置」：方向 + 页边距 + 打印日期/页码）。 */
-interface PrintSettings {
-    orientation: "portrait" | "landscape"
-    marginTop: number
-    marginBottom: number
-    marginLeft: number
-    marginRight: number
-    showPrintDate: boolean
-    showPageNo: boolean
-}
-
-const DEFAULT_PRINT: PrintSettings = {
-    orientation: "landscape",
-    marginTop: 10,
-    marginBottom: 15,
-    marginLeft: 0,
-    marginRight: 0,
-    showPrintDate: true,
-    showPageNo: true,
-}
-
-/** 读取按账套持久化的打印设置。 */
-function readPrintSetting(key: string): PrintSettings {
-    try {
-        const raw = window.localStorage.getItem(key)
-        return raw ? { ...DEFAULT_PRINT, ...(JSON.parse(raw) as PrintSettings) } : DEFAULT_PRINT
-    } catch {
-        return DEFAULT_PRINT
-    }
-}
-
-/** 转义打印用 HTML。 */
-function esc(text: string): string {
-    return text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c)
-}
-
-/** 组装打印 HTML。 */
-function buildPrintHtml(
-    title: string,
-    accountSetName: string,
-    periodText: string,
-    rows: TransferDto[],
-    settings: PrintSettings,
-): string {
-    const body = rows
-        .map(
-            (t) => `<tr>
-                <td>${toISODate(t.date)}</td>
-                <td>${esc(t.summary ?? "")}</td>
-                <td>${esc(t.fromJournalName ?? "")}</td>
-                <td>${esc(t.toJournalName ?? "")}</td>
-                <td class="num">${fmtMoney(t.amount ?? 0)}</td>
-                <td>${esc(t.remark ?? "")}</td>
-                <td>${esc(t.voucherNo ?? "")}</td>
-            </tr>`,
-        )
-        .join("")
-    const total = rows.reduce((s, t) => s + (t.amount ?? 0), 0)
-
-    return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${esc(title)}</title>
-<style>
-    @page { size: A4 ${settings.orientation}; margin: ${settings.marginTop}mm ${settings.marginRight}mm ${settings.marginBottom}mm ${settings.marginLeft}mm; }
-    body { margin: 0; padding: 8mm 12mm 0; font-family: "Microsoft YaHei", SimSun, sans-serif; color: #111; }
-    h1 { margin: 0 0 6px; font-size: 16pt; text-align: center; font-weight: 600; }
-    .meta { display: flex; justify-content: space-between; font-size: 9pt; color: #444; margin-bottom: 6px; }
-    table { width: 100%; border-collapse: collapse; font-size: 9pt; }
-    th, td { border: 1px solid #333; padding: 4px 5px; }
-    th { background: #f1f5f9; font-weight: 600; text-align: center; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    tr.total td { background: #f8fafc; font-weight: 600; }
-    .pdate { margin-top: 6px; font-size: 9pt; color: #555; }
-    .pageno { font-size: 9pt; color: #666; text-align: right; }
-</style></head><body>
-    <h1>${esc(title)}</h1>
-    <div class="meta"><span>${esc(accountSetName)}</span><span>${esc(periodText)}</span></div>
-    <table>
-        <thead><tr><th>日期</th><th>摘要</th><th>转出账户</th><th>转入账户</th><th>金额</th><th>备注</th><th>关联凭证</th></tr></thead>
-        <tbody>${body}<tr class="total"><td colspan="4">合计</td><td class="num">${fmtMoney(total)}</td><td></td><td></td></tr></tbody>
-    </table>
-    ${settings.showPrintDate ? `<div class="pdate">打印日期：${new Date().toLocaleString("zh-CN")}</div>` : ""}
-    ${settings.showPageNo ? '<div class="pageno">第 1 页 / 共 1 页</div>' : ""}
-</body></html>`
-}
-
-/** 打开打印窗口并在加载完成后唤起打印对话框。 */
-function openPrintWindow(html: string): boolean {
-    const win = window.open("", "_blank", "width=1100,height=800")
-    if (!win) return false
-    win.document.open()
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.setTimeout(() => win.print(), 400)
-    return true
-}
-
 export default function TransferPage() {
     const { token } = useAuth()
     const { accountSets } = useAccountSets()
@@ -154,6 +59,7 @@ export default function TransferPage() {
     const [transfers, setTransfers] = useState<TransferDto[]>([])
     const [journals, setJournals] = useState<JournalListItemDto[]>([])
     const [loading, setLoading] = useState(false)
+    const [printing, setPrinting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [notice, setNotice] = useState<string | null>(null)
 
@@ -184,10 +90,7 @@ export default function TransferPage() {
     const [savingEdit, setSavingEdit] = useState(false)
     const [busyId, setBusyId] = useState<string | null>(null)
 
-    // 打印 / 导入
-    const printKey = `kuaiji.funds.transfer.print.${accountSetId}`
-    const [printOpen, setPrintOpen] = useState(false)
-    const [printSettings, setPrintSettings] = useState<PrintSettings>(() => readPrintSetting(printKey))
+    // 导入
     const [importOpen, setImportOpen] = useState(false)
     const [importFile, setImportFile] = useState<File | null>(null)
     const [importing, setImporting] = useState(false)
@@ -481,16 +384,30 @@ export default function TransferPage() {
         }
     }
 
-    function printList() {
-        const periodText = showAll || !period ? "全部期间" : `${period[0]} 至 ${period[1]}`
-        const html = buildPrintHtml(
-            "内部转账",
-            currentSet?.name ?? "",
-            periodText,
-            filtered,
-            printSettings,
-        )
-        if (!openPrintWindow(html)) setError("浏览器拦截了新窗口，请允许弹出窗口后重试。")
+    /** 打印列表：把当前期间与列头漏斗条件原样交给后端，由后端渲染 PDF。 */
+    async function printList() {
+        if (!accountSetId || printing) return
+        setPrinting(true)
+        setError(null)
+        try {
+            const qs = new URLSearchParams()
+            if (!showAll) {
+                if (period) {
+                    qs.set("startDate", period[0])
+                    qs.set("endDate", period[1])
+                }
+            } else {
+                qs.set("showAll", "true")
+            }
+            for (const [key, value] of Object.entries(filters)) {
+                if (value.trim()) qs.set(key, value.trim())
+            }
+            await printPdf(`/api/accountsets/${accountSetId}/transfers/pdf?${qs.toString()}`, token)
+        } catch (err) {
+            setError(await apiErrorMessage(err, "生成打印稿失败，请重试。"))
+        } finally {
+            setPrinting(false)
+        }
     }
 
     async function toggleFullscreen() {
@@ -734,20 +651,9 @@ export default function TransferPage() {
             >
                 显示全部
             </Checkbox>
-            <Dropdown
-                trigger={["click"]}
-                menu={{
-                    items: [
-                        { key: "print", label: "直接打印" },
-                        { key: "settings", label: "打印设置" },
-                    ],
-                    onClick: ({ key }) => (key === "print" ? printList() : setPrintOpen(true)),
-                }}
-            >
-                <Button>
-                    打印列表 <DownOutlined className="text-[10px]" />
-                </Button>
-            </Dropdown>
+            <Button disabled={!transfers.length} loading={printing} onClick={() => void printList()}>
+                打印列表
+            </Button>
             <Dropdown
                 trigger={["click"]}
                 menu={{
@@ -857,77 +763,6 @@ export default function TransferPage() {
                     />
                 </div>
             </Card>
-
-            {/* 打印设置 */}
-            <Modal
-                open={printOpen}
-                title="打印设置"
-                width={460}
-                onCancel={() => setPrintOpen(false)}
-                onOk={() => {
-                    window.localStorage.setItem(printKey, JSON.stringify(printSettings))
-                    setPrintOpen(false)
-                }}
-                okText="确定"
-                cancelText="取消"
-            >
-                <div className="flex flex-col gap-4 py-1">
-                    <div className="flex items-center gap-3 text-[13px]">
-                        <span className="w-[76px] shrink-0 text-right text-(--foreground)">打印方向：</span>
-                        <Select
-                            className="flex-1"
-                            value={printSettings.orientation}
-                            onChange={(v) => setPrintSettings({ ...printSettings, orientation: v })}
-                            options={[
-                                { value: "portrait", label: "纵向" },
-                                { value: "landscape", label: "横向" },
-                            ]}
-                        />
-                    </div>
-                    <div className="flex items-start gap-3 text-[13px]">
-                        <span className="w-[76px] shrink-0 pt-1 text-right text-(--foreground)">页边距：</span>
-                        <div className="grid flex-1 grid-cols-2 gap-2">
-                            {(
-                                [
-                                    ["marginTop", "上"],
-                                    ["marginBottom", "下"],
-                                    ["marginLeft", "左"],
-                                    ["marginRight", "右"],
-                                ] as const
-                            ).map(([key, label]) => (
-                                <label key={key} className="flex items-center gap-2">
-                                    <span className="w-4 text-(--foreground)">{label}</span>
-                                    <InputNumber
-                                        className="flex-1"
-                                        min={0}
-                                        max={100}
-                                        value={printSettings[key]}
-                                        onChange={(v: number | null) => setPrintSettings({ ...printSettings, [key]: Number(v ?? 0) })}
-                                        addonAfter="mm"
-                                    />
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3 text-[13px]">
-                        <span className="w-[76px] shrink-0 text-right text-(--foreground)">其他选项：</span>
-                        <div className="flex flex-col gap-1">
-                            <Checkbox
-                                checked={printSettings.showPrintDate}
-                                onChange={(e) => setPrintSettings({ ...printSettings, showPrintDate: e.target.checked })}
-                            >
-                                显示打印日期
-                            </Checkbox>
-                            <Checkbox
-                                checked={printSettings.showPageNo}
-                                onChange={(e) => setPrintSettings({ ...printSettings, showPageNo: e.target.checked })}
-                            >
-                                显示页码
-                            </Checkbox>
-                        </div>
-                    </div>
-                </div>
-            </Modal>
 
             {/* 导入内部转账 */}
             <Modal

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
-import { DownOutlined, PrinterOutlined } from "@ant-design/icons"
-import { Button, Table } from "antd"
+import { DownOutlined } from "@ant-design/icons"
+import { Table } from "antd"
 import type { TableColumnsType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -12,7 +12,7 @@ import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
-import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
+import { LedgerPrintButton, LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import { asDate } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
 
@@ -124,9 +124,12 @@ export default function VoucherSummaryPage() {
                                 token={token}
                                 conditions={query.committed}
                             />
-                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-                                打印
-                            </Button>
+                            <LedgerPrintButton
+                                kind="voucher-summary"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
                         </>
                     }
                     disabled={!accountSetId}

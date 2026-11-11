@@ -1,5 +1,7 @@
+using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.FixedAssets.Application;
 using KuaiJi.Modules.FixedAssets.Infrastructure;
+using KuaiJi.SharedKernel.Infrastructure.Pdf;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NPOI.SS.UserModel;
@@ -18,10 +20,12 @@ namespace KuaiJi.Modules.FixedAssets.Api
     public class FixedAssetsController : ControllerBase
     {
         private readonly FixedAssetService _assetService;
+        private readonly IAccountSetRepository _accountSetRepository;
 
-        public FixedAssetsController(FixedAssetService assetService)
+        public FixedAssetsController(FixedAssetService assetService, IAccountSetRepository accountSetRepository)
         {
             _assetService = assetService;
+            _accountSetRepository = accountSetRepository;
         }
 
         /// <summary>获取全部资产类别。</summary>
@@ -488,6 +492,112 @@ namespace KuaiJi.Modules.FixedAssets.Api
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        // —— 打印 PDF ——
+
+        /// <summary>
+        /// 打印固定资产清单（资产列表页签的表格，含表尾合计）。
+        /// <c>period</c>（yyyyMM）只写进页头与文件名，取数与 <c>GET assets</c> 完全一致。
+        /// </summary>
+        [HttpGet("assets/pdf")]
+        public async Task<IActionResult> PrintAssets(
+            Guid accountSetId,
+            [FromQuery] int? period,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var assets = await _assetService.GetAssetsAsync(accountSetId, cancellationToken);
+                return Pdf(FixedAssetsPdfProjector.Assets(assets, context, PeriodText(period)), context, period);
+            }
+            catch (FixedAssetException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>打印资产初始化清单（资产初始化页签的表格，期初累计折旧口径）。</summary>
+        [HttpGet("initial-assets/pdf")]
+        public async Task<IActionResult> PrintInitialAssets(
+            Guid accountSetId,
+            [FromQuery] int? period,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var assets = await _assetService.GetAssetsAsync(accountSetId, cancellationToken);
+                return Pdf(FixedAssetsPdfProjector.InitialAssets(assets, context, PeriodText(period)), context, period);
+            }
+            catch (FixedAssetException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>打印折旧摊销明细表（取数与 <c>GET depreciation-ledger</c> 一致）。</summary>
+        [HttpGet("depreciation-ledger/pdf")]
+        public async Task<IActionResult> PrintDepreciationLedger(
+            Guid accountSetId,
+            [FromQuery] int period,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var rows = await _assetService.GetDepreciationLedgerAsync(accountSetId, period, cancellationToken);
+                return Pdf(FixedAssetsPdfProjector.DepreciationLedger(rows, period, context), context, period);
+            }
+            catch (FixedAssetException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>打印资产核对总账（取数与 <c>GET check</c> 一致；类别分组行与差异行按页面排布）。</summary>
+        [HttpGet("check/pdf")]
+        public async Task<IActionResult> PrintCheck(
+            Guid accountSetId,
+            [FromQuery] int? period,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var rows = await _assetService.GetCheckAsync(accountSetId, cancellationToken);
+                return Pdf(FixedAssetsPdfProjector.Check(rows, context), context, period);
+            }
+            catch (FixedAssetException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>打印页头与文件名要用的账套名称 / 编制单位；账套不存在时按各模块口径回 400。</summary>
+        private async Task<FixedAssetsPdfProjector.PrintContext> PrintContextAsync(
+            Guid accountSetId, CancellationToken cancellationToken)
+        {
+            var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken)
+                             ?? throw new FixedAssetException("指定的账套不存在。");
+            return new FixedAssetsPdfProjector.PrintContext(accountSet.Name, accountSet.CompanyName);
+        }
+
+        private IActionResult Pdf(PrintSheet sheet, FixedAssetsPdfProjector.PrintContext context, int? period)
+            => File(PrintSheetPdfBuilder.Build(sheet), PrintSheetPdfBuilder.ContentType,
+                PrintSheetPdfBuilder.BuildFileName(sheet.Title, context.AccountSetName, PeriodSuffix(period)));
+
+        /// <summary>期间标识 202601 → 「2026年1月」（页头用）。</summary>
+        private static string? PeriodText(int? period)
+            => period is { } value && value >= 100_000
+                ? string.Create(CultureInfo.InvariantCulture, $"{value / 100:D4}年{value % 100:D1}月")
+                : null;
+
+        /// <summary>文件名后缀用紧凑的 yyyyMM，与账页打印同风格。</summary>
+        private static string? PeriodSuffix(int? period)
+            => period is { } value && value >= 100_000
+                ? value.ToString(CultureInfo.InvariantCulture)
+                : null;
 
         /// <summary>把工作表读成「列名 → 单元格文本」的行集合（列名取自首行）。</summary>
         private static List<Dictionary<string, string?>> ReadSheet(Stream stream)

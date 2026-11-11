@@ -1,6 +1,7 @@
 using KuaiJi.Modules.Ledgers.Application;
 using KuaiJi.Modules.Assist.Domain;
 using KuaiJi.Modules.Ledgers.Infrastructure;
+using KuaiJi.SharedKernel.Infrastructure.Pdf;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -388,25 +389,7 @@ namespace KuaiJi.Modules.Ledgers.Api
         public async Task<IActionResult> Export(
             Guid accountSetId,
             string kind,
-            [FromQuery] DateOnly? startDate,
-            [FromQuery] DateOnly? endDate,
-            [FromQuery] string? accountFrom,
-            [FromQuery] string? accountTo,
-            [FromQuery] int? maxLevel,
-            [FromQuery] int? minLevel,
-            [FromQuery] string? summaryKeyword,
-            [FromQuery] LedgerSortBy? sortBy,
-            [FromQuery] bool? showAssist,
-            [FromQuery] bool? showCounterAccount,
-            [FromQuery] bool? showOnlyLeaf,
-            [FromQuery] bool? hideZeroBalance,
-            [FromQuery] bool? hideNoActivity,
-            [FromQuery] bool? hideTotalsNoActivity,
-            [FromQuery] bool? includeIdleAccounts,
-            [FromQuery] AssistType? assistType,
-            [FromQuery] AssistType? secondaryAssistType,
-            [FromQuery] Guid? assistItemId,
-            [FromQuery] Guid? accountId,
+            [FromQuery] LedgerPageQuery? query,
             CancellationToken cancellationToken)
         {
             if (!LedgerExportKindText.TryParse(kind, out var exportKind))
@@ -414,44 +397,10 @@ namespace KuaiJi.Modules.Ledgers.Api
                 return BadRequest(new { message = "不支持导出的账页类型。" });
             }
 
-            var options = new LedgerQueryOptions
-            {
-                StartDate = startDate,
-                EndDate = endDate,
-                AccountFrom = accountFrom,
-                AccountTo = accountTo,
-                MaxLevel = maxLevel,
-                MinLevel = minLevel,
-                SummaryKeyword = summaryKeyword,
-                SortBy = sortBy ?? LedgerSortBy.VoucherNumber,
-                ShowAssist = showAssist ?? false,
-                ShowCounterAccount = showCounterAccount ?? true,
-                ShowOnlyLeaf = showOnlyLeaf ?? true,
-                HideZeroBalance = hideZeroBalance ?? false,
-                HideNoActivity = hideNoActivity ?? false,
-                HideTotalsNoActivity = hideTotalsNoActivity ?? false,
-                IncludeIdleAccounts = includeIdleAccounts ?? false,
-                AssistType = assistType,
-                SecondaryAssistType = secondaryAssistType,
-                AssistItemId = assistItemId,
-                SingleAccountId = accountId,
-            };
-
+            var options = (query ?? new LedgerPageQuery()).ToOptions();
             try
             {
-                var page = exportKind switch
-                {
-                    LedgerExportKind.Subsidiary => (object)await _subsidiaryLedgerService.GetAsync(accountSetId, options, cancellationToken),
-                    LedgerExportKind.General => (object)await _generalLedgerService.GetAsync(accountSetId, options, cancellationToken),
-                    LedgerExportKind.Journal => (object)await _voucherJournalService.GetAsync(accountSetId, options, cancellationToken),
-                    LedgerExportKind.VoucherSummary => (object)await _voucherSummaryService.GetAsync(accountSetId, options, cancellationToken),
-                    LedgerExportKind.AssistBalance => (object)await _assistLedgerService.GetBalanceAsync(accountSetId, options, cancellationToken),
-                    LedgerExportKind.AssistSubsidiary => (object)await _assistLedgerService.GetSubsidiaryAsync(accountSetId, options, cancellationToken),
-                    LedgerExportKind.AssistCombine => (object)await _assistLedgerService.GetCombineAsync(accountSetId, options, cancellationToken),
-                    LedgerExportKind.MultiColumn => (object)await _multiColumnLedgerService.GetAsync(accountSetId, options, cancellationToken),
-                    _ => (object)await _ageingAnalysisService.GetAsync(accountSetId, options, cancellationToken),
-                };
-
+                var page = await LoadAsync(exportKind, accountSetId, options, cancellationToken);
                 var sheet = LedgerExportProjector.Project(exportKind, page, options);
                 return File(LedgerExportBuilder.Build(sheet), LedgerExportBuilder.ContentType, LedgerExportBuilder.BuildFileName(sheet));
             }
@@ -459,6 +408,85 @@ namespace KuaiJi.Modules.Ledgers.Api
             {
                 return BadRequest(new { message = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// 打印账页为 PDF（服务端用 PaperSharp 渲染，A4 版式、跨页续表、页脚页码与打印时间）。
+        /// <c>kind</c> 与查询条件同 <see cref="Export"/>；未提供打印版式的账页返回 400。
+        /// </summary>
+        [HttpGet("{kind}/pdf")]
+        public async Task<IActionResult> Pdf(
+            Guid accountSetId,
+            string kind,
+            [FromQuery] LedgerPageQuery? query,
+            CancellationToken cancellationToken)
+        {
+            if (!LedgerExportKindText.TryParse(kind, out var exportKind))
+            {
+                return BadRequest(new { message = "不支持打印的账页类型。" });
+            }
+
+            var options = (query ?? new LedgerPageQuery()).ToOptions();
+            try
+            {
+                var page = await LoadAsync(exportKind, accountSetId, options, cancellationToken);
+
+                // 总账页面另有「本年累计」行，取数是按年窗口另查一次，打印沿用同一口径。
+                LedgerPdfProjector.GeneralYearTotals? yearTotals = null;
+                if (exportKind == LedgerExportKind.General && page is GeneralLedgerDto general)
+                {
+                    yearTotals = await YearTotalsAsync(accountSetId, general.Meta, options, cancellationToken);
+                }
+
+                var sheet = LedgerPdfProjector.Project(exportKind, page, options, yearTotals);
+                var meta = LedgerPdfProjector.MetaOf(page);
+                var bytes = PrintSheetPdfBuilder.Build(sheet);
+                return File(bytes, PrintSheetPdfBuilder.ContentType, PrintSheetPdfBuilder.BuildFileName(sheet.Title, meta.AccountSetName, PeriodSuffixOf(meta)));
+            }
+            catch (LedgerException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>按账页种类取数，导出与打印共用。</summary>
+        private async Task<object> LoadAsync(
+            LedgerExportKind kind, Guid accountSetId, LedgerQueryOptions options, CancellationToken cancellationToken) => kind switch
+        {
+            LedgerExportKind.Subsidiary => await _subsidiaryLedgerService.GetAsync(accountSetId, options, cancellationToken),
+            LedgerExportKind.General => await _generalLedgerService.GetAsync(accountSetId, options, cancellationToken),
+            LedgerExportKind.Journal => await _voucherJournalService.GetAsync(accountSetId, options, cancellationToken),
+            LedgerExportKind.VoucherSummary => await _voucherSummaryService.GetAsync(accountSetId, options, cancellationToken),
+            LedgerExportKind.AssistBalance => await _assistLedgerService.GetBalanceAsync(accountSetId, options, cancellationToken),
+            LedgerExportKind.AssistSubsidiary => await _assistLedgerService.GetSubsidiaryAsync(accountSetId, options, cancellationToken),
+            LedgerExportKind.AssistCombine => await _assistLedgerService.GetCombineAsync(accountSetId, options, cancellationToken),
+            LedgerExportKind.MultiColumn => await _multiColumnLedgerService.GetAsync(accountSetId, options, cancellationToken),
+            _ => await _ageingAnalysisService.GetAsync(accountSetId, options, cancellationToken),
+        };
+
+        /// <summary>总账「本年累计」：按截止期所在年的 1 月 1 日至截止期再取一次发生额。</summary>
+        private async Task<LedgerPdfProjector.GeneralYearTotals> YearTotalsAsync(
+            Guid accountSetId, LedgerMetaDto meta, LedgerQueryOptions options, CancellationToken cancellationToken)
+        {
+            if (!DateOnly.TryParse(meta.EndDate, out var end))
+            {
+                return new LedgerPdfProjector.GeneralYearTotals(new Dictionary<string, (decimal, decimal)>());
+            }
+
+            var yearOptions = options with { StartDate = new DateOnly(end.Year, 1, 1), EndDate = end };
+            var year = await _generalLedgerService.GetAsync(accountSetId, yearOptions, cancellationToken);
+            return new LedgerPdfProjector.GeneralYearTotals(
+                year.Accounts.ToDictionary(a => a.Code, a => (a.TotalDebit, a.TotalCredit)));
+        }
+
+        /// <summary>文件名里的期间后缀，如 202601-202603。</summary>
+        private static string PeriodSuffixOf(LedgerMetaDto meta)
+        {
+            var start = meta.StartDate?.Replace("-", "");
+            var end = meta.EndDate?.Replace("-", "");
+            return start is { Length: >= 6 } && end is { Length: >= 6 }
+                ? $"{start[..6]}-{end[..6]}"
+                : string.Empty;
         }
 
         private static LedgerQueryOptions AssistOptions(

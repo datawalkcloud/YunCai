@@ -1,6 +1,8 @@
 using System.Globalization;
+using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Salary.Application;
 using KuaiJi.Modules.Salary.Infrastructure;
+using KuaiJi.SharedKernel.Infrastructure.Pdf;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NPOI.SS.UserModel;
@@ -15,10 +17,12 @@ namespace KuaiJi.Modules.Salary.Api
     public class SalariesController : ControllerBase
     {
         private readonly SalaryService _salaryService;
+        private readonly IAccountSetRepository _accountSetRepository;
 
-        public SalariesController(SalaryService salaryService)
+        public SalariesController(SalaryService salaryService, IAccountSetRepository accountSetRepository)
         {
             _salaryService = salaryService;
+            _accountSetRepository = accountSetRepository;
         }
 
         // —— 员工 ——
@@ -387,6 +391,57 @@ namespace KuaiJi.Modules.Salary.Api
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        /// <summary>打印当期工资表（一行一员工，末行合计；取数与 <c>GET bills</c> 一致）。</summary>
+        [HttpGet("bills/pdf")]
+        public async Task<IActionResult> PrintBills(Guid accountSetId, [FromQuery] int period, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var bills = await _salaryService.GetBillsAsync(accountSetId, period, cancellationToken);
+                var sheet = SalaryPdfProjector.Bills(bills, period, context);
+                return Pdf(sheet, context, period.ToString(CultureInfo.InvariantCulture));
+            }
+            catch (SalaryException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>打印工资统计表（按部门汇总；取数与 <c>GET summary</c> 一致）。</summary>
+        [HttpGet("summary/pdf")]
+        public async Task<IActionResult> PrintSummary(
+            Guid accountSetId,
+            [FromQuery] int startPeriod,
+            [FromQuery] int endPeriod,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var context = await PrintContextAsync(accountSetId, cancellationToken);
+                var rows = await _salaryService.GetSummaryAsync(accountSetId, startPeriod, endPeriod, cancellationToken);
+                var sheet = SalaryPdfProjector.Summary(rows, startPeriod, endPeriod, context);
+                return Pdf(sheet, context, $"{startPeriod}-{endPeriod}");
+            }
+            catch (SalaryException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>打印页头与文件名要用的账套名称 / 编制单位；账套不存在时与其他工资接口同样回 400。</summary>
+        private async Task<SalaryPdfProjector.PrintContext> PrintContextAsync(
+            Guid accountSetId, CancellationToken cancellationToken)
+        {
+            var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken)
+                             ?? throw new SalaryException("指定的账套不存在。");
+            return new SalaryPdfProjector.PrintContext(accountSet.Name, accountSet.CompanyName);
+        }
+
+        private IActionResult Pdf(PrintSheet sheet, SalaryPdfProjector.PrintContext context, string suffix)
+            => File(PrintSheetPdfBuilder.Build(sheet), PrintSheetPdfBuilder.ContentType,
+                PrintSheetPdfBuilder.BuildFileName(sheet.Title, context.AccountSetName, suffix));
 
         // —— 工资凭证科目设置 ——
 

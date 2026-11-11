@@ -48,33 +48,74 @@ function notifyUnauthorized(): void {
 }
 
 /**
- * 从生成客户端抛出的错误中提取可展示的提示文案。
- * 后端业务错误统一返回 { message }，这里优先解析该字段，其次回退到响应文本与通用兜底。
+ * 取生成客户端抛错里的 Response。生成代码与业务代码可能拿到不同模块实例，
+ * instanceof ResponseError 不能单独依赖，补一层按结构的判定。
+ */
+function errorResponse(err: unknown): Response | null {
+    if (err instanceof ResponseError) return err.response
+    if (err && typeof err === "object" && "response" in err) {
+        const value = (err as { response?: unknown }).response
+        if (value instanceof Response) return value
+    }
+    return null
+}
+
+/** 代理 / 网关返回的技术文本，不适合直接展示给用户。 */
+const INFRA_NOISE = /upstream|bad gateway|gateway timeout|econnrefused|<html|<!doctype|nginx|response returned an error code/i
+
+/** 生成客户端自带的英文内部文案，同样不能透出到界面。 */
+const GENERATOR_NOISE = /^(Response returned an error code|The request failed and the interceptors did not return an alternative response|Required parameter|fetch failed|Failed to fetch|NetworkError)/i
+
+/** 响应体没有可用业务文案时，按状态码给出可操作的中文提示。 */
+function statusMessage(status: number): string | null {
+    switch (status) {
+        case 400: return "请求参数有误（HTTP 400），请检查后重试。"
+        case 401: return "登录已失效，请重新登录。"
+        case 403: return "没有权限执行此操作（HTTP 403）。"
+        case 404: return "请求的接口不存在（HTTP 404），请确认后端服务版本。"
+        case 409: return "数据冲突（HTTP 409），请刷新后重试。"
+        case 500: return "服务处理失败（HTTP 500），请稍后重试或查看服务日志。"
+        case 502:
+        case 503:
+        case 504: return `后端服务暂时不可用（HTTP ${status}），请确认服务已启动后重试。`
+        default: return status >= 500 ? `服务异常（HTTP ${status}），请稍后重试。` : null
+    }
+}
+
+/**
+ * 从生成客户端抛出的错误中提取可展示的中文提示。
+ * 优先透出后端的 { message } / Problem Details { detail | title }，其次是后端自己的纯文本；
+ * 代理错误页、生成器英文文案一律不外泄，改按状态码或调用方兜底文案展示。
  * 识别到 401 时先触发统一回调（清登录态、跳登录页），再按原样返回文案，调用方行为不变。
  */
 export async function apiErrorMessage(err: unknown, fallback: string): Promise<string> {
-    if (err instanceof ResponseError) {
-        if (err.response.status === 401) notifyUnauthorized()
+    const response = errorResponse(err)
+    if (response) {
+        if (response.status === 401) notifyUnauthorized()
         try {
-            const data = await err.response.clone().json()
+            const data = await response.clone().json()
             if (data && typeof data === "object") {
-                const { message, detail } = data as { message?: unknown; detail?: unknown }
+                const { message, detail, title } = data as { message?: unknown; detail?: unknown; title?: unknown }
                 // 业务错误约定为 { message }；未捕获异常走 Problem Details，透出 detail 首段即可。
                 const text = typeof message === "string" && message ? message
-                    : typeof detail === "string" && detail ? detail : ""
+                    : typeof detail === "string" && detail ? detail
+                        : typeof title === "string" && title ? title : ""
                 if (text) return text.slice(0, 200)
             }
         } catch {
             // 响应体不是 JSON，继续尝试读取纯文本。
         }
         try {
-            const text = await err.response.clone().text()
-            if (text) return text.slice(0, 200)
+            const text = (await response.clone().text()).trim()
+            if (text && !INFRA_NOISE.test(text)) return text.slice(0, 200)
         } catch {
-            // 读取失败则回退到兜底文案。
+            // 读取失败则按状态码给提示。
         }
+        return statusMessage(response.status) ?? fallback
     }
-    if (err instanceof Error && err.message) return err.message
+    // fetch 本身失败（服务未启动 / 断网）：给明确的中文提示，而不是 "Failed to fetch"。
+    if (err instanceof TypeError) return "无法连接后端服务，请确认服务已启动且网络正常。"
+    if (err instanceof Error && err.message && !GENERATOR_NOISE.test(err.message)) return err.message
     return fallback
 }
 

@@ -1,7 +1,9 @@
 using System.Globalization;
+using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Invoices.Application;
 using KuaiJi.Modules.Invoices.Domain;
 using KuaiJi.Modules.Invoices.Infrastructure;
+using KuaiJi.SharedKernel.Infrastructure.Pdf;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NPOI.SS.UserModel;
@@ -19,10 +21,12 @@ namespace KuaiJi.Modules.Invoices.Api
     public class InvoicesController : ControllerBase
     {
         private readonly InvoiceService _invoiceService;
+        private readonly IAccountSetRepository _accountSetRepository;
 
-        public InvoicesController(InvoiceService invoiceService)
+        public InvoicesController(InvoiceService invoiceService, IAccountSetRepository accountSetRepository)
         {
             _invoiceService = invoiceService;
+            _accountSetRepository = accountSetRepository;
         }
 
         /// <summary>按方向查询发票列表（含明细行；1 销项 / 2 进项）。</summary>
@@ -133,6 +137,45 @@ namespace KuaiJi.Modules.Invoices.Api
                     ? "发票资金一览表.xlsx"
                     : $"发票资金一览表_{period}.xlsx";
                 return File(bytes, InvoiceExportBuilder.ContentType, fileName);
+            }
+            catch (InvoiceException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 打印发票清单为 PDF：列与合计均按销项 / 进项列表页的表格 1:1 复刻，
+        /// 参数与 <see cref="Export"/> 同名同口径（<c>period</c> 只用于文件名后缀，形如 2026-10）。
+        /// </summary>
+        [HttpGet("pdf")]
+        public async Task<IActionResult> Pdf(
+            Guid accountSetId,
+            [FromQuery] int direction,
+            [FromQuery] DateOnly? startDate,
+            [FromQuery] DateOnly? endDate,
+            [FromQuery] int? status,
+            [FromQuery] string? period,
+            CancellationToken cancellationToken)
+        {
+            if (!TryDirection(direction, out var dir))
+            {
+                return BadRequest(new { message = "发票方向只能是 1（销项）或 2（进项）。" });
+            }
+
+            var statusFilter = status is { } raw ? (InvoiceStatus?)raw : null;
+            try
+            {
+                var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken)
+                                 ?? throw new InvoiceException("指定的账套不存在。");
+                var context = new InvoicePdfProjector.PrintContext(accountSet.Name, accountSet.CompanyName);
+                var invoices = await _invoiceService.GetRangeAsync(accountSetId, dir, startDate, endDate, statusFilter, cancellationToken);
+                var summary = await _invoiceService.GetSummaryAsync(accountSetId, dir, startDate, endDate, statusFilter, cancellationToken);
+                var sheet = InvoicePdfProjector.List(invoices, summary, dir, context, startDate, endDate);
+                return File(
+                    PrintSheetPdfBuilder.Build(sheet),
+                    PrintSheetPdfBuilder.ContentType,
+                    PrintSheetPdfBuilder.BuildFileName(sheet.Title, accountSet.Name, period));
             }
             catch (InvoiceException ex)
             {

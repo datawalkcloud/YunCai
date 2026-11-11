@@ -1,6 +1,5 @@
-import { PrinterOutlined } from "@ant-design/icons"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Button } from "antd"
+
 import type { TableColumnsType } from "antd"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -13,7 +12,7 @@ import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerSection, LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { LedgerQueryPanel, type LedgerField } from "@/components/ledger/LedgerQueryPanel"
-import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
+import { LedgerPrintButton, LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import {
     ROW_KIND,
     asDate,
@@ -134,9 +133,12 @@ export default function AssistSubsidiaryPage() {
                                 token={token}
                                 conditions={query.committed}
                             />
-                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-                                打印
-                            </Button>
+                            <LedgerPrintButton
+                                kind="assist-subsidiary"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
                         </>
                     }
                     disabled={!accountSetId}
