@@ -3,6 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { LedgerMetaDto } from "@/apis-gen"
 import { apiErrorMessage } from "@/lib/api-client"
 import type { LedgerConditions } from "./types"
+import { currentMonthPeriod } from "./types"
+
+/** 未指定期间的账页一律默认查当月；下钻带过来的区间原样保留。 */
+function withDefaultPeriod(initial?: LedgerConditions): LedgerConditions {
+    const month = currentMonthPeriod()
+    return { ...initial, startDate: initial?.startDate || month.startDate, endDate: initial?.endDate || month.endDate }
+}
 
 /** 所有账页返回体都带 meta，据此约束泛型。 */
 export interface LedgerResponse {
@@ -52,7 +59,7 @@ export interface LedgerQueryState<T> {
 
 /**
  * 账页共用的查询状态与取数样板：维护「草稿条件 / 已提交条件」两段状态，
- * 首次进入时用后端解析出的区间回填日期，并统一处理 loading / error。
+ * 进入页面时未指定期间一律默认当月，并统一处理 loading / error。
  */
 export function useLedgerQuery<T extends LedgerResponse>({
     accountSetId,
@@ -62,8 +69,8 @@ export function useLedgerQuery<T extends LedgerResponse>({
     fallbackError = "加载账页数据失败，请重试。",
     canQuery,
 }: UseLedgerQueryArgs<T>): LedgerQueryState<T> {
-    const [draft, setDraft] = useState<LedgerConditions>(() => ({ ...initial }))
-    const [committed, setCommitted] = useState<LedgerConditions>(() => ({ ...initial }))
+    const [draft, setDraft] = useState<LedgerConditions>(() => withDefaultPeriod(initial))
+    const [committed, setCommitted] = useState<LedgerConditions>(() => withDefaultPeriod(initial))
     const [data, setData] = useState<T | null>(null)
     const [meta, setMeta] = useState<LedgerMetaDto | null>(null)
     const [loading, setLoading] = useState(false)
@@ -76,10 +83,9 @@ export function useLedgerQuery<T extends LedgerResponse>({
     const canQueryRef = useRef(canQuery)
     canQueryRef.current = canQuery
     // 重置时需要一个稳定的初始条件快照，同时避免账页每次渲染传新对象。
-    const seedRef = useRef(initial)
+    const seedRef = useRef(withDefaultPeriod(initial))
     const draftRef = useRef(draft)
     draftRef.current = draft
-    const backfilled = useRef(false)
 
     const run = useCallback(() => setCommitted({ ...draftRef.current }), [])
 
@@ -101,15 +107,9 @@ export function useLedgerQuery<T extends LedgerResponse>({
     const reset = useCallback(() => {
         const seed = { ...seedRef.current }
         draftRef.current = seed
-        backfilled.current = false
         setDraft(seed)
         setCommitted(seed)
     }, [])
-
-    // 切换账套后允许重新回填一次日期。
-    useEffect(() => {
-        backfilled.current = false
-    }, [accountSetId])
 
     useEffect(() => {
         if (!accountSetId) {
@@ -133,16 +133,6 @@ export function useLedgerQuery<T extends LedgerResponse>({
                 if (cancelled) return
                 setData(res)
                 setMeta(res.meta)
-                // 未指定区间时采用后端解析出的区间，避免面板一直显示空。
-                if (!backfilled.current && res.meta?.startDate && res.meta?.endDate) {
-                    backfilled.current = true
-                    if (!draftRef.current.startDate) {
-                        const merged = { ...draftRef.current, startDate: res.meta.startDate, endDate: res.meta.endDate }
-                        draftRef.current = merged
-                        setDraft(merged)
-                        setCommitted(merged)
-                    }
-                }
             })
             .catch(async (err) => {
                 if (cancelled) return

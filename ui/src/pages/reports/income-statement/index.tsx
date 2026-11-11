@@ -8,6 +8,7 @@ import { useAccountingPeriodBounds } from "@/accountSets/useCurrentAccountSet"
 import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type IncomeStatementLineDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { printPdf } from "@/lib/print-pdf"
 import { ReportPageShell } from "@/components/report/ReportPageShell"
 import { ReportPeriodToolbar } from "@/components/report/ReportPeriodToolbar"
 import { downloadReportExport } from "@/components/report/report-export"
@@ -57,17 +58,19 @@ const OPERATING_ITEMS: LineDef[] = [
     def("销售费用", 4, { subtract: true, indent: 1 }),
     def("管理费用", 5, { subtract: true, indent: 1 }),
     def("财务费用", 6, { subtract: true, indent: 1 }),
+    def("其中：利息费用（收入以“-”号填列）", 33, { indent: 2 }),
     def("资产减值损失", 7, { subtract: true, indent: 1 }),
     def("加：公允价值变动收益（损失以“－”号填列）", 8, { indent: 1 }),
     def("投资收益（损失以“－”号填列）", 9, { indent: 1 }),
     def("其中：对联营企业和合营企业的投资收益", 10, { indent: 2 }),
 ]
-/** 参与营业利润合计的行次（排除「其中」行 10）。 */
-const OPERATING_SUM_ITEMS = OPERATING_ITEMS.filter((d) => d.line !== 10)
+/** 参与营业利润合计的行次（排除「其中」行 10、33）。 */
+const OPERATING_SUM_ITEMS = OPERATING_ITEMS.filter((d) => d.line !== 10 && d.line !== 33)
 
 // 利润总额 = 营业利润 + 营业外收入 − 营业外支出（13/15 为「其中」行，不参与合计）
 const PROFIT_ADJUST: LineDef[] = [
     def("加：营业外收入", 12, { indent: 1 }),
+    def("其中：政府补助", 34, { indent: 2 }),
     def("其中：非流动资产处置利得", 13, { indent: 2 }),
     def("减：营业外支出", 14, { subtract: true, indent: 1 }),
     def("其中：非流动资产处置损失", 15, { indent: 2 }),
@@ -218,6 +221,7 @@ export default function IncomeStatementPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [loaded, setLoaded] = useState(false)
+    const [printing, setPrinting] = useState(false)
 
     const load = useCallback(async () => {
         if (!accountSetId) return
@@ -269,6 +273,22 @@ export default function IncomeStatementPage() {
         )
     }, [token, accountSetId, period])
 
+    /** 打印：后端按会企02表版式渲染 PDF，在新窗口预览（浏览器打印的页眉页脚不再出现）。 */
+    const printSheet = useCallback(async () => {
+        if (!token || !accountSetId || !period || printing) return
+        setPrinting(true)
+        try {
+            await printPdf(
+                `/api/accountsets/${accountSetId}/reports/pdf?kind=income-statement&year=${period.year}&month=${period.month}`,
+                token,
+            )
+        } catch (err) {
+            setError(await apiErrorMessage(err, "生成打印稿失败，请重试。"))
+        } finally {
+            setPrinting(false)
+        }
+    }, [token, accountSetId, period, printing])
+
     return (
         <ReportPageShell
             toolbar={
@@ -277,6 +297,7 @@ export default function IncomeStatementPage() {
                     min={periodBounds.min}
                     max={periodBounds.max}
                     onChange={setPeriod}
+                    loading={loading && !loaded}
                     disabled={!accountSetId}
                     actions={
                         <>
@@ -287,7 +308,12 @@ export default function IncomeStatementPage() {
                             >
                                 导出
                             </Button>
-                            <Button icon={<PrinterOutlined />} onClick={() => window.print()} disabled={!accountSetId}>
+                            <Button
+                                icon={<PrinterOutlined />}
+                                loading={printing}
+                                onClick={() => void printSheet()}
+                                disabled={!accountSetId || !period}
+                            >
                                 打印
                             </Button>
                             <Tooltip title="刷新">

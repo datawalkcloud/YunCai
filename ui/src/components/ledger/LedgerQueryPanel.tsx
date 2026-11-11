@@ -1,10 +1,11 @@
 import { useRef, useState, type ReactNode } from "react"
 import dayjs from "dayjs"
-import { FilterOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons"
+import { ReloadOutlined, SearchOutlined } from "@ant-design/icons"
 import { Button, Checkbox, DatePicker, Input, Popover, Radio, Select, Spin } from "antd"
 
 import type { AccountDto, AssistItemDto } from "@/apis-gen"
 import { cn } from "@/lib/utils"
+import { FilterTriggerButton } from "@/components/page/filter-trigger-button"
 import {
     ASSIST_TYPES,
     SORT_BY_OPTIONS,
@@ -322,15 +323,11 @@ export function LedgerQueryPanel({
                     arrow={false}
                     content={form}
                 >
-                    <button
-                        type="button"
-                        disabled={disabled}
-                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-(--border) bg-(--card) px-2.5 py-1 text-[12.5px] text-(--foreground) transition-colors hover:border-(--brand) hover:text-(--brand) disabled:cursor-not-allowed disabled:opacity-60"
+                    <FilterTriggerButton
                         title="点击编辑查询条件"
-                    >
-                        {periodText}
-                        <FilterOutlined className="text-[12px] opacity-60" />
-                    </button>
+                        label={periodText}
+                        disabled={disabled}
+                    />
                 </Popover>
 
                 {caption ? <span className="truncate text-[12.5px] text-(--muted-foreground)">{caption}</span> : null}

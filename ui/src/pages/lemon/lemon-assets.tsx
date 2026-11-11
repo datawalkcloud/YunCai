@@ -36,12 +36,10 @@ import {
 import type { Col, Row } from "./components/ui";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
-import {
-    shiftPeriod,
-    useDefaultAccountingPeriod,
-    type AccountingPeriod,
-} from "@/accountSets/useCurrentAccountSet";
+import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
+import { usePeriodStepper } from "./components/usePeriodStepper";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
+import { printPdf } from "@/lib/print-pdf";
 import { fmtAmount } from "@/lib/format";
 import {
     AccountsApi,
@@ -59,11 +57,9 @@ import {
     type FixedAssetSummaryRowDto,
 } from "@/apis-gen";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
 /** 期间对象 → 「2026年10月」。 */
 function periodLabel(p: AccountingPeriod): string {
-    return `${p.year}年${pad(p.month)}月`;
+    return `${p.year}年${p.month}月`;
 }
 
 /** 日期（Date 或字符串）→ yyyy-MM-dd。 */
@@ -76,6 +72,26 @@ const attrOf = (t?: string | null) => (t === "无形资产" ? 2 : t === "长期�
 
 /** 资产模块接口前缀。 */
 const assetBase = (accountSetId: string) => `/api/accountsets/${accountSetId}/fixedassets`;
+
+/**
+ * 打印资产表格：后端渲染 PDF 并在新窗口预览，前端只拼路径。
+ * 失败时把可展示的中文文案交给页面的 toast（与导出按钮同样的提示位置）。
+ */
+async function printAssetSheet(
+    token: string | null | undefined,
+    accountSetId: string,
+    path: string,
+    setToast: (text: string) => void,
+) {
+    if (!token || !accountSetId) {
+        return;
+    }
+    try {
+        await printPdf(`${assetBase(accountSetId)}${path}`, token);
+    } catch (e) {
+        setToast(e instanceof Error ? e.message : "生成打印稿失败，请重试。");
+    }
+}
 
 /** 二进制下载（xlsx）：fetch + blob + a[download]，返回错误文案（成功返回 null）。 */
 async function downloadBlob(url: string, token: string, fallbackName: string): Promise<string | null> {
@@ -237,16 +253,6 @@ function useFixedAssetData() {
     }, [reload]);
 
     return { categories, assets, check, loading, error, reload };
-}
-
-/** 期间选择：默认跟随账套工作期间，切换账套自动复位。 */
-function useAssetPeriod() {
-    const accountSetId = useCurrentAccountSetId() ?? "";
-    const defaultPeriod = useDefaultAccountingPeriod();
-    const [override, setOverride] = useState<AccountingPeriod | null>(null);
-    useEffect(() => setOverride(null), [accountSetId]);
-    const period = override ?? defaultPeriod;
-    return { period, setOverride, step: (d: number) => setOverride(shiftPeriod(period, d)) };
 }
 
 /** 末级会计科目（凭证科目下拉共用）。 */
@@ -651,7 +657,7 @@ const CHANGE_COLS: Col[] = [
 
 export function LemonAssetManage() {
     const [tab, setTab] = useState(1);
-    const { period, step } = useAssetPeriod();
+    const { period, stepper } = usePeriodStepper();
     const data = useFixedAssetData();
     const { token, accountSetId } = useAccountContext();
     const fileRef = useRef<HTMLInputElement>(null);
@@ -937,7 +943,7 @@ export function LemonAssetManage() {
         setSelected(checked ? new Set(data.assets.map((a) => a.id ?? "").filter(Boolean)) : new Set());
 
     const addAssetBtn = (
-        <Btn onClick={() => setShowAdd(true)}>增加资产</Btn>
+        <Btn variant="primary" onClick={() => setShowAdd(true)}>增加资产</Btn>
     );
 
     const importExportBtns = (
@@ -997,7 +1003,7 @@ export function LemonAssetManage() {
                             <CheckBox label="显示所有信息" />
                             {addAssetBtn}
                             {importExportBtns}
-                            <Btn dropdown onClick={() => window.print()}>打印</Btn>
+                            <Btn dropdown title="打印资产初始化清单（后端生成 PDF）" onClick={() => void printAssetSheet(token, accountSetId, `/initial-assets/pdf?period=${period.period}`, setToast)}>打印</Btn>
                             <Btn dropdown onClick={() => setVoucherSettingOpen(true)} title="配置折旧 / 摊销 / 清理凭证科目">
                                 折旧凭证设置
                             </Btn>
@@ -1067,7 +1073,7 @@ export function LemonAssetManage() {
             <Page>
                 <SubTabs tabs={ASSET_TABS} active={2} onChange={setTab} />
                 <ToolRow
-                    left={<PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />}
+                    left={<PeriodStepper {...stepper} />}
                     right={
                         <>
                             <Btn onClick={() => setVoucherSettingOpen(true)} title="配置折旧 / 摊销 / 清理凭证科目">
@@ -1134,7 +1140,7 @@ export function LemonAssetManage() {
                                 key: "period",
                                 title: "会计期间",
                                 render: () => (
-                                    <PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />
+                                    <PeriodStepper {...stepper} />
                                 ),
                             },
                             {
@@ -1241,7 +1247,7 @@ export function LemonAssetManage() {
             <ToolRow
                 left={
                     <>
-                        <PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />
+                        <PeriodStepper {...stepper} />
                         <CheckBox label="显示所有信息" />
                     </>
                 }
@@ -1249,7 +1255,7 @@ export function LemonAssetManage() {
                     <>
                         {addAssetBtn}
                         {importExportBtns}
-                        <Btn dropdown onClick={() => window.print()}>打印</Btn>
+                        <Btn dropdown title="打印固定资产清单（后端生成 PDF）" onClick={() => void printAssetSheet(token, accountSetId, `/assets/pdf?period=${period.period}`, setToast)}>打印</Btn>
                         <Dropdown
                             trigger={["click"]}
                             menu={{
@@ -1509,7 +1515,7 @@ function InitDialog({ onClose, onConfirm }: { onClose: () => void; onConfirm: ()
 
 export function LemonAssetDepreciation() {
     const { token, accountSetId } = useAccountContext();
-    const { period, step } = useAssetPeriod();
+    const { period, stepper } = usePeriodStepper();
     const [ledger, setLedger] = useState<DepreciationLedgerRowDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -1573,13 +1579,15 @@ export function LemonAssetDepreciation() {
     return (
         <Page>
             <ToolRow
-                left={<PeriodStepper text={label} onPrev={() => step(-1)} onNext={() => step(1)} />}
+                left={<PeriodStepper {...stepper} />}
                 right={
                     <>
                         <Btn onClick={() => void exportLedger()} title="导出当期折旧摊销明细为 .xlsx">
                             导出
                         </Btn>
-                        <Btn onClick={() => window.print()}>打印</Btn>
+                        <Btn onClick={() => void printAssetSheet(token, accountSetId, `/depreciation-ledger/pdf?period=${period.period}`, setToast)} title="打印当期折旧摊销明细表（后端生成 PDF）">
+                            打印
+                        </Btn>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -1618,7 +1626,7 @@ export function LemonAssetDepreciation() {
 
 export function LemonAssetSummary() {
     const { token, accountSetId } = useAccountContext();
-    const { period, step } = useAssetPeriod();
+    const { period, stepper } = usePeriodStepper();
     const [tab, setTab] = useState(0);
     const [rows, setRows] = useState<FixedAssetSummaryRowDto[]>([]);
     const [loading, setLoading] = useState(false);
@@ -1694,7 +1702,6 @@ export function LemonAssetSummary() {
         }
         return row;
     });
-    const label = periodLabel(period);
     return (
         <Page>
             <SubTabs tabs={["按使用部门汇总", "按资产类别汇总"]} active={tab} onChange={setTab} />
@@ -1702,7 +1709,7 @@ export function LemonAssetSummary() {
                 left={
                     <>
                         <span className="text-[13px] text-(--muted-foreground)">会计期间:</span>
-                        <PeriodStepper text={label} onPrev={() => step(-1)} onNext={() => step(1)} />
+                        <PeriodStepper {...stepper} />
                     </>
                 }
                 right={
@@ -1937,7 +1944,7 @@ export function LemonAssetCategory() {
     return (
         <Page>
             <ToolRow
-                left={<Btn onClick={() => setEditing("new")}>新增</Btn>}
+                left={<Btn variant="primary" onClick={() => setEditing("new")}>新增</Btn>}
                 right={
                     <>
                         <TextInput className={FORM_CONTROL_W} value={keyword} onChange={setKeyword} placeholder="输入编码或名称" />
@@ -1994,7 +2001,7 @@ export function LemonAssetCategory() {
 
 export function LemonAssetCheck() {
     const { token, accountSetId } = useAccountContext();
-    const { period, step } = useAssetPeriod();
+    const { period, stepper } = usePeriodStepper();
     const [check, setCheck] = useState<FixedAssetCheckRowDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -2050,10 +2057,12 @@ export function LemonAssetCheck() {
         <Page>
             <div style={{ marginBottom: 16 }}>
                 <ToolRow
-                    left={<PeriodStepper text={periodLabel(period)} onPrev={() => step(-1)} onNext={() => step(1)} />}
+                    left={<PeriodStepper {...stepper} />}
                     right={
                         <>
-                            <Btn onClick={() => window.print()}>打印</Btn>
+                            <Btn onClick={() => void printAssetSheet(token, accountSetId, `/check/pdf?period=${period.period}`, setToast)} title="打印资产核对总账（后端生成 PDF）">
+                                打印
+                            </Btn>
                             <Btn onClick={() => void exportCheck()} title="导出资产核对总账为 .xlsx">
                                 导出
                             </Btn>

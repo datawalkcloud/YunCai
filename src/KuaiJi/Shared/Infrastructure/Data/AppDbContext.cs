@@ -9,6 +9,7 @@ using KuaiJi.Modules.Expenses.Domain;
 using KuaiJi.Modules.Invoices.Domain;
 using KuaiJi.Modules.Auditing.Domain;
 using KuaiJi.Modules.Reports.Domain;
+using KuaiJi.Modules.Reports.Domain.CashFlow;
 using KuaiJi.Modules.Salary.Domain;
 using KuaiJi.Modules.Tax.Domain;
 using KuaiJi.Modules.Identity.Domain;
@@ -100,6 +101,9 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
         public DbSet<OperationLog> OperationLogs { get; set; } = null!;
 
         public DbSet<CustomReport> CustomReports { get; set; } = null!;
+
+        /// <summary>现金流量表行取数公式（按账套 + 行次保存，未保存的行回落默认公式）。</summary>
+        public DbSet<CashFlowFormula> CashFlowFormulas { get; set; } = null!;
 
         /// <summary>税局登录态（加密后的 Cookie / localStorage），按账套 + 用户保存。</summary>
         public DbSet<TaxPortalSessionRecord> TaxPortalSessions { get; set; } = null!;
@@ -1203,6 +1207,26 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
 
                 // 报表定义归属于账套；账套非空时不可删除（Restrict）。
+                entity.HasOne<AccountSet>()
+                      .WithMany()
+                      .HasForeignKey(e => e.AccountSetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<CashFlowFormula>(entity =>
+            {
+                entity.ToTable("cash_flow_formulas");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Line).HasColumnName("line_no").IsRequired();
+                entity.Property(e => e.Expression).HasColumnName("expression").IsRequired().HasMaxLength(CashFlowFormula.MaxExpressionLength);
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
+
+                // 同一账套同一行次只保留一条公式。
+                entity.HasIndex(e => new { e.AccountSetId, e.Line }).IsUnique();
+
                 entity.HasOne<AccountSet>()
                       .WithMany()
                       .HasForeignKey(e => e.AccountSetId)

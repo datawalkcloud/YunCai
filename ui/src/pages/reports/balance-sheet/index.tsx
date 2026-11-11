@@ -547,6 +547,7 @@ export default function BalanceSheetPage() {
                     min={periodBounds.min}
                     max={periodBounds.max}
                     onChange={setPeriod}
+                    loading={loading && !loaded}
                     disabled={!accountSetId}
                     actions={
                         <>

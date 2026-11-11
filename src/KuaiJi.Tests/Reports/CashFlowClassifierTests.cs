@@ -218,16 +218,31 @@ public sealed class CashFlowClassifierTests
     }
 
     [Fact]
-    public void MapLine_TradePayable_InflowSalesReceiptOutflowPurchase()
+    public void MapLine_OperatingPayable_InflowOtherOperatingOutflowPurchase()
     {
-        // 应付账款/票据、预收、其他应付等经营性往来：流入并入销售收现(1)，流出并入购买商品(5)。
-        Assert.Equal(1, CashFlowClassifier.MapLine(Acc("2202", "应付账款", AccountCategory.Liability, BalanceDirection.Credit), true));
+        // 应付账款/票据、其他应付等经营性往来：流入计入收到其他与经营活动有关的现金(3)，流出计入购买商品(5)；
+        // 预收账款属于销售收现(1)，但流出仍并入购买商品(5)。
+        Assert.Equal(3, CashFlowClassifier.MapLine(Acc("2202", "应付账款", AccountCategory.Liability, BalanceDirection.Credit), true));
         AssertLine(
             5,
             CashFlowSection.Operating,
             CashFlowRowKind.Outflow,
             CashFlowClassifier.MapLine(Acc("2202", "应付账款", AccountCategory.Liability, BalanceDirection.Credit), false));
+        Assert.Equal(1, CashFlowClassifier.MapLine(Acc("2203", "预收账款", AccountCategory.Liability, BalanceDirection.Credit), true));
         Assert.Equal(5, CashFlowClassifier.MapLine(Acc("2203", "预收账款", AccountCategory.Liability, BalanceDirection.Credit), false));
+    }
+
+    [Fact]
+    public void MapLine_NonOperatingIncomeAndExpense_OtherOperatingLines()
+    {
+        // 营业外收入/其他收益/资产处置收益不属于销售收现，流入计入收到其他(3)；营业外支出计入支付其他(8)。
+        Assert.Equal(3, CashFlowClassifier.MapLine(Acc("6301", "营业外收入", AccountCategory.ProfitAndLoss, BalanceDirection.Credit), true));
+        Assert.Equal(3, CashFlowClassifier.MapLine(Acc("6117", "其他收益", AccountCategory.ProfitAndLoss, BalanceDirection.Credit), true));
+        AssertLine(
+            8,
+            CashFlowSection.Operating,
+            CashFlowRowKind.Outflow,
+            CashFlowClassifier.MapLine(Acc("6711", "营业外支出", AccountCategory.ProfitAndLoss), false));
     }
 
     // —— 资产类对手方：长期资产与投资 → 投资活动，其余 → 经营活动 ——

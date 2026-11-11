@@ -1696,6 +1696,38 @@ namespace KuaiJi.Migrations
                     b.ToTable("invoice_lines", (string)null);
                 });
 
+            modelBuilder.Entity("KuaiJi.Modules.Reports.Domain.CashFlow.CashFlowFormula", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<string>("Expression")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("expression");
+
+                    b.Property<int>("Line")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId", "Line")
+                        .IsUnique();
+
+                    b.ToTable("cash_flow_formulas", (string)null);
+                });
+
             modelBuilder.Entity("KuaiJi.Modules.Reports.Domain.CustomReport", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2612,6 +2644,15 @@ namespace KuaiJi.Migrations
                         .WithMany("Lines")
                         .HasForeignKey("InvoiceId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KuaiJi.Modules.Reports.Domain.CashFlow.CashFlowFormula", b =>
+                {
+                    b.HasOne("KuaiJi.Modules.AccountSets.Domain.AccountSet", null)
+                        .WithMany()
+                        .HasForeignKey("AccountSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

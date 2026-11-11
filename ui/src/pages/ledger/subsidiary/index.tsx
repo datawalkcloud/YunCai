@@ -1,6 +1,5 @@
-import { PrinterOutlined } from "@ant-design/icons"
-import { useMemo, useState } from "react"
-import { Button, Table } from "antd"
+import { useEffect, useMemo, useState } from "react"
+import { Table } from "antd"
 import type { TableColumnsType } from "antd"
 import { useSearchParams } from "react-router"
 
@@ -14,7 +13,7 @@ import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerTable } from "@/components/ledger/LedgerTable"
 import { LedgerPageShell } from "@/components/ledger/LedgerPageShell"
 import { SubsidiaryLedgerFilter } from "@/components/ledger/SubsidiaryLedgerFilter"
-import { LedgerExportButton } from "@/components/ledger/LedgerExportButton"
+import { LedgerPrintButton, LedgerExportButton } from "@/components/ledger/LedgerExportButton"
 import { QuickAccountSwitch } from "@/components/ledger/QuickAccountSwitch"
 import { useAccounts } from "@/components/ledger/useLedgerOptions"
 import { ROW_KIND, SORT_BY, asDate, type LedgerConditions } from "@/components/ledger/types"
@@ -84,6 +83,17 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
     const showCounterAccount = query.conditions.showCounterAccount ?? false
     const columns = useMemo(() => buildColumns(showCounterAccount), [showCounterAccount])
     const accounts = useMemo(() => query.data?.accounts ?? [], [query.data])
+
+    // 右侧快速切换只列示本期有数据的科目；带科目区间或级次的结果被裁剪，沿用上一次全量口径。
+    const accountScoped = Boolean(
+        query.committed.accountFrom || query.committed.accountTo || query.committed.minLevel || query.committed.maxLevel,
+    )
+    const [dataCodes, setDataCodes] = useState<Set<string>>(() => new Set())
+    useEffect(() => {
+        if (accountScoped) return
+        setDataCodes(new Set(accounts.map((account) => account.code).filter((code): code is string => Boolean(code))))
+    }, [accounts, accountScoped])
+
     // 快速切换只在「起止科目同为一条编码」时高亮，手工输入区间则不选中任何节点。
     const selectedAccount =
         query.conditions.accountFrom && query.conditions.accountFrom === query.conditions.accountTo
@@ -151,9 +161,12 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
                                 token={token}
                                 conditions={query.committed}
                             />
-                            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-                                打印
-                            </Button>
+                            <LedgerPrintButton
+                                kind="subsidiary"
+                                accountSetId={accountSetId}
+                                token={token}
+                                conditions={query.committed}
+                            />
                         </>
                     }
                 />
@@ -163,6 +176,7 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
             side={
                 <QuickAccountSwitch
                     accounts={allAccounts}
+                    hasDataCodes={dataCodes}
                     value={selectedAccount}
                     disabled={!accountSetId}
                     onChange={(code) => query.patch({ accountFrom: code, accountTo: code }, true)}
@@ -218,7 +232,7 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
 export default function SubsidiaryLedgerPage() {
     const [params] = useSearchParams()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    // 总账行点击下钻时带上科目编码与区间，这里据此重建初始条件。
+    // 总账行点击下钻时带上科目编码与区间，这里据此重建初始条件；未带区间时由 useLedgerQuery 默认当月。
     const account = params.get("account")
     const initial: LedgerConditions = {
         ...(account ? { accountFrom: account, accountTo: account } : {}),

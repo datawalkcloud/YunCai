@@ -17,6 +17,7 @@ import * as runtime from '../runtime';
 import type {
   BalanceSheetDto,
   CashFlowDto,
+  CashFlowFormulaSettingsDto,
   CashFlowOpeningDto,
   CashFlowQuarterDto,
   CashFlowSupplementDto,
@@ -29,6 +30,7 @@ import type {
   IncomeStatementDto,
   IncomeStatementQuarterDto,
   ProjectIncomeDto,
+  SaveCashFlowFormulasRequest,
   TaxStatisticsDto,
   TrialBalanceDto,
 } from '../models/index';
@@ -37,6 +39,8 @@ import {
     BalanceSheetDtoToJSON,
     CashFlowDtoFromJSON,
     CashFlowDtoToJSON,
+    CashFlowFormulaSettingsDtoFromJSON,
+    CashFlowFormulaSettingsDtoToJSON,
     CashFlowOpeningDtoFromJSON,
     CashFlowOpeningDtoToJSON,
     CashFlowQuarterDtoFromJSON,
@@ -61,6 +65,8 @@ import {
     IncomeStatementQuarterDtoToJSON,
     ProjectIncomeDtoFromJSON,
     ProjectIncomeDtoToJSON,
+    SaveCashFlowFormulasRequestFromJSON,
+    SaveCashFlowFormulasRequestToJSON,
     TaxStatisticsDtoFromJSON,
     TaxStatisticsDtoToJSON,
     TrialBalanceDtoFromJSON,
@@ -77,6 +83,27 @@ export interface AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest {
     accountSetId: string;
     year?: number;
     month?: number;
+}
+
+export interface AccountsetsAccountSetIdReportsCashFlowAssistGetRequest {
+    accountSetId: string;
+    year?: number;
+    month?: number;
+}
+
+export interface AccountsetsAccountSetIdReportsCashFlowFormulaGetRequest {
+    accountSetId: string;
+    year?: number;
+    month?: number;
+}
+
+export interface AccountsetsAccountSetIdReportsCashFlowFormulasGetRequest {
+    accountSetId: string;
+}
+
+export interface AccountsetsAccountSetIdReportsCashFlowFormulasPutRequest {
+    accountSetId: string;
+    saveCashFlowFormulasRequest: SaveCashFlowFormulasRequest;
 }
 
 export interface AccountsetsAccountSetIdReportsCashFlowGetRequest {
@@ -238,6 +265,100 @@ export interface ReportsApiInterface {
     /**
      */
     accountsetsAccountSetIdReportsBalanceSheetPdfGet(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsCashFlowAssistGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsCashFlowAssistGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsCashFlowAssistGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsCashFlowAssistGetRaw(requestParameters: AccountsetsAccountSetIdReportsCashFlowAssistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CashFlowDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdReportsCashFlowAssistGet(requestParameters: AccountsetsAccountSetIdReportsCashFlowAssistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashFlowDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsCashFlowFormulaGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsCashFlowFormulaGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulaGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsCashFlowFormulaGetRaw(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulaGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CashFlowDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdReportsCashFlowFormulaGet(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulaGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashFlowDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsCashFlowFormulasGet without sending the request
+     * @param {string} accountSetId 
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsCashFlowFormulasGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsCashFlowFormulasGetRaw(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CashFlowFormulaSettingsDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdReportsCashFlowFormulasGet(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashFlowFormulaSettingsDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsCashFlowFormulasPut without sending the request
+     * @param {string} accountSetId 
+     * @param {SaveCashFlowFormulasRequest} saveCashFlowFormulasRequest 
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsCashFlowFormulasPutRequestOpts(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasPutRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {SaveCashFlowFormulasRequest} saveCashFlowFormulasRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsCashFlowFormulasPutRaw(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CashFlowFormulaSettingsDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdReportsCashFlowFormulasPut(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashFlowFormulaSettingsDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdReportsCashFlowGet without sending the request
@@ -759,6 +880,204 @@ export class ReportsApi extends runtime.BaseAPI implements ReportsApiInterface {
      */
     async accountsetsAccountSetIdReportsBalanceSheetPdfGet(requestParameters: AccountsetsAccountSetIdReportsBalanceSheetPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.accountsetsAccountSetIdReportsBalanceSheetPdfGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsCashFlowAssistGet without sending the request
+     */
+    async accountsetsAccountSetIdReportsCashFlowAssistGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsCashFlowAssistGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdReportsCashFlowAssistGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['year'] != null) {
+            queryParameters['year'] = requestParameters['year'];
+        }
+
+        if (requestParameters['month'] != null) {
+            queryParameters['month'] = requestParameters['month'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Reports/cash-flow-assist`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsCashFlowAssistGetRaw(requestParameters: AccountsetsAccountSetIdReportsCashFlowAssistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CashFlowDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdReportsCashFlowAssistGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CashFlowDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsCashFlowAssistGet(requestParameters: AccountsetsAccountSetIdReportsCashFlowAssistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashFlowDto> {
+        const response = await this.accountsetsAccountSetIdReportsCashFlowAssistGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsCashFlowFormulaGet without sending the request
+     */
+    async accountsetsAccountSetIdReportsCashFlowFormulaGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulaGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdReportsCashFlowFormulaGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['year'] != null) {
+            queryParameters['year'] = requestParameters['year'];
+        }
+
+        if (requestParameters['month'] != null) {
+            queryParameters['month'] = requestParameters['month'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Reports/cash-flow-formula`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsCashFlowFormulaGetRaw(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulaGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CashFlowDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdReportsCashFlowFormulaGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CashFlowDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsCashFlowFormulaGet(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulaGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashFlowDto> {
+        const response = await this.accountsetsAccountSetIdReportsCashFlowFormulaGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsCashFlowFormulasGet without sending the request
+     */
+    async accountsetsAccountSetIdReportsCashFlowFormulasGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdReportsCashFlowFormulasGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Reports/cash-flow-formulas`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsCashFlowFormulasGetRaw(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CashFlowFormulaSettingsDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdReportsCashFlowFormulasGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CashFlowFormulaSettingsDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsCashFlowFormulasGet(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashFlowFormulaSettingsDto> {
+        const response = await this.accountsetsAccountSetIdReportsCashFlowFormulasGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsCashFlowFormulasPut without sending the request
+     */
+    async accountsetsAccountSetIdReportsCashFlowFormulasPutRequestOpts(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasPutRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdReportsCashFlowFormulasPut().'
+            );
+        }
+
+        if (requestParameters['saveCashFlowFormulasRequest'] == null) {
+            throw new runtime.RequiredError(
+                'saveCashFlowFormulasRequest',
+                'Required parameter "saveCashFlowFormulasRequest" was null or undefined when calling accountsetsAccountSetIdReportsCashFlowFormulasPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/Reports/cash-flow-formulas`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveCashFlowFormulasRequestToJSON(requestParameters['saveCashFlowFormulasRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsCashFlowFormulasPutRaw(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CashFlowFormulaSettingsDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdReportsCashFlowFormulasPutRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CashFlowFormulaSettingsDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsCashFlowFormulasPut(requestParameters: AccountsetsAccountSetIdReportsCashFlowFormulasPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CashFlowFormulaSettingsDto> {
+        const response = await this.accountsetsAccountSetIdReportsCashFlowFormulasPutRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

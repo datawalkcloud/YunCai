@@ -185,6 +185,8 @@ builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.CashJournalService
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.IncomeStatementService>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.CashFlowService>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.CashFlowSupplementService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.CashFlowFormulaService>();
+builder.Services.AddScoped<KuaiJi.Modules.Reports.Domain.CashFlow.ICashFlowFormulaRepository, KuaiJi.Modules.Reports.Infrastructure.CashFlowFormulaRepository>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.AssistIncomeService>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.ExpenseDetailService>();
 builder.Services.AddScoped<KuaiJi.Modules.Reports.Application.EquityChangeService>();

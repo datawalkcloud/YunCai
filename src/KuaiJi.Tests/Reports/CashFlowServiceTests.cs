@@ -2,6 +2,8 @@ using KuaiJi.Modules.Accounting.Domain;
 using KuaiJi.Modules.Accounting.Infrastructure;
 using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.AccountSets.Infrastructure;
+using KuaiJi.Modules.Assist.Domain;
+using KuaiJi.Modules.Assist.Infrastructure;
 using KuaiJi.Modules.Reports.Application;
 using KuaiJi.Modules.Reports.Domain.CashFlow;
 using KuaiJi.Modules.Vouchers.Domain;
@@ -29,7 +31,8 @@ public sealed class CashFlowServiceTests : IDisposable
         _service = new CashFlowService(
             new AccountSetRepository(_db.Context),
             new AccountRepository(_db.Context),
-            new VoucherRepository(_db.Context));
+            new VoucherRepository(_db.Context),
+            new AssistItemRepository(_db.Context));
     }
 
     public void Dispose() => _db.Dispose();
@@ -199,12 +202,16 @@ public sealed class CashFlowServiceTests : IDisposable
         Assert.Equal(500m, paper.Rows.Single(r => r.AccountCode == "6001").Amount);
         Assert.Equal(300m, paper.Rows.Single(r => r.AccountCode == "2202").Amount);
         Assert.Equal(-200m, paper.Rows.Single(r => r.AccountCode == "1122").Amount);
-        Assert.All(paper.Rows, row => Assert.Equal(1, row.Line));
+        // 应收账款(销售收现)与收入留在第 1 行；应付账款属于往来收现，归第 3 行「收到其他」。
+        Assert.Equal(1, paper.Rows.Single(r => r.AccountCode == "6001").Line);
+        Assert.Equal(1, paper.Rows.Single(r => r.AccountCode == "1122").Line);
+        Assert.Equal(3, paper.Rows.Single(r => r.AccountCode == "2202").Line);
         Assert.Equal(600m, paper.InflowTotal);
 
-        // 主表勾稽：第 1 行 = 分摊合计 = 现金科目净增加 = 第 33 行；期末 = 期初 1200 + 600。
+        // 主表勾稽：第 1 行 500−200=300、第 3 行 300，两者合计 = 现金科目净增加 = 第 33 行；期末 = 期初 1200 + 600。
         var dto = await _service.GetPeriodAsync(_accountSet.Id, 2026, 8);
-        Assert.Equal(600m, Current(dto, 1));
+        Assert.Equal(300m, Current(dto, 1));
+        Assert.Equal(300m, Current(dto, 3));
         Assert.Equal(600m, Current(dto, 33));
         Assert.Equal(1200m, Current(dto, 34));
         Assert.Equal(1800m, Current(dto, 35));
@@ -266,6 +273,128 @@ public sealed class CashFlowServiceTests : IDisposable
         Assert.Equal(600m, Current(dto, 1));
         Assert.Equal(600m, Current(dto, 33)); // 现金净增加：库存现金 +1000、银行存款 −400
         Assert.Equal(600m, Current(dto, 35));
+    }
+
+    // —— 辅助核算法 ——
+
+    /// <summary>现金流辅助档案（编码前两位即主表行号）。</summary>
+    private AssistItem AddCashFlowItem(string code, string name)
+    {
+        var item = AssistItem.Create(_accountSet.Id, AssistType.CashFlow, code, name);
+        _db.Context.AssistItems.Add(item);
+        _db.Context.SaveChanges();
+        return item;
+    }
+
+    /// <summary>落一张带辅助核算取值的已过账凭证。</summary>
+    private Voucher PostVoucherWithAssists(
+        int number,
+        DateOnly date,
+        params (Guid AccountId, decimal Debit, decimal Credit, AssistRef[] Assists)[] entries)
+    {
+        var voucher = Voucher.Create(_accountSet.Id, "记", number, date, "测试制单人");
+        foreach (var (accountId, debit, credit, assists) in entries)
+        {
+            voucher.AddEntry("测试分录", accountId, debit, credit, assists.Length > 0 ? assists : null);
+        }
+
+        voucher.Post();
+        _db.Context.Vouchers.Add(voucher);
+        _db.Context.SaveChanges();
+        return voucher;
+    }
+
+    [Fact]
+    public async Task GetAssistAsync_TaggedCashEntries_MapItemCodePrefixToStatementLines()
+    {
+        // 收现分录挂 01（销售收现）→ 第 1 行；付款分录挂 08（其他经营支出）→ 第 8 行；
+        // 未挂项目的现金收付（如往来转账）不计入，小计/净额/期末按同一套汇总口径生成。
+        var bank = AddAccount("1002", "银行存款", AccountCategory.Asset, BalanceDirection.Debit, 8000m);
+        var revenue = AddAccount("6001", "主营业务收入", AccountCategory.ProfitAndLoss, BalanceDirection.Credit);
+        var admin = AddAccount("6602", "管理费用", AccountCategory.ProfitAndLoss);
+        var salesReceipt = AddCashFlowItem("01", "销售商品、提供劳务收到的现金");
+        var otherPayment = AddCashFlowItem("08", "支付其他与经营活动有关的现金");
+
+        PostVoucherWithAssists(1, new DateOnly(2026, 4, 6),
+            (bank.Id, 6000m, 0m, new[] { new AssistRef(AssistType.CashFlow, salesReceipt.Id) }),
+            (revenue.Id, 0m, 6000m, Array.Empty<AssistRef>()));
+        PostVoucherWithAssists(2, new DateOnly(2026, 4, 10),
+            (admin.Id, 500m, 0m, Array.Empty<AssistRef>()),
+            (bank.Id, 0m, 500m, new[] { new AssistRef(AssistType.CashFlow, otherPayment.Id) }));
+
+        var dto = await _service.GetAssistAsync(_accountSet.Id, 2026, 4);
+
+        Assert.Equal(6000m, Current(dto, 1));
+        Assert.Equal(0m, Current(dto, 5));
+        Assert.Equal(6000m, Current(dto, 4));
+        Assert.Equal(500m, Current(dto, 8));
+        Assert.Equal(500m, Current(dto, 9));
+        Assert.Equal(5500m, Current(dto, 10));
+        Assert.Equal(5500m, Current(dto, 33));
+        Assert.Equal(8000m, Current(dto, 34));
+        Assert.Equal(13500m, Current(dto, 35));
+    }
+
+    [Fact]
+    public async Task GetAssistAsync_MultipleItemsOnOneEntry_SplitEvenlyAndIgnoreUnmappableCodes()
+    {
+        // 同一分录挂 4 个现金流项目：净收付按 4 份均分，01/03 分别落第 1、3 行；
+        // 编码 04（小计行）与 99（不存在）无法对应明细行，其分摊额被丢弃，不参与任何行次。
+        var bank = AddAccount("1002", "银行存款");
+        var revenue = AddAccount("6001", "主营业务收入", AccountCategory.ProfitAndLoss, BalanceDirection.Credit);
+        var salesReceipt = AddCashFlowItem("01", "销售商品、提供劳务收到的现金");
+        var otherReceipt = AddCashFlowItem("03", "收到其他与经营活动有关的现金");
+        var subtotal = AddCashFlowItem("04", "经营活动现金流入小计");
+        var unknown = AddCashFlowItem("99", "不存在的行次");
+
+        PostVoucherWithAssists(1, new DateOnly(2026, 5, 8),
+            (bank.Id, 900m, 0m, new[]
+            {
+                new AssistRef(AssistType.CashFlow, salesReceipt.Id),
+                new AssistRef(AssistType.CashFlow, otherReceipt.Id),
+                new AssistRef(AssistType.CashFlow, subtotal.Id),
+                new AssistRef(AssistType.CashFlow, unknown.Id),
+            }),
+            (revenue.Id, 0m, 900m, Array.Empty<AssistRef>()));
+
+        var dto = await _service.GetAssistAsync(_accountSet.Id, 2026, 5);
+
+        Assert.Equal(225m, Current(dto, 1));
+        Assert.Equal(225m, Current(dto, 3));
+        Assert.Equal(450m, Current(dto, 4));
+        Assert.Equal(450m, Current(dto, 33));
+    }
+
+    [Fact]
+    public async Task GetAssistAsync_YearToDateAndLastYear_UseTheirOwnWindows()
+    {
+        // 本年累计统计 1 月至期间末（不含未来月份），上年同期列统计上年 1 月至同月末。
+        var bank = AddAccount("1002", "银行存款");
+        var revenue = AddAccount("6001", "主营业务收入", AccountCategory.ProfitAndLoss, BalanceDirection.Credit);
+        var salesReceipt = AddCashFlowItem("01", "销售商品、提供劳务收到的现金");
+
+        PostVoucherWithAssists(1, new DateOnly(2025, 3, 12),
+            (bank.Id, 400m, 0m, new[] { new AssistRef(AssistType.CashFlow, salesReceipt.Id) }),
+            (revenue.Id, 0m, 400m, Array.Empty<AssistRef>()));
+        PostVoucherWithAssists(2, new DateOnly(2026, 1, 15),
+            (bank.Id, 300m, 0m, new[] { new AssistRef(AssistType.CashFlow, salesReceipt.Id) }),
+            (revenue.Id, 0m, 300m, Array.Empty<AssistRef>()));
+        PostVoucherWithAssists(3, new DateOnly(2026, 3, 9),
+            (bank.Id, 200m, 0m, new[] { new AssistRef(AssistType.CashFlow, salesReceipt.Id) }),
+            (revenue.Id, 0m, 200m, Array.Empty<AssistRef>()));
+        PostVoucherWithAssists(4, new DateOnly(2026, 6, 9),
+            (bank.Id, 999m, 0m, new[] { new AssistRef(AssistType.CashFlow, salesReceipt.Id) }),
+            (revenue.Id, 0m, 999m, Array.Empty<AssistRef>()));
+
+        var dto = await _service.GetAssistAsync(_accountSet.Id, 2026, 3);
+
+        Assert.Equal(200m, Current(dto, 1));
+        Assert.Equal(500m, dto.Lines.Single(l => l.Line == 1).YearToDate);
+        Assert.Equal(400m, dto.Lines.Single(l => l.Line == 1).LastYear);
+        Assert.Equal(700m, Current(dto, 34)); // 期初 = 2025 年 400 + 2026 年 1 月 300
+        Assert.Equal(400m, dto.Lines.Single(l => l.Line == 34).YearToDate);
+        Assert.Equal(0m, dto.Lines.Single(l => l.Line == 34).LastYear);
+        Assert.Equal(400m, dto.Lines.Single(l => l.Line == 35).LastYear);
     }
 
     // —— 结转凭证与未过账凭证 ——

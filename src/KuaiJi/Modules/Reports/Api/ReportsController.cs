@@ -1,8 +1,10 @@
+using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Ledgers.Application;
 using KuaiJi.Modules.Reports.Application;
 using KuaiJi.Modules.Reports.Domain;
 using KuaiJi.Modules.Reports.Infrastructure;
 using KuaiJi.SharedKernel.Infrastructure.Excel;
+using KuaiJi.SharedKernel.Infrastructure.Pdf;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,6 +24,7 @@ namespace KuaiJi.Modules.Reports.Api
         private readonly IncomeStatementService _incomeStatementService;
         private readonly CashFlowService _cashFlowService;
         private readonly CashFlowSupplementService _cashFlowSupplementService;
+        private readonly CashFlowFormulaService _cashFlowFormulaService;
         private readonly AssistIncomeService _assistIncomeService;
         private readonly ExpenseDetailService _expenseDetailService;
         private readonly EquityChangeService _equityChangeService;
@@ -30,6 +33,7 @@ namespace KuaiJi.Modules.Reports.Api
         private readonly ReportExportService _reportExportService;
         private readonly BalanceSheetXlsExportService _balanceSheetXlsExportService;
         private readonly BalanceSheetPdfExportService _balanceSheetPdfExportService;
+        private readonly IAccountSetRepository _accountSetRepository;
 
         public ReportsController(
             TrialBalanceService trialBalanceService,
@@ -38,6 +42,7 @@ namespace KuaiJi.Modules.Reports.Api
             IncomeStatementService incomeStatementService,
             CashFlowService cashFlowService,
             CashFlowSupplementService cashFlowSupplementService,
+            CashFlowFormulaService cashFlowFormulaService,
             AssistIncomeService assistIncomeService,
             ExpenseDetailService expenseDetailService,
             EquityChangeService equityChangeService,
@@ -45,7 +50,8 @@ namespace KuaiJi.Modules.Reports.Api
             FinancialSummaryService financialSummaryService,
             ReportExportService reportExportService,
             BalanceSheetXlsExportService balanceSheetXlsExportService,
-            BalanceSheetPdfExportService balanceSheetPdfExportService)
+            BalanceSheetPdfExportService balanceSheetPdfExportService,
+            IAccountSetRepository accountSetRepository)
         {
             _trialBalanceService = trialBalanceService;
             _balanceSheetService = balanceSheetService;
@@ -53,6 +59,7 @@ namespace KuaiJi.Modules.Reports.Api
             _incomeStatementService = incomeStatementService;
             _cashFlowService = cashFlowService;
             _cashFlowSupplementService = cashFlowSupplementService;
+            _cashFlowFormulaService = cashFlowFormulaService;
             _assistIncomeService = assistIncomeService;
             _expenseDetailService = expenseDetailService;
             _equityChangeService = equityChangeService;
@@ -61,6 +68,7 @@ namespace KuaiJi.Modules.Reports.Api
             _reportExportService = reportExportService;
             _balanceSheetXlsExportService = balanceSheetXlsExportService;
             _balanceSheetPdfExportService = balanceSheetPdfExportService;
+            _accountSetRepository = accountSetRepository;
         }
 
         /// <summary>
@@ -100,6 +108,116 @@ namespace KuaiJi.Modules.Reports.Api
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// 打印报表为 PDF（服务端渲染：A4 版式、跨页续表、页脚页码与打印时间，表格按各报表页面 1:1 复刻）。
+        /// <c>kind</c> 与 year/month/quarter 同 <see cref="Export"/>；科目余额表另接受与 trial-balance 同名的显示条件，
+        /// 现金流量表月报可用 <c>method</c>=formula / assist 切换取数口径（省略即标准表的直接法 + 补充资料），
+        /// <c>showLastYear</c> 对应页面的「显示上年累计金额」。
+        /// 资产负债表走专用接口 <c>balance-sheet/pdf</c>；部门/项目利润表与权益变动表页面没有打印按钮，返回 400。
+        /// </summary>
+        [HttpGet("pdf")]
+        public async Task<IActionResult> Pdf(
+            Guid accountSetId,
+            [FromQuery] string kind,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            [FromQuery] int? quarter,
+            [FromQuery] DateOnly? startDate,
+            [FromQuery] DateOnly? endDate,
+            [FromQuery] string? accountFrom,
+            [FromQuery] string? accountTo,
+            [FromQuery] int? minLevel,
+            [FromQuery] int? maxLevel,
+            [FromQuery] bool? hideZeroBalance,
+            [FromQuery] bool? hideNoActivity,
+            [FromQuery] string? method,
+            [FromQuery] bool showLastYear = false,
+            CancellationToken cancellationToken = default)
+        {
+            if (!ReportExportKindText.TryParse(kind ?? string.Empty, out var printKind))
+            {
+                return BadRequest(new { message = "不支持打印的报表类型。" });
+            }
+
+            try
+            {
+                if (printKind == ReportExportKind.BalanceSheet)
+                {
+                    var (content, fileName) = await _balanceSheetPdfExportService.ExportAsync(
+                        accountSetId, year, month, cancellationToken);
+                    return File(content, BalanceSheetPdfBuilder.ContentType, fileName);
+                }
+
+                var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken)
+                                 ?? throw new ReportException("指定的账套不存在。");
+                var context = new ReportPdfProjector.PrintContext(accountSet.Name, accountSet.CompanyName);
+                var options = new LedgerQueryOptions
+                {
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    AccountFrom = accountFrom,
+                    AccountTo = accountTo,
+                    MinLevel = minLevel,
+                    MaxLevel = maxLevel,
+                    HideZeroBalance = hideZeroBalance ?? false,
+                    HideNoActivity = hideNoActivity ?? false,
+                };
+
+                object page = printKind switch
+                {
+                    ReportExportKind.TrialBalance => await _trialBalanceService.GetAsync(accountSetId, options, cancellationToken),
+                    ReportExportKind.IncomeStatement => await _incomeStatementService.GetAsync(accountSetId, year, month, cancellationToken),
+                    ReportExportKind.IncomeQuarter => await _incomeStatementService.GetQuarterAsync(accountSetId, year, quarter, cancellationToken),
+                    ReportExportKind.CashFlow => await LoadCashFlowAsync(accountSetId, method, year, month, cancellationToken),
+                    ReportExportKind.CashFlowQuarter => await _cashFlowService.GetQuarterAsync(accountSetId, year, quarter, cancellationToken),
+                    ReportExportKind.ExpenseDetail => await _expenseDetailService.GetAsync(accountSetId, year, month, cancellationToken),
+                    ReportExportKind.TaxStatistics => await _taxStatisticsService.GetAsync(accountSetId, year, month, cancellationToken),
+                    ReportExportKind.FinancialSummary => await _financialSummaryService.GetAsync(accountSetId, year, month, cancellationToken),
+                    _ => throw new ReportException("该报表暂不支持打印。"),
+                };
+
+                // 补充资料只在标准现金流量表随主表一起印（月报页面不展示它，且必定带 method 参数）。
+                CashFlowSupplementDto? supplement = null;
+                if (printKind == ReportExportKind.CashFlow && string.IsNullOrWhiteSpace(method))
+                {
+                    supplement = await _cashFlowSupplementService.GetPeriodAsync(accountSetId, year, month, cancellationToken);
+                }
+
+                var sheet = ReportPdfProjector.Project(
+                    printKind,
+                    page,
+                    context,
+                    supplement,
+                    printKind == ReportExportKind.TrialBalance ? options : null,
+                    showLastYear);
+                var bytes = PrintSheetPdfBuilder.Build(sheet);
+                return File(
+                    bytes,
+                    PrintSheetPdfBuilder.ContentType,
+                    PrintSheetPdfBuilder.BuildFileName(sheet.Title, context.AccountSetName, ReportPdfProjector.SuffixOf(page)));
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (LedgerException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 现金流量表月报的取数口径：公式法按账套保存的取数公式逐行算（附带公式文本）、
+        /// 辅助核算法按现金分录挂的「现金流」项目归集，两者都是页面上的可选项；默认走标准表的直接法。
+        /// </summary>
+        private async Task<CashFlowDto> LoadCashFlowAsync(
+            Guid accountSetId, string? method, int? year, int? month, CancellationToken cancellationToken) => method switch
+        {
+            "formula" => await _cashFlowFormulaService.GetPeriodAsync(accountSetId, year, month, cancellationToken),
+            "assist" => await _cashFlowService.GetAssistAsync(accountSetId, year, month, cancellationToken),
+            _ => await _cashFlowService.GetPeriodAsync(accountSetId, year, month, cancellationToken),
+        };
 
         /// <summary>
         /// 科目余额表。可选 startDate/endDate 指定日期范围（含起止日，格式 yyyy-MM-dd）；省略时取全部已过账凭证。
@@ -279,6 +397,28 @@ namespace KuaiJi.Modules.Reports.Api
             }
         }
 
+        /// <summary>
+        /// 现金流量表（辅助核算法）：按现金分录上挂的「现金流」辅助项目归集到标准行次
+        /// （项目编码前两位即主表行号），未挂项目的现金收付不计入；可选 year/month。
+        /// </summary>
+        [HttpGet("cash-flow-assist")]
+        public async Task<ActionResult<CashFlowDto>> GetCashFlowAssist(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _cashFlowService.GetAssistAsync(accountSetId, year, month, cancellationToken);
+                return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>现金流量表季报。可选 year/quarter（1-4）；返回标准主表行次（本季金额 + 本年累计）。</summary>
         [HttpGet("cash-flow-quarter")]
         public async Task<ActionResult<CashFlowQuarterDto>> GetCashFlowQuarter(
@@ -358,6 +498,65 @@ namespace KuaiJi.Modules.Reports.Api
             try
             {
                 var result = await _cashFlowService.GetOpeningAsync(accountSetId, year, month, cancellationToken);
+                return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 现金流量表（公式法）：每行金额按账套保存的取数公式计算，未配置的行使用系统默认公式。
+        /// 返回本期 / 本年累计 / 上年同期三列，行上附带生效公式；仅统计已过账凭证。
+        /// </summary>
+        [HttpGet("cash-flow-formula")]
+        public async Task<ActionResult<CashFlowDto>> GetCashFlowFormula(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _cashFlowFormulaService.GetPeriodAsync(accountSetId, year, month, cancellationToken);
+                return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>读取现金流量表 35 行的生效取数公式（自定义优先，否则默认公式）。</summary>
+        [HttpGet("cash-flow-formulas")]
+        public async Task<ActionResult<CashFlowFormulaSettingsDto>> GetCashFlowFormulas(
+            Guid accountSetId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _cashFlowFormulaService.GetSettingsAsync(accountSetId, cancellationToken);
+                return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 保存现金流量表取数公式。只处理请求中出现的行次；公式为空表示删除该行配置、恢复默认公式。
+        /// </summary>
+        [HttpPut("cash-flow-formulas")]
+        public async Task<ActionResult<CashFlowFormulaSettingsDto>> SaveCashFlowFormulas(
+            Guid accountSetId,
+            [FromBody] SaveCashFlowFormulasRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _cashFlowFormulaService.SaveAsync(accountSetId, request, cancellationToken);
                 return Ok(result);
             }
             catch (ReportException ex)

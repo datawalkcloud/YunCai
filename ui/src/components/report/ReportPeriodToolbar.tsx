@@ -2,7 +2,6 @@ import { useCallback } from "react"
 import type { ReactNode } from "react"
 
 import dayjs from "dayjs"
-import { DatePicker } from "antd"
 
 import { PeriodStepper } from "@/pages/lemon/components/ui"
 
@@ -24,6 +23,8 @@ export interface ReportPeriodToolbarProps {
     actions?: ReactNode
     /** 工具条下方的元信息（编制单位、期间、金额单位等）。 */
     meta?: ReactNode
+    /** 首次取数中：期间尚未解析出来时显示「加载中…」，失败后显示「未取到期间」。 */
+    loading?: boolean
     disabled?: boolean
 }
 
@@ -42,9 +43,12 @@ export function ReportPeriodToolbar({
     onChange,
     actions,
     meta,
+    loading,
     disabled,
 }: ReportPeriodToolbarProps) {
     const current = toMonthStart(value)
+    // 期间取自报表接口；接口失败时不再显示一条含义不明的横线。
+    const periodLabel = value ? `${value.year}年${value.month}月` : loading ? "加载中…" : "未取到期间"
     const canPrev = current != null && (min == null || current.isAfter(dayjs(min), "month"))
     const canNext = current != null && current.isBefore(dayjs(max), "month")
     const step = useCallback(
@@ -60,32 +64,15 @@ export function ReportPeriodToolbar({
         <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <PeriodStepper
-                    text={value ? `${value.year}年${value.month}月` : "——"}
+                    text={periodLabel}
                     onPrev={canPrev ? () => step(-1) : undefined}
                     onNext={canNext ? () => step(1) : undefined}
-                >
-                    {/* 透明月选择器盖在期间文字上：点文字弹出面板 */}
-                    <DatePicker
-                        picker="month"
-                        format="YYYY年M月"
-                        value={current}
-                        onChange={(d) => d && onChange({ year: d.year(), month: d.month() + 1 })}
-                        disabledDate={(d) =>
-                            (min != null && d.isBefore(dayjs(min), "month")) || d.isAfter(dayjs(max), "month")
-                        }
-                        allowClear={false}
-                        inputReadOnly
-                        disabled={disabled}
-                        style={{
-                            position: "absolute",
-                            inset: 0,
-                            width: "100%",
-                            height: "100%",
-                            padding: 0,
-                            opacity: 0,
-                        }}
-                    />
-                </PeriodStepper>
+                    value={value}
+                    onPick={(p) => onChange({ year: p.year, month: p.month })}
+                    min={min ? dayjs(min) : undefined}
+                    max={dayjs(max)}
+                    disabled={disabled}
+                />
                 {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
             </div>
             {meta && (

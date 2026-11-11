@@ -41,12 +41,14 @@ import {
     WipTag,
 } from "./components/ui";
 import type { Col, Row } from "./components/ui";
+import { pickToStep } from "./components/usePeriodStepper";
 import { StatusPill } from "@/components/page/status-pill";
 import { AccountsApi, ExpensesApi, InvoicesApi, type AccountDto, type ExpenseBillDto, type ExpenseImportResultDto, type InvoiceDto, type InvoiceFundOverviewRowDto, type InvoiceImportResult, type InvoiceSummaryDto } from "@/apis-gen";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { makePeriod, shiftPeriod, useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
+import { printPdf } from "@/lib/print-pdf";
 import { fmtAmount } from "@/lib/format";
 
 /** 后端日期字段运行时是 Date，统一按 yyyy-MM-dd 展示。 */
@@ -295,6 +297,25 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
         setAddToast("导出已开始下载");
     };
 
+    /** 打印当前期间发票：后端渲染 PDF 并在新窗口预览，版式（分组表头、页码、打印时间）全在后端。 */
+    const printInvoices = async () => {
+        if (!accountSetId || busy) {
+            return;
+        }
+        setBusy(true);
+        try {
+            await printPdf(
+                `/api/accountsets/${accountSetId}/invoices/pdf?direction=${kind === "sales" ? 1 : 2}` +
+                    `&startDate=${period.startDate}&endDate=${period.endDate}&period=${period.year}-${String(period.month).padStart(2, "0")}`,
+                token,
+            );
+        } catch (e) {
+            setAddToast(e instanceof Error ? e.message : "生成打印稿失败，请重试。");
+        } finally {
+            setBusy(false);
+        }
+    };
+
     /** 下载导入模板（与导出同列，仅含表头）。 */
     const downloadTemplate = async () => {
         if (!token || !accountSetId) {
@@ -507,6 +528,8 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                         text={`${period.year}年${period.month}月`}
                         onPrev={() => stepPeriod(-1)}
                         onNext={() => stepPeriod(1)}
+                        value={period}
+                        onPick={setUserPeriod}
                     />
                 }
                 right={
@@ -514,10 +537,10 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                         <CheckBox label="显示所有信息" />
                         {kind === "sales" && <WipBtn title="开具发票建设中，后端未提供端点">开具发票</WipBtn>}
                         <WipBtn title="一键取票建设中，后端未提供端点">一键取票</WipBtn>
-                        <Btn dropdown onClick={() => setShowAdd(true)}>新增发票</Btn>
+                        <Btn variant="primary" dropdown onClick={() => setShowAdd(true)}>新增发票</Btn>
                         <Btn dropdown disabled={busy} title="导出当前期间的发票为 .xlsx" onClick={() => void exportInvoices()}>导出</Btn>
                         <Btn dropdown title="从 .xlsx 导入发票" onClick={() => setShowImport(true)}>导入</Btn>
-                        <Btn dropdown onClick={() => window.print()}>打印列表</Btn>
+                        <Btn dropdown disabled={busy} onClick={() => void printInvoices()} title="打印当前期间的发票清单（后端生成 PDF）">打印列表</Btn>
                         {kind === "purchase" && (
                             <Btn dropdown disabled={busy} title="对勾选的进项发票调用批量认证端点" onClick={() => void bulkAuthenticate()}>批量认证</Btn>
                         )}
@@ -1183,13 +1206,15 @@ export function LemonExpenseBill() {
                             text={`${period.year}年${period.month}月`}
                             onPrev={() => stepPeriod(-1)}
                             onNext={() => stepPeriod(1)}
+                            value={period}
+                            onPick={setUserPeriod}
                         />
                         <CheckBox label="显示全部" checked={showAll} onChange={() => setShowAll((v) => !v)} />
                     </>
                 }
                 right={
                     <>
-                        <Btn dropdown onClick={() => openEdit()}>新增</Btn>
+                        <Btn variant="primary" dropdown onClick={() => openEdit()}>新增</Btn>
                         <Btn dropdown title="从 .xlsx 导入费用单据（按单据编号更新已存在单据）" onClick={() => importRef.current?.click()}>
                             导入
                         </Btn>
@@ -1520,6 +1545,8 @@ export function LemonInvoiceSummary() {
                         text={`${period.year}年${period.month}月`}
                         onPrev={() => setUserPeriod(shiftPeriod(period, -1))}
                         onNext={() => setUserPeriod(shiftPeriod(period, 1))}
+                        value={period}
+                        onPick={setUserPeriod}
                     />
                 }
                 right={
@@ -1667,6 +1694,8 @@ function InvoiceGoodsTable({
                         text={`${period.year}年${period.month}月`}
                         onPrev={() => onStep(-1)}
                         onNext={() => onStep(1)}
+                        value={period}
+                        onPick={pickToStep(period, onStep)}
                     />
                 }
                 right={
@@ -1830,6 +1859,8 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
                         text={`${period.year}年${period.month}月`}
                         onPrev={() => onStep(-1)}
                         onNext={() => onStep(1)}
+                        value={period}
+                        onPick={pickToStep(period, onStep)}
                     />
                 }
                 right={

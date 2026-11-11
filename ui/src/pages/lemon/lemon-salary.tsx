@@ -10,13 +10,9 @@ import { InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined } from "@an
 import { ICON_STYLE, PILL, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
-import {
-    makePeriod,
-    shiftPeriod,
-    useDefaultAccountingPeriod,
-    type AccountingPeriod,
-} from "@/accountSets/useCurrentAccountSet";
+import { makePeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
+import { printPdf } from "@/lib/print-pdf";
 
 import {
     Btn,
@@ -40,6 +36,7 @@ import {
     WipBtn,
 } from "./components/ui";
 import type { Col, Row } from "./components/ui";
+import { usePeriodStepper } from "./components/usePeriodStepper";
 import {
     SalariesApi,
     AccountsApi,
@@ -63,11 +60,9 @@ function nf(v: number | null | undefined): string {
     return (v ?? 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
 /** 期间对象 → 「2026年10月」。 */
 function periodLabel(p: AccountingPeriod): string {
-    return `${p.year}年${pad(p.month)}月`;
+    return `${p.year}年${p.month}月`;
 }
 
 /** yyyyMM 数字 → 期间对象。 */
@@ -477,9 +472,7 @@ function AccrueStep({
 function SalaryAccrueView() {
     const { token, user } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
-    const defaultPeriod = useDefaultAccountingPeriod();
-    const [override, setOverride] = useState<AccountingPeriod | null>(null);
-    const period = override ?? defaultPeriod;
+    const { period, stepper } = usePeriodStepper();
     const [view, setView] = useState<AccrueViewDto | null>(null);
     const [bills, setBills] = useState<SalaryBillDto[]>([]);
     const [toast, setToast] = useState<string | null>(null);
@@ -549,7 +542,7 @@ function SalaryAccrueView() {
     return (
         <>
             <ToolRow
-                left={<PeriodStepper text={periodLabel(period)} onPrev={() => setOverride(shiftPeriod(period, -1))} onNext={() => setOverride(shiftPeriod(period, 1))} />}
+                left={<PeriodStepper {...stepper} />}
                 right={
                     <Btn
                         icon={<SettingOutlined />}
@@ -1090,11 +1083,7 @@ function EmployeeDrawerForm({
 export function LemonSalaryManage() {
     const { token } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
-    const defaultPeriod = useDefaultAccountingPeriod();
-    const [override, setOverride] = useState<AccountingPeriod | null>(null);
-    const period = override ?? defaultPeriod;
-    // 切换账套时回到该账套默认期间。
-    useEffect(() => setOverride(null), [accountSetId]);
+    const { period, stepper } = usePeriodStepper();
     const [bills, setBills] = useState<SalaryBillDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -1131,6 +1120,18 @@ export function LemonSalaryManage() {
         }
         const err = await downloadBlob(`${salaryBase}/payslips/pdf?period=${period.period}`, token, `工资条_${period.period}.pdf`);
         setToast(err ?? "工资条已生成，正在下载…");
+    };
+
+    /** 打印当期工资表：后端渲染 PDF（表头含账套名与期间），前端只负责新窗口预览。 */
+    const printBills = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        try {
+            await printPdf(`${salaryBase}/bills/pdf?period=${period.period}`, token);
+        } catch (e) {
+            setToast(e instanceof Error ? e.message : "生成打印稿失败，请重试。");
+        }
     };
 
     /** 导出当期工资表（一行一员工，末行合计）。 */
@@ -1253,11 +1254,7 @@ export function LemonSalaryManage() {
             <ToolRow
                 left={
                     <>
-                        <PeriodStepper
-                            text={periodLabel(period)}
-                            onPrev={() => setOverride(shiftPeriod(period, -1))}
-                            onNext={() => setOverride(shiftPeriod(period, 1))}
-                        />
+                        <PeriodStepper {...stepper} />
                         <WipBtn title="自定义工资项目需支持动态列与公式，暂未实现">自定义工资项目</WipBtn>
                     </>
                 }
@@ -1281,7 +1278,7 @@ export function LemonSalaryManage() {
                         </Btn>
                         <WipBtn title="发送工资条需短信 / 邮件通道，暂未实现">发送工资条</WipBtn>
                         <WipBtn title="个税申报需对接电子税务局，暂未实现">个税申报</WipBtn>
-                        <Btn dropdown onClick={() => window.print()}>打印</Btn>
+                        <Btn dropdown title="打印当期工资表（后端生成 PDF）" onClick={() => void printBills()}>打印</Btn>
                         <WipBtn title="工资表附件归档暂未实现">附件</WipBtn>
                         <Dropdown
                             trigger={["click"]}
@@ -1690,10 +1687,7 @@ export function LemonSalaryEmployee() {
 export function LemonSalarySummary() {
     const { token } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
-    const defaultPeriod = useDefaultAccountingPeriod();
-    const [override, setOverride] = useState<AccountingPeriod | null>(null);
-    const period = override ?? defaultPeriod;
-    useEffect(() => setOverride(null), [accountSetId]);
+    const { period, stepper } = usePeriodStepper();
 
     // 区间：年初 → 当前所选月末。
     const startPeriod = period.year * 100 + 1;
@@ -1727,7 +1721,7 @@ export function LemonSalarySummary() {
         void reload();
     }, [reload]);
 
-    const rangeText = `${periodFromNumber(startPeriod).year}年01月—${periodLabel(period)}`;
+    const rangeText = `${periodFromNumber(startPeriod).year}年1月—${periodLabel(period)}`;
 
     /** 导出工资统计表（与当前区间一致）。 */
     const [toast, setToast] = useState<string | null>(null);
@@ -1742,6 +1736,21 @@ export function LemonSalarySummary() {
         );
         if (err) {
             setToast(err);
+        }
+    };
+
+    /** 打印工资统计表（年初至所选期间）：与导出同区间，版式在后端。 */
+    const printSummary = async () => {
+        if (!token || !accountSetId) {
+            return;
+        }
+        try {
+            await printPdf(
+                `/api/accountsets/${accountSetId}/salary/summary/pdf?startPeriod=${startPeriod}&endPeriod=${endPeriod}`,
+                token,
+            );
+        } catch (e) {
+            setToast(e instanceof Error ? e.message : "生成打印稿失败，请重试。");
         }
     };
     const cols: Col[] = [
@@ -1778,18 +1787,14 @@ export function LemonSalarySummary() {
         <Page>
             <ToolRow
                 left={
-                    <PeriodStepper
-                        text={rangeText}
-                        onPrev={() => setOverride(shiftPeriod(period, -1))}
-                        onNext={() => setOverride(shiftPeriod(period, 1))}
-                    />
+                    <PeriodStepper {...stepper} text={rangeText} />
                 }
                 right={
                     <>
                         <span title="展开员工明细行暂未实现，仅作展示">
                             <CheckBox label="显示员工工资明细" />
                         </span>
-                        <Btn onClick={() => window.print()}>打印</Btn>
+                        <Btn onClick={() => void printSummary()} title="打印当前区间的工资统计表（后端生成 PDF）">打印</Btn>
                         <Btn onClick={() => void exportSummary()} title="导出当前区间的工资统计表为 .xlsx">导出</Btn>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />

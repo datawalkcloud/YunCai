@@ -99,19 +99,17 @@ namespace KuaiJi.Modules.Reports.Application
             }
 
             // 权益合计（含未识别权益科目兜底：并入未分配利润后自然覆盖）。
+            // 必须返回新数组：上年末合计与本年年初合计初始指向同一个 BucketSum 结果，
+            // 原地累加会让后续行次的金额被重复计入本年年初数（表现为年初合计比各分项之和多）。
             decimal[] Add(decimal[]? acc, decimal[] delta)
             {
-                if (acc is null)
+                var result = acc is null ? new decimal[4] : (decimal[])acc.Clone();
+                for (var i = 0; i < result.Length; i++)
                 {
-                    return delta;
+                    result[i] += delta[i];
                 }
 
-                for (var i = 0; i < acc.Length; i++)
-                {
-                    acc[i] += delta[i];
-                }
-
-                return acc;
+                return result;
             }
 
             var totalRow = new EquityChangeRowDto
@@ -133,16 +131,16 @@ namespace KuaiJi.Modules.Reports.Application
             };
         }
 
-        /// <summary>权益科目 → 桶（0=实收资本,1=资本公积,2=盈余公积,3=未分配利润），未识别返回 -1。</summary>
+        /// <summary>权益科目 → 行次（51=实收资本,52=资本公积,53=盈余公积,54=未分配利润），未识别返回 -1。</summary>
         private static int MapBucket(string code)
         {
             var p = code.Length <= 4 ? code : code[..4];
             return p switch
             {
-                "4001" or "3001" => 0,
-                "4002" or "3002" => 1,
-                "4101" or "3101" => 2,
-                "4103" or "4104" or "3103" or "3104" => 3,
+                "4001" or "3001" => 51,
+                "4002" or "3002" => 52,
+                "4101" or "3101" => 53,
+                "4103" or "4104" or "3103" or "3104" => 54,
                 _ => -1,
             };
         }

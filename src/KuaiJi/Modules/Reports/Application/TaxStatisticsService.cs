@@ -40,11 +40,9 @@ namespace KuaiJi.Modules.Reports.Application
             var monthStart = new DateOnly(resolvedYear, resolvedMonth, 1);
             var monthEnd = monthStart.AddMonths(1).AddDays(-1);
             var yearStart = new DateOnly(resolvedYear, 1, 1);
-            var yearEnd = new DateOnly(resolvedYear, 12, 31);
             var priorMonthStart = monthStart.AddYears(-1);
             var priorMonthEnd = monthEnd.AddYears(-1);
             var priorYearStart = yearStart.AddYears(-1);
-            var priorYearEnd = yearEnd.AddYears(-1);
 
             // 贷方（计提）与借方（缴纳）发生额分开累计，分窗口计算。
             Dictionary<Guid, (decimal Credit, decimal Debit)> Movement(DateOnly start, DateOnly end)
@@ -68,9 +66,9 @@ namespace KuaiJi.Modules.Reports.Application
             }
 
             var currentMonth = Movement(monthStart, monthEnd);
-            var currentYtd = Movement(yearStart, yearEnd);
+            var currentYtd = Movement(yearStart, monthEnd);
             var priorMonth = Movement(priorMonthStart, priorMonthEnd);
-            var priorYtd = Movement(priorYearStart, priorYearEnd);
+            var priorYtd = Movement(priorYearStart, priorMonthEnd);
 
             var taxAccounts = accounts
                 .Where(a => a.IsLeaf && a.Category == AccountCategory.Liability

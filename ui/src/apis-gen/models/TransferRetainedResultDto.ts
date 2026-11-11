@@ -39,6 +39,12 @@ export interface TransferRetainedResultDto {
      * @memberof TransferRetainedResultDto
      */
     voucher?: CarryVoucherRefDto | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof TransferRetainedResultDto
+     */
+    created?: boolean;
 }
 
 /**
@@ -60,6 +66,7 @@ export function TransferRetainedResultDtoFromJSONTyped(json: any, ignoreDiscrimi
         
         'message': json['message'] == null ? undefined : json['message'],
         'voucher': json['voucher'] == null ? undefined : CarryVoucherRefDtoFromJSON(json['voucher']),
+        'created': json['created'] == null ? undefined : json['created'],
     };
 }
 
@@ -76,6 +83,7 @@ export function TransferRetainedResultDtoToJSONTyped(value?: TransferRetainedRes
         
         'message': value['message'],
         'voucher': CarryVoucherRefDtoToJSON(value['voucher']),
+        'created': value['created'],
     };
 }
 

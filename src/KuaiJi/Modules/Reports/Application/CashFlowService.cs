@@ -1,6 +1,8 @@
+using System.Globalization;
 using KuaiJi.Modules.Reports.Domain;
 using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Accounting.Domain;
+using KuaiJi.Modules.Assist.Domain;
 using KuaiJi.Modules.Reports.Domain.CashFlow;
 using KuaiJi.Modules.Vouchers.Domain;
 
@@ -20,15 +22,18 @@ namespace KuaiJi.Modules.Reports.Application
         private readonly IAccountSetRepository _accountSetRepository;
         private readonly IAccountRepository _accountRepository;
         private readonly IVoucherRepository _voucherRepository;
+        private readonly IAssistItemRepository _assistItemRepository;
 
         public CashFlowService(
             IAccountSetRepository accountSetRepository,
             IAccountRepository accountRepository,
-            IVoucherRepository voucherRepository)
+            IVoucherRepository voucherRepository,
+            IAssistItemRepository assistItemRepository)
         {
             _accountSetRepository = accountSetRepository;
             _accountRepository = accountRepository;
             _voucherRepository = voucherRepository;
+            _assistItemRepository = assistItemRepository;
         }
 
         /// <summary>月度现金流量表。year/month 省略时取最近有凭证的月份（无凭证回退账套启用期间）。</summary>
@@ -40,12 +45,57 @@ namespace KuaiJi.Modules.Reports.Application
             var monthStart = new DateOnly(resolvedYear, resolvedMonth, 1);
             var monthEnd = monthStart.AddMonths(1).AddDays(-1);
             var yearStart = new DateOnly(resolvedYear, 1, 1);
-            var yearEnd = new DateOnly(resolvedYear, 12, 31);
+            var yearEnd = monthEnd;
 
             var (monthByLine, ytdByLine, monthOpening, yearOpening) = Accumulate(
                 accounts, vouchers, monthStart, monthEnd, yearStart, yearEnd);
             var lastYear = AccumulateLastYear(accounts, vouchers, monthStart, 1);
             var lines = BuildLines(monthByLine, ytdByLine, monthOpening, yearOpening, lastYear.ByLine, lastYear.Opening);
+
+            return new CashFlowDto
+            {
+                Year = resolvedYear,
+                Month = resolvedMonth,
+                PeriodText = $"{resolvedYear:D4}年{resolvedMonth:D2}月",
+                Lines = lines,
+            };
+        }
+
+        /// <summary>
+        /// 现金流量表（辅助核算法）：按现金分录上挂的「现金流」辅助项目归集到标准行次。
+        /// 项目编码前两位对应主表行号（如 01 → 第 1 行、05 → 第 5 行），未挂项目或编码无法对应的
+        /// 现金收付不计入；小计/净额/期初期末与其他口径共用同一套汇总。
+        /// </summary>
+        public async Task<CashFlowDto> GetAssistAsync(
+            Guid accountSetId,
+            int? year,
+            int? month,
+            CancellationToken cancellationToken = default)
+        {
+            var (accountSet, accounts, vouchers) = await LoadAsync(accountSetId, cancellationToken);
+            var (resolvedYear, resolvedMonth) = ReportPeriodResolver.Resolve(accountSet, vouchers, year, month);
+
+            var monthStart = new DateOnly(resolvedYear, resolvedMonth, 1);
+            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+            var yearStart = new DateOnly(resolvedYear, 1, 1);
+            var lastYearStart = new DateOnly(resolvedYear - 1, 1, 1);
+            var lastYearEnd = new DateOnly(resolvedYear - 1, resolvedMonth, 1).AddMonths(1).AddDays(-1);
+
+            var cashFlowItems = await _assistItemRepository.GetByTypeAsync(accountSetId, AssistType.CashFlow, cancellationToken);
+            var itemsById = cashFlowItems.ToDictionary(i => i.Id);
+            var cashAccountIds = CashAccountIds(accounts);
+
+            var periodByLine = AccumulateAssist(vouchers, itemsById, cashAccountIds, monthStart, monthEnd);
+            var ytdByLine = AccumulateAssist(vouchers, itemsById, cashAccountIds, yearStart, monthEnd);
+            var lastYearByLine = AccumulateAssist(vouchers, itemsById, cashAccountIds, lastYearStart, lastYearEnd);
+
+            var lines = BuildLines(
+                periodByLine,
+                ytdByLine,
+                CashOpening(accounts, vouchers, cashAccountIds, monthStart),
+                CashOpening(accounts, vouchers, cashAccountIds, yearStart),
+                lastYearByLine,
+                CashOpening(accounts, vouchers, cashAccountIds, lastYearStart));
 
             return new CashFlowDto
             {
@@ -65,7 +115,7 @@ namespace KuaiJi.Modules.Reports.Application
             var quarterStart = new DateOnly(resolvedYear, (resolvedQuarter - 1) * 3 + 1, 1);
             var quarterEnd = quarterStart.AddMonths(3).AddDays(-1);
             var yearStart = new DateOnly(resolvedYear, 1, 1);
-            var yearEnd = new DateOnly(resolvedYear, 12, 31);
+            var yearEnd = quarterEnd;
 
             var (quarterByLine, ytdByLine, quarterOpening, yearOpening) = Accumulate(
                 accounts, vouchers, quarterStart, quarterEnd, yearStart, yearEnd);
@@ -196,14 +246,89 @@ namespace KuaiJi.Modules.Reports.Application
                 }
             }
 
-            // 期初现金余额：现金科目（借方为正）在窗口起点前的净额（含启用期初）。
-            decimal CashOpening(DateOnly before)
+            return (periodByLine, ytdByLine,
+                CashOpening(accounts, vouchers, cashAccountIds, periodStart),
+                CashOpening(accounts, vouchers, cashAccountIds, yearStart));
+        }
+
+        /// <summary>期初现金余额：现金科目（借方为正）在窗口起点前的净额（含启用期初）。</summary>
+        private static decimal CashOpening(
+            IReadOnlyList<Account> accounts,
+            List<Voucher> vouchers,
+            HashSet<Guid> cashAccountIds,
+            DateOnly periodStart)
+        {
+            var openingNet = AccountNetCalculator.NetByAccountUpTo(accounts, vouchers, periodStart.AddDays(-1));
+            return cashAccountIds.Sum(id => openingNet.GetValueOrDefault(id));
+        }
+
+        /// <summary>
+        /// 辅助核算法：按现金分录上挂的现金流项目编码前两位归入主表行号。同一分录挂多个项目时
+        /// 净收付均分；流入行取正数、流出行取相反数（流出仍为正）。
+        /// </summary>
+        private static Dictionary<int, decimal> AccumulateAssist(
+            List<Voucher> vouchers,
+            IReadOnlyDictionary<Guid, AssistItem> itemsById,
+            HashSet<Guid> cashAccountIds,
+            DateOnly start,
+            DateOnly end)
+        {
+            var byLine = new Dictionary<int, decimal>();
+            foreach (var voucher in vouchers)
             {
-                var openingNet = AccountNetCalculator.NetByAccountUpTo(accounts, vouchers, before.AddDays(-1));
-                return cashAccountIds.Sum(id => openingNet.GetValueOrDefault(id));
+                if (voucher.Date < start || voucher.Date > end)
+                {
+                    continue;
+                }
+
+                foreach (var entry in voucher.Entries)
+                {
+                    if (!cashAccountIds.Contains(entry.AccountId))
+                    {
+                        continue;
+                    }
+
+                    var itemIds = entry.Assists
+                        .Where(a => a.Type == AssistType.CashFlow)
+                        .Select(a => a.AssistItemId)
+                        .Distinct()
+                        .ToList();
+                    if (itemIds.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var share = (entry.Debit - entry.Credit) / itemIds.Count;
+                    foreach (var itemId in itemIds)
+                    {
+                        if (!itemsById.TryGetValue(itemId, out var item) || AssistItemLine(item.Code) is not { } line)
+                        {
+                            continue;
+                        }
+
+                        var signed = CashFlowStandardRows.ByLine[line].Kind == CashFlowRowKind.Inflow ? share : -share;
+                        byLine[line] = byLine.GetValueOrDefault(line) + signed;
+                    }
+                }
             }
 
-            return (periodByLine, ytdByLine, CashOpening(periodStart), CashOpening(yearStart));
+            return byLine;
+        }
+
+        /// <summary>现金流项目编码前两位对应主表行号；只有流入/流出明细行可挂项目，其余编码返回 null。</summary>
+        private static int? AssistItemLine(string code)
+        {
+            var trimmed = (code ?? string.Empty).Trim();
+            var digits = trimmed.Length >= 2 ? trimmed[..2] : trimmed;
+            if (!int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var line))
+            {
+                return null;
+            }
+
+            return CashFlowStandardRows.ByLine.TryGetValue(line, out var def)
+                   && def.Kind is CashFlowRowKind.Inflow or CashFlowRowKind.Outflow
+                ? line
+                : null;
         }
 
         /// <summary>
@@ -263,15 +388,14 @@ namespace KuaiJi.Modules.Reports.Application
             var lastYearPeriodStart = periodStart.AddYears(-1);
             var lastYearPeriodEnd = lastYearPeriodStart.AddMonths(months).AddDays(-1);
             var lastYearStart = new DateOnly(lastYearPeriodStart.Year, 1, 1);
-            var lastYearEnd = new DateOnly(lastYearPeriodStart.Year, 12, 31);
 
             var (_, ytdByLine, _, ytdOpening) = Accumulate(
-                accounts, vouchers, lastYearPeriodStart, lastYearPeriodEnd, lastYearStart, lastYearEnd);
+                accounts, vouchers, lastYearPeriodStart, lastYearPeriodEnd, lastYearStart, lastYearPeriodEnd);
             return (ytdByLine, ytdOpening);
         }
 
-        /// <summary>报表与底稿共用的现金科目集合（一级编码 1001/1002/1012 的资产科目）。</summary>
-        private static List<Account> CashAccounts(IReadOnlyList<Account> accounts)
+        /// <summary>报表、底稿与公式法 AUTO() 共用的现金科目集合（一级编码 1001/1002/1012 的资产科目）。</summary>
+        internal static List<Account> CashAccounts(IReadOnlyList<Account> accounts)
         {
             return accounts
                 .Where(a => a.Category == AccountCategory.Asset
@@ -281,7 +405,7 @@ namespace KuaiJi.Modules.Reports.Application
         }
 
         /// <summary>现金科目 Id 集合（主表分摊用）。</summary>
-        private static HashSet<Guid> CashAccountIds(IReadOnlyList<Account> accounts)
+        internal static HashSet<Guid> CashAccountIds(IReadOnlyList<Account> accounts)
         {
             return CashAccounts(accounts).Select(a => a.Id).ToHashSet();
         }
@@ -290,7 +414,7 @@ namespace KuaiJi.Modules.Reports.Application
         /// 把一张凭证的现金净收付按对手方科目分摊（主表汇总与底稿明细共用，保证两边口径一致）。
         /// amount 已换算成报表方向：流入、流出均为正数，方向由 inflow 区分。
         /// </summary>
-        private static void Allocate(
+        internal static void Allocate(
             Voucher voucher,
             HashSet<Guid> cashAccountIds,
             Action<Voucher, VoucherEntry, decimal, bool> onAllocated)

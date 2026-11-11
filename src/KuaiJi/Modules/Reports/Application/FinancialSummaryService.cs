@@ -102,9 +102,11 @@ namespace KuaiJi.Modules.Reports.Application
             decimal Revenue(DateOnly s, DateOnly e) => LineAmount(s, e, 1);
             decimal Cost(DateOnly s, DateOnly e) => LineAmount(s, e, 2, 3);
             decimal PeriodExpense(DateOnly s, DateOnly e) => LineAmount(s, e, 4, 5, 6, 7);
-            decimal NonOperating(DateOnly s, DateOnly e) => LineAmount(s, e, 8, 9, 11, 12, 13, 14, 16, 17);
-            decimal IncomeTax(DateOnly s, DateOnly e) => LineAmount(s, e, 19);
-            decimal TotalProfit(DateOnly s, DateOnly e) => Revenue(s, e) - Cost(s, e) - PeriodExpense(s, e) + NonOperating(s, e);
+            decimal NonOperatingIncome(DateOnly s, DateOnly e) => LineAmount(s, e, 8, 9, 12);
+            decimal NonOperatingExpense(DateOnly s, DateOnly e) => LineAmount(s, e, 14);
+            decimal IncomeTax(DateOnly s, DateOnly e) => LineAmount(s, e, 17);
+            decimal TotalProfit(DateOnly s, DateOnly e) => Revenue(s, e) - Cost(s, e) - PeriodExpense(s, e)
+                                                           + NonOperatingIncome(s, e) - NonOperatingExpense(s, e);
             decimal NetProfit(DateOnly s, DateOnly e) => TotalProfit(s, e) - IncomeTax(s, e);
 
             static decimal? Pct(decimal current, decimal baseline)

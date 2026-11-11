@@ -25,6 +25,9 @@ namespace KuaiJi.Modules.Reports.Application
 
         /// <summary>上年同期累计金额（上年 1 月 1 日至上年同月末）。</summary>
         public decimal LastYear { get; init; }
+
+        /// <summary>该行的取数公式（仅公式法返回；辅助核算法等口径为 null）。</summary>
+        public string? Formula { get; init; }
     }
 
     /// <summary>现金流量表（月度口径：本期金额 + 本年累计金额）。</summary>

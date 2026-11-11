@@ -47,6 +47,11 @@ export function shiftPeriod(period: AccountingPeriod, delta: number): Accounting
     return makePeriod(period.year, period.month + delta)
 }
 
+/** 两个期间相差的月数（from → to，跨年按 12 个月进位）。 */
+export function periodDiff(from: AccountingPeriod, to: AccountingPeriod): number {
+    return (to.year - from.year) * 12 + (to.month - from.month)
+}
+
 /**
  * 账套当前工作期间：优先取「下一个待结账期间」（即尚未结账的当期），
  * 其次取当前自然月，并保证不早于账套启用期间。页面不再硬编码日期。

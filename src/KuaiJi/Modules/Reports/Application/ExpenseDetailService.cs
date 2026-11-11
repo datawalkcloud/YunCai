@@ -7,8 +7,8 @@ namespace KuaiJi.Modules.Reports.Application
 {
     /// <summary>
     /// 费用明细表应用服务：对成本类与损益类（借方向）科目统计本期（选定月份）
-    /// 与本年累计的借-贷净发生额，非叶级次由下级科目汇总，供前端按层级展开。
-    /// 含「本年利润」科目的结转凭证剔除，与利润表口径一致。
+    /// 与本年累计（年初至选定月末）的借-贷净发生额，非叶级次由下级科目汇总，供前端按层级展开。
+    /// 含「本年利润」科目的结转凭证剔除，与利润表口径一致；收入方向行次（如营业外收入）不列示。
     /// </summary>
     public sealed class ExpenseDetailService
     {
@@ -56,12 +56,12 @@ namespace KuaiJi.Modules.Reports.Application
                     continue;
                 }
 
-                if (voucher.Date >= yearStart)
+                if (voucher.Date >= yearStart && voucher.Date < monthEndExclusive)
                 {
                     foreach (var entry in voucher.Entries)
                     {
                         ytdNet[entry.AccountId] = ytdNet.GetValueOrDefault(entry.AccountId) + entry.Debit - entry.Credit;
-                        if (voucher.Date >= monthStart && voucher.Date < monthEndExclusive)
+                        if (voucher.Date >= monthStart)
                         {
                             currentNet[entry.AccountId] = currentNet.GetValueOrDefault(entry.AccountId) + entry.Debit - entry.Credit;
                         }
@@ -123,7 +123,8 @@ namespace KuaiJi.Modules.Reports.Application
             var rows = new List<ExpenseDetailRowDto>();
             foreach (var account in accounts
                          .Where(a => a.Category is AccountCategory.Cost or AccountCategory.ProfitAndLoss
-                                     && a.Direction == BalanceDirection.Debit)
+                                     && a.Direction == BalanceDirection.Debit
+                                     && !IncomeLineMapper.IsRevenueLine(IncomeLineMapper.MapLine(a.Code, a.Direction)))
                          .OrderBy(a => a.Code, StringComparer.Ordinal))
             {
                 var current = Math.Round(RolledCurrent(account.Id, new HashSet<Guid>()), 2, MidpointRounding.ToEven);

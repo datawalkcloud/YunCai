@@ -31,7 +31,6 @@ import {
     DownOutlined,
     FileExcelOutlined,
     FileTextOutlined,
-    FilterOutlined,
     PlusOutlined,
     PrinterOutlined,
     ReloadOutlined,
@@ -42,6 +41,7 @@ import {
 } from "@ant-design/icons"
 import dayjs from "dayjs"
 
+import { FilterTriggerButton } from "@/components/page/filter-trigger-button"
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import {
@@ -50,7 +50,6 @@ import {
     VoucherWordsApi,
     VouchersApi,
     type AccountDto,
-    type VoucherDetailDto,
     type VoucherEntryDto,
     type VoucherImportResult,
     type VoucherListItemDto,
@@ -62,7 +61,7 @@ import { Tile } from "@/components/page/tile"
 import { StatusPill as StatusPillBase } from "@/components/page/status-pill"
 import { AMOUNT_COL, ICON_STYLE, SOFT_PANEL, voucherStatusTone } from "@/components/page/styles"
 import { PrintVoucherSheet } from "@/pages/closing/print-sheet"
-import VoucherForm from "./voucher-form"
+import VoucherSheet from "@/components/voucher/voucher-sheet"
 
 /** 每页条数候选，与原型分页的 showSizeChanger 一致。 */
 const PAGE_SIZE_OPTIONS = [20, 50, 200, 500, 1000]
@@ -73,15 +72,25 @@ const DEFAULT_PAGE_SIZE = 20
 /** 三态筛选（全部 / 是 / 否）。 */
 type TriState = "all" | "yes" | "no"
 
+/** 时间筛选的维度：会计期间按整月归一，凭证日期精确到所选当日。 */
+type DateKind = "period" | "date"
+
+const DATE_KIND_OPTIONS = [
+    { value: "period", label: "会计期间" },
+    { value: "date", label: "凭证日期" },
+] as const
+
 /**
  * 凭证列表的全部筛选条件。字段与柠檬云「查看凭证」筛选面板对齐；
  * 数量核算、外币核算我们没有对应的数据字段，因此没有放进筛选条件（避免给出点了没反应的空条件）。
  */
 interface VoucherFilters {
-    /** 会计期间起（YYYY-MM）。 */
-    periodFrom: string | null
-    /** 会计期间止（YYYY-MM）。 */
-    periodTo: string | null
+    /** 时间维度。 */
+    dateKind: DateKind
+    /** 区间起：会计期间为 YYYY-MM，凭证日期为 YYYY-MM-DD。 */
+    dateFrom: string | null
+    /** 区间止，口径同上。 */
+    dateTo: string | null
     word: string | null
     preparer: string | null
     hasAssists: TriState
@@ -100,8 +109,9 @@ interface VoucherFilters {
 }
 
 const EMPTY_FILTERS: VoucherFilters = {
-    periodFrom: null,
-    periodTo: null,
+    dateKind: "period",
+    dateFrom: null,
+    dateTo: null,
     word: null,
     preparer: null,
     hasAssists: "all",
@@ -120,33 +130,34 @@ const EMPTY_FILTERS: VoucherFilters = {
 /** 首屏默认落在本月：直接看当期凭证，也避免一进页就拉全量历史。 */
 function defaultFilters(): VoucherFilters {
     const month = dayjs().format("YYYY-MM")
-    return { ...EMPTY_FILTERS, periodFrom: month, periodTo: month }
+    return { ...EMPTY_FILTERS, dateFrom: month, dateTo: month }
 }
 
 /** 快捷期间：把起止月份压成 本月 / 本季 / 本年 / 全部，用于筛选按钮旁的 Segmented。 */
 type PeriodPreset = "month" | "quarter" | "year" | "all"
 
 function periodPreset(filters: VoucherFilters): PeriodPreset | "custom" {
-    if (!filters.periodFrom && !filters.periodTo) return "all"
-    const presets = (["month", "quarter", "year"] as const).map((key) => ({ key, ...presetRange(key) }))
-    const hit = presets.find((p) => p.periodFrom === filters.periodFrom && p.periodTo === filters.periodTo)
+    if (!filters.dateFrom && !filters.dateTo) return "all"
+    const presets = (["month", "quarter", "year"] as const).map((key) => ({ key, ...presetRange(key, filters.dateKind) }))
+    const hit = presets.find((p) => p.dateFrom === filters.dateFrom && p.dateTo === filters.dateTo)
     return hit?.key ?? "custom"
 }
 
-function presetRange(preset: PeriodPreset): Pick<VoucherFilters, "periodFrom" | "periodTo"> {
-    if (preset === "all") return { periodFrom: null, periodTo: null }
+function presetRange(preset: PeriodPreset, kind: DateKind): Pick<VoucherFilters, "dateFrom" | "dateTo"> {
+    if (preset === "all") return { dateFrom: null, dateTo: null }
+    const fmt = kind === "period" ? "YYYY-MM" : "YYYY-MM-DD"
     const now = dayjs()
     if (preset === "month") {
-        return { periodFrom: now.startOf("month").format("YYYY-MM"), periodTo: now.endOf("month").format("YYYY-MM") }
+        return { dateFrom: now.startOf("month").format(fmt), dateTo: now.endOf("month").format(fmt) }
     }
     if (preset === "year") {
-        return { periodFrom: now.startOf("year").format("YYYY-MM"), periodTo: now.endOf("year").format("YYYY-MM") }
+        return { dateFrom: now.startOf("year").format(fmt), dateTo: now.endOf("year").format(fmt) }
     }
     // dayjs 核心不认 quarter，自己算：季度首月 = 向下取整到 3 的倍数。
     const firstMonth = Math.floor(now.month() / 3) * 3
     return {
-        periodFrom: now.month(firstMonth).startOf("month").format("YYYY-MM"),
-        periodTo: now.month(firstMonth + 2).endOf("month").format("YYYY-MM"),
+        dateFrom: now.month(firstMonth).startOf("month").format(fmt),
+        dateTo: now.month(firstMonth + 2).endOf("month").format(fmt),
     }
 }
 
@@ -162,11 +173,43 @@ function monthRange(period: string | null, edge: "start" | "end"): Date | undefi
     return new Date(month[edge === "start" ? "startOf" : "endOf"]("month").format("YYYY-MM-DD"))
 }
 
+/** 区间端点转接口日期：会计期间（YYYY-MM）取整月边界，凭证日期（YYYY-MM-DD）原样使用。 */
+function endpointToParam(value: string | null, edge: "start" | "end"): Date | undefined {
+    if (!value) return undefined
+    return value.length > 7 ? new Date(value) : monthRange(value, edge)
+}
+
+/** 端点在两种维度间换算：期间→日期补整月边界，日期→期间取所在月。 */
+function endpointToKind(value: string | null, kind: DateKind, edge: "start" | "end"): string | null {
+    if (!value) return null
+    if (kind === "period") return value.slice(0, 7)
+    return value.length > 7 ? value : dayjs(`${value}-01`)[edge === "start" ? "startOf" : "endOf"]("month").format("YYYY-MM-DD")
+}
+
+/** 切换时间维度时把已选区间一起换算过去，避免切完条件就空了。 */
+function switchDateKind(filters: VoucherFilters, kind: DateKind) {
+    return {
+        dateKind: kind,
+        dateFrom: endpointToKind(filters.dateFrom, kind, "start"),
+        dateTo: endpointToKind(filters.dateTo, kind, "end"),
+    }
+}
+
+/** 区间端点转 RangePicker 的 dayjs 值（月份按月初）。 */
+function endpointToDay(value: string | null) {
+    return value ? dayjs(value.length > 7 ? value : `${value}-01`) : null
+}
+
+/** 整理凭证按期间进行，取区间起所在的月份，与当前是哪种时间维度无关。 */
+function periodOf(filters: VoucherFilters): string {
+    return filters.dateFrom ? filters.dateFrom.slice(0, 7) : dayjs().format("YYYY-MM")
+}
+
 /** 筛选条件转接口入参；回收站开关单独叠加。 */
 function toQueryParams(filters: VoucherFilters, deleted: boolean) {
     return {
-        startDate: monthRange(filters.periodFrom, "start"),
-        endDate: monthRange(filters.periodTo, "end"),
+        startDate: endpointToParam(filters.dateFrom, "start"),
+        endDate: endpointToParam(filters.dateTo, "end"),
         word: filters.word ?? undefined,
         preparer: filters.preparer ?? undefined,
         hasAssists: triToParam(filters.hasAssists),
@@ -184,21 +227,21 @@ function toQueryParams(filters: VoucherFilters, deleted: boolean) {
     }
 }
 
-/** 期间文本：起止都一样时只显示一个月份。 */
+/** 区间文本：起止都一样时只显示一个；会计期间显示到月，凭证日期显示到日。 */
 function periodText(filters: VoucherFilters): string {
-    const from = filters.periodFrom
-    const to = filters.periodTo
-    const fmt = (v: string) => v.replace("-", "年") + "月"
+    const fmt = (v: string) => (v.length > 7 ? dayjs(v).format("YYYY年M月D日") : v.replace("-", "年") + "月")
+    const from = filters.dateFrom
+    const to = filters.dateTo
     if (from && to) return from === to ? fmt(from) : `${fmt(from)} - ${fmt(to)}`
     if (from) return `${fmt(from)} 起`
     if (to) return `截至 ${fmt(to)}`
-    return "全部期间"
+    return filters.dateKind === "period" ? "全部期间" : "全部日期"
 }
 
 /** 统计已生效的筛选条件数，显示在筛选按钮上。 */
 function activeFilterCount(filters: VoucherFilters): number {
     let count = 0
-    if (filters.periodFrom || filters.periodTo) count++
+    if (filters.dateFrom || filters.dateTo) count++
     if (filters.word) count++
     if (filters.preparer) count++
     if (filters.hasAssists !== "all") count++
@@ -283,7 +326,7 @@ function toolbarDropdown(
 }
 
 /** 筛选面板里一行：左侧标题、右侧控件，与柠檬云的两列式面板一致。 */
-function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+function FilterRow({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
     return (
         <div className="flex items-center gap-2">
             <span className="w-[72px] shrink-0 text-right text-[13px] text-(--muted-foreground)">{label}</span>
@@ -313,23 +356,37 @@ function FilterPanel({
 
     return (
         <div className="flex max-h-[440px] w-[420px] flex-col gap-2 overflow-y-auto pr-1 pt-1">
-            <FilterRow label="会计期间：">
-                <DatePicker
-                    picker="month"
-                    allowClear
-                    placeholder="开始"
-                    value={value.periodFrom ? dayjs(`${value.periodFrom}-01`) : null}
-                    onChange={(d) => patch({ periodFrom: d ? d.format("YYYY-MM") : null })}
+            <FilterRow
+                label={
+                    <Dropdown
+                        trigger={["click"]}
+                        menu={{
+                            items: DATE_KIND_OPTIONS.map((o) => ({ key: o.value, label: o.label })),
+                            selectable: true,
+                            selectedKeys: [value.dateKind],
+                            onClick: ({ key }) => patch(switchDateKind(value, key as DateKind)),
+                        }}
+                    >
+                        <span className="inline-flex w-full cursor-pointer items-center justify-end gap-1 text-[13px] text-(--muted-foreground)">
+                            {DATE_KIND_OPTIONS.find((o) => o.value === value.dateKind)?.label}
+                            <DownOutlined style={{ fontSize: 10 }} />
+                        </span>
+                    </Dropdown>
+                }
+            >
+                <DatePicker.RangePicker
                     style={{ flex: 1 }}
-                />
-                <span className="text-[12px] text-(--muted-foreground)">至</span>
-                <DatePicker
-                    picker="month"
+                    picker={value.dateKind === "period" ? "month" : "date"}
+                    format={value.dateKind === "period" ? "YYYY年M月" : "YYYY年M月D日"}
+                    placeholder={value.dateKind === "period" ? ["开始月份", "结束月份"] : ["开始日期", "结束日期"]}
+                    allowEmpty={[true, true]}
                     allowClear
-                    placeholder="结束"
-                    value={value.periodTo ? dayjs(`${value.periodTo}-01`) : null}
-                    onChange={(d) => patch({ periodTo: d ? d.format("YYYY-MM") : null })}
-                    style={{ flex: 1 }}
+                    value={[endpointToDay(value.dateFrom), endpointToDay(value.dateTo)]}
+                    onChange={(dates) => {
+                        const [from, to] = dates ?? []
+                        const fmt = value.dateKind === "period" ? "YYYY-MM" : "YYYY-MM-DD"
+                        patch({ dateFrom: from ? from.format(fmt) : null, dateTo: to ? to.format(fmt) : null })
+                    }}
                 />
             </FilterRow>
             <FilterRow label="凭证字：">
@@ -480,7 +537,6 @@ function ActionLink({
 /** 凭证列表表格的列定义所需的外部能力。 */
 interface VoucherColumnActions {
     selectedKeys: Key[]
-    openingId: string | null
     deletingId: string | null
     recycleMode: boolean
     selectAll: { checked: boolean; indeterminate: boolean; onChange: (checked: boolean) => void }
@@ -612,7 +668,7 @@ function buildVoucherColumns(x: VoucherColumnActions): TableColumnsType<VoucherR
                 }
                 return (
                     <Space size={[6, 4]} wrap>
-                        <ActionLink label="修改" loading={x.openingId === v.id} onClick={() => x.onEdit(v)} />
+                        <ActionLink label="修改" onClick={() => x.onEdit(v)} />
                         <ActionLink label="复制" onClick={() => x.onCopy(v)} />
                         <ActionLink
                             label="删除"
@@ -650,7 +706,7 @@ function buildVoucherColumns(x: VoucherColumnActions): TableColumnsType<VoucherR
 }
 
 export default function VoucherManagePage() {
-    const { token, user } = useAuth()
+    const { token } = useAuth()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
@@ -659,7 +715,6 @@ export default function VoucherManagePage() {
     const [searchParams] = useSearchParams()
 
     const [vouchers, setVouchers] = useState<VoucherListItemDto[]>([])
-    const [accounts, setAccounts] = useState<AccountDto[]>([])
     /** 筛选面板的科目下拉：含非末级科目，便于按一级科目过滤全部下级。 */
     const [allAccounts, setAllAccounts] = useState<AccountDto[]>([])
     /** 账套已配置的凭证字，作为筛选下拉的选项来源。 */
@@ -667,8 +722,8 @@ export default function VoucherManagePage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [open, setOpen] = useState(false)
-    const [editing, setEditing] = useState<VoucherDetailDto | null>(null)
-    const [openingId, setOpeningId] = useState<string | null>(null)
+    /** 正在编辑的凭证 id；为空表示新增。详情由抽屉里的 VoucherSheet 自行载入。 */
+    const [editingId, setEditingId] = useState<string | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     /** 插入凭证：新增抽屉预设的日期与凭证字。 */
     const [insertSeed, setInsertSeed] = useState<{ date: string; word: string } | null>(null)
@@ -677,14 +732,15 @@ export default function VoucherManagePage() {
     const [templateName, setTemplateName] = useState("")
     const [templateType, setTemplateType] = useState(1)
     const [templateSaving, setTemplateSaving] = useState(false)
+    /** 单张打印：表格行「打印」动作的目标凭证。 */
     const [printVoucherId, setPrintVoucherId] = useState<string | null>(null)
-    /** 连续打印的凭证清单（打印「直接打印」用），为空表示只打印单张。 */
+    /** 连续打印的凭证清单（工具栏「打印」用）。 */
     const [printVoucherIds, setPrintVoucherIds] = useState<string[] | null>(null)
     /** 账簿提示跳进来时带原查询区间，否则落本月。 */
     const initialFilters = (): VoucherFilters => {
         const from = searchParams.get("periodFrom")
         const to = searchParams.get("periodTo")
-        if (from || to) return { ...EMPTY_FILTERS, periodFrom: from, periodTo: to }
+        if (from || to) return { ...EMPTY_FILTERS, dateFrom: from, dateTo: to }
         return defaultFilters()
     }
     /** 已生效的筛选条件。 */
@@ -729,18 +785,16 @@ export default function VoucherManagePage() {
         setError(null)
         try {
             const config = apiConfig(token)
-            const [list, accs, everyAccount, words] = await Promise.all([
+            const [list, everyAccount, words] = await Promise.all([
                 new VouchersApi(config).accountsetsAccountSetIdVouchersGet({
                     accountSetId,
                     // DateOnly 口径：先取 yyyy-MM-dd 字符串再构造 Date，避免东八区回退一天。
                     ...toQueryParams(filters, recycleMode),
                 }),
-                new AccountsApi(config).accountsetsAccountSetIdAccountsGet({ accountSetId, leafOnly: true }),
                 new AccountsApi(config).accountsetsAccountSetIdAccountsGet({ accountSetId, leafOnly: false }),
                 new VoucherWordsApi(config).accountsetsAccountSetIdVoucherwordsGet({ accountSetId }),
             ])
             setVouchers(list)
-            setAccounts(accs)
             setAllAccounts(everyAccount)
             setVoucherWords(words.map((w) => w.word).filter((w): w is string => !!w))
             setSelectedKeys([])
@@ -1037,33 +1091,21 @@ export default function VoucherManagePage() {
         })
     }
 
-    async function handleEdit(v: VoucherListItemDto) {
-        if (openingId || !v.id) return
-        setOpeningId(v.id)
-        setError(null)
-        try {
-            const detail = await new VouchersApi(apiConfig(token)).accountsetsAccountSetIdVouchersIdGet({
-                accountSetId,
-                id: v.id,
-            })
-            setEditing(detail)
-            setOpen(true)
-        } catch (err) {
-            setError(await apiErrorMessage(err, "加载凭证详情失败，请重试。"))
-        } finally {
-            setOpeningId(null)
-        }
+    function handleEdit(v: VoucherListItemDto) {
+        if (!v.id) return
+        setEditingId(v.id)
+        setOpen(true)
     }
 
     function handleCreate() {
-        setEditing(null)
+        setEditingId(null)
         setInsertSeed(null)
         setOpen(true)
     }
 
     /** 插入：以该凭证的日期与凭证字新建一张凭证（凭证号由后端续号）。 */
     function handleInsert(v: VoucherListItemDto) {
-        setEditing(null)
+        setEditingId(null)
         setInsertSeed({ date: toISODate(v.date), word: v.word ?? "记" })
         setOpen(true)
     }
@@ -1105,7 +1147,7 @@ export default function VoucherManagePage() {
 
     function handleSaved() {
         setOpen(false)
-        setEditing(null)
+        setEditingId(null)
         setInsertSeed(null)
         void load()
     }
@@ -1222,7 +1264,6 @@ export default function VoucherManagePage() {
 
     const voucherColumns = buildVoucherColumns({
         selectedKeys,
-        openingId,
         deletingId,
         recycleMode,
         selectAll: {
@@ -1307,13 +1348,11 @@ export default function VoucherManagePage() {
                                 </div>
                             }
                         >
-                            <Button type={activeFilterCount(filters) > 0 ? "primary" : "default"} ghost={activeFilterCount(filters) > 0}>
-                                <FilterOutlined />
-                                {periodText(filters)}
-                                {activeFilterCount(filters) > 0 && (
-                                    <span className="ml-1 rounded-full bg-(--card)/25 px-1.5 text-[11px]">{activeFilterCount(filters)}</span>
-                                )}
-                            </Button>
+                            <FilterTriggerButton
+                                title="高级筛选"
+                                label={periodText(filters)}
+                                count={activeFilterCount(filters)}
+                            />
                         </Popover>
                         {selectedKeys.length > 0 && (
                             <Typography.Text type="secondary">已选 {selectedKeys.length} 张</Typography.Text>
@@ -1338,19 +1377,10 @@ export default function VoucherManagePage() {
                                 <Button type="primary" icon={<PlusOutlined />} disabled={!accountSetId} onClick={handleCreate}>
                                     新增凭证
                                 </Button>
-                                {toolbarDropdown(
-                                    "打印",
-                                    [
-                                        { key: "direct", label: "直接打印", icon: <PrinterOutlined /> },
-                                        { key: "settings", label: "打印设置" },
-                                    ],
-                                    ({ key }) => {
-                                        if (key === "direct") printCurrentList()
-                                        // 打印设置与单张打印共用同一个面板，打开任意一张凭证即可调整版式。
-                                        else if (vouchers[0]?.id) setPrintVoucherId(vouchers[0].id)
-                                        else message.warning("当前没有可打印的凭证")
-                                    },
-                                )}
+                                {/* 版式（纸张、边距、签章栏位）由后端统一渲染，前端不再有「打印设置」入口 */}
+                                <Button icon={<PrinterOutlined />} disabled={!accountSetId} onClick={printCurrentList}>
+                                    打印
+                                </Button>
                                 <Tooltip title="跳到明细账，按当前期间查看电子账簿">
                                     <Button onClick={() => navigate(`/${accountSetId}/ledger/subsidiary`)}>电子账簿</Button>
                                 </Tooltip>
@@ -1368,7 +1398,7 @@ export default function VoucherManagePage() {
                                 </Button>
                                 <Button
                                     onClick={() => {
-                                        setTidyPeriod(filters.periodFrom ?? dayjs().format("YYYY-MM"))
+                                        setTidyPeriod(periodOf(filters))
                                         setTidyWord(null)
                                         setTidyByDate(false)
                                         setTidyOpen(true)
@@ -1390,7 +1420,7 @@ export default function VoucherManagePage() {
                                         if (key === "copy") void batchCopy()
                                         else if (key === "delete") batchSoftDelete()
                                         else if (key === "sort") {
-                                            setTidyPeriod(filters.periodFrom ?? dayjs().format("YYYY-MM"))
+                                            setTidyPeriod(periodOf(filters))
                                             setTidyWord(null)
                                             setTidyByDate(false)
                                             setTidyOpen(true)
@@ -1448,7 +1478,7 @@ export default function VoucherManagePage() {
                                 { value: "all", label: "全部" },
                             ]}
                             onChange={(value) => {
-                                const next = { ...filters, ...presetRange(value as PeriodPreset) }
+                                const next = { ...filters, ...presetRange(value as PeriodPreset, filters.dateKind) }
                                 setFilters(next)
                                 setDraftFilters(next)
                                 setPage(1)
@@ -1541,32 +1571,33 @@ export default function VoucherManagePage() {
                 </Flex>
             </Card>
 
-            {/* 新增 / 编辑凭证抽屉 */}
+            {/* 新增 / 编辑凭证抽屉：与新增凭证页共用同一套纸样凭证组件 */}
             <Drawer
                 open={open}
                 size={1152}
-                title={editing ? `编辑凭证 ${editing.voucherNo}` : "新增凭证"}
+                title={
+                    editingId
+                        ? `编辑凭证 ${vouchers.find((v) => v.id === editingId)?.voucherNo ?? ""}`
+                        : "新增凭证"
+                }
                 onClose={() => {
                     setOpen(false)
-                    setEditing(null)
+                    setEditingId(null)
                     setInsertSeed(null)
                 }}
-                styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
+                styles={{ body: { padding: 0, display: "flex", flexDirection: "column" } }}
             >
                 {open && (
-                    <VoucherForm
-                        key={editing?.id ?? (insertSeed ? `insert-${insertSeed.date}-${insertSeed.word}` : "new")}
-                        accountSetId={accountSetId}
-                        accounts={accounts}
-                        preparer={user?.displayName}
-                        token={token ?? undefined}
-                        initial={editing ?? undefined}
+                    <VoucherSheet
+                        key={editingId ?? (insertSeed ? `insert-${insertSeed.date}-${insertSeed.word}` : "new")}
+                        voucherId={editingId}
                         initialDate={insertSeed?.date}
                         initialWord={insertSeed?.word ?? voucherWords[0]}
+                        embedded
                         onSaved={handleSaved}
                         onCancel={() => {
                             setOpen(false)
-                            setEditing(null)
+                            setEditingId(null)
                             setInsertSeed(null)
                         }}
                     />

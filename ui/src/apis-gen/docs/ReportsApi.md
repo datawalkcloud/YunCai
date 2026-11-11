@@ -6,6 +6,10 @@ All URIs are relative to *http://localhost:5271*
 |------------- | ------------- | -------------|
 | [**accountsetsAccountSetIdReportsBalanceSheetGet**](ReportsApi.md#accountsetsaccountsetidreportsbalancesheetget) | **GET** /accountsets/{accountSetId}/Reports/balance-sheet |  |
 | [**accountsetsAccountSetIdReportsBalanceSheetPdfGet**](ReportsApi.md#accountsetsaccountsetidreportsbalancesheetpdfget) | **GET** /accountsets/{accountSetId}/Reports/balance-sheet/pdf |  |
+| [**accountsetsAccountSetIdReportsCashFlowAssistGet**](ReportsApi.md#accountsetsaccountsetidreportscashflowassistget) | **GET** /accountsets/{accountSetId}/Reports/cash-flow-assist |  |
+| [**accountsetsAccountSetIdReportsCashFlowFormulaGet**](ReportsApi.md#accountsetsaccountsetidreportscashflowformulaget) | **GET** /accountsets/{accountSetId}/Reports/cash-flow-formula |  |
+| [**accountsetsAccountSetIdReportsCashFlowFormulasGet**](ReportsApi.md#accountsetsaccountsetidreportscashflowformulasget) | **GET** /accountsets/{accountSetId}/Reports/cash-flow-formulas |  |
+| [**accountsetsAccountSetIdReportsCashFlowFormulasPut**](ReportsApi.md#accountsetsaccountsetidreportscashflowformulasput) | **PUT** /accountsets/{accountSetId}/Reports/cash-flow-formulas |  |
 | [**accountsetsAccountSetIdReportsCashFlowGet**](ReportsApi.md#accountsetsaccountsetidreportscashflowget) | **GET** /accountsets/{accountSetId}/Reports/cash-flow |  |
 | [**accountsetsAccountSetIdReportsCashFlowOpeningGet**](ReportsApi.md#accountsetsaccountsetidreportscashflowopeningget) | **GET** /accountsets/{accountSetId}/Reports/cash-flow-opening |  |
 | [**accountsetsAccountSetIdReportsCashFlowQuarterGet**](ReportsApi.md#accountsetsaccountsetidreportscashflowquarterget) | **GET** /accountsets/{accountSetId}/Reports/cash-flow-quarter |  |
@@ -157,6 +161,281 @@ No authorization required
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdReportsCashFlowAssistGet
+
+> CashFlowDto accountsetsAccountSetIdReportsCashFlowAssistGet(accountSetId, year, month)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReportsApi,
+} from '';
+import type { AccountsetsAccountSetIdReportsCashFlowAssistGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ReportsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    year: 56,
+    // number (optional)
+    month: 56,
+  } satisfies AccountsetsAccountSetIdReportsCashFlowAssistGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdReportsCashFlowAssistGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **year** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **month** | `number` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**CashFlowDto**](CashFlowDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdReportsCashFlowFormulaGet
+
+> CashFlowDto accountsetsAccountSetIdReportsCashFlowFormulaGet(accountSetId, year, month)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReportsApi,
+} from '';
+import type { AccountsetsAccountSetIdReportsCashFlowFormulaGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ReportsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    year: 56,
+    // number (optional)
+    month: 56,
+  } satisfies AccountsetsAccountSetIdReportsCashFlowFormulaGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdReportsCashFlowFormulaGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **year** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **month** | `number` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**CashFlowDto**](CashFlowDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdReportsCashFlowFormulasGet
+
+> CashFlowFormulaSettingsDto accountsetsAccountSetIdReportsCashFlowFormulasGet(accountSetId)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReportsApi,
+} from '';
+import type { AccountsetsAccountSetIdReportsCashFlowFormulasGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ReportsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AccountsetsAccountSetIdReportsCashFlowFormulasGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdReportsCashFlowFormulasGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**CashFlowFormulaSettingsDto**](CashFlowFormulaSettingsDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdReportsCashFlowFormulasPut
+
+> CashFlowFormulaSettingsDto accountsetsAccountSetIdReportsCashFlowFormulasPut(accountSetId, saveCashFlowFormulasRequest)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReportsApi,
+} from '';
+import type { AccountsetsAccountSetIdReportsCashFlowFormulasPutRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ReportsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SaveCashFlowFormulasRequest
+    saveCashFlowFormulasRequest: ...,
+  } satisfies AccountsetsAccountSetIdReportsCashFlowFormulasPutRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdReportsCashFlowFormulasPut(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **saveCashFlowFormulasRequest** | [SaveCashFlowFormulasRequest](SaveCashFlowFormulasRequest.md) |  | |
+
+### Return type
+
+[**CashFlowFormulaSettingsDto**](CashFlowFormulaSettingsDto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`, `text/json`, `application/*+json`
+- **Accept**: `text/plain`, `application/json`, `text/json`
 
 
 ### HTTP response details

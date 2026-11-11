@@ -13,6 +13,7 @@ Name | Type
 `current` | number
 `yearToDate` | number
 `lastYear` | number
+`formula` | string
 
 ## Example
 
@@ -28,6 +29,7 @@ const example = {
   "current": null,
   "yearToDate": null,
   "lastYear": null,
+  "formula": null,
 } satisfies CashFlowLineDto
 
 console.log(example)

@@ -61,6 +61,12 @@ export interface CashFlowLineDto {
      * @memberof CashFlowLineDto
      */
     lastYear?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof CashFlowLineDto
+     */
+    formula?: string | null;
 }
 
 /**
@@ -87,6 +93,7 @@ export function CashFlowLineDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'current': json['current'] == null ? undefined : json['current'],
         'yearToDate': json['yearToDate'] == null ? undefined : json['yearToDate'],
         'lastYear': json['lastYear'] == null ? undefined : json['lastYear'],
+        'formula': json['formula'] == null ? undefined : json['formula'],
     };
 }
 
@@ -108,6 +115,7 @@ export function CashFlowLineDtoToJSONTyped(value?: CashFlowLineDto | null, ignor
         'current': value['current'],
         'yearToDate': value['yearToDate'],
         'lastYear': value['lastYear'],
+        'formula': value['formula'],
     };
 }
 

@@ -304,18 +304,14 @@ namespace KuaiJi.Modules.Reports.Application
                 foreach (var line in detailLines)
                 {
                     var amount = LineAmount(source, line, deptIndex);
-                    if (line is 19)
+                    if (line is 12 or 14 or 17)
                     {
-                        continue; // 所得税不进营业利润
+                        continue; // 营业外收支与所得税不计入营业利润
                     }
 
                     if (IncomeLineMapper.IsRevenueLine(line))
                     {
                         revenue += amount;
-                    }
-                    else if (line is 16 or 17)
-                    {
-                        continue; // 营业外收支不进营业利润
                     }
                     else
                     {
@@ -329,15 +325,13 @@ namespace KuaiJi.Modules.Reports.Application
             decimal TotalProfit(int deptIndex, Dictionary<Guid, Dictionary<int, decimal>> source)
             {
                 var operating = OperatingProfit(deptIndex, source);
-                var nonOperating = detailLines
-                    .Where(l => l is 16 or 17)
-                    .Sum(l => LineAmount(source, l, deptIndex) * (l == 16 ? 1m : -1m));
+                var nonOperating = LineAmount(source, 12, deptIndex) - LineAmount(source, 14, deptIndex);
                 return operating + nonOperating;
             }
 
             decimal NetProfit(int deptIndex, Dictionary<Guid, Dictionary<int, decimal>> source)
             {
-                return TotalProfit(deptIndex, source) - LineAmount(source, 19, deptIndex);
+                return TotalProfit(deptIndex, source) - LineAmount(source, 17, deptIndex);
             }
 
             AddComputedRow("营业利润", OperatingProfit);

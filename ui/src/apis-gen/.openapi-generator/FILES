@@ -92,6 +92,8 @@ docs/CarryPreviewLineDto.md
 docs/CarryPreviewVoucherDto.md
 docs/CarryVoucherRefDto.md
 docs/CashFlowDto.md
+docs/CashFlowFormulaDto.md
+docs/CashFlowFormulaSettingsDto.md
 docs/CashFlowLineDto.md
 docs/CashFlowOpeningDto.md
 docs/CashFlowOpeningRowDto.md
@@ -268,6 +270,8 @@ docs/SaveAccountSetRoleRequest.md
 docs/SaveArchiveCategoryRequest.md
 docs/SaveArchiveRequest.md
 docs/SaveBillRequest.md
+docs/SaveCashFlowFormulaItem.md
+docs/SaveCashFlowFormulasRequest.md
 docs/SaveClosingTemplateLineRequest.md
 docs/SaveClosingTemplateRequest.md
 docs/SaveCurrencyRequest.md
@@ -422,6 +426,8 @@ models/CarryPreviewLineDto.ts
 models/CarryPreviewVoucherDto.ts
 models/CarryVoucherRefDto.ts
 models/CashFlowDto.ts
+models/CashFlowFormulaDto.ts
+models/CashFlowFormulaSettingsDto.ts
 models/CashFlowLineDto.ts
 models/CashFlowOpeningDto.ts
 models/CashFlowOpeningRowDto.ts
@@ -582,6 +588,8 @@ models/SaveAccountSetRoleRequest.ts
 models/SaveArchiveCategoryRequest.ts
 models/SaveArchiveRequest.ts
 models/SaveBillRequest.ts
+models/SaveCashFlowFormulaItem.ts
+models/SaveCashFlowFormulasRequest.ts
 models/SaveClosingTemplateLineRequest.ts
 models/SaveClosingTemplateRequest.ts
 models/SaveCurrencyRequest.ts

@@ -35,9 +35,33 @@ namespace KuaiJi.Modules.Reports.Application
                 "6111" => 9,                       // 投资收益
                 "6301" or "6117" or "6115" or "6116" => 12, // 营业外收入（其他收益/资产处置收益并入）
                 "6711" => 14,                      // 营业外支出
-                "6801" => 17,                      // 所得税费用
+                "6801" or "5801" => 17,            // 所得税费用（新旧准则编码）
                 _ => direction == BalanceDirection.Credit ? 1 : 2, // 兜底：按方向并入营业收入/营业成本
             };
+        }
+
+        /// <summary>「其中」子项行次（利息费用 33、政府补助 34），不参与营业利润/利润总额/净利润合计。</summary>
+        public static bool IsSubItemLine(int line)
+        {
+            return line is 33 or 34;
+        }
+
+        /// <summary>
+        /// 「其中」子项行次：利息费用（行 33）、政府补助（行 34）。子项不参与报表合计，
+        /// 仅用于与准则模板的单列口径对齐。
+        /// </summary>
+        public static int? SubLine(Account account)
+        {
+            var p = Prefix(account.Code);
+            if (p is "6603" or "5503" && account.Name.Contains("利息"))
+            {
+                return 33; // 财务费用-利息费用（收入以“-”号填列）
+            }
+            if (p == "6301" && account.Name.Contains("政府补助"))
+            {
+                return 34; // 营业外收入-其中：政府补助
+            }
+            return null;
         }
 
         /// <summary>标准行次对应的利润表项目名称（用于部门/项目利润表等按项目名输出）。</summary>
@@ -57,6 +81,8 @@ namespace KuaiJi.Modules.Reports.Application
                 12 => "营业外收入",
                 14 => "营业外支出",
                 17 => "所得税费用",
+                33 => "其中：利息费用（收入以“-”号填列）",
+                34 => "其中：政府补助",
                 _ => "其他项目",
             };
         }

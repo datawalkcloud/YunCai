@@ -129,8 +129,9 @@ namespace KuaiJi.Modules.Reports.Application
             DateOnly periodEndExclusive)
         {
             var lines = AccumulateLineNets(vouchers, accountsById, yearStart, periodStart, periodEndExclusive);
-            decimal Sum(bool yearToDate) => lines.Sum(kv =>
-                (yearToDate ? kv.Value.ytd : kv.Value.current) * (IncomeLineMapper.IsRevenueLine(kv.Key) ? 1m : -1m));
+            decimal Sum(bool yearToDate) => lines
+                .Where(kv => !IncomeLineMapper.IsSubItemLine(kv.Key))
+                .Sum(kv => (yearToDate ? kv.Value.ytd : kv.Value.current) * (IncomeLineMapper.IsRevenueLine(kv.Key) ? 1m : -1m));
 
             return (Sum(false), Sum(true));
         }
@@ -196,6 +197,13 @@ namespace KuaiJi.Modules.Reports.Application
                 var signed = IncomeLineMapper.IsRevenueLine(line) ? -1m : 1m; // 收入类行取贷-借，费用类行取借-贷。
                 currentByLine[line] = currentByLine.GetValueOrDefault(line) + currentNet.GetValueOrDefault(accountId) * signed;
                 ytdByLine[line] = ytdByLine.GetValueOrDefault(line) + ytdNet.GetValueOrDefault(accountId) * signed;
+
+                // 「其中」子项单独归集，不参与合计：利息费用、政府补助
+                if (IncomeLineMapper.SubLine(account) is { } subLine)
+                {
+                    currentByLine[subLine] = currentByLine.GetValueOrDefault(subLine) + currentNet.GetValueOrDefault(accountId) * signed;
+                    ytdByLine[subLine] = ytdByLine.GetValueOrDefault(subLine) + ytdNet.GetValueOrDefault(accountId) * signed;
+                }
             }
 
             var result = new Dictionary<int, (decimal current, decimal ytd)>();

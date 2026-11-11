@@ -3,9 +3,10 @@
  * 视觉遵循全站统一风格（云财蓝）：主色 #273cf3、圆角、白卡 + slate 灰阶文字，
  * 与 @/components/page 的既有实页同一套色板；交互基元一律用 antd 组件实现。
  */
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode, Ref } from "react";
 
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 
 import {
     Alert,
@@ -33,6 +34,7 @@ import {
 } from "@ant-design/icons";
 
 import { ICON_STYLE } from "@/components/page/styles";
+import { makePeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { cn } from "@/lib/utils";
 
 /* ---------------- 按钮 ---------------- */
@@ -123,22 +125,69 @@ export function PeriodBlock({
     );
 }
 
-/** 期间步进器（◀ 2026年9月 ▶）。传 onPrev/onNext 即为可切换的真实控件。 */
+/** 期间面板的粒度：月报 month、季报 quarter、年报 year。 */
+export type PeriodPicker = "month" | "quarter" | "year";
+
+/** 面板选中的日期换算回期间：季度落到首月，年度沿用当前月份（与按年步进同口径）。 */
+function pickedPeriod(
+    picker: PeriodPicker,
+    day: Dayjs,
+    current?: { year: number; month: number } | null,
+): AccountingPeriod {
+    if (picker === "year") return makePeriod(day.year(), current?.month ?? 12);
+    if (picker === "quarter") return makePeriod(day.year(), Math.floor(day.month() / 3) * 3 + 1);
+    return makePeriod(day.year(), day.month() + 1);
+}
+
+/**
+ * 期间步进器（◀ 2026年9月 ▶）。传 onPrev/onNext 即为可切换的真实控件；
+ * 再传 onPick（配 value）则中间文字悬浮即弹出年/季/月面板，直接跳到任意期间——
+ * 逐期快进走箭头，隔得远走面板。
+ */
+export interface PeriodStepperProps {
+    text: string;
+    onPrev?: () => void;
+    onNext?: () => void;
+    /** 覆盖在期间文字上的附加层。 */
+    children?: ReactNode;
+    /** 点中间文字弹出的期间面板粒度，需与 text 的展示口径一致。 */
+    picker?: PeriodPicker;
+    /** 当前期间，面板据此高亮。 */
+    value?: { year: number; month: number } | null;
+    /** 面板选中后的回调；不传则中间文字保持纯展示、悬浮也不弹面板。 */
+    onPick?: (period: AccountingPeriod) => void;
+    /** 可选期间下界（含），如账套启用期间。 */
+    min?: Dayjs;
+    /** 可选期间上界（含），如当前自然月。 */
+    max?: Dayjs;
+    disabled?: boolean;
+}
+
 export function PeriodStepper({
     text,
     onPrev,
     onNext,
     children,
-}: {
-    text: string;
-    onPrev?: () => void;
-    onNext?: () => void;
-    /** 覆盖在期间文字上的附加层，如透明的月份选择器（点文字弹出期间面板）。 */
-    children?: ReactNode;
-}) {
+    picker = "month",
+    value,
+    onPick,
+    min,
+    max,
+    disabled,
+}: PeriodStepperProps) {
     // 高度取自 antd token（compact 下即 28px），使自写控件与 antd 输入框/按钮等高、视觉统一。
     const { token } = theme.useToken();
     const h = token.controlHeight;
+    const unit = picker === "year" ? "year" : "month";
+    // 悬浮弹面板后，指针要从文字跨到面板上：离开文字先宽限一小段，面板接手则继续展开，否则收起。
+    const [open, setOpen] = useState(false);
+    const linger = useRef(0);
+    const hold = () => window.clearTimeout(linger.current);
+    const drop = () => {
+        hold();
+        linger.current = window.setTimeout(() => setOpen(false), 200);
+    };
+    useEffect(() => () => window.clearTimeout(linger.current), []);
     return (
         // 期间名称用 span 展示（不是按钮），避免被当成可点击动作；两侧箭头才是按钮
         <span className="inline-flex items-center overflow-hidden rounded-md border border-(--brand)">
@@ -155,9 +204,43 @@ export function PeriodStepper({
             <span
                 style={{ height: h }}
                 className="relative inline-flex items-center bg-(--brand-fill) px-3 text-[13px] font-medium tabular-nums text-white"
+                onMouseEnter={onPick && !disabled ? () => { hold(); setOpen(true); } : undefined}
+                onMouseLeave={onPick ? drop : undefined}
             >
                 {text}
                 {children}
+                {onPick && (
+                    // 透明选择器盖在期间文字上：悬浮即弹面板，逐期快进仍走两侧箭头。
+                    <DatePicker
+                        picker={picker}
+                        open={open}
+                        onOpenChange={(o) => {
+                            hold();
+                            setOpen(o);
+                        }}
+                        panelRender={(node) => (
+                            <div onMouseEnter={hold} onMouseLeave={drop}>
+                                {node}
+                            </div>
+                        )}
+                        value={value ? dayjs(`${value.year}-${String(value.month).padStart(2, "0")}-01`) : null}
+                        onChange={(d) => d && onPick(pickedPeriod(picker, d, value))}
+                        disabledDate={(d) =>
+                            (min != null && d.isBefore(min, unit)) || (max != null && d.isAfter(max, unit))
+                        }
+                        allowClear={false}
+                        inputReadOnly
+                        disabled={disabled}
+                        style={{
+                            position: "absolute",
+                            inset: 0,
+                            width: "100%",
+                            height: "100%",
+                            padding: 0,
+                            opacity: 0,
+                        }}
+                    />
+                )}
             </span>
             <button
                 type="button"

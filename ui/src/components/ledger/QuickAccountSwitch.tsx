@@ -41,6 +41,16 @@ function buildTree(accounts: AccountDto[]): AccountNode[] {
     return roots
 }
 
+/** 只保留自身或任一后代命中的节点，父级仅作结构容器留下。 */
+function pruneTree(nodes: AccountNode[], keep: Set<string>): AccountNode[] {
+    const result: AccountNode[] = []
+    for (const node of nodes) {
+        const children = pruneTree(node.children, keep)
+        if (keep.has(node.key) || children.length > 0) result.push({ ...node, children })
+    }
+    return result
+}
+
 /** 关键字命中自身或任一后代即保留；命中父级时整棵子树一并保留。 */
 function filterTree(nodes: AccountNode[], keyword: string): AccountNode[] {
     const hit = (node: AccountNode): AccountNode | null => {
@@ -86,6 +96,8 @@ function toTreeData(nodes: AccountNode[]): TreeDataNode[] {
 
 export interface QuickAccountSwitchProps {
     accounts: AccountDto[]
+    /** 当前账页有数据的科目编码；只列示这些科目（及其上级链路）。 */
+    hasDataCodes?: Set<string>
     /** 当前定位的科目编码；空表示未选。 */
     value?: string
     onChange: (code: string) => void
@@ -96,9 +108,19 @@ export interface QuickAccountSwitchProps {
 /**
  * 明细账右侧「快速切换」：按科目树定位单个科目，点击即按其编码重新查询。
  */
-export function QuickAccountSwitch({ accounts, value, onChange, disabled, className }: QuickAccountSwitchProps) {
+export function QuickAccountSwitch({
+    accounts,
+    hasDataCodes,
+    value,
+    onChange,
+    disabled,
+    className,
+}: QuickAccountSwitchProps) {
     const [keyword, setKeyword] = useState("")
-    const tree = useMemo(() => buildTree(accounts), [accounts])
+    const tree = useMemo(() => {
+        const built = buildTree(accounts)
+        return hasDataCodes ? pruneTree(built, hasDataCodes) : built
+    }, [accounts, hasDataCodes])
     const filtered = useMemo(() => (keyword ? filterTree(tree, keyword) : tree), [tree, keyword])
     const [expandedKeys, setExpandedKeys] = useState<string[]>(() => (value ? ancestorKeys(tree, value) : []))
 
@@ -125,15 +147,19 @@ export function QuickAccountSwitch({ accounts, value, onChange, disabled, classN
                 />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-2">
-                <Tree
-                    blockNode
-                    treeData={data}
-                    disabled={disabled}
-                    selectedKeys={value ? [value] : []}
-                    expandedKeys={expandedKeys}
-                    onExpand={(keys) => setExpandedKeys(keys as string[])}
-                    onSelect={(_, info) => onChange(String(info.node.key))}
-                />
+                {data.length === 0 ? (
+                    <div className="py-6 text-center text-[12.5px] text-(--muted-foreground)">本期暂无有数据的科目</div>
+                ) : (
+                    <Tree
+                        blockNode
+                        treeData={data}
+                        disabled={disabled}
+                        selectedKeys={value ? [value] : []}
+                        expandedKeys={expandedKeys}
+                        onExpand={(keys) => setExpandedKeys(keys as string[])}
+                        onSelect={(_, info) => onChange(String(info.node.key))}
+                    />
+                )}
             </div>
         </div>
     )

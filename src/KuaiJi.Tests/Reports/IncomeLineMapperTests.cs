@@ -349,4 +349,39 @@ public sealed class IncomeLineMapperTests : IDisposable
         Assert.Equal(1000m, Current(dto, 1));
         Assert.Single(dto.Lines);
     }
+
+    [Fact]
+    public async Task GetAsync_InterestAndGovernmentGrant_SubLinesListedWithoutAffectingTotals()
+    {
+        // 「其中：利息费用」(33) 与「其中：政府补助」(34) 是单列子项，不参与营业利润/利润总额/净利润合计。
+        var bank = AddAccount("1002", "银行存款", AccountCategory.Asset, BalanceDirection.Debit);
+        var finance = AddAccount("6603001", "财务费用-利息费用", AccountCategory.ProfitAndLoss, BalanceDirection.Debit);
+        var otherIncome = AddAccount("6301002", "营业外收入-政府补助", AccountCategory.ProfitAndLoss, BalanceDirection.Credit);
+        PostVoucher(1, new DateOnly(2026, 5, 8),
+            (bank.Id, 80m, 0m),
+            (finance.Id, 0m, 50m),
+            (otherIncome.Id, 0m, 30m));
+
+        var dto = await _service.GetAsync(_accountSet.Id, 2026, 5);
+
+        Assert.Equal(-50m, Current(dto, 6));   // 财务费用（利息收入以负数填列）
+        Assert.Equal(-50m, Current(dto, 33));  // 其中：利息费用
+        Assert.Equal(30m, Current(dto, 12));   // 营业外收入
+        Assert.Equal(30m, Current(dto, 34));   // 其中：政府补助
+        Assert.DoesNotContain(dto.Lines, l => l.Line is 18 or 16 or 11);
+    }
+
+    [Fact]
+    public async Task GetAsync_FinanceExpenseWithoutInterestName_NoInterestSubLine()
+    {
+        // 只有名称含「利息」的财务费用子科目才计入「其中：利息费用」，手续费等不得被误列。
+        var bank = AddAccount("1002", "银行存款", AccountCategory.Asset, BalanceDirection.Debit);
+        var finance = AddAccount("6603002", "财务费用-手续费", AccountCategory.ProfitAndLoss, BalanceDirection.Debit);
+        PostVoucher(1, new DateOnly(2026, 5, 9), (finance.Id, 8m, 0m), (bank.Id, 0m, 8m));
+
+        var dto = await _service.GetAsync(_accountSet.Id, 2026, 5);
+
+        Assert.Equal(8m, Current(dto, 6));
+        Assert.DoesNotContain(dto.Lines, l => l.Line == 33);
+    }
 }

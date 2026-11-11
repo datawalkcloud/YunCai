@@ -1,4 +1,6 @@
 /** 账簿页共用的条件模型、枚举文案与路由清单。 */
+import dayjs from "dayjs"
+
 import { ASSIST_TYPES as ASSIST_TYPE_META, assistLabel } from "@/components/assist/constants"
 
 /**
@@ -101,4 +103,12 @@ export const DEFAULT_SWITCHES: readonly LedgerSwitch[] = [
 /** 把条件里的日期字符串转成生成客户端要求的 Date。 */
 export function asDate(value?: string): Date | undefined {
     return value ? new Date(value) : undefined
+}
+
+/** 账簿页缺省期间：自然当月，后端会把起止日各归一到月初/月末。 */
+export function currentMonthPeriod(): Pick<LedgerConditions, "startDate" | "endDate"> {
+    return {
+        startDate: dayjs().startOf("month").format("YYYY-MM-DD"),
+        endDate: dayjs().endOf("month").format("YYYY-MM-DD"),
+    }
 }

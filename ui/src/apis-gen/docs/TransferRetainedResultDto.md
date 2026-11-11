@@ -8,6 +8,7 @@ Name | Type
 ------------ | -------------
 `message` | string
 `voucher` | [CarryVoucherRefDto](CarryVoucherRefDto.md)
+`created` | boolean
 
 ## Example
 
@@ -18,6 +19,7 @@ import type { TransferRetainedResultDto } from ''
 const example = {
   "message": null,
   "voucher": null,
+  "created": null,
 } satisfies TransferRetainedResultDto
 
 console.log(example)

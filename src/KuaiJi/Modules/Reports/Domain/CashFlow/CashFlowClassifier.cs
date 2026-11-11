@@ -73,8 +73,12 @@ namespace KuaiJi.Modules.Reports.Domain.CashFlow
                     {
                         return isCashInflow ? 3 : 6;   // 收到其他经营 / 支付职工
                     }
-                    // 应付账款/票据、预收、其他应付等往来：流入=销售收现，流出=购买商品
-                    return isCashInflow ? 1 : 5;
+                    // 预收类流入属于销售收现；应付/其他应付等往来流入属于收到其他经营，流出属于购买商品
+                    if (isCashInflow)
+                    {
+                        return account.Name.Contains("预收") ? 1 : 3;
+                    }
+                    return 5;
 
                 case AccountCategory.Asset:
                     if (InvestingPrefixes.Contains(p)
@@ -98,6 +102,11 @@ namespace KuaiJi.Modules.Reports.Domain.CashFlow
 
                 case AccountCategory.ProfitAndLoss:
                 default:
+                    // 营业外收入/其他收益/资产处置收益及营业外支出：不属于销售收现，计入收到/支付其他经营
+                    if (p is "6301" or "6117" or "6115" or "6116" or "6711")
+                    {
+                        return isCashInflow ? 3 : 8;
+                    }
                     if (account.Direction == BalanceDirection.Credit)
                     {
                         // 收入类：流入=销售商品提供劳务收到的现金；流出=销售退回（计入购买商品冲减口径）

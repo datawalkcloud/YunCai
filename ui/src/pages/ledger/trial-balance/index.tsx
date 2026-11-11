@@ -9,24 +9,26 @@ import { useAuth } from "@/auth/AuthContext"
 import { ReportsApi, type TrialBalanceRowDto } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { fmtAmount } from "@/lib/format"
+import { printPdf } from "@/lib/print-pdf"
 import { AMOUNT_COL } from "@/components/page/styles"
 import { LedgerTable } from "@/components/ledger/LedgerTable"
 import { SectionCard } from "@/components/page/section"
 import { TrialBalanceFilter } from "@/components/ledger/TrialBalanceFilter"
 import { useAccounts } from "@/components/ledger/useLedgerOptions"
-import type { LedgerConditions } from "@/components/ledger/types"
+import { currentMonthPeriod, type LedgerConditions } from "@/components/ledger/types"
 
-/** 科目余额表进入页面时的默认查询条件（不做任何裁剪）。 */
-const DEFAULT_CONDITIONS: LedgerConditions = {
-    startDate: undefined,
-    endDate: undefined,
-    accountFrom: undefined,
-    accountTo: undefined,
-    minLevel: 1,
-    maxLevel: undefined,
-    showAssist: false,
-    hideZeroBalance: true,
-    hideNoActivity: false,
+/** 科目余额表进入页面时的默认查询条件：查当月，其余不做任何裁剪。 */
+function defaultConditions(): LedgerConditions {
+    return {
+        ...currentMonthPeriod(),
+        accountFrom: undefined,
+        accountTo: undefined,
+        minLevel: 1,
+        maxLevel: undefined,
+        showAssist: false,
+        hideZeroBalance: true,
+        hideNoActivity: false,
+    }
 }
 
 const AMOUNT_KEYS = [
@@ -80,14 +82,16 @@ export default function TrialBalancePage() {
 
     const allAccounts = useAccounts(accountSetId, token)
 
-    const [committed, setCommitted] = useState<LedgerConditions>(DEFAULT_CONDITIONS)
-    const [draft, setDraft] = useState<LedgerConditions>(DEFAULT_CONDITIONS)
+    const [committed, setCommitted] = useState<LedgerConditions>(defaultConditions)
+    const [draft, setDraft] = useState<LedgerConditions>(defaultConditions)
     const [rows, setRows] = useState<TrialBalanceRowDto[]>([])
     const [periodText, setPeriodText] = useState("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [expandAll, setExpandAll] = useState(true)
     const [expandedKeys, setExpandedKeys] = useState<string[]>([])
+    const [printing, setPrinting] = useState(false)
+    const [printError, setPrintError] = useState<string | null>(null)
 
     // 提交条件变化时重查；draft 只用于面板内编辑，不影响取数。
     useEffect(() => {
@@ -213,6 +217,32 @@ export default function TrialBalancePage() {
         navigate(`/${routeId}/ledger/subsidiary?${params.toString()}`)
     }
 
+    // 打印：条件与页面取数同一口径，交给后端渲染 PDF 并在新窗口预览（不再有浏览器打印与设置面板）。
+    async function print() {
+        if (!accountSetId || printing) return
+        setPrinting(true)
+        setPrintError(null)
+        try {
+            const params = new URLSearchParams({ kind: "trial-balance" })
+            const text = (key: string, value?: string) => {
+                if (value) params.set(key, value)
+            }
+            text("startDate", committed.startDate)
+            text("endDate", committed.endDate)
+            text("accountFrom", committed.accountFrom)
+            text("accountTo", committed.accountTo)
+            if (committed.minLevel != null) params.set("minLevel", String(committed.minLevel))
+            if (committed.maxLevel != null) params.set("maxLevel", String(committed.maxLevel))
+            if (committed.hideZeroBalance != null) params.set("hideZeroBalance", String(committed.hideZeroBalance))
+            if (committed.hideNoActivity != null) params.set("hideNoActivity", String(committed.hideNoActivity))
+            await printPdf(`/api/accountsets/${accountSetId}/Reports/pdf?${params.toString()}`, token)
+        } catch (err) {
+            setPrintError(err instanceof Error ? err.message : "生成打印稿失败，请重试。")
+        } finally {
+            setPrinting(false)
+        }
+    }
+
     return (
         <div className="flex flex-col gap-4">
             <SectionCard bodyClassName="flex flex-col gap-4">
@@ -222,8 +252,8 @@ export default function TrialBalancePage() {
                     onQuery={() => setCommitted(draft)}
                     onCancel={() => setDraft(committed)}
                     onReset={() => {
-                        setDraft(DEFAULT_CONDITIONS)
-                        setCommitted(DEFAULT_CONDITIONS)
+                        setDraft(defaultConditions())
+                        setCommitted(defaultConditions())
                     }}
                     accounts={allAccounts}
                     periodText={periodText}
@@ -235,13 +265,14 @@ export default function TrialBalancePage() {
                     loading={loading}
                     disabled={!accountSetId}
                     extra={
-                        <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+                        <Button icon={<PrinterOutlined />} loading={printing} disabled={!accountSetId} onClick={() => void print()}>
                             打印
                         </Button>
                     }
                 />
 
                 {error && <Alert type="error" showIcon title={error} />}
+                {printError && <Alert type="error" showIcon title={printError} />}
 
                 <LedgerTable
                     columns={columns}
