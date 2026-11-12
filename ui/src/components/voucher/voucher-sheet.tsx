@@ -48,7 +48,7 @@ import { PrintVoucherSheet } from "@/pages/closing/print-sheet"
 import { AmountCells, AmountHeaderCell } from "@/components/voucher/amount-grid"
 import { AssistItemSelect } from "@/components/assist/assist-item-select"
 import { assistLabel } from "@/components/assist/constants"
-import { useAccountAssistConfigs } from "@/components/assist/assist-store"
+import { useAccountAssistConfigs, useAssistItemsMany } from "@/components/assist/assist-store"
 import { useKeepAliveActive } from "@/components/layout/dashboard/route-tabs-context"
 
 /* ================= 常量 ================= */
@@ -200,8 +200,10 @@ function AccountSelect({
     balances,
     accountSetId,
     extraOptions,
+    labelSuffix,
     onChange,
     onFocus,
+    onOpenChange,
 }: {
     value: string
     accounts: AccountDto[]
@@ -209,8 +211,11 @@ function AccountSelect({
     accountSetId: string
     /** 历史凭证里已停用 / 非末级的科目：补禁用项保住回显。 */
     extraOptions?: { value: string; label: string; disabled: boolean }[]
+    /** 科目名后追加的辅助核算摘要（如 `_2华东客户甲`），与柠檬云一致。 */
+    labelSuffix?: string
     onChange: (value: string) => void
     onFocus?: () => void
+    onOpenChange?: (open: boolean) => void
 }) {
     const navigate = useNavigate()
     const [category, setCategory] = useState(0)
@@ -230,6 +235,12 @@ function AccountSelect({
         [accounts, category, balances, extraOptions],
     )
 
+    const labelOf = (id: string) => {
+        const account = accounts.find((a) => a.id === id)
+        if (account) return `${account.code ?? ""} ${account.name ?? ""}`
+        return extraOptions?.find((o) => o.value === id)?.label ?? ""
+    }
+
     return (
         <Select
             variant="borderless"
@@ -242,8 +253,13 @@ function AccountSelect({
             suffixIcon={null}
             popupMatchSelectWidth={420}
             onFocus={onFocus}
+            onOpenChange={onOpenChange}
             onChange={(v) => onChange(v ?? "")}
-            style={{ height: ROW_H }}
+            style={{ height: 32 }}
+            labelRender={(props) => {
+                const base = labelOf(String(props.value ?? ""))
+                return labelSuffix ? `${base}_${labelSuffix}` : base
+            }}
             optionRender={(option) => (
                 <div className="flex items-center justify-between gap-4">
                     <span>{option.data.label}</span>
@@ -343,7 +359,7 @@ export default function VoucherSheet({
 
     /** 当前表单对应的已存凭证；为空表示新增。上一页 / 下一页 载入后进入编辑态。 */
     const [loadedId, setLoadedId] = useState<string | null>(null)
-    /** 已载入凭证的状态：已过账（3）的凭证保存前先反过账，更新后后端重新入账。 */
+    /** 已载入凭证的状态：正常（3）的凭证保存前先反过账，更新后后端重新入账。 */
     const [loadedStatus, setLoadedStatus] = useState<number | null>(null)
     /** 历史凭证里不在当前末级候选中的科目（停用 / 非末级），补禁用项保住回显。 */
     const [staleAccounts, setStaleAccounts] = useState<{ value: string; label: string; disabled: boolean }[]>([])
@@ -365,6 +381,8 @@ export default function VoucherSheet({
     /** 摘要历史：账套内已用过的摘要，聚焦摘要格时作为候选。 */
     const [summaryHistory, setSummaryHistory] = useState<string[]>([])
     const [summaryPickRow, setSummaryPickRow] = useState<number | null>(null)
+    /** 科目格下方辅助核算浮层的行 key；为空表示收起。 */
+    const [assistPanelRow, setAssistPanelRow] = useState<number | null>(null)
     /** 录入选项（本机偏好，存 localStorage）。 */
     const [optionsOpen, setOptionsOpen] = useState(false)
     const [optFillGap, setOptFillGap] = useState(() => localStorage.getItem("kuaiji.voucher.fillGap") === "1")
@@ -372,7 +390,7 @@ export default function VoucherSheet({
     /** 损益方向提示：issues 为不规范行号，pending 记下被拦下的保存动作。 */
     const [directionModal, setDirectionModal] = useState<{ issues: number[]; keepEditing: boolean } | null>(null)
 
-    /* 模板 / 草稿 */
+    /* 模板 / 暂存 */
     const [templates, setTemplates] = useState<VoucherTemplateDto[]>([])
     const [templateSaveOpen, setTemplateSaveOpen] = useState(false)
     const [templateName, setTemplateName] = useState("")
@@ -517,7 +535,47 @@ export default function VoucherSheet({
     // 分录所选科目的辅助核算维度：只为实际用到的科目发请求（模块级缓存去重）。
     const entryAccountIds = useMemo(() => rows.map((r) => r.accountId), [rows])
     const { configs: assistConfigs } = useAccountAssistConfigs(accountSetId, entryAccountIds, token)
-    const assistTypesOf = (accountId: string) => assistConfigs[accountId] ?? []
+    // 与柠檬云一致：按类别枚举顺序展示（客户→供应商→职员→部门→项目→存货→现金流）。
+    const assistTypesOf = (accountId: string) =>
+        [...(assistConfigs[accountId] ?? [])].sort((a, b) => (a.type ?? 0) - (b.type ?? 0))
+
+    // 辅助核算摘要要显示「编码+名称」，分录里只有档案 id，按类别把档案取回来查。
+    const assistTypeList = useMemo(() => {
+        const types = new Set<number>()
+        for (const list of Object.values(assistConfigs)) {
+            for (const cfg of list) if (cfg.type != null) types.add(cfg.type)
+        }
+        return [...types]
+    }, [assistConfigs])
+    const assistItemsByType = useAssistItemsMany(accountSetId, assistTypeList, token)
+    const assistTextOf = (row: EntryRow) =>
+        assistTypesOf(row.accountId)
+            .map((cfg) => {
+                const id = row.assists[cfg.type as number]
+                const item = id ? assistItemsByType[cfg.type as number]?.find((i) => i.id === id) : undefined
+                return item ? `${item.code ?? ""}${item.name ?? ""}` : ""
+            })
+            .filter(Boolean)
+            .join("_")
+
+    // 辅助核算浮层：点到科目格 / 下拉之外即收起；下拉选项挂在 body 上，点选档案不算离开。
+    useEffect(() => {
+        if (assistPanelRow == null) return
+        const onDown = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            if (target.closest(`[data-assist-host="${assistPanelRow}"]`) || target.closest(".ant-select-dropdown")) return
+            setAssistPanelRow(null)
+        }
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setAssistPanelRow(null)
+        }
+        document.addEventListener("mousedown", onDown, true)
+        window.addEventListener("keydown", onKey)
+        return () => {
+            document.removeEventListener("mousedown", onDown, true)
+            window.removeEventListener("keydown", onKey)
+        }
+    }, [assistPanelRow])
 
     /** F9 余额反算：按当前行科目的本期期末余额（借 - 贷）回填借方或贷方。 */
     const fillFromBalance = () => {
@@ -837,7 +895,7 @@ export default function VoucherSheet({
 
     /* ---------- 保存 ---------- */
 
-    /** 实际执行保存：已过账凭证先反过账再更新，保存后后端重新入账。 */
+    /** 实际执行保存：正常凭证先反过账再更新，保存后后端重新入账。 */
     const doSave = async (keepEditing: boolean, rowsToSave: EntryRow[], successText = "保存成功") => {
         if (!token || !accountSetId) return
         const entries = rowsToSave
@@ -865,7 +923,7 @@ export default function VoucherSheet({
                 entries,
             }
             if (loadedId) {
-                // 列表「修改」直接进编辑：已过账凭证先反过账，更新后重新入账。
+                // 列表「修改」直接进编辑：正常凭证先反过账，更新后重新入账。
                 if (loadedStatus === 3) {
                     await api.accountsetsAccountSetIdVouchersIdUnpostPost({ accountSetId, id: loadedId })
                 }
@@ -971,7 +1029,7 @@ export default function VoucherSheet({
         void doSave(keepEditing, adjusted)
     }
 
-    /* ---------- 模板 / 草稿 ---------- */
+    /* ---------- 模板 / 暂存 ---------- */
 
     const loadTemplateList = async () => {
         if (!token || !accountSetId) return
@@ -1051,12 +1109,12 @@ export default function VoucherSheet({
         message.success(`已引入模板「${template.name}」`)
     }
 
-    /** 草稿：反过账退回或导入不平衡的凭证（保存即入账，正常制单不会留下草稿）。 */
+    /** 暂存：反过账退回或导入不平衡的凭证（保存即入账，正常制单不会留下暂存凭证）。 */
     const drafts = useMemo(() => (allVouchers ?? []).filter((v) => v.status === 1), [allVouchers])
 
     const openDraft = () => {
         if (drafts.length === 0) {
-            message.info("当前没有草稿凭证")
+            message.info("当前没有暂存凭证")
             return
         }
         setDraftId("")
@@ -1065,7 +1123,7 @@ export default function VoucherSheet({
 
     const applyDraft = async () => {
         if (!draftId) {
-            message.warning("请选择草稿凭证")
+            message.warning("请选择暂存凭证")
             return
         }
         setDraftOpen(false)
@@ -1218,7 +1276,7 @@ export default function VoucherSheet({
     const moreItems: MenuProps["items"] = [
         { key: "save-template", label: "保存为模板" },
         { key: "load-template", label: "从模板中加载" },
-        { key: "load-draft", label: "从草稿中加载" },
+        { key: "load-draft", label: "从暂存中加载" },
         { key: "clear", label: "清空凭证" },
         { key: "options", label: "选项" },
     ]
@@ -1376,6 +1434,7 @@ export default function VoucherSheet({
             onInputFocus={() => {
                 setActiveRow(idx)
                 setFocusInfo({ rowKey: r.key, col: side })
+                setAssistPanelRow(null)
             }}
             onChange={(v) =>
                 patchRow(r.key, side === "debit" ? { debit: v, credit: "" } : { credit: v, debit: "" })
@@ -1609,6 +1668,8 @@ export default function VoucherSheet({
                             pagination={false}
                             tableLayout="fixed"
                             className="voucher-sheet"
+                            // 窄屏保底宽度：科目列不压缩，改为整表横向滚动（会计科目在 1200 时约 467px）。
+                            scroll={{ x: 1200 }}
                             rowKey={(r) => r.key}
                             dataSource={rows}
                             onRow={(_, idx) => ({ onMouseDown: () => setActiveRow(idx ?? 0) })}
@@ -1632,7 +1693,7 @@ export default function VoucherSheet({
                                 },
                                 {
                                     title: <SheetHeadTitle text="摘要" />,
-                                    width: "20%",
+                                    width: 260,
                                     onHeaderCell: () => ({ className: "pk-sheet-head-cell" }),
                                     onCell: () => ({
                                         className: "pk-sheet-cell relative",
@@ -1649,6 +1710,7 @@ export default function VoucherSheet({
                                                     setActiveRow(idx ?? 0)
                                                     setFocusInfo({ rowKey: r.key, col: "summary" })
                                                     setSummaryPickRow(r.key)
+                                                    setAssistPanelRow(null)
                                                 }}
                                                 onBlur={() => {
                                                     // 延迟收起，留出点击候选的时间
@@ -1683,23 +1745,73 @@ export default function VoucherSheet({
                                     title: <SheetHeadTitle text="会计科目" />,
                                     onHeaderCell: () => ({ className: "pk-sheet-head-cell" }),
                                     onCell: () => ({ className: "pk-sheet-cell", style: { height: ROW_H } }),
-                                    render: (_, r, idx) => (
-                                        <div data-nav="account" data-col="account" onKeyDown={onCellKeyDown}>
-                                            <AccountSelect
-                                                value={r.accountId}
-                                                accounts={accounts}
-                                                balances={balances}
-                                                accountSetId={accountSetId}
-                                                extraOptions={extraAccountOptions}
-                                                onFocus={() => {
-                                                    setActiveRow(idx ?? 0)
-                                                    setFocusInfo({ rowKey: r.key, col: "account" })
-                                                }}
-                                                // 换科目后原辅助核算取值不再适用，清空重选。
-                                                onChange={(v) => patchRow(r.key, { accountId: v, assists: {} })}
-                                            />
-                                        </div>
-                                    ),
+                                    render: (_, r, idx) => {
+                                        const account = accountsById.get(r.accountId)
+                                        const assistConfigsOfRow = assistTypesOf(r.accountId)
+                                        return (
+                                            <div
+                                                data-nav="account"
+                                                data-col="account"
+                                                data-assist-host={r.key}
+                                                className="relative flex h-full flex-col justify-center"
+                                                onKeyDown={onCellKeyDown}
+                                            >
+                                                <AccountSelect
+                                                    value={r.accountId}
+                                                    accounts={accounts}
+                                                    balances={balances}
+                                                    accountSetId={accountSetId}
+                                                    extraOptions={extraAccountOptions}
+                                                    // 辅助核算摘要跟在科目名后（`1122 应收账款_2华东客户甲`），与柠檬云一致。
+                                                    labelSuffix={assistTextOf(r)}
+                                                    onFocus={() => {
+                                                        setActiveRow(idx ?? 0)
+                                                        setFocusInfo({ rowKey: r.key, col: "account" })
+                                                        setAssistPanelRow(r.key)
+                                                    }}
+                                                    onOpenChange={(open) => {
+                                                        if (open) setAssistPanelRow(r.key)
+                                                    }}
+                                                    // 换科目后原辅助核算取值不再适用，清空重选。
+                                                    onChange={(v) => {
+                                                        patchRow(r.key, { accountId: v, assists: {} })
+                                                        if (v) setAssistPanelRow(r.key)
+                                                    }}
+                                                />
+                                                {account?.code && (
+                                                    <div className="pl-3 text-[12px] leading-4 tabular-nums text-(--muted-foreground)">
+                                                        余额：{(balances[account.code] ?? 0).toFixed(2)}
+                                                    </div>
+                                                )}
+                                                {assistConfigsOfRow.length > 0 && assistPanelRow === r.key && (
+                                                    <div className="absolute left-0 top-full z-30 w-[340px] rounded border border-(--border) bg-(--card) p-2 shadow-lg">
+                                                        {assistConfigsOfRow.map((cfg) => (
+                                                            <div key={cfg.type} className="flex items-center gap-2 py-0.5">
+                                                                <span className="w-10 shrink-0 text-[12px] text-(--muted-foreground)">
+                                                                    {assistLabel(cfg.type)}
+                                                                    {cfg.isRequired !== false && (
+                                                                        <span className="text-(--danger)">*</span>
+                                                                    )}
+                                                                </span>
+                                                                <AssistItemSelect
+                                                                    className="flex-1"
+                                                                    accountSetId={accountSetId}
+                                                                    token={token}
+                                                                    type={cfg.type as number}
+                                                                    value={r.assists[cfg.type as number] ?? ""}
+                                                                    onChange={(itemId) =>
+                                                                        patchRow(r.key, {
+                                                                            assists: { ...r.assists, [cfg.type as number]: itemId },
+                                                                        })
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    },
                                 },
                                 {
                                     title: <AmountHeaderCell title="借方金额" idPrefix="jd" height={HEAD_H} divider />,
@@ -1715,37 +1827,7 @@ export default function VoucherSheet({
                                     onCell: () => ({ className: "pk-sheet-cell" }),
                                     render: (_, r, idx) => renderAmountCell(r, idx ?? 0, "credit"),
                                 },
-                                Table.EXPAND_COLUMN,
                             ]}
-                            expandable={{
-                                // 辅助核算录入行：每维度一个档案下拉，必录项标红星。
-                                expandedRowRender: (r) => (
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-(--muted)/30 px-2 py-1">
-                                        {assistTypesOf(r.accountId).map((cfg) => (
-                                            <div key={cfg.type} className="flex items-center gap-1">
-                                                <span className="text-[12px] text-(--muted-foreground)">
-                                                    {assistLabel(cfg.type)}
-                                                    {cfg.isRequired !== false && <span className="text-(--danger)">*</span>}
-                                                </span>
-                                                <AssistItemSelect
-                                                    accountSetId={accountSetId}
-                                                    token={token}
-                                                    type={cfg.type as number}
-                                                    value={r.assists[cfg.type as number] ?? ""}
-                                                    onChange={(itemId) =>
-                                                        patchRow(r.key, { assists: { ...r.assists, [cfg.type as number]: itemId } })
-                                                    }
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                ),
-                                expandedRowKeys: rows
-                                    .filter((r) => assistTypesOf(r.accountId).length > 0)
-                                    .map((r) => r.key),
-                                rowExpandable: (r) => assistTypesOf(r.accountId).length > 0,
-                                expandIcon: () => null,
-                            }}
                             summary={() => (
                                 <Table.Summary.Row>
                                     <Table.Summary.Cell
@@ -1762,7 +1844,6 @@ export default function VoucherSheet({
                                     <Table.Summary.Cell index={4}>
                                         <AmountCells value={totals.credit} height={ROW_H} />
                                     </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={5} />
                                 </Table.Summary.Row>
                             )}
                         />
@@ -1910,7 +1991,7 @@ export default function VoucherSheet({
 
             <Modal
                 open={draftOpen}
-                title="从草稿中加载"
+                title="从暂存中加载"
                 okText="载入"
                 cancelText="取消"
                 width={540}

@@ -166,6 +166,40 @@ export function useAccountAssistConfigs(
 }
 
 /**
+ * 多类别档案列表，汇总成「类别 → 档案」。凭证录入要把已选档案回显成「编码+名称」，
+ * 而分录里只存档案 id，集中取一次命中模块级缓存。
+ */
+export function useAssistItemsMany(accountSetId: string, types: readonly number[], token?: string | null) {
+    const signature = useMemo(() => [...types].sort((a, b) => a - b).join(","), [types])
+    const [byType, setByType] = useState<Record<number, AssistItemDto[]>>({})
+
+    useEffect(() => {
+        if (!accountSetId || signature === "") return
+        let cancelled = false
+        void Promise.all(
+            signature.split(",").map((raw) => {
+                const type = Number(raw)
+                return fetchAssistItems(accountSetId, type, token)
+                    .then((items) => ({ type, items }))
+                    .catch(() => ({ type, items: [] as AssistItemDto[] }))
+            }),
+        ).then((results) => {
+            if (cancelled) return
+            setByType((prev) => {
+                const next = { ...prev }
+                for (const r of results) next[r.type] = r.items
+                return next
+            })
+        })
+        return () => {
+            cancelled = true
+        }
+    }, [accountSetId, signature, token])
+
+    return byType
+}
+
+/**
  * 某类别档案列表（走共享缓存）。reload(true) 用于档案维护后立即取最新数据。
  */
 export function useAssistItems(accountSetId: string, type: number | null, token?: string | null) {
