@@ -49,6 +49,10 @@ import {
     ViewColumnsIcon,
     WalletIcon,
 } from "@heroicons/react/24/solid";
+import {
+    BookOpenIcon as BookOpenIconOutline,
+    ReceiptPercentIcon as ReceiptPercentIconOutline,
+} from "@heroicons/react/24/outline";
 
 /* ------------------------------------------------------------------ */
 /*  菜单模型：to 为账套下的相对子路径（每项都有真实链接）。                */
@@ -66,7 +70,13 @@ export type MenuGroup = { label: string; icon: React.ReactNode; to?: string; wip
  * 两个分类共用同一套外壳，切换分类只换侧栏菜单与顶栏右侧的期间控件。
  * home 表示该分类是否有首页可回：记账有，报税没有（侧栏与页签条都不出现「首页」）。
  */
-export type MenuCategory = { label: string; to: string; groups: MenuGroup[]; home?: boolean };
+export type MenuCategory = {
+    label: string;
+    to: string;
+    groups: MenuGroup[];
+    home?: boolean;
+    icon: React.ReactNode;
+};
 
 /** 记账分类的分组层级：与柠檬云 J6 一致（凭证/资金/发票/工资/资产/期末结转/账簿/报表/设置）。 */
 const accountingGroups: MenuGroup[] = [
@@ -221,8 +231,20 @@ const taxGroups: MenuGroup[] = [
 ];
 
 export const menuCategories: MenuCategory[] = [
-    { label: "记账", to: "", groups: accountingGroups, home: true },
-    { label: "报税", to: "tax/fetch", groups: taxGroups, home: false },
+    {
+        label: "记账",
+        to: "",
+        groups: accountingGroups,
+        home: true,
+        icon: <BookOpenIconOutline className="size-[16px]" />,
+    },
+    {
+        label: "报税",
+        to: "tax/fetch",
+        groups: taxGroups,
+        home: false,
+        icon: <ReceiptPercentIconOutline className="size-[16px]" />,
+    },
 ];
 
 const allGroups: MenuGroup[] = menuCategories.flatMap((category) => category.groups);

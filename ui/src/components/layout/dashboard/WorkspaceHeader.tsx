@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useNavigation, useParams } from "react-router";
 import {
     CheckOutlined,
@@ -8,12 +8,8 @@ import {
     QuestionCircleOutlined,
 } from "@ant-design/icons";
 import {
-    BanknotesIcon,
     BuildingOfficeIcon,
     CalendarDaysIcon,
-    ChartPieIcon,
-    ScaleIcon,
-    TableCellsIcon,
 } from "@heroicons/react/24/solid";
 import { App, DatePicker, Dropdown, Tooltip } from "antd";
 import dayjs from "dayjs";
@@ -24,6 +20,7 @@ import { makePeriod, useDefaultAccountingPeriod } from "@/accountSets/useCurrent
 import { AccountSetsApi } from "@/apis-gen";
 import { apiConfig } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { ThemeMenu } from "@/components/theme/theme-menu";
 import { CompanyInfoModal } from "@/pages/tax/CompanyInfoModal";
 import { setTaxPeriod, useTaxPeriod } from "@/pages/tax/tax-period";
@@ -31,18 +28,16 @@ import { menuCategories, findCategoryOf } from "./menu-model";
 import { tabKeyOf } from "./route-tabs-context";
 
 /* ------------------------------------------------------------------ */
-/*  工作区顶栏（停车平台风格）：品牌 + 记账/报税分类 + 快捷报表 + 主题 + 用户。 */
+/*  工作区顶栏（停车平台风格）：品牌 + 记账/报税分类 + 期间 + 主题 + 用户。 */
 /* ------------------------------------------------------------------ */
 
-/** 顶栏快捷报表入口：描边胶囊 + 圆圈图标 + 小字，与参考图右上角工具入口同款。 */
-const QUICK_REPORTS = [
-    { label: "科目余额表", to: "ledger/trial-balance", icon: <TableCellsIcon className="size-[9px]" /> },
-    { label: "资产负债表", to: "reports/balance-sheet", icon: <ScaleIcon className="size-[9px]" /> },
-    { label: "利润表", to: "reports/income-statement", icon: <ChartPieIcon className="size-[9px]" /> },
-    { label: "现金流量表", to: "reports/cash-flow", icon: <BanknotesIcon className="size-[9px]" /> },
-];
-
-export function WorkspaceTopBar({ onOpenNav }: { onOpenNav: () => void }) {
+export function WorkspaceTopBar({
+    onOpenNav,
+    sidebarCollapsed = false,
+}: {
+    onOpenNav: () => void;
+    sidebarCollapsed?: boolean;
+}) {
     // 路由模块还在加载时导航不会提交，旧页面继续留在屏上；这一条细光带就是加载反馈。
     const loading = useNavigation().state === "loading";
     const { accountSetId = "" } = useParams();
@@ -50,6 +45,14 @@ export function WorkspaceTopBar({ onOpenNav }: { onOpenNav: () => void }) {
     const location = useLocation();
     const tabKey = tabKeyOf(location.pathname, accountSetId);
     const category = findCategoryOf(tabKey);
+
+    // 选中指示条是菜单容器里的一个共享元素，随选中项左右滑动（方案 B）。
+    const itemRefs = useRef(new Map<string, HTMLButtonElement | null>());
+    const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
+    useLayoutEffect(() => {
+        const el = itemRefs.current.get(category.label);
+        if (el?.offsetWidth) setIndicator({ left: el.offsetLeft + 16, width: el.offsetWidth - 32 });
+    }, [category.label]);
 
     return (
         <header className="relative shrink-0 border-b border-(--pk-border) bg-(--pk-surface)">
@@ -69,47 +72,45 @@ export function WorkspaceTopBar({ onOpenNav }: { onOpenNav: () => void }) {
                 >
                     <Logo />
                     <span className="text-[17px] font-bold tracking-wide">云财</span>
-                    <span className="hidden h-6 items-center rounded-full bg-(--pk-brand-soft) px-3 text-[12px] text-(--pk-brand-text) xl:flex">
-                        智能财务平台
-                    </span>
                 </button>
-                <div className="ml-1 hidden shrink-0 items-center gap-4 lg:flex">
+                {/* 分类菜单项（方案 B）：满高文字项、无底色，选中=品牌色加粗 + 底边指示条；
+                    指示条抬离底边 6px、随选中项滑动（left/width 过渡 300ms），线框图标。
+                    左缘=侧栏分割线右 10px（150/56 随折叠联动，过渡与侧栏同 200ms）；
+                    收起时分割线跑到品牌结尾左侧，用 max() 兜到品牌结尾后 12px（16+34+10+36+12≈108）避免压logo。 */}
+                <div
+                    className="absolute inset-y-0 hidden items-stretch gap-1 transition-[left] duration-200 lg:flex"
+                    style={{ left: `max(${(sidebarCollapsed ? 56 : 150) + 10}px, 108px)` }}
+                >
                     {menuCategories.map((item) => {
                         const active = item.label === category.label;
                         return (
                             <button
                                 key={item.label}
                                 type="button"
+                                ref={(el) => void itemRefs.current.set(item.label, el)}
                                 onClick={() => navigate(item.to ? `/${accountSetId}/${item.to}` : `/${accountSetId}`)}
                                 className={
-                                    "cursor-pointer text-[15px] whitespace-nowrap " +
+                                    "flex cursor-pointer items-center gap-1.5 px-4 text-[14px] whitespace-nowrap transition-colors " +
                                     (active
                                         ? "font-semibold text-(--pk-brand-text)"
-                                        : "text-(--pk-text-2) hover:text-(--pk-brand-text)")
+                                        : "text-(--pk-text-2) hover:text-(--pk-text)")
                                 }
                             >
+                                {item.icon}
                                 {item.label}
                             </button>
                         );
                     })}
+                    {indicator && (
+                        <span
+                            aria-hidden
+                            className="pointer-events-none absolute bottom-[6px] h-[3px] rounded-full bg-(--pk-brand-text) transition-[left,width] duration-300 ease-out"
+                            style={{ left: indicator.left, width: indicator.width }}
+                        />
+                    )}
                 </div>
                 <div className="min-w-0 flex-1" />
                 {category.to ? <TaxPeriodPicker /> : <PeriodLabel />}
-                <div className="hidden shrink-0 items-center gap-3 xl:flex">
-                    {QUICK_REPORTS.map((report) => (
-                        <button
-                            key={report.label}
-                            type="button"
-                            onClick={() => navigate(`/${accountSetId}/${report.to}`)}
-                            className="flex h-6 items-center gap-1.5 rounded-full border border-(--pk-border) px-3 text-[12px] whitespace-nowrap text-(--pk-text) hover:border-(--pk-brand-border) hover:text-(--pk-brand-text)"
-                        >
-                            <span className="flex size-4 items-center justify-center rounded-full border border-current">
-                                {report.icon}
-                            </span>
-                            {report.label}
-                        </button>
-                    ))}
-                </div>
                 <ThemeMenu />
                 <UserMenu />
             </div>
@@ -123,25 +124,7 @@ export function WorkspaceTopBar({ onOpenNav }: { onOpenNav: () => void }) {
 }
 
 function Logo() {
-    return (
-        <span className="flex size-[34px] shrink-0 items-center justify-center rounded-[9px] bg-[#111318] ring-1 ring-black/5">
-            <svg viewBox="0 0 32 32" className="size-[22px]" fill="none">
-                <path
-                    d="M16 3 27 9.5v13L16 29 5 22.5v-13z"
-                    stroke="#fff"
-                    strokeWidth="2.2"
-                    strokeLinejoin="round"
-                />
-                <path
-                    d="M11.5 16.5 14.8 19.8 20.8 11.8"
-                    stroke="#fff"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                />
-            </svg>
-        </span>
-    );
+    return <BrandLogo size={34} radius={9} className="ring-1 ring-black/5" />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -153,6 +136,7 @@ function PeriodLabel() {
     return (
         <span className="flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-(--pk-border) px-3 text-[12px] whitespace-nowrap text-(--pk-text-2)">
             <CalendarDaysIcon className="size-3.5" />
+            <span className="hidden md:inline">会计期间</span>
             {period.year}年{period.month}月
             <Tooltip title="账套当前会计期间：尚未结账的最新期间。">
                 <QuestionCircleOutlined className="cursor-help text-[11px]" />
@@ -165,7 +149,10 @@ function PeriodLabel() {
 /*  税款所属期（报税分类）                                              */
 /* ------------------------------------------------------------------ */
 
-/** 报税分类的顶栏控件：税款所属期由报税各页共用，公司税务信息对应原工作台的「详情」。 */
+/**
+ * 报税分类的顶栏控件：税款所属期由报税各页共用，公司税务信息对应原工作台的「详情」。
+ * 文案与【会计期间】同一口径（标签 + YYYY年M月 + 提示），两个分类的顶栏才对齐。
+ */
 function TaxPeriodPicker() {
     const period = useTaxPeriod();
     const { accountSetId = "" } = useParams();
@@ -174,7 +161,7 @@ function TaxPeriodPicker() {
 
     return (
         <>
-            <span className="flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-(--pk-border) pr-2 pl-3 text-[12px] whitespace-nowrap text-(--pk-text-2)">
+            <span className="flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-(--pk-border) px-3 text-[12px] whitespace-nowrap text-(--pk-text-2)">
                 <CalendarDaysIcon className="size-3.5" />
                 <span className="hidden md:inline">税款所属期</span>
                 <DatePicker
@@ -182,16 +169,16 @@ function TaxPeriodPicker() {
                     allowClear={false}
                     size="small"
                     variant="borderless"
-                    className="w-[84px]"
+                    className="w-[86px] [&_.ant-picker-input>input]:text-[12px]"
                     value={dayjs(period.startDate)}
-                    format="YYYY-MM"
+                    format="YYYY年M月"
                     suffixIcon={null}
                     onChange={(value) => {
                         if (value) setTaxPeriod(makePeriod(value.year(), value.month() + 1));
                     }}
                 />
                 <Tooltip title="默认按税费种认定里主税种的申报期限推算：按月申报取上月，按季申报取上一季度末月。认定可在【税费种管理】更新，也可以在这里直接改月份。">
-                    <QuestionCircleOutlined className="hidden cursor-help text-[11px] md:inline" />
+                    <QuestionCircleOutlined className="cursor-help text-[11px]" />
                 </Tooltip>
             </span>
             <button
@@ -250,9 +237,8 @@ function UserMenu() {
  * 账套切换器：把选中的账套设为后端「当前账套」，刷新账套上下文（保证各页面「（当前）」标记不失真），
  * 并跳到该账套下的同一子页面。页面取数以路由第一段为准，因此即使设置当前失败也照常跳转，只弹错误提示。
  * collapsed 为侧栏图标栏形态，只留一个账套图标。
- * action 是同行右侧的附加工具（如侧栏收起按钮），没有账套时也要留着。
  */
-export function AccountSetSwitcher({ collapsed = false, action }: { collapsed?: boolean; action?: ReactNode }) {
+export function AccountSetSwitcher({ collapsed = false }: { collapsed?: boolean }) {
     const { accountSetId = "" } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
@@ -261,17 +247,7 @@ export function AccountSetSwitcher({ collapsed = false, action }: { collapsed?: 
     const { message } = App.useApp();
     const [busy, setBusy] = useState(false);
 
-    if (accountSets.length === 0)
-        return action ? (
-            <div
-                className={cn(
-                    "flex shrink-0 items-center border-t border-(--pk-border) py-2",
-                    collapsed ? "justify-center" : "px-4",
-                )}
-            >
-                {action}
-            </div>
-        ) : null;
+    if (accountSets.length === 0) return null;
     const current = accountSets.find((set) => set.id === accountSetId);
 
     async function choose(id: string) {
@@ -351,7 +327,6 @@ export function AccountSetSwitcher({ collapsed = false, action }: { collapsed?: 
                     switcher
                 )}
             </Dropdown>
-            {action}
         </div>
     );
 }

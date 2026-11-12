@@ -34,6 +34,8 @@ function WorkspaceShell() {
     const path = location.pathname;
     const isDesktopNav = useMediaQuery("(min-width: 1024px)");
     const [navOpen, setNavOpen] = useState(false);
+    // 收起状态归外壳管：侧栏按它换宽度，页签条左端的按钮按它换图标。
+    const { collapsed, toggle } = useSidebarCollapsed();
 
     // 手机上导航是覆盖层，点完菜单必须收起；换页也一并关掉。
     useEffect(() => {
@@ -54,9 +56,9 @@ function WorkspaceShell() {
 
     return (
         <div className="parking-shell admin-shell flex h-dvh w-full flex-col overflow-hidden">
-            <WorkspaceTopBar onOpenNav={() => setNavOpen(true)} />
+            <WorkspaceTopBar onOpenNav={() => setNavOpen(true)} sidebarCollapsed={collapsed} />
             <div className="flex min-h-0 flex-1">
-                <Sidebar className="hidden lg:flex" />
+                <Sidebar className="hidden lg:flex" collapsed={collapsed} />
                 {!isDesktopNav && (
                     <Drawer
                         open={navOpen}
@@ -71,7 +73,7 @@ function WorkspaceShell() {
                     </Drawer>
                 )}
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <RouteTabs />
+                    <RouteTabs leading={<CollapseButton collapsed={collapsed} onClick={toggle} />} />
                     <main
                         ref={mainRef}
                         className="min-h-0 flex-1 overflow-y-auto bg-(--pk-bg) p-3 md:p-4"
@@ -102,24 +104,23 @@ function useSidebarCollapsed() {
     return { collapsed, toggle: () => setCollapsed((next) => !next) };
 }
 
-function Sidebar({ className }: { className?: string }) {
+function Sidebar({ className, collapsed }: { className?: string; collapsed: boolean }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { accountSetId = "" } = useParams();
     const base = `/${accountSetId}`;
     const tabKey = tabKeyOf(location.pathname, accountSetId);
     const { groups, home } = findCategoryOf(tabKey);
-    const { collapsed, toggle } = useSidebarCollapsed();
 
     return (
         <aside
             className={cn(
                 "flex shrink-0 flex-col overflow-hidden border-r border-(--pk-border) bg-(--pk-surface) transition-[width] duration-200",
-                collapsed ? "w-[56px]" : "w-[200px]",
+                collapsed ? "w-[56px]" : "w-[150px]",
                 className,
             )}
         >
-            <div className="menu-slim-scrollbar min-h-0 flex-1 overflow-y-auto">
+            <div className="menu-slim-scrollbar min-h-0 flex-1 overflow-y-auto px-1">
                 {home !== false && (
                     <SidebarLink
                         icon={<HomeIcon className="size-[17px]" />}
@@ -157,10 +158,7 @@ function Sidebar({ className }: { className?: string }) {
                     );
                 })}
             </div>
-            <AccountSetSwitcher
-                collapsed={collapsed}
-                action={<CollapseButton collapsed={collapsed} onClick={toggle} />}
-            />
+            <AccountSetSwitcher collapsed={collapsed} />
         </aside>
     );
 }
@@ -201,7 +199,7 @@ function MobileSidebar({ onNavigate }: { onNavigate: () => void }) {
                             type="button"
                             onClick={() => go(item.to)}
                             className={cn(
-                                "h-9 flex-1 cursor-pointer text-[14px] font-medium",
+                                "h-9 flex-1 cursor-pointer rounded-lg text-[14px] font-medium",
                                 active
                                     ? "bg-(--pk-brand-soft) text-(--pk-brand-text)"
                                     : "text-(--pk-text-2) hover:bg-(--pk-gray-bg)",
@@ -212,7 +210,7 @@ function MobileSidebar({ onNavigate }: { onNavigate: () => void }) {
                     );
                 })}
             </div>
-            <div className="menu-slim-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
+            <div className="menu-slim-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 py-1">
                 {category.home !== false && (
                     <MobileNavLink
                         icon={<HomeIcon className="size-[17px]" />}
@@ -249,7 +247,7 @@ function MobileSidebar({ onNavigate }: { onNavigate: () => void }) {
                                 }
                                 aria-expanded={open}
                                 className={cn(
-                                    "flex h-11 w-full cursor-pointer items-center gap-2.5 px-4 text-[14px] font-medium",
+                                    "flex h-11 w-full cursor-pointer items-center gap-2.5 px-3 text-[14px] font-medium",
                                     containsActive ? "text-(--pk-brand-text)" : "text-(--pk-text)",
                                 )}
                             >
@@ -271,7 +269,7 @@ function MobileSidebar({ onNavigate }: { onNavigate: () => void }) {
                                                 type="button"
                                                 onClick={() => go(leaf.to)}
                                                 className={cn(
-                                                    "flex h-11 w-full cursor-pointer items-center gap-2.5 pr-4 pl-11 text-[13px]",
+                                                    "flex h-11 w-full cursor-pointer items-center gap-2.5 rounded-lg pr-3 pl-10 text-[13px]",
                                                     active
                                                         ? "bg-(--pk-brand-soft) font-medium text-(--pk-brand-text)"
                                                         : "text-(--pk-text) hover:bg-(--pk-gray-bg) hover:text-(--pk-brand-text)",
@@ -314,7 +312,7 @@ function MobileNavLink({
             type="button"
             onClick={onClick}
             className={cn(
-                "flex h-11 w-full cursor-pointer items-center gap-2.5 px-4 text-[14px]",
+                "flex h-11 w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 text-[14px]",
                 active
                     ? "bg-(--pk-brand-soft) font-medium text-(--pk-brand-text)"
                     : "text-(--pk-text) hover:bg-(--pk-gray-bg) hover:text-(--pk-brand-text)",
@@ -327,15 +325,15 @@ function MobileNavLink({
     );
 }
 
-/** 收起/展开：贴在账套切换那一行的右端，不再单独占一行。 */
+/** 收起/展开：页签条最左端一格，紧贴侧栏右缘；手机端侧栏是覆盖层，这一格不出现。 */
 function CollapseButton({ collapsed, onClick }: { collapsed: boolean; onClick: () => void }) {
     return (
-        <Tooltip title={collapsed ? "展开菜单" : "收起菜单"} placement="right">
+        <Tooltip title={collapsed ? "展开菜单" : "收起菜单"} placement="bottomLeft">
             <button
                 type="button"
                 onClick={onClick}
                 aria-label={collapsed ? "展开菜单" : "收起菜单"}
-                className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-[4px] text-[12px] text-(--pk-text-2) hover:bg-(--pk-gray-bg) hover:text-(--pk-brand-text)"
+                className="hidden h-full w-9 shrink-0 cursor-pointer items-center justify-center border-r border-(--pk-border) text-[12px] text-(--pk-text-2) hover:bg-(--pk-surface) hover:text-(--pk-brand-text) lg:flex"
             >
                 {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             </button>
@@ -387,7 +385,7 @@ function SidebarGroup({
             arrow={false}
             mouseEnterDelay={0.1}
             mouseLeaveDelay={0.15}
-            styles={{ container: { padding: "4px 0" }, content: { padding: 0 } }}
+            styles={{ container: { padding: "4px" }, content: { padding: 0 } }}
             // --pk-* 变量定义在 .parking-shell 上，弹层必须挂回壳内才能取到品牌色。
             getPopupContainer={(node) => (node.closest(".parking-shell") as HTMLElement) ?? document.body}
             content={
@@ -406,7 +404,7 @@ function SidebarGroup({
                                     setOpen(false);
                                 }}
                                 className={cn(
-                                    "group flex h-[36px] w-full cursor-pointer items-center gap-2.5 px-3 text-[13px]",
+                                    "group flex h-[36px] w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 text-[13px]",
                                     active
                                         ? "bg-(--pk-brand-soft) font-medium text-(--pk-brand-text)"
                                         : "text-(--pk-text) hover:bg-(--pk-gray-bg) hover:text-(--pk-brand-text)",
@@ -433,8 +431,8 @@ function SidebarGroup({
                 type="button"
                 aria-label={label}
                 className={cn(
-                    "group flex h-[46px] w-full cursor-pointer items-center text-[14px] font-medium hover:text-(--pk-brand-text)",
-                    collapsed ? "justify-center" : "gap-2.5 px-4",
+                    "group flex h-[46px] w-full cursor-pointer items-center rounded-lg text-[14px] font-medium hover:text-(--pk-brand-text)",
+                    collapsed ? "justify-center" : "gap-2.5 px-3",
                     containsActive
                         ? "bg-(--pk-brand-soft) text-(--pk-brand-text) hover:bg-(--pk-brand-soft)"
                         : "text-(--pk-text) hover:bg-(--pk-gray-bg)",
@@ -476,8 +474,8 @@ function SidebarLink({
             onClick={onClick}
             aria-label={label}
             className={cn(
-                "group relative flex h-[46px] w-full cursor-pointer items-center text-[14px]",
-                collapsed ? "justify-center" : "gap-2.5 px-4",
+                "group relative flex h-[46px] w-full cursor-pointer items-center rounded-lg text-[14px]",
+                collapsed ? "justify-center" : "gap-2.5 px-3",
                 active
                     ? "bg-(--pk-brand-soft) font-medium text-(--pk-brand-text)"
                     : "hover:bg-(--pk-gray-bg) hover:text-(--pk-brand-text)",
@@ -493,7 +491,7 @@ function SidebarLink({
             </span>
             {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
             {!collapsed && wip && <WipTag className="shrink-0" />}
-            {active && <span className="absolute top-0 right-0 h-full w-[3px] bg-(--pk-brand-text)" />}
+            {active && <span className="absolute top-1/2 right-0 h-3.5 w-[3px] -translate-y-1/2 rounded-full bg-(--pk-brand-text)" />}
         </button>
     );
     // 图标栏下文字没了，靠 tooltip 补齐名称（含建设中口径）。

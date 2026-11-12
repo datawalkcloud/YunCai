@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { CheckOutlined, DownOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Dropdown } from "antd";
@@ -12,8 +12,9 @@ import { KEEP_ALIVE_STATE, useRouteTabs } from "./route-tabs-context";
  * 顶部页签条（Route Tabs）：记账分类的首页常驻，进过的页面自动登记，可逐个关闭，溢出时可横向滚动或用「全部页签」下拉。
  * 点击页签带上 keepAlive 状态，由 KeepAliveOutlet 复用已有面板、不重新取数。
  * 视觉为停车平台风格：浅灰底上浮白色页签、当前页蓝色文字。
+ * leading 是页签左侧的工具位（如侧栏收起按钮），不参与横向滚动。
  */
-export function RouteTabs() {
+export function RouteTabs({ leading }: { leading?: ReactNode }) {
     const { accountSetId = "" } = useParams();
     const navigate = useNavigate();
     const { tabs, activeKey, closeTab } = useRouteTabs();
@@ -46,6 +47,7 @@ export function RouteTabs() {
 
     return (
         <div className="flex h-8 shrink-0 items-center border-b border-(--pk-border) bg-(--pk-gray-bg)">
+            {leading}
             {overflow && <ScrollArrow direction="left" onClick={() => scrollBy(-160)} />}
             <div
                 ref={listRef}
