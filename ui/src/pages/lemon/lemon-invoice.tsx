@@ -1,6 +1,6 @@
 /**
  * 复刻区发票模块（对应柠檬云 /Invoice/*）：
- * 一键取票（引导页，建设中）、销项发票、进项发票（期间可切换、批量认证已接后端单条认证端点、
+ * 一键取票（三步向导已接通：服务端取票任务 + 最近取票任务台账）、销项发票、进项发票（期间可切换、批量认证已接后端单条认证端点、
  * 生成凭证已接后端单张 / 批量端点，科目可留空由后端按方向取默认）、
  * 费用单据（已接后端）、发票资金一览表（已接后端）、发票风险分析（建设中）。
  * 商品明细页签把发票列表接口返回的行明细直接摊平展示（真实数据）；
@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Button, Dropdown, Modal } from "antd";
+import dayjs from "dayjs";
 import {
     QuestionCircleOutlined,
 } from "@ant-design/icons";
@@ -18,6 +19,8 @@ import { ICON_STYLE, type PillTone, FORM_CONTROL_W, FORM_LABEL_W } from "@/compo
 
 import {
     Btn,
+    ExportBtn,
+    PrintBtn,
     CheckBox,
     Dialog,
     EmptyTip,
@@ -50,6 +53,8 @@ import { makePeriod, shiftPeriod, useDefaultAccountingPeriod, type AccountingPer
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import { printPdf } from "@/lib/print-pdf";
 import { fmtAmount } from "@/lib/format";
+import { fetchTaxTasks, getTaxPortalLoginStatus, type TaxTaskRow } from "@/lib/tax-portal";
+import { InvoiceFetchDialog, TAX_INVOICE_SOURCE } from "./invoice-fetch-dialog";
 
 /** 后端日期字段运行时是 Date，统一按 yyyy-MM-dd 展示。 */
 const fmtDate = (v: Date | string | null | undefined): string => (v ? new Date(v).toISOString().substring(0, 10) : "");
@@ -126,25 +131,99 @@ function useFundOverview(startDate: string, endDate: string) {
     return { rows, loading, error, reload };
 }
 
-/* ---------- 一键取票（引导页，需税局取票服务，外部对接未接入） ---------- */
+/* ---------- 一键取票（三步向导，取票任务由服务端在无头浏览器里跑） ---------- */
 
 const FETCH_POINTS = [
-    { title: "智能获取发票数据", desc: "一键获取进销项发票，轻松获取1万+发票" },
-    { title: "数电发票电子文件采集", desc: "智能获取数电发票电子文件，自动关联发票数据" },
-    { title: "数据安全保障", desc: "单向式获取发票数据，数据安全有保障" },
+    { title: "智能获取发票数据", desc: "一次取回销项与进项发票，含商品明细，开票日期区间最长 24 个月" },
+    { title: "自动归入发票池", desc: `按「账套 + 方向 + 发票号」去重落库，来源标记为「${TAX_INVOICE_SOURCE}」，重复同步只跳过不覆盖` },
+    { title: "单向取数", desc: "只从电子税务局读取发票数据，不会向税局回传本系统的任何数据" },
 ];
 
+/** 最近取票任务的回看窗口。 */
+const TASK_LOOKBACK_MONTHS = 6;
+
+/** 任务状态文案与色调（与任务中心同一口径）。 */
+const TASK_STATUS: Record<string, { text: string; tone: PillTone }> = {
+    running: { text: "进行中", tone: "blue" },
+    success: { text: "成功", tone: "green" },
+    failed: { text: "失败", tone: "red" },
+};
+
+const taskStatusText = (status: string) => TASK_STATUS[status]?.text ?? status;
+
 export function LemonInvoiceFetch() {
+    const { token } = useAuth();
+    const accountSetId = useCurrentAccountSetId() ?? "";
+    const [dialogOpen, setDialogOpen] = useState(false);
+    /** 税局登录态：true 有效、false 需登录、null 未确认（查不到状态不等于税局拒绝了登录态）。 */
+    const [loginReady, setLoginReady] = useState<boolean | null>(null);
+    const [tasks, setTasks] = useState<TaxTaskRow[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!accountSetId || !token) return;
+        let cancelled = false;
+        // 这里只查内存里的登录会话，不为此拉起浏览器：真正的恢复发生在取票任务里。
+        void getTaxPortalLoginStatus(accountSetId, token)
+            .then((status) => {
+                if (!cancelled) setLoginReady(status.state === "success");
+            })
+            .catch(() => {
+                if (!cancelled) setLoginReady(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [accountSetId, token]);
+
+    const reloadTasks = useCallback(async () => {
+        if (!accountSetId) {
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+        try {
+            const result = await fetchTaxTasks(
+                accountSetId,
+                token,
+                dayjs().subtract(TASK_LOOKBACK_MONTHS, "month").format("YYYY-MM-DD"),
+                dayjs().format("YYYY-MM-DD"),
+            );
+            setTasks(result.rows.filter((row) => row.title.startsWith(TAX_INVOICE_SOURCE)));
+            setError(null);
+        } catch (err) {
+            setTasks([]);
+            setError(await apiErrorMessage(err, "加载取票任务失败。"));
+        } finally {
+            setLoading(false);
+        }
+    }, [accountSetId, token]);
+
+    useEffect(() => {
+        void reloadTasks();
+    }, [reloadTasks]);
+
+    const cols: Col[] = [
+        { key: "title", title: "任务", width: "260px" },
+        { key: "status", title: "状态", width: "90px" },
+        { key: "suggestion", title: "结果说明" },
+        { key: "submittedAt", title: "提交时间", width: "170px" },
+        { key: "operator", title: "操作人", width: "120px" },
+    ];
+    const rows: Row[] = tasks.map((task) => ({
+        title: task.title,
+        status: <StatusPill tone={TASK_STATUS[task.status]?.tone ?? "gray"}>{taskStatusText(task.status)}</StatusPill>,
+        suggestion: task.suggestion || (task.status === "success" ? "发票已写入销项 / 进项列表" : "—"),
+        submittedAt: new Date(task.submittedAt).toLocaleString("zh-CN", { hour12: false }),
+        operator: task.operator,
+    }));
+
     return (
         <Page>
-            <WipNotice text="一键取票需对接税局发票取得服务，后端尚未提供端点，本页为功能介绍（建设中）。" />
-            <div className="flex flex-1 flex-col items-center justify-center px-4 py-16">
-                <div className="flex w-[860px] max-w-full items-center gap-10">
-                    {/* 左侧显示器插画（简化为示意框） */}
-                    <div className="flex h-[220px] w-[300px] shrink-0 items-center justify-center rounded-xl border border-(--border) bg-(--table-zebra-bg) text-[13px] text-(--muted-foreground)">
-                        取票界面示意
-                    </div>
-                    <div className="flex flex-1 flex-col gap-6">
+            <div className="flex flex-col gap-4 px-4 py-4">
+                <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl bg-(--table-zebra-bg) px-5 py-5">
+                    <div className="flex min-w-[420px] flex-1 flex-col gap-4">
                         {FETCH_POINTS.map((p, i) => (
                             <div key={p.title} className="flex items-start gap-3">
                                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-(--brand-fill) text-[13px] text-white">
@@ -157,11 +236,43 @@ export function LemonInvoiceFetch() {
                             </div>
                         ))}
                     </div>
+                    <div className="flex flex-col items-start gap-3">
+                        <Btn variant="primary" onClick={() => setDialogOpen(true)}>
+                            立即取票
+                        </Btn>
+                        {loginReady === true ? (
+                            <span className="text-[13px] text-(--success)">税局登录状态有效，可直接取票</span>
+                        ) : loginReady === false ? (
+                            <span className="text-[13px] text-(--warn-text)">税局登录状态已失效，取票时会要求重新登录</span>
+                        ) : (
+                            <span className="text-[13px] text-(--muted-foreground)">取票时服务器会自动登录税局，只有税局发来短信时才需要填验证码</span>
+                        )}
+                    </div>
                 </div>
-                <div className="mt-12">
-                    <WipBtn title="一键取票建设中，后端未提供取票端点">立即取票</WipBtn>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-[14px] font-bold text-(--foreground)">最近取票任务</span>
+                    <span className="text-[12.5px] text-(--muted-foreground)">
+                        近 {TASK_LOOKBACK_MONTHS} 个月发起的取票任务；任务在服务器上执行，关掉本页不影响结果。
+                    </span>
+                    <Btn className="ml-auto" onClick={() => void reloadTasks()} disabled={loading}>
+                        刷新
+                    </Btn>
                 </div>
+
+                {error && <HintBox>{error}</HintBox>}
+                <Table cols={cols} rows={rows} scrollY="48vh" empty={<EmptyTip text={loading ? "加载中…" : "近半年还没有取票任务"} />} />
             </div>
+
+            {dialogOpen && (
+                <InvoiceFetchDialog
+                    onClose={() => setDialogOpen(false)}
+                    onFetched={() => {
+                        setLoginReady(true);
+                        void reloadTasks();
+                    }}
+                />
+            )}
         </Page>
     );
 }
@@ -197,7 +308,11 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
     const [accounts, setAccounts] = useState<AccountDto[]>([]);
     const [showImport, setShowImport] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
+    /** 显示所有信息：在标准列之外展开全部商品行与商品行数。 */
+    const [showAll, setShowAll] = useState(false);
     const [importResult, setImportResult] = useState<InvoiceImportResult | null>(null);
+    /** 一键取票弹窗：取票完成后刷新本页列表。 */
+    const [showFetch, setShowFetch] = useState(false);
     const importInputRef = useRef<HTMLInputElement>(null);
 
     const toggleSel = (id: string) =>
@@ -491,7 +606,7 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
     };
 
     if (tab === 1) {
-        return <InvoiceGoodsTable kind={kind} period={period} invoices={data.invoices} loading={data.loading} error={data.error} onTab={setTab} onStep={stepPeriod} />;
+        return <InvoiceGoodsTable kind={kind} period={period} invoices={data.invoices} loading={data.loading} error={data.error} onTab={setTab} onStep={stepPeriod} onReload={() => void data.reload()} />;
     }
     if (tab === 2) {
         return <InvoicePendingTable period={period} onTab={setTab} onStep={stepPeriod} />;
@@ -508,6 +623,12 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
             : []),
         { key: "biz", title: "业务类型", width: "100px" },
         { key: "goods", title: "商品名称", width: "150px" },
+        ...(showAll
+            ? ([
+                  { key: "allGoods", title: "商品明细（全部行）", width: "260px" },
+                  { key: "lineCount", title: "商品行数", align: "right", width: "90px" },
+              ] as Col[])
+            : []),
         { key: "amount", title: "合计金额", align: "right", width: "110px" },
         { key: "rate", title: "税率", width: "70px" },
         { key: "tax", title: "合计税额", align: "right", width: "100px" },
@@ -534,13 +655,13 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                 }
                 right={
                     <>
-                        <CheckBox label="显示所有信息" />
+                        <CheckBox label="显示所有信息" checked={showAll} onChange={setShowAll} />
                         {kind === "sales" && <WipBtn title="开具发票建设中，后端未提供端点">开具发票</WipBtn>}
-                        <WipBtn title="一键取票建设中，后端未提供端点">一键取票</WipBtn>
+                        <Btn title="从电子税务局取回开票日期落在本期间的发票" onClick={() => setShowFetch(true)}>一键取票</Btn>
                         <Btn variant="primary" dropdown onClick={() => setShowAdd(true)}>新增发票</Btn>
-                        <Btn dropdown disabled={busy} title="导出当前期间的发票为 .xlsx" onClick={() => void exportInvoices()}>导出</Btn>
+                        <ExportBtn disabled={busy} title="导出当前期间的发票为 .xlsx" onClick={() => void exportInvoices()}>导出</ExportBtn>
                         <Btn dropdown title="从 .xlsx 导入发票" onClick={() => setShowImport(true)}>导入</Btn>
-                        <Btn dropdown disabled={busy} onClick={() => void printInvoices()} title="打印当前期间的发票清单（后端生成 PDF）">打印列表</Btn>
+                        <PrintBtn disabled={busy} onClick={() => void printInvoices()} title="打印当前期间的发票清单（后端生成 PDF）">打印列表</PrintBtn>
                         {kind === "purchase" && (
                             <Btn dropdown disabled={busy} title="对勾选的进项发票调用批量认证端点" onClick={() => void bulkAuthenticate()}>批量认证</Btn>
                         )}
@@ -599,6 +720,8 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                                 period: fmtTaxPeriod(inv.taxPeriod),
                                 biz: inv.bizType,
                                 goods: inv.lines?.[0]?.goodsName ?? "",
+                                allGoods: (inv.lines ?? []).map((l) => l.goodsName).filter(Boolean).join(" / "),
+                                lineCount: String((inv.lines ?? []).length),
                                 amount: fmtAmount(inv.totalAmount),
                                 rate: fmtRate(inv.lines?.[0]?.taxRate),
                                 tax: fmtAmount(inv.totalTax),
@@ -794,6 +917,9 @@ function InvoiceListPage({ kind }: { kind: "sales" | "purchase" }) {
                     </div>
                 )}
             </Modal>
+            {showFetch && (
+                <InvoiceFetchDialog onClose={() => setShowFetch(false)} onFetched={() => void data.reload()} />
+            )}
             {addToast && <Toast text={addToast} onClose={() => setAddToast(null)} />}
         </Page>
     );
@@ -1218,9 +1344,9 @@ export function LemonExpenseBill() {
                         <Btn dropdown title="从 .xlsx 导入费用单据（按单据编号更新已存在单据）" onClick={() => importRef.current?.click()}>
                             导入
                         </Btn>
-                        <Btn dropdown disabled={busy} title="导出全部费用单据为 .xlsx" onClick={() => void exportBills()}>
+                        <ExportBtn disabled={busy} title="导出全部费用单据为 .xlsx" onClick={() => void exportBills()}>
                             导出
-                        </Btn>
+                        </ExportBtn>
                         <Dropdown
                             trigger={["click"]}
                             menu={{
@@ -1551,7 +1677,7 @@ export function LemonInvoiceSummary() {
                 }
                 right={
                     <>
-                        <Btn title="导出当前期间的发票资金一览表" onClick={() => void exportOverview()}>导出</Btn>
+                        <ExportBtn title="导出当前期间的发票资金一览表" onClick={() => void exportOverview()}>导出</ExportBtn>
                         <RefreshIcon onClick={() => void reload()} />
                     </>
                 }
@@ -1625,6 +1751,7 @@ function InvoiceGoodsTable({
     error,
     onTab,
     onStep,
+    onReload,
 }: {
     kind: "sales" | "purchase";
     period: AccountingPeriod;
@@ -1633,6 +1760,7 @@ function InvoiceGoodsTable({
     error: string | null;
     onTab: (i: number) => void;
     onStep: (d: number) => void;
+    onReload: () => void;
 }) {
     const cols: Col[] = [
         { key: "no", title: "发票号码", width: "150px" },
@@ -1667,24 +1795,21 @@ function InvoiceGoodsTable({
         });
     });
     const sum = (key: string) => flat.reduce((a, r) => a + Number(r[key] ?? 0), 0);
-    const rows: Row[] = flat.length
-        ? [
-              {
-                  no: "合计",
-                  date: "",
-                  type: "",
-                  period: "",
-                  partner: "",
-                  goods: "",
-                  amount: sum("amount").toFixed(2),
-                  rate: "",
-                  tax: sum("tax").toFixed(2),
-                  total: sum("total").toFixed(2),
-                  __style: { background: "var(--table-zebra-bg)", fontWeight: 700, color: "var(--foreground)" },
-              },
-              ...flat,
-          ]
-        : [];
+    const totalRow: Row = {
+        no: "合计",
+        date: "",
+        type: "",
+        period: "",
+        partner: "",
+        goods: "",
+        amount: sum("amount").toFixed(2),
+        rate: "",
+        tax: sum("tax").toFixed(2),
+        total: sum("total").toFixed(2),
+        __style: { background: "var(--table-zebra-bg)", fontWeight: 700, color: "var(--foreground)" },
+    };
+    // 合计行在最后一行，与柠檬云一致；没有明细时只剩这一行，金额列显示 0.00。
+    const rows: Row[] = [...flat, totalRow];
     return (
         <Page>
             <SubTabs tabs={kind === "sales" ? ["销项发票", "商品明细"] : ["进项发票", "商品明细", "暂不入账发票"]} active={1} onChange={onTab} />
@@ -1701,7 +1826,7 @@ function InvoiceGoodsTable({
                 right={
                     <>
                         <WipBtn dropdown title="批量操作建设中，后端未提供端点">批量操作</WipBtn>
-                        <RefreshIcon />
+                        <RefreshIcon onClick={onReload} />
                     </>
                 }
             />
@@ -1722,6 +1847,8 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [toast, setToast] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    /** 显示所有信息：展开全部商品行与商品行数。 */
+    const [showAll, setShowAll] = useState(false);
 
     /** 入账：把暂不入账发票状态恢复为「未入账」，使其重新回到入账流程（凭证在销项 / 进项发票页勾选后生成）。 */
     const postNow = async (ids: string[]) => {
@@ -1813,9 +1940,12 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
             }
             return next;
         });
+    const allSelected = data.invoices.length > 0 && data.invoices.every((inv) => selected.has(inv.id ?? ""));
+    const toggleAll = () =>
+        setSelected(allSelected ? new Set() : new Set(data.invoices.map((inv) => inv.id ?? "")));
 
     const cols: Col[] = [
-        { key: "ck", title: <CheckBox label="" />, width: "36px" },
+        { key: "ck", title: <CheckBox label="" checked={allSelected} onChange={toggleAll} />, width: "36px" },
         { key: "type", title: "发票种类", width: "100px" },
         { key: "inputDate", title: "录入日期", width: "100px" },
         { key: "issueDate", title: "开票日期", width: "100px" },
@@ -1823,6 +1953,12 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
         { key: "status", title: "发票状态", width: "90px" },
         { key: "partner", title: "供应商名称", width: "160px" },
         { key: "goods", title: "商品名称", width: "150px" },
+        ...(showAll
+            ? ([
+                  { key: "allGoods", title: "商品明细（全部行）", width: "260px" },
+                  { key: "lineCount", title: "商品行数", align: "right", width: "90px" },
+              ] as Col[])
+            : []),
         { key: "amount", title: "合计金额", align: "right", width: "110px" },
         { key: "rate", title: "税率", width: "70px" },
         { key: "tax", title: "合计税额", align: "right", width: "100px" },
@@ -1841,6 +1977,8 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
                 status: <StatusPill tone={invoiceStatusTone(inv.statusText)}>{inv.statusText}</StatusPill>,
                 partner: inv.partnerName,
                 goods: inv.lines?.[0]?.goodsName ?? "",
+                allGoods: (inv.lines ?? []).map((l) => l.goodsName).filter(Boolean).join(" / "),
+                lineCount: String((inv.lines ?? []).length),
                 amount: fmtAmount(inv.totalAmount),
                 rate: fmtRate(inv.lines?.[0]?.taxRate),
                 tax: fmtAmount(inv.totalTax),
@@ -1849,6 +1987,13 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
                 ops: <LinkAction onClick={() => void postNow([inv.id ?? ""])}>入账</LinkAction>,
             }) as Row,
     );
+    // 合计行固定在最后一行，没有暂不入账发票时也照常显示 0.00（与柠檬云一致）。
+    rows.push({
+        goods: "合计",
+        amount: fmtAmount(data.summary?.totalAmount, true),
+        tax: fmtAmount(data.summary?.totalTax, true),
+        __style: { background: "var(--table-zebra-bg)", fontWeight: 700, color: "var(--foreground)" },
+    } as Row);
     return (
         <Page>
             <SubTabs tabs={["进项发票", "商品明细", "暂不入账发票"]} active={2} onChange={onTab} />
@@ -1865,8 +2010,8 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
                 }
                 right={
                     <>
-                        <CheckBox label="显示所有信息" />
-                        <Btn title="导出当前期间的暂不入账发票" onClick={() => void exportPending()}>导出</Btn>
+                        <CheckBox label="显示所有信息" checked={showAll} onChange={setShowAll} />
+                        <ExportBtn title="导出当前期间的暂不入账发票" onClick={() => void exportPending()}>导出</ExportBtn>
                         <Dropdown
                             trigger={["click"]}
                             menu={{
@@ -1888,9 +2033,6 @@ function InvoicePendingTable({ period, onTab, onStep }: { period: AccountingPeri
                     <div className="mb-3 flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg bg-(--table-zebra-bg) px-4 py-2.5 text-[13px]">
                         <span className="text-(--muted-foreground)">
                             暂不入账 <span className="ml-1 font-medium tabular-nums text-(--foreground)">{data.invoices.length}</span> 张
-                        </span>
-                        <span className="text-(--muted-foreground)">
-                            金额合计 <span className="ml-1 font-medium tabular-nums text-(--foreground)">¥{fmtAmount(data.summary?.totalAmount, true)}</span>
                         </span>
                         <span className="text-(--muted-foreground)">
                             价税合计 <span className="ml-1 text-[14px] font-semibold tabular-nums text-(--foreground)">¥{fmtAmount(data.summary?.totalWithTax, true)}</span>

@@ -4,7 +4,7 @@ namespace KuaiJi.Modules.Vouchers.Application
 {
     /// <summary>
     /// 凭证附件应用服务：上传、列举、下载、删除原始单据影像。
-    /// 附件按凭证归属，操作前先校验凭证存在且当前处于可改状态（草稿）。
+    /// 附件按凭证归属，操作前先校验凭证存在且当前处于可改状态（暂存）。
     /// </summary>
     public sealed class VoucherAttachmentService
     {
@@ -41,7 +41,7 @@ namespace KuaiJi.Modules.Vouchers.Application
 
             if (voucher.Status != VoucherStatus.Draft)
             {
-                throw new VoucherException("凭证已过账，请先反过账再上传附件。");
+                throw new VoucherException("凭证已是正常状态，请先反过账再上传附件。");
             }
 
             if (content is null || content.Length == 0)
@@ -89,7 +89,7 @@ namespace KuaiJi.Modules.Vouchers.Application
             var voucher = await EnsureVoucherExistsAsync(accountSetId, voucherId, cancellationToken);
             if (voucher.Status != VoucherStatus.Draft)
             {
-                throw new VoucherException("凭证已过账，不能删除附件。");
+                throw new VoucherException("凭证已是正常状态，不能删除附件。");
             }
 
             var attachment = await _attachmentRepository.GetAsync(voucherId, attachmentId, cancellationToken);

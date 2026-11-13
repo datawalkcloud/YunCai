@@ -238,6 +238,31 @@ namespace KuaiJi.Modules.Closing.Api
             }
         }
 
+        /// <summary>整理断号：把指定期间存在断号的凭证字重新连续编号（仅改凭证号，不影响金额与分录）。</summary>
+        [HttpPost("renumber")]
+        public async Task<ActionResult<RenumberGapsResultDto>> Renumber(
+            Guid accountSetId,
+            [FromBody] ClosingPeriodRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _closingService.RenumberGapsAsync(
+                    accountSetId, request.Year, request.Month, cancellationToken);
+                if (result.Changed > 0)
+                {
+                    await LogAsync(
+                        accountSetId, "整理凭证", $"整理 {request.Year}-{request.Month:D2} 断号（{result.Changed} 张）", cancellationToken);
+                }
+
+                return Ok(result);
+            }
+            catch (ClosingException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /* ---------------- 结转模板 ---------------- */
 
         /// <summary>获取账套下全部结转模板（含行明细）。</summary>

@@ -48,7 +48,7 @@ namespace KuaiJi.Modules.Reports.Application
                 var sums = new decimal[4];
                 foreach (var account in accounts)
                 {
-                    var bucket = MapBucket(account.Code);
+                    var bucket = MapBucket(account);
                     if (bucket < 0 || Array.IndexOf(lines, bucket) < 0
                         || !net.TryGetValue(account.Id, out var delta))
                     {
@@ -132,8 +132,15 @@ namespace KuaiJi.Modules.Reports.Application
         }
 
         /// <summary>权益科目 → 行次（51=实收资本,52=资本公积,53=盈余公积,54=未分配利润），未识别返回 -1。</summary>
-        private static int MapBucket(string code)
+        private static int MapBucket(Account account)
         {
+            // 未结转的损益类余额并入未分配利润，否则本表期末权益会与资产负债表（已并入损益）不一致。
+            if (account.Category == AccountCategory.ProfitAndLoss)
+            {
+                return 54;
+            }
+
+            var code = account.Code;
             var p = code.Length <= 4 ? code : code[..4];
             return p switch
             {

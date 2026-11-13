@@ -290,7 +290,7 @@ namespace KuaiJi.Modules.Vouchers.Application
         }
 
         /// <summary>
-        /// 编辑：仅草稿状态（反过账退回）可改。凭证字与号保持不变，覆盖日期、附单据数并整体替换全部分录，
+        /// 编辑：仅暂存状态（反过账退回）可改。凭证字与号保持不变，覆盖日期、附单据数并整体替换全部分录，
         /// 保存后重新过账入账。每条分录须为借贷单边非零，且科目须为该账套下已启用的末级科目；凭证不存在时返回 null。
         /// </summary>
         public async Task<VoucherDetailDto?> UpdateAsync(Guid accountSetId, Guid id, UpdateVoucherRequest request, CancellationToken cancellationToken = default)
@@ -318,7 +318,7 @@ namespace KuaiJi.Modules.Vouchers.Application
 
             try
             {
-                // UpdateHeader/RemoveEntry/AddEntry/UpdateEntry 均要求草稿状态，非草稿会抛出 InvalidOperationException。
+                // UpdateHeader/RemoveEntry/AddEntry/UpdateEntry 均要求暂存状态，非暂存会抛出 InvalidOperationException。
                 voucher.UpdateHeader(request.Date, request.AttachmentCount, request.Remark);
 
                 // 以原地更新方式替换分录，避免 DELETE 操作触发 Npgsql 并发校验。
@@ -410,7 +410,7 @@ namespace KuaiJi.Modules.Vouchers.Application
             return VoucherDetailDto.FromDomain(voucher, accountsById, assistItemsById);
         }
 
-        /// <summary>删除凭证（含其全部分录）；不存在时返回 false。已过账凭证已登记入账、已结期间凭证均不允许删除。</summary>
+        /// <summary>删除凭证（含其全部分录）；不存在时返回 false。正常凭证已登记入账、已结期间凭证均不允许删除。</summary>
         public async Task<bool> DeleteAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
         {
             var voucher = await _voucherRepository.GetByIdAsync(accountSetId, id, cancellationToken);
@@ -421,7 +421,7 @@ namespace KuaiJi.Modules.Vouchers.Application
 
             if (voucher.Status == VoucherStatus.Posted)
             {
-                throw new VoucherException($"凭证「{voucher.Word}-{voucher.Number}」已过账，不能删除。");
+                throw new VoucherException($"凭证「{voucher.Word}-{voucher.Number}」已是正常状态，不能删除。");
             }
 
             var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
@@ -563,7 +563,7 @@ namespace KuaiJi.Modules.Vouchers.Application
 
         /// <summary>
         /// 整理凭证 / 凭证号重排：按凭证号或凭证日期重新顺次编号，并重新拼接断号。
-        /// 只处理草稿（反过账退回）的凭证（已过账凭证号不允许变动）。
+        /// 只处理暂存（反过账退回）的凭证（正常凭证号不允许变动）。
         /// </summary>
         public async Task<int> RenumberAsync(
             Guid accountSetId,
@@ -586,7 +586,7 @@ namespace KuaiJi.Modules.Vouchers.Application
             var posted = targets.Where(v => v.Status == VoucherStatus.Posted).ToList();
             if (posted.Count > 0)
             {
-                throw new VoucherException("所选范围内存在已过账凭证，凭证号不能重排，请先反过账。");
+                throw new VoucherException("所选范围内存在正常凭证，凭证号不能重排，请先反过账。");
             }
 
             // 按凭证字分组独立编号：不同凭证字各自一条序列。
@@ -627,7 +627,7 @@ namespace KuaiJi.Modules.Vouchers.Application
         }
 
         /// <summary>
-        /// 反过账凭证：已过账 → 草稿（撤销登记入账，退回可修改状态）。
+        /// 反过账凭证：正常 → 暂存（撤销登记入账，退回可修改状态）。
         /// 已结账期间内的凭证不允许反过账；不存在时返回 null。
         /// </summary>
         public async Task<VoucherDetailDto?> UnpostAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)

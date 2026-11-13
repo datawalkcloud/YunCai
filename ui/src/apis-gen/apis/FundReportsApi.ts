@@ -45,6 +45,17 @@ export interface AccountsetsAccountSetIdFundReportsGetRequest {
     secondary?: string;
 }
 
+export interface AccountsetsAccountSetIdFundReportsPdfGetRequest {
+    accountSetId: string;
+    dimension?: string;
+    startDate?: Date;
+    endDate?: Date;
+    journalId?: string;
+    keyword?: string;
+    secondary?: string;
+    showPrimarySubtotal?: boolean;
+}
+
 export interface AccountsetsAccountSetIdFundReportsReconciliationExportGetRequest {
     accountSetId: string;
     date?: Date;
@@ -55,6 +66,13 @@ export interface AccountsetsAccountSetIdFundReportsReconciliationGetRequest {
     accountSetId: string;
     date?: Date;
     journalId?: string;
+}
+
+export interface AccountsetsAccountSetIdFundReportsReconciliationPdfGetRequest {
+    accountSetId: string;
+    date?: Date;
+    journalId?: string;
+    onlyUnbalanced?: boolean;
 }
 
 /**
@@ -131,6 +149,41 @@ export interface FundReportsApiInterface {
     accountsetsAccountSetIdFundReportsGet(requestParameters: AccountsetsAccountSetIdFundReportsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FundReportDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdFundReportsPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} [dimension] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [journalId] 
+     * @param {string} [keyword] 
+     * @param {string} [secondary] 
+     * @param {boolean} [showPrimarySubtotal] 
+     * @throws {RequiredError}
+     * @memberof FundReportsApiInterface
+     */
+    accountsetsAccountSetIdFundReportsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} [dimension] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [journalId] 
+     * @param {string} [keyword] 
+     * @param {string} [secondary] 
+     * @param {boolean} [showPrimarySubtotal] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FundReportsApiInterface
+     */
+    accountsetsAccountSetIdFundReportsPdfGetRaw(requestParameters: AccountsetsAccountSetIdFundReportsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFundReportsPdfGet(requestParameters: AccountsetsAccountSetIdFundReportsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdFundReportsReconciliationExportGet without sending the request
      * @param {string} accountSetId 
      * @param {Date} [date] 
@@ -179,6 +232,33 @@ export interface FundReportsApiInterface {
     /**
      */
     accountsetsAccountSetIdFundReportsReconciliationGet(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FundReconciliationDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFundReportsReconciliationPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {Date} [date] 
+     * @param {string} [journalId] 
+     * @param {boolean} [onlyUnbalanced] 
+     * @throws {RequiredError}
+     * @memberof FundReportsApiInterface
+     */
+    accountsetsAccountSetIdFundReportsReconciliationPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Date} [date] 
+     * @param {string} [journalId] 
+     * @param {boolean} [onlyUnbalanced] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FundReportsApiInterface
+     */
+    accountsetsAccountSetIdFundReportsReconciliationPdfGetRaw(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFundReportsReconciliationPdfGet(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
 }
 
@@ -321,6 +401,76 @@ export class FundReportsApi extends runtime.BaseAPI implements FundReportsApiInt
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdFundReportsPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdFundReportsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFundReportsPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['dimension'] != null) {
+            queryParameters['dimension'] = requestParameters['dimension'];
+        }
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['journalId'] != null) {
+            queryParameters['journalId'] = requestParameters['journalId'];
+        }
+
+        if (requestParameters['keyword'] != null) {
+            queryParameters['keyword'] = requestParameters['keyword'];
+        }
+
+        if (requestParameters['secondary'] != null) {
+            queryParameters['secondary'] = requestParameters['secondary'];
+        }
+
+        if (requestParameters['showPrimarySubtotal'] != null) {
+            queryParameters['showPrimarySubtotal'] = requestParameters['showPrimarySubtotal'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fund-reports/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFundReportsPdfGetRaw(requestParameters: AccountsetsAccountSetIdFundReportsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFundReportsPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFundReportsPdfGet(requestParameters: AccountsetsAccountSetIdFundReportsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFundReportsPdfGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdFundReportsReconciliationExportGet without sending the request
      */
     async accountsetsAccountSetIdFundReportsReconciliationExportGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationExportGetRequest): Promise<runtime.RequestOpts> {
@@ -419,6 +569,60 @@ export class FundReportsApi extends runtime.BaseAPI implements FundReportsApiInt
     async accountsetsAccountSetIdFundReportsReconciliationGet(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FundReconciliationDto> {
         const response = await this.accountsetsAccountSetIdFundReportsReconciliationGetRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFundReportsReconciliationPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdFundReportsReconciliationPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFundReportsReconciliationPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['date'] != null) {
+            queryParameters['date'] = (requestParameters['date'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['journalId'] != null) {
+            queryParameters['journalId'] = requestParameters['journalId'];
+        }
+
+        if (requestParameters['onlyUnbalanced'] != null) {
+            queryParameters['onlyUnbalanced'] = requestParameters['onlyUnbalanced'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fund-reports/reconciliation/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFundReportsReconciliationPdfGetRaw(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFundReportsReconciliationPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFundReportsReconciliationPdfGet(requestParameters: AccountsetsAccountSetIdFundReportsReconciliationPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFundReportsReconciliationPdfGetRaw(requestParameters, initOverrides);
     }
 
 }

@@ -14,7 +14,6 @@ import {
     DeleteOutlined,
     EditOutlined,
     FileTextOutlined,
-    FilterOutlined,
     FolderOpenOutlined,
     FolderOutlined,
     LeftOutlined,
@@ -27,6 +26,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import { StatusPill } from "@/components/page/status-pill";
+import { FilterTriggerButton } from "@/components/page/filter-trigger-button";
 import { ICON_STYLE, type PillTone, FORM_CONTROL_W } from "@/components/page/styles";
 
 import {
@@ -1167,14 +1167,10 @@ export default function LemonERecord() {
                 </div>
             }
         >
-            <Button type="primary" className="inline-flex items-center">
-                <span>{filters.uploadFrom ?? "全部"}</span>
-                <span className="mx-1.5 opacity-70">至</span>
-                <span>{filters.uploadTo ?? "全部"}</span>
-                <span className="ml-2 border-l border-white/40 pl-2">
-                    <FilterOutlined />
-                </span>
-            </Button>
+            <FilterTriggerButton
+                title="高级筛选"
+                label={`${filters.uploadFrom ?? "全部"} 至 ${filters.uploadTo ?? "全部"}`}
+            />
         </Popover>
     );
 

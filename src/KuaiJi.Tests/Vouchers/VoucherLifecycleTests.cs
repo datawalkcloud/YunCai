@@ -16,9 +16,9 @@ namespace KuaiJi.Tests.Vouchers;
 /// 凭证生命周期测试（编号规则之外的行为，编号相关见 VoucherNumberingTests）：
 /// - 制单校验：无分录、借贷不平衡、凭证字不在账套列表、科目无效/非末级/停用、账套不存在、已结账期间；
 /// - 状态流转：保存即过账、反过账退回草稿，以及非法流转与已结期间拦截；
-/// - 编辑与删除：已过账须先反过账才可改、已过账/已结期间不可删、回收站软删除与还原/彻底删除；
+/// - 编辑与删除：正常须先反过账才可改、正常/已结期间不可删、回收站软删除与还原/彻底删除；
 /// - 复制与红冲：新号凭证直接入账、金额取反与「冲销yyyymm字-号_」摘要前缀；
-/// - 凭证号重排：断号续接、范围内存在已过账凭证时拒绝。
+/// - 凭证号重排：断号续接、范围内存在正常凭证时拒绝。
 /// </summary>
 public sealed class VoucherLifecycleTests : IDisposable
 {
@@ -137,9 +137,9 @@ public sealed class VoucherLifecycleTests : IDisposable
     {
         var created = await _service.CreateAsync(_accountSet.Id, "制单人", NewRequest());
 
-        // 保存即入账：制单不再经过审核，落库即为已过账。
+        // 保存即入账：制单不再经过审核，落库即为正常状态。
         Assert.Equal((int)VoucherStatus.Posted, created.Status);
-        Assert.Equal("已过账", created.StatusText);
+        Assert.Equal("正常", created.StatusText);
     }
 
     [Fact]
@@ -345,7 +345,7 @@ public sealed class VoucherLifecycleTests : IDisposable
             () => _service.DeleteAsync(_accountSet.Id, posted.Id));
 
         Assert.Contains("记-1", ex.Message);
-        Assert.Contains("已过账，不能删除", ex.Message);
+        Assert.Contains("已是正常状态，不能删除", ex.Message);
     }
 
     [Fact]
@@ -421,7 +421,7 @@ public sealed class VoucherLifecycleTests : IDisposable
     [Fact]
     public async Task ClearRecycleBin_RemovesOnlyDeletedVouchers()
     {
-        // 只有草稿能进回收站（已过账须先反过账），所以这里直接落三张草稿。
+        // 只有暂存能进回收站（正常须先反过账），所以这里直接落三张暂存。
         var deleted1 = SeedRaw("记", 1, (100m, 0m), (0m, 100m));
         var deleted2 = SeedRaw("记", 2, (100m, 0m), (0m, 100m));
         var kept = SeedRaw("记", 3, (100m, 0m), (0m, 100m));
@@ -453,7 +453,7 @@ public sealed class VoucherLifecycleTests : IDisposable
 
         Assert.NotNull(unposted);
         Assert.Equal((int)VoucherStatus.Draft, unposted.Status);
-        Assert.Equal("草稿", unposted.StatusText);
+        Assert.Equal("暂存", unposted.StatusText);
     }
 
     [Fact]
@@ -470,7 +470,7 @@ public sealed class VoucherLifecycleTests : IDisposable
         var ex = await Assert.ThrowsAsync<VoucherException>(
             () => _service.UnpostAsync(_accountSet.Id, created.Id));
 
-        Assert.Equal("只有已过账的凭证才能反过账。", ex.Message);
+        Assert.Equal("只有正常凭证才能反过账。", ex.Message);
     }
 
     [Fact]
@@ -580,7 +580,7 @@ public sealed class VoucherLifecycleTests : IDisposable
         var ex = await Assert.ThrowsAsync<VoucherException>(
             () => _service.RenumberAsync(_accountSet.Id, null, null, null, byDate: false));
 
-        Assert.Contains("已过账凭证", ex.Message);
+        Assert.Contains("存在正常凭证", ex.Message);
         Assert.Contains("凭证号不能重排", ex.Message);
     }
 

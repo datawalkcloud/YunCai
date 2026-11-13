@@ -423,17 +423,130 @@ public sealed class CashFlowClassifierTests
         }
     }
 
-    // —— 已知口径疑点（见回报）：存货编码被列进投资活动集 ——
+    // —— 小企业会计准则（会小企03表，22 行）——
 
-    [Fact(Skip = "疑似生产缺陷：CashFlowClassifier.InvestingPrefixes 含 1401–1406，而 BalanceSheetService 把这些编码认定为存货（会企01表第 7 行）。采购原材料付现会被归到第 17 行投资活动，导致经营/投资两段同时错。修复后取消本 Skip。")]
+    [Fact]
+    public void SmallBusinessRows_MainTableHas22SequentialLinesWithoutSubtotals()
+    {
+        // 会小企03表：经营 1-7、投资 8-13、筹资 14-19、现金净增加 20-22；
+        // 没有流入/流出小计、汇率变动与补充资料，筹资流出拆为本金/利息/分配利润。
+        Assert.Equal(22, CashFlowSmallBusinessRows.All.Count);
+        Assert.Equal(Enumerable.Range(1, 22), CashFlowSmallBusinessRows.All.Select(r => r.Line));
+        Assert.Equal("销售产成品、商品、提供劳务收到的现金", CashFlowSmallBusinessRows.ByLine[1].Name);
+        Assert.Equal("偿还借款利息支付的现金", CashFlowSmallBusinessRows.ByLine[17].Name);
+        Assert.Equal("分配利润支付的现金", CashFlowSmallBusinessRows.ByLine[18].Name);
+        Assert.Equal("四、现金净增加额", CashFlowSmallBusinessRows.ByLine[20].Name);
+        Assert.Equal("加：期初现金余额", CashFlowSmallBusinessRows.ByLine[21].Name);
+        Assert.Equal("五、期末现金余额", CashFlowSmallBusinessRows.ByLine[22].Name);
+
+        Assert.Equal(7, CashFlowSmallBusinessRows.NetLine(CashFlowSection.Operating));
+        Assert.Equal(13, CashFlowSmallBusinessRows.NetLine(CashFlowSection.Investing));
+        Assert.Equal(19, CashFlowSmallBusinessRows.NetLine(CashFlowSection.Financing));
+    }
+
+    [Fact]
+    public void MapSmallBusinessLine_InterestAndProfitDistribution_SplitFinancingOutflow()
+    {
+        // 一般企业第 28 行把股利与利息并在一起；会小企03表拆成 17/18，必须按对手方科目区分。
+        Assert.Equal(17, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("6603", "财务费用", AccountCategory.ProfitAndLoss), false));
+        Assert.Equal(17, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("5503", "财务费用", AccountCategory.ProfitAndLoss), false));
+        Assert.Equal(17, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("2231", "应付利息", AccountCategory.Liability, BalanceDirection.Credit), false));
+
+        Assert.Equal(18, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("4104", "利润分配", AccountCategory.Equity, BalanceDirection.Credit), false));
+        Assert.Equal(18, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("3104", "利润分配", AccountCategory.Equity, BalanceDirection.Credit), false));
+        Assert.Equal(18, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("4101005", "应付利润", AccountCategory.Equity, BalanceDirection.Credit), false));
+    }
+
+    [Fact]
+    public void MapSmallBusinessLine_FoldsEnterpriseOnlyRowsIntoNearestSmallBusinessLine()
+    {
+        // 小准则没有税费返还、其他经营/投资/筹资收支等行次，按性质并入最近明细行。
+        Assert.Equal(2, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("2221", "应交税费", AccountCategory.Liability, BalanceDirection.Credit), true));
+        Assert.Equal(3, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("2202", "应付账款", AccountCategory.Liability, BalanceDirection.Credit), false));
+        Assert.Equal(4, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("2211", "应付职工薪酬", AccountCategory.Liability, BalanceDirection.Credit), false));
+        Assert.Equal(5, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("2221", "应交税费", AccountCategory.Liability, BalanceDirection.Credit), false));
+        Assert.Equal(6, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("6602", "管理费用", AccountCategory.ProfitAndLoss), false));
+
+        Assert.Equal(8, CashFlowClassifier.MapSmallBusinessLine(Acc("1511", "长期股权投资"), true));
+        Assert.Equal(10, CashFlowClassifier.MapSmallBusinessLine(Acc("1606", "固定资产清理"), true));
+        Assert.Equal(11, CashFlowClassifier.MapSmallBusinessLine(Acc("1511", "长期股权投资"), false));
+        Assert.Equal(12, CashFlowClassifier.MapSmallBusinessLine(Acc("1601", "固定资产"), false));
+
+        Assert.Equal(14, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("2001", "短期借款", AccountCategory.Liability, BalanceDirection.Credit), true));
+        Assert.Equal(15, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("4001", "实收资本", AccountCategory.Equity, BalanceDirection.Credit), true));
+        Assert.Equal(16, CashFlowClassifier.MapSmallBusinessLine(
+            Acc("2001", "短期借款", AccountCategory.Liability, BalanceDirection.Credit), false));
+    }
+
+    // —— 存货编码与增值税进销项归类（修复后回归） ——
+
+    [Fact]
     public void MapLine_InventoryPurchase_Outflow_ShouldBeOperatingPurchaseGoodsLine()
     {
-        // 资产负债表口径：1401 材料采购 / 1403 原材料 / 1405 库存商品 都是存货（BalanceSheetService.MapAssetLine）。
+        // 资产负债表口径：1401 材料采购 / 1403 原材料 / 1405 库存商品 都是存货（BalanceSheetService.MapAssetLine 行 9）。
         // 现金流量表主表第 17 行只收「购建固定资产、无形资产和其他长期资产」，存货购置应在第 5 行。
         AssertLine(
             5,
             CashFlowSection.Operating,
             CashFlowRowKind.Outflow,
             CashFlowClassifier.MapLine(Acc("1403", "原材料", AccountCategory.Asset), false));
+        AssertLine(
+            5,
+            CashFlowSection.Operating,
+            CashFlowRowKind.Outflow,
+            CashFlowClassifier.MapLine(Acc("1405", "库存商品", AccountCategory.Asset), false));
+
+        // 固定资产等长期资产仍归投资活动。
+        AssertLine(
+            17,
+            CashFlowSection.Investing,
+            CashFlowRowKind.Outflow,
+            CashFlowClassifier.MapLine(Acc("1601", "固定资产", AccountCategory.Asset), false));
+    }
+
+    [Fact]
+    public void MapLine_VatInputAndOutput_ShouldFollowGoodsCashFlow()
+    {
+        // 含税收付：销项随销售收现、进项随采购付现；只有实际缴税才进「支付的各项税费」。
+        AssertLine(
+            1,
+            CashFlowSection.Operating,
+            CashFlowRowKind.Inflow,
+            CashFlowClassifier.MapLine(Acc("222100105", "销项税额", AccountCategory.Liability, BalanceDirection.Credit), true));
+        AssertLine(
+            5,
+            CashFlowSection.Operating,
+            CashFlowRowKind.Outflow,
+            CashFlowClassifier.MapLine(Acc("222100101", "进项税额", AccountCategory.Liability, BalanceDirection.Credit), false));
+        AssertLine(
+            5,
+            CashFlowSection.Operating,
+            CashFlowRowKind.Outflow,
+            CashFlowClassifier.MapLine(Acc("2221020", "待认证进项税额", AccountCategory.Liability, BalanceDirection.Credit), false));
+
+        // 实际缴纳的税款仍归税费行。
+        AssertLine(
+            7,
+            CashFlowSection.Operating,
+            CashFlowRowKind.Outflow,
+            CashFlowClassifier.MapLine(Acc("222100102", "已交税金", AccountCategory.Liability, BalanceDirection.Credit), false));
+        AssertLine(
+            7,
+            CashFlowSection.Operating,
+            CashFlowRowKind.Outflow,
+            CashFlowClassifier.MapLine(Acc("2221002", "未交增值税", AccountCategory.Liability, BalanceDirection.Credit), false));
     }
 }

@@ -6,11 +6,10 @@
 
 Name | Type
 ------------ | -------------
-`id` | string
-`name` | string
+`item` | string
 `line` | number
-`current` | number
-`yearToDate` | number
+`amounts` | [Array&lt;IncomeDimensionAmountDto&gt;](IncomeDimensionAmountDto.md)
+`total` | [IncomeDimensionAmountDto](IncomeDimensionAmountDto.md)
 
 ## Example
 
@@ -19,11 +18,10 @@ import type { IncomeProjectRowDto } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "name": null,
+  "item": null,
   "line": null,
-  "current": null,
-  "yearToDate": null,
+  "amounts": null,
+  "total": null,
 } satisfies IncomeProjectRowDto
 
 console.log(example)

@@ -23,6 +23,7 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdReportsFinancialSummaryGet**](ReportsApi.md#accountsetsaccountsetidreportsfinancialsummaryget) | **GET** /accountsets/{accountSetId}/Reports/financial-summary |  |
 | [**accountsetsAccountSetIdReportsIncomeQuarterGet**](ReportsApi.md#accountsetsaccountsetidreportsincomequarterget) | **GET** /accountsets/{accountSetId}/Reports/income-quarter |  |
 | [**accountsetsAccountSetIdReportsIncomeStatementGet**](ReportsApi.md#accountsetsaccountsetidreportsincomestatementget) | **GET** /accountsets/{accountSetId}/Reports/income-statement |  |
+| [**accountsetsAccountSetIdReportsPdfGet**](ReportsApi.md#accountsetsaccountsetidreportspdfget) | **GET** /accountsets/{accountSetId}/Reports/pdf |  |
 | [**accountsetsAccountSetIdReportsProjectIncomeGet**](ReportsApi.md#accountsetsaccountsetidreportsprojectincomeget) | **GET** /accountsets/{accountSetId}/Reports/project-income |  |
 | [**accountsetsAccountSetIdReportsTaxGet**](ReportsApi.md#accountsetsaccountsetidreportstaxget) | **GET** /accountsets/{accountSetId}/Reports/tax |  |
 | [**accountsetsAccountSetIdReportsTrialBalanceGet**](ReportsApi.md#accountsetsaccountsetidreportstrialbalanceget) | **GET** /accountsets/{accountSetId}/Reports/trial-balance |  |
@@ -1362,6 +1363,113 @@ No authorization required
 
 - **Content-Type**: Not defined
 - **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdReportsPdfGet
+
+> accountsetsAccountSetIdReportsPdfGet(accountSetId, kind, year, month, quarter, startDate, endDate, accountFrom, accountTo, minLevel, maxLevel, hideZeroBalance, hideNoActivity, method, showLastYear)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ReportsApi,
+} from '';
+import type { AccountsetsAccountSetIdReportsPdfGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new ReportsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string (optional)
+    kind: kind_example,
+    // number (optional)
+    year: 56,
+    // number (optional)
+    month: 56,
+    // number (optional)
+    quarter: 56,
+    // Date (optional)
+    startDate: 2013-10-20,
+    // Date (optional)
+    endDate: 2013-10-20,
+    // string (optional)
+    accountFrom: accountFrom_example,
+    // string (optional)
+    accountTo: accountTo_example,
+    // number (optional)
+    minLevel: 56,
+    // number (optional)
+    maxLevel: 56,
+    // boolean (optional)
+    hideZeroBalance: true,
+    // boolean (optional)
+    hideNoActivity: true,
+    // string (optional)
+    method: method_example,
+    // boolean (optional)
+    showLastYear: true,
+  } satisfies AccountsetsAccountSetIdReportsPdfGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdReportsPdfGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **kind** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **year** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **month** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **quarter** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **startDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **accountFrom** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **accountTo** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **minLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **maxLevel** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **hideZeroBalance** | `boolean` |  | [Optional] [Defaults to `undefined`] |
+| **hideNoActivity** | `boolean` |  | [Optional] [Defaults to `undefined`] |
+| **method** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **showLastYear** | `boolean` |  | [Optional] [Defaults to `false`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 
 ### HTTP response details

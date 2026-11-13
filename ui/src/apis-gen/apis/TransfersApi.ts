@@ -72,6 +72,19 @@ export interface AccountsetsAccountSetIdTransfersImportTemplateGetRequest {
     accountSetId: string;
 }
 
+export interface AccountsetsAccountSetIdTransfersPdfGetRequest {
+    accountSetId: string;
+    startDate?: Date;
+    endDate?: Date;
+    showAll?: boolean;
+    date?: string;
+    summary?: string;
+    from?: string;
+    to?: string;
+    amount?: string;
+    voucher?: string;
+}
+
 export interface AccountsetsAccountSetIdTransfersPostRequest {
     accountSetId: string;
     saveTransferRequest: SaveTransferRequest;
@@ -268,6 +281,45 @@ export interface TransfersApiInterface {
     /**
      */
     accountsetsAccountSetIdTransfersImportTemplateGet(requestParameters: AccountsetsAccountSetIdTransfersImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {boolean} [showAll] 
+     * @param {string} [date] 
+     * @param {string} [summary] 
+     * @param {string} [from] 
+     * @param {string} [to] 
+     * @param {string} [amount] 
+     * @param {string} [voucher] 
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {boolean} [showAll] 
+     * @param {string} [date] 
+     * @param {string} [summary] 
+     * @param {string} [from] 
+     * @param {string} [to] 
+     * @param {string} [amount] 
+     * @param {string} [voucher] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransfersApiInterface
+     */
+    accountsetsAccountSetIdTransfersPdfGetRaw(requestParameters: AccountsetsAccountSetIdTransfersPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdTransfersPdfGet(requestParameters: AccountsetsAccountSetIdTransfersPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdTransfersPost without sending the request
@@ -730,6 +782,84 @@ export class TransfersApi extends runtime.BaseAPI implements TransfersApiInterfa
      */
     async accountsetsAccountSetIdTransfersImportTemplateGet(requestParameters: AccountsetsAccountSetIdTransfersImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.accountsetsAccountSetIdTransfersImportTemplateGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdTransfersPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdTransfersPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdTransfersPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdTransfersPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['StartDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['EndDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['showAll'] != null) {
+            queryParameters['ShowAll'] = requestParameters['showAll'];
+        }
+
+        if (requestParameters['date'] != null) {
+            queryParameters['Date'] = requestParameters['date'];
+        }
+
+        if (requestParameters['summary'] != null) {
+            queryParameters['Summary'] = requestParameters['summary'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['From'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['To'] = requestParameters['to'];
+        }
+
+        if (requestParameters['amount'] != null) {
+            queryParameters['Amount'] = requestParameters['amount'];
+        }
+
+        if (requestParameters['voucher'] != null) {
+            queryParameters['Voucher'] = requestParameters['voucher'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/transfers/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersPdfGetRaw(requestParameters: AccountsetsAccountSetIdTransfersPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdTransfersPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdTransfersPdfGet(requestParameters: AccountsetsAccountSetIdTransfersPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdTransfersPdfGetRaw(requestParameters, initOverrides);
     }
 
     /**

@@ -104,7 +104,7 @@ export default function VoucherJournalPage() {
                 data={rows}
                 loading={query.loading}
                 emptyText={
-                    accountSetId ? "该期间暂无已过账凭证分录。" : "请先选择账套。"
+                    accountSetId ? "该期间暂无正常凭证分录。" : "请先选择账套。"
                 }
                 rowKey={(row) => row.rowKey}
                 onRowClick={(row) => {

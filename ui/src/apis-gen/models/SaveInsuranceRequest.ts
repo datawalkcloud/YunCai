@@ -37,6 +37,12 @@ export interface SaveInsuranceRequest {
      * @memberof SaveInsuranceRequest
      */
     personalRate?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof SaveInsuranceRequest
+     */
+    baseAmount?: number;
 }
 
 /**
@@ -59,6 +65,7 @@ export function SaveInsuranceRequestFromJSONTyped(json: any, ignoreDiscriminator
         'name': json['name'] == null ? undefined : json['name'],
         'companyRate': json['companyRate'] == null ? undefined : json['companyRate'],
         'personalRate': json['personalRate'] == null ? undefined : json['personalRate'],
+        'baseAmount': json['baseAmount'] == null ? undefined : json['baseAmount'],
     };
 }
 
@@ -76,6 +83,7 @@ export function SaveInsuranceRequestToJSONTyped(value?: SaveInsuranceRequest | n
         'name': value['name'],
         'companyRate': value['companyRate'],
         'personalRate': value['personalRate'],
+        'baseAmount': value['baseAmount'],
     };
 }
 

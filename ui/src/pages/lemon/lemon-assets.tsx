@@ -16,6 +16,8 @@ import { ICON_STYLE, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styl
 
 import {
     Btn,
+    ExportBtn,
+    PrintBtn,
     CheckBox,
     DateInput,
     Dialog,
@@ -216,11 +218,12 @@ function useAccountContext() {
     return { accountSetId, token };
 }
 
-/** 固定资产数据 Hook（类别 / 卡片 / 核对，均与期间无关）。 */
-function useFixedAssetData() {
+/** 固定资产数据 Hook（类别不随期间；卡片传 period 时按该期间回算折旧，不传取当前口径）。 */
+function useFixedAssetData(period?: number) {
     const { accountSetId, token } = useAccountContext();
     const [categories, setCategories] = useState<FixedAssetCategoryDto[]>([]);
     const [assets, setAssets] = useState<FixedAssetDto[]>([]);
+    const [initialAssets, setInitialAssets] = useState<FixedAssetDto[]>([]);
     const [check, setCheck] = useState<FixedAssetCheckRowDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -232,13 +235,15 @@ function useFixedAssetData() {
         setLoading(true);
         const api = new FixedAssetsApi(apiConfig(token));
         try {
-            const [cats, cards, chk] = await Promise.all([
+            const [cats, cards, initials, chk] = await Promise.all([
                 api.accountsetsAccountSetIdFixedassetsCategoriesGet({ accountSetId }),
-                api.accountsetsAccountSetIdFixedassetsAssetsGet({ accountSetId }),
+                api.accountsetsAccountSetIdFixedassetsAssetsGet({ accountSetId, period }),
+                api.accountsetsAccountSetIdFixedassetsInitialAssetsGet({ accountSetId, period }),
                 api.accountsetsAccountSetIdFixedassetsCheckGet({ accountSetId }),
             ]);
             setCategories(cats ?? []);
             setAssets(cards ?? []);
+            setInitialAssets(initials ?? []);
             setCheck(chk ?? []);
             setError(null);
         } catch (err) {
@@ -246,13 +251,13 @@ function useFixedAssetData() {
         } finally {
             setLoading(false);
         }
-    }, [accountSetId, token]);
+    }, [accountSetId, token, period]);
 
     useEffect(() => {
         void reload();
     }, [reload]);
 
-    return { categories, assets, check, loading, error, reload };
+    return { categories, assets, initialAssets, check, loading, error, reload };
 }
 
 /** 末级会计科目（凭证科目下拉共用）。 */
@@ -651,22 +656,24 @@ const CHANGE_COLS: Col[] = [
     { key: "before", title: "变动前内容", width: "140px" },
     { key: "after", title: "变动后内容", width: "140px" },
     { key: "period", title: "变动期间", width: "120px" },
-    { key: "amount", title: "金额", align: "right", width: "120px" },
     { key: "ops", title: "关联凭证", width: "150px" },
 ];
 
 export function LemonAssetManage() {
     const [tab, setTab] = useState(1);
     const { period, stepper } = usePeriodStepper();
-    const data = useFixedAssetData();
+    const data = useFixedAssetData(period.period);
     const { token, accountSetId } = useAccountContext();
     const fileRef = useRef<HTMLInputElement>(null);
 
     const [initDialog, setInitDialog] = useState(false);
     const [showAdd, setShowAdd] = useState(false);
+    const [addInitial, setAddInitial] = useState(false);
     const [addForm, setAddForm] = useState({ categoryId: "", name: "", model: "", dept: "", startDate: "", originValue: "", initialAccumulatedDepreciation: "" });
     const [toast, setToast] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    /** 显示所有信息：把部门、累计折旧、状态、清理日期等完整字段一并展开。 */
+    const [showAll, setShowAll] = useState(false);
 
     // 勾选 / 批量 / 导入导出 / 复制 / 凭证设置
     const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -710,15 +717,19 @@ export function LemonAssetManage() {
         }
         setChangesLoading(true);
         try {
-            setChanges(await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsChangesGet({ accountSetId }));
+            setChanges(await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsChangesGet({
+                accountSetId,
+                startPeriod: period.period,
+                endPeriod: period.period,
+            }));
         } catch (e) {
             setToast(await apiErrorMessage(e, "加载变更记录失败"));
         } finally {
             setChangesLoading(false);
         }
-    }, [accountSetId, token]);
+    }, [accountSetId, token, period.period]);
     useEffect(() => {
-        if (tab === 2) {
+        if (tab === 2 || tab === 3) {
             void loadChanges();
         }
     }, [tab, loadChanges]);
@@ -737,8 +748,8 @@ export function LemonAssetManage() {
         }
         setBusy(true);
         try {
-            await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsAssetsPost({
-                accountSetId,
+            const api = new FixedAssetsApi(apiConfig(token));
+            const body = {
                 saveFixedAssetRequest: {
                     name: addForm.name.trim(),
                     categoryId: addForm.categoryId,
@@ -749,8 +760,14 @@ export function LemonAssetManage() {
                     initialAccumulatedDepreciation: Number(addForm.initialAccumulatedDepreciation) || 0,
                     code: "",
                 },
-            });
+            };
+            if (addInitial) {
+                await api.accountsetsAccountSetIdFixedassetsInitialAssetsPost({ accountSetId, ...body });
+            } else {
+                await api.accountsetsAccountSetIdFixedassetsAssetsPost({ accountSetId, ...body });
+            }
             setShowAdd(false);
+            setAddInitial(false);
             setAddForm({ categoryId: "", name: "", model: "", dept: "", startDate: "", originValue: "", initialAccumulatedDepreciation: "" });
             setToast("资产已增加");
             await data.reload();
@@ -942,8 +959,13 @@ export function LemonAssetManage() {
     const toggleAll = (checked: boolean) =>
         setSelected(checked ? new Set(data.assets.map((a) => a.id ?? "").filter(Boolean)) : new Set());
 
-    const addAssetBtn = (
-        <Btn variant="primary" onClick={() => setShowAdd(true)}>增加资产</Btn>
+    const openAdd = (initial: boolean) => {
+        setAddInitial(initial);
+        setShowAdd(true);
+    };
+
+    const addAssetBtn = (initial: boolean) => (
+        <Btn variant="primary" onClick={() => openAdd(initial)}>增加资产</Btn>
     );
 
     const importExportBtns = (
@@ -965,9 +987,9 @@ export function LemonAssetManage() {
                 }}
             >
                 <span>
-                    <Btn dropdown title="导出资产 / 下载导入模板">
+                    <ExportBtn dropdown title="导出资产 / 下载导入模板">
                         导出
-                    </Btn>
+                    </ExportBtn>
                 </span>
             </Dropdown>
         </>
@@ -1000,10 +1022,10 @@ export function LemonAssetManage() {
                             <Btn variant="primary" onClick={() => setInitDialog(true)}>
                                 录入期初资产
                             </Btn>
-                            <CheckBox label="显示所有信息" />
-                            {addAssetBtn}
+                            <CheckBox label="显示所有信息" checked={showAll} onChange={setShowAll} />
+                            {addAssetBtn(true)}
                             {importExportBtns}
-                            <Btn dropdown title="打印资产初始化清单（后端生成 PDF）" onClick={() => void printAssetSheet(token, accountSetId, `/initial-assets/pdf?period=${period.period}`, setToast)}>打印</Btn>
+                            <PrintBtn title="打印资产初始化清单（后端生成 PDF）" onClick={() => void printAssetSheet(token, accountSetId, `/initial-assets/pdf?period=${period.period}`, setToast)}>打印</PrintBtn>
                             <Btn dropdown onClick={() => setVoucherSettingOpen(true)} title="配置折旧 / 摊销 / 清理凭证科目">
                                 折旧凭证设置
                             </Btn>
@@ -1018,19 +1040,29 @@ export function LemonAssetManage() {
                         cols={[
                             { key: "no", title: "资产编号", width: "120px" },
                             { key: "type", title: "资产类别", width: "130px" },
+                            { key: "attr", title: "资产属性", width: "110px" },
                             { key: "name", title: "资产名称", width: "160px" },
                             { key: "model", title: "规格型号", width: "110px" },
                             { key: "date", title: "开始使用日期", width: "130px" },
+                            ...(showAll
+                                ? ([
+                                      { key: "dept", title: "使用部门", width: "110px" },
+                                      { key: "status", title: "状态", width: "90px" },
+                                  ] as Col[])
+                                : []),
                             { key: "origin", title: "资产原值", align: "right" },
-                            { key: "dep", title: "期初累计折旧", align: "right" },
+                            { key: "dep", title: "累计折旧", align: "right" },
                             { key: "net", title: "资产净值", align: "right" },
                         ]}
-                        rows={data.assets.map((a) => ({
+                        rows={data.initialAssets.map((a) => ({
                             no: a.code,
                             type: a.categoryName,
+                            attr: a.attrText,
                             name: a.name,
                             model: a.model,
                             date: toDateInput(a.startDate),
+                            dept: a.dept ?? "",
+                            status: a.statusText,
                             origin: fmtAmount(a.originValue),
                             dep: fmtAmount(a.accumulatedDepreciation),
                             net: fmtAmount(a.netValue ?? (a.originValue ?? 0) - (a.accumulatedDepreciation ?? 0)),
@@ -1041,20 +1073,20 @@ export function LemonAssetManage() {
                 <div className="px-4 pb-3">
                     <HintBox>亲，资产初始化数据要与期初的资产数据一致哦！</HintBox>
                 </div>
-                <Pager total={data.assets.length} />
+                <Pager total={data.initialAssets.length} />
                 {initDialog && (
                     <InitDialog
                         onClose={() => setInitDialog(false)}
                         onConfirm={() => {
                             setInitDialog(false);
-                            setShowAdd(true);
+                            openAdd(true);
                         }}
                     />
                 )}
                 {showAdd && renderAddDialog()}
                 {copyOpen && (
                     <CopyAssetDialog
-                        assets={data.assets}
+                        assets={data.initialAssets}
                         preset={copyOpen.preset}
                         onClose={() => setCopyOpen(null)}
                         onSaved={() => void data.reload()}
@@ -1096,11 +1128,10 @@ export function LemonAssetManage() {
                             before: c.before,
                             after: c.after,
                             period: c.period,
-                            amount: c.amount != null ? c.amount.toFixed(2) : "",
                             ops: c.voucherText ? (
                                 <span className="text-(--brand)">{c.voucherText}</span>
-                            ) : c.kindText === "每月计提" ? (
-                                <span className="text-(--muted-foreground)">按期计提，在计提页生成</span>
+                            ) : c.kindText === "新增" ? (
+                                <span className="text-(--muted-foreground)">—</span>
                             ) : (
                                 <Btn onClick={() => setChangeVoucher(c)}>生成凭证</Btn>
                             ),
@@ -1125,7 +1156,14 @@ export function LemonAssetManage() {
         );
 
     /* tab === 3 计提折旧及生成凭证 */
-    if (tab === 3)
+    if (tab === 3) {
+        const newAssetCount = data.assets.filter((a) => {
+            if (!a.startDate) {
+                return false;
+            }
+            const start = new Date(a.startDate as unknown as string);
+            return start.getFullYear() * 100 + start.getMonth() + 1 === period.period;
+        }).length;
         return (
             <Page>
                 <SubTabs tabs={ASSET_TABS} active={3} onChange={setTab} />
@@ -1144,9 +1182,14 @@ export function LemonAssetManage() {
                                 ),
                             },
                             {
-                                key: "active",
-                                title: "在用资产",
-                                render: () => `${data.assets.filter((a) => a.statusText === "使用中").length} 项`,
+                                key: "newAssets",
+                                title: "新增资产",
+                                render: () => `${newAssetCount} 项`,
+                            },
+                            {
+                                key: "changes",
+                                title: "变更记录",
+                                render: () => `${changes.length} 项`,
                             },
                             {
                                 key: "dep",
@@ -1211,6 +1254,7 @@ export function LemonAssetManage() {
                 {toast && <Toast text={toast} onClose={() => setToast(null)} />}
             </Page>
         );
+    }
 
     /* tab === 1 资产列表 */
     const allChecked = data.assets.length > 0 && data.assets.every((a) => selected.has(a.id ?? ""));
@@ -1235,6 +1279,14 @@ export function LemonAssetManage() {
         { key: "name", title: "资产名称", width: "160px" },
         { key: "model", title: "规格型号", width: "110px" },
         { key: "date", title: "开始使用日期", width: "130px" },
+        ...(showAll
+            ? ([
+                  { key: "dept", title: "使用部门", width: "110px" },
+                  { key: "accum", title: "累计折旧", align: "right" },
+                  { key: "status", title: "状态", width: "90px" },
+                  { key: "cleared", title: "清理日期", width: "110px" },
+              ] as Col[])
+            : []),
         { key: "origin", title: "资产原值", align: "right" },
         // 与柠檬云一致：原值 / 本期折旧 / 资产净值（累计折旧与状态不单列）
         { key: "dep", title: "本期折旧", align: "right" },
@@ -1248,14 +1300,14 @@ export function LemonAssetManage() {
                 left={
                     <>
                         <PeriodStepper {...stepper} />
-                        <CheckBox label="显示所有信息" />
+                        <CheckBox label="显示所有信息" checked={showAll} onChange={setShowAll} />
                     </>
                 }
                 right={
                     <>
-                        {addAssetBtn}
+                        {addAssetBtn(false)}
                         {importExportBtns}
-                        <Btn dropdown title="打印固定资产清单（后端生成 PDF）" onClick={() => void printAssetSheet(token, accountSetId, `/assets/pdf?period=${period.period}`, setToast)}>打印</Btn>
+                        <PrintBtn title="打印固定资产清单（后端生成 PDF）" onClick={() => void printAssetSheet(token, accountSetId, `/assets/pdf?period=${period.period}`, setToast)}>打印</PrintBtn>
                         <Dropdown
                             trigger={["click"]}
                             menu={{
@@ -1335,11 +1387,14 @@ export function LemonAssetManage() {
                         name: a.name,
                         model: a.model,
                         date: toDateInput(a.startDate),
+                        dept: a.dept ?? "",
+                        accum: fmtAmount(a.accumulatedDepreciation),
+                        status: a.statusText,
+                        cleared: toDateInput(a.clearedDate),
                         origin: fmtAmount(a.originValue),
                         // 本期折旧（后端取最近一次计提期间的折旧额）
                         dep: fmtAmount(a.currentPeriodDepreciation),
                         net: fmtAmount(a.netValue ?? (a.originValue ?? 0) - (a.accumulatedDepreciation ?? 0)),
-                        status: a.statusText,
                         ops: (
                             <span className="flex gap-2">
                                 <span
@@ -1422,16 +1477,20 @@ export function LemonAssetManage() {
     );
 
     function renderAddDialog() {
+        const close = () => {
+            setShowAdd(false);
+            setAddInitial(false);
+        };
         return (
             <Dialog
-                title="增加资产"
-                onClose={() => setShowAdd(false)}
+                title={addInitial ? "增加期初资产" : "增加资产"}
+                onClose={close}
                 footer={
                     <div className="flex justify-center gap-3">
                         <Btn variant={busy ? "disabled" : "primary"} onClick={() => void createAsset()}>
                             保存
                         </Btn>
-                        <Btn onClick={() => setShowAdd(false)}>取消</Btn>
+                        <Btn onClick={close}>取消</Btn>
                     </div>
                 }
             >
@@ -1582,12 +1641,12 @@ export function LemonAssetDepreciation() {
                 left={<PeriodStepper {...stepper} />}
                 right={
                     <>
-                        <Btn onClick={() => void exportLedger()} title="导出当期折旧摊销明细为 .xlsx">
+                        <ExportBtn onClick={() => void exportLedger()} title="导出当期折旧摊销明细为 .xlsx">
                             导出
-                        </Btn>
-                        <Btn onClick={() => void printAssetSheet(token, accountSetId, `/depreciation-ledger/pdf?period=${period.period}`, setToast)} title="打印当期折旧摊销明细表（后端生成 PDF）">
+                        </ExportBtn>
+                        <PrintBtn onClick={() => void printAssetSheet(token, accountSetId, `/depreciation-ledger/pdf?period=${period.period}`, setToast)} title="打印当期折旧摊销明细表（后端生成 PDF）">
                             打印
-                        </Btn>
+                        </PrintBtn>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -1714,9 +1773,9 @@ export function LemonAssetSummary() {
                 }
                 right={
                     <>
-                        <Btn onClick={() => void exportSummary()} title="导出当前分组的资产汇总表为 .xlsx">
+                        <ExportBtn onClick={() => void exportSummary()} title="导出当前分组的资产汇总表为 .xlsx">
                             导出
-                        </Btn>
+                        </ExportBtn>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -1948,9 +2007,9 @@ export function LemonAssetCategory() {
                 right={
                     <>
                         <TextInput className={FORM_CONTROL_W} value={keyword} onChange={setKeyword} placeholder="输入编码或名称" />
-                        <Btn onClick={() => void exportCategories()} title="导出资产类别为 .xlsx">
+                        <ExportBtn onClick={() => void exportCategories()} title="导出资产类别为 .xlsx">
                             导出
-                        </Btn>
+                        </ExportBtn>
                         <span className="cursor-pointer" onClick={() => void data.reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -2007,14 +2066,18 @@ export function LemonAssetCheck() {
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
 
-    // 后端核对接口不按期间过滤，切换期间仍重新取数以保持一致口径。
+    // 与柠檬云一致：核对总账按期间取数（会计科目期初 + 期间内已过账发生额 vs 资产卡片回算）。
     const reload = useCallback(async () => {
         if (!accountSetId) {
             return;
         }
         setLoading(true);
         try {
-            setCheck(await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsCheckGet({ accountSetId }));
+            setCheck(await new FixedAssetsApi(apiConfig(token)).accountsetsAccountSetIdFixedassetsCheckGet({
+                accountSetId,
+                startPeriod: period.period,
+                endPeriod: period.period,
+            }));
             setError(null);
         } catch (e) {
             setCheck([]);
@@ -2022,7 +2085,7 @@ export function LemonAssetCheck() {
         } finally {
             setLoading(false);
         }
-    }, [accountSetId, token]);
+    }, [accountSetId, token, period.period]);
 
     useEffect(() => {
         void reload();
@@ -2032,7 +2095,7 @@ export function LemonAssetCheck() {
         if (!token || !accountSetId) {
             return;
         }
-        const err = await downloadBlob(`${assetBase(accountSetId)}/check/export`, token, "资产核对总账.xlsx");
+        const err = await downloadBlob(`${assetBase(accountSetId)}/check/export?startPeriod=${period.period}&endPeriod=${period.period}`, token, "资产核对总账.xlsx");
         if (err) {
             setToast(err);
         }
@@ -2060,12 +2123,12 @@ export function LemonAssetCheck() {
                     left={<PeriodStepper {...stepper} />}
                     right={
                         <>
-                            <Btn onClick={() => void printAssetSheet(token, accountSetId, `/check/pdf?period=${period.period}`, setToast)} title="打印资产核对总账（后端生成 PDF）">
+                            <PrintBtn onClick={() => void printAssetSheet(token, accountSetId, `/check/pdf?period=${period.period}`, setToast)} title="打印资产核对总账（后端生成 PDF）">
                                 打印
-                            </Btn>
-                            <Btn onClick={() => void exportCheck()} title="导出资产核对总账为 .xlsx">
+                            </PrintBtn>
+                            <ExportBtn onClick={() => void exportCheck()} title="导出资产核对总账为 .xlsx">
                                 导出
-                            </Btn>
+                            </ExportBtn>
                             <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                                 <RefreshIcon />
                             </span>

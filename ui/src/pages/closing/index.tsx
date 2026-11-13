@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Alert, Button, Checkbox, Drawer, Steps, Table, Tabs, Tag } from "antd"
-import type { TableColumnsType } from "antd"
+import type { ReactNode } from "react"
+import { Alert, Button, Checkbox, Drawer, Steps, Tabs, Tag } from "antd"
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
@@ -28,6 +28,7 @@ import {
     getClosingTemplates,
     getPreCloseList,
     previewCarryForward,
+    renumberGaps,
     reopenPeriod,
     transferRetainedEarnings,
     type CarryForwardOptions,
@@ -43,11 +44,10 @@ import {
     type PreCloseListDto,
 } from "@/api/closing"
 import { cn } from "@/lib/utils"
-import { amountToChineseUppercase } from "@/lib/amount-uppercase"
 import { useConfirm } from "@/hooks/useConfirm"
 import { SectionCard } from "@/components/page/section"
 import { ICON_STYLE } from "@/components/page/styles"
-import { AmountCells, AmountHeaderCell } from "@/components/voucher/amount-grid"
+import { VoucherPaper } from "@/components/voucher/voucher-paper"
 import { ClosingTemplatesSheet } from "./templates-sheet"
 import { PrintVoucherSheet } from "./print-sheet"
 
@@ -160,7 +160,15 @@ function CheckIcon({ status }: { status: string }) {
     return <CloseCircleOutlined className="text-[16px]" style={ICON_STYLE.danger} />
 }
 
-function CheckRow({ item, onAction }: { item: ClosingCheckItemDto; onAction?: (actionKey: string) => void }) {
+function CheckRow({
+    item,
+    onAction,
+    extra,
+}: {
+    item: ClosingCheckItemDto
+    onAction?: (actionKey: string) => void
+    extra?: ReactNode
+}) {
     return (
         <div className="flex items-start gap-2.5 px-4 py-2.5">
             <CheckIcon status={item.status} />
@@ -168,61 +176,19 @@ function CheckRow({ item, onAction }: { item: ClosingCheckItemDto; onAction?: (a
                 <div className="text-[13px] font-medium text-(--foreground)">{item.title}</div>
                 <div className="text-[12.5px] text-(--muted-foreground)">{item.message}</div>
             </div>
-            {item.actionKey && onAction && (
-                <Button size="small" type="link" className="pk-link-flush" onClick={() => onAction(item.actionKey as string)}>
-                    {item.actionText ?? "点击查看"}
-                </Button>
-            )}
+            <div className="flex shrink-0 items-center gap-1">
+                {item.actionKey && onAction && (
+                    <Button size="small" type="link" className="pk-link-flush" onClick={() => onAction(item.actionKey as string)}>
+                        {item.actionText ?? "点击查看"}
+                    </Button>
+                )}
+                {extra}
+            </div>
         </div>
     )
 }
 
-type CarryVoucherRow = {
-    key: string
-    lineNumber: number
-    summary: string
-    accountCode: string
-    accountName: string
-    debit: number
-    credit: number
-    balance: number
-}
-
-/** 金额栏宽度：借 / 贷各 11 位，与凭证录入页的分位刻度同宽。 */
-const CARRY_AMOUNT_W = 242
-
-const CARRY_VOUCHER_COLUMNS: TableColumnsType<CarryVoucherRow> = [
-    { title: "序号", dataIndex: "lineNumber", width: 48, align: "center" },
-    { title: "摘要", dataIndex: "summary", width: 120, ellipsis: true },
-    {
-        title: "会计科目",
-        key: "account",
-        render: (_, row) => (
-            <div className="flex flex-col gap-0.5">
-                <span className="truncate text-(--foreground)">
-                    {row.accountCode} {row.accountName}
-                </span>
-                <span className="text-[12px] text-(--muted-foreground)">余额：{money(row.balance)}</span>
-            </div>
-        ),
-    },
-    {
-        title: <AmountHeaderCell title="借方金额" idPrefix="carry-debit" />,
-        key: "debit",
-        width: CARRY_AMOUNT_W,
-        onCell: () => ({ style: { padding: 0 } }),
-        render: (_, row) => <AmountCells value={row.debit} />,
-    },
-    {
-        title: <AmountHeaderCell title="贷方金额" idPrefix="carry-credit" />,
-        key: "credit",
-        width: CARRY_AMOUNT_W,
-        onCell: () => ({ style: { padding: 0 } }),
-        render: (_, row) => <AmountCells value={row.credit} />,
-    },
-]
-
-/** 结转损益预览：按凭证样式（字号 / 日期 / 分位金额栏 / 余额 / 合计 / 制单人）展示。 */
+/** 结转损益预览：走只读凭证纸样，与凭证录入 / 打印共用同一套版式。 */
 function CarryVoucherPreview({
     voucher,
     preparer,
@@ -232,55 +198,25 @@ function CarryVoucherPreview({
     preparer?: string
     loading?: boolean
 }) {
-    const rows: CarryVoucherRow[] = voucher.lines.map((line, index) => ({
-        key: `${voucher.label}-${index}`,
-        lineNumber: index + 1,
-        summary: line.summary,
-        accountCode: line.accountCode,
-        accountName: line.accountName,
-        debit: line.debit,
-        credit: line.credit,
-        balance: line.balance,
-    }))
-
-    const headerCell = "min-w-10 rounded border border-(--border) bg-(--card) px-2 py-0.5 text-center font-semibold text-(--foreground)"
-
     return (
-        <div className="overflow-hidden rounded-lg border border-(--border)">
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-(--border) bg-(--muted) px-3 py-2.5 text-[13px] text-(--muted-foreground)">
-                <span className="flex items-center gap-1.5">
-                    凭证字号
-                    <span className={headerCell}>{voucher.word}</span>
-                    <span className={headerCell}>{voucher.number}</span>号
-                </span>
-                <span className="flex items-center gap-1.5">
-                    日期
-                    <span className={headerCell}>{dateText(voucher.date)}</span>
-                </span>
-            </div>
-            <Table<CarryVoucherRow>
-                size="small"
-                bordered
-                loading={loading}
-                pagination={false}
-                columns={CARRY_VOUCHER_COLUMNS}
-                dataSource={rows}
-                summary={() => (
-                    <Table.Summary.Row>
-                        <Table.Summary.Cell index={0} colSpan={3} className="px-2 py-2 font-medium">
-                            合计：{amountToChineseUppercase(voucher.totalDebit)}
-                        </Table.Summary.Cell>
-                        <Table.Summary.Cell index={3} className="pk-cell-flush">
-                            <AmountCells value={voucher.totalDebit} />
-                        </Table.Summary.Cell>
-                        <Table.Summary.Cell index={4} className="pk-cell-flush">
-                            <AmountCells value={voucher.totalCredit} />
-                        </Table.Summary.Cell>
-                    </Table.Summary.Row>
-                )}
-            />
-            <div className="px-3 py-2 text-[12.5px] text-(--muted-foreground)">制单人：{preparer || "—"}</div>
-        </div>
+        <VoucherPaper
+            word={voucher.word}
+            number={voucher.number}
+            date={dateText(voucher.date)}
+            loading={loading}
+            preparer={preparer}
+            totalDebit={voucher.totalDebit}
+            totalCredit={voucher.totalCredit}
+            lines={voucher.lines.map((line, index) => ({
+                key: `${voucher.label}-${index}`,
+                summary: line.summary,
+                accountCode: line.accountCode,
+                accountName: line.accountName,
+                debit: line.debit,
+                credit: line.credit,
+                balance: line.balance,
+            }))}
+        />
     )
 }
 
@@ -531,9 +467,35 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
         }
     }
 
+    // 一键整理断号：只改凭证号、不动金额；确认后调用后端重排并刷新检查结果。
+    async function doRenumber() {
+        if (busy) return
+        if (!(await confirm(`确定整理 ${period.year} 年 ${period.month} 月的断号凭证吗？仅调整凭证号，不影响金额与分录。`))) {
+            return
+        }
+        setBusy("renumber")
+        setError(null)
+        setNotice(null)
+        try {
+            const result = await renumberGaps(accountSetId, period.year, period.month, token)
+            setNotice(result.message)
+            await loadChecks()
+            onChanged()
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "整理断号失败，请重试。")
+        } finally {
+            setBusy(null)
+        }
+    }
+
     function goAction(actionKey: string) {
         if (actionKey === "funds") navigate(`/${accountSetId}/funds/cash-journal`)
         else if (actionKey === "depreciation") navigate(`/${accountSetId}/assets/depreciation`)
+        else if (actionKey === "numbering") {
+            const prefix = `${period.year}-${String(period.month).padStart(2, "0")}`
+            const lastDay = new Date(period.year, period.month, 0).getDate()
+            navigate(`/${accountSetId}/vouchers/manage?periodFrom=${prefix}-01&periodTo=${prefix}-${lastDay}`)
+        }
     }
 
     // 撤销会连同其后已结转期间一起回退；最新一次结转若是空期间则没有可删凭证（自动补标记），不提供入口。
@@ -686,13 +648,15 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                         <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium text-(--foreground)">
                                             {item.title}
                                             {item.generated && <Tag color="green">已生成</Tag>}
+                                            {item.source === "check" && <Tag color="green">已入账</Tag>}
                                             {item.source === "salary" && <Tag color="blue">工资模块</Tag>}
+                                            {item.source === "template" && <Tag color="blue">模板</Tag>}
                                             {item.source === "unsupported" && <Tag>需模板/手工</Tag>}
                                         </div>
                                         <div className="mt-0.5 text-[12px] text-(--muted-foreground)">{item.hint}</div>
                                     </div>
                                     <div className="w-32 text-right text-[13px] font-semibold text-(--foreground)">
-                                        {item.amount ? `¥ ${money(item.amount)}` : "—"}
+                                        ¥ {money(item.amount)}
                                     </div>
                                     <div className="w-28 text-right">
                                         {item.source === "salary" ? (
@@ -706,7 +670,7 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                                     icon={<PrinterOutlined />}
                                                     onClick={() => setPrintVoucherId(item.voucherId as string)}
                                                 >
-                                                    {item.voucherLabel}
+                                                    {item.source === "check" ? "查看凭证" : item.voucherLabel}
                                                 </Button>
                                             ) : (
                                                 <span className="text-[12px] text-(--muted-foreground)">{item.voucherLabel ?? "已生成"}</span>
@@ -723,7 +687,11 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                             </Button>
                                         ) : (
                                             <Button size="small" disabled>
-                                                {item.source === "unsupported" ? "需手工处理" : "暂无金额"}
+                                                {item.source === "unsupported"
+                                                    ? "需手工处理"
+                                                    : item.source === "check"
+                                                      ? "本期无发生额"
+                                                      : "暂无金额"}
                                             </Button>
                                         )}
                                     </div>
@@ -876,7 +844,25 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                         <SectionCard title={<span className="text-[13.5px] font-semibold text-(--foreground)">影响结账</span>}>
                             <div className="-mx-4 divide-y divide-(--border)">
                                 {blockingItems.map((item) => (
-                                    <CheckRow key={item.key} item={item} onAction={goAction} />
+                                    <CheckRow
+                                        key={item.key}
+                                        item={item}
+                                        onAction={goAction}
+                                        extra={
+                                            item.key === "numbering" && item.status === "warn" ? (
+                                                <Button
+                                                    size="small"
+                                                    type="link"
+                                                    className="pk-link-flush"
+                                                    loading={busy === "renumber"}
+                                                    disabled={!!busy || locked}
+                                                    onClick={() => void doRenumber()}
+                                                >
+                                                    一键整理断号
+                                                </Button>
+                                            ) : undefined
+                                        }
+                                    />
                                 ))}
                                 {checks && blockingItems.length === 0 && (
                                     <div className="flex items-center gap-2 px-4 py-4 text-[13px] text-(--success)">

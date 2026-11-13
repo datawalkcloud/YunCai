@@ -196,7 +196,10 @@ namespace KuaiJi.Modules.AccountSets.Api
                     request.TaxpayerNumber ?? accountSet.TaxpayerNumber,
                     request.VatRate ?? accountSet.VatRate,
                     request.IncomeTaxRate ?? accountSet.IncomeTaxRate,
-                    request.IsExportEnterprise ?? accountSet.IsExportEnterprise);
+                    request.IsExportEnterprise ?? accountSet.IsExportEnterprise,
+                    request.CityBuildTaxRate ?? accountSet.CityBuildTaxRate,
+                    request.EducationSurchargeRate ?? accountSet.EducationSurchargeRate,
+                    request.LocalEducationSurchargeRate ?? accountSet.LocalEducationSurchargeRate);
                 accountSet.UpdateTaxLoginInfo(
                     request.TaxRegion ?? accountSet.TaxRegion,
                     request.TaxLoginType ?? accountSet.TaxLoginType,
@@ -344,13 +347,13 @@ namespace KuaiJi.Modules.AccountSets.Api
                 return NotFound();
             }
 
-            // 待结期间内的凭证须全部过账，避免草稿/待审凭证被锁进已结期间。
+            // 待结期间内的凭证须全部过账，避免暂存/待审凭证被锁进已结期间。
             var vouchers = await _voucherRepository.GetAllAsync(id, cancellationToken);
             var pending = vouchers.Count(v =>
                 v.Date.Year == request.Year && v.Date.Month == request.Month && v.Status != VoucherStatus.Posted);
             if (pending > 0)
             {
-                return BadRequest(new { message = $"{request.Year:D4}-{request.Month:D2} 期间尚有 {pending} 张凭证未过账，请先处理后再操作。" });
+                return BadRequest(new { message = $"{request.Year:D4}-{request.Month:D2} 期间尚有 {pending} 张暂存凭证，请先处理后再操作。" });
             }
 
             try

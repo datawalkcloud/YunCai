@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { IncomeDimensionAmountDto } from './IncomeDimensionAmountDto';
+import {
+    IncomeDimensionAmountDtoFromJSON,
+    IncomeDimensionAmountDtoFromJSONTyped,
+    IncomeDimensionAmountDtoToJSON,
+    IncomeDimensionAmountDtoToJSONTyped,
+} from './IncomeDimensionAmountDto';
+
 /**
  * 
  * @export
@@ -24,13 +32,7 @@ export interface IncomeProjectRowDto {
      * @type {string}
      * @memberof IncomeProjectRowDto
      */
-    id?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof IncomeProjectRowDto
-     */
-    name?: string;
+    item?: string;
     /**
      * 
      * @type {number}
@@ -39,16 +41,16 @@ export interface IncomeProjectRowDto {
     line?: number;
     /**
      * 
-     * @type {number}
+     * @type {Array<IncomeDimensionAmountDto>}
      * @memberof IncomeProjectRowDto
      */
-    current?: number;
+    amounts?: Array<IncomeDimensionAmountDto>;
     /**
      * 
-     * @type {number}
+     * @type {IncomeDimensionAmountDto}
      * @memberof IncomeProjectRowDto
      */
-    yearToDate?: number;
+    total?: IncomeDimensionAmountDto;
 }
 
 /**
@@ -68,11 +70,10 @@ export function IncomeProjectRowDtoFromJSONTyped(json: any, ignoreDiscriminator:
     }
     return {
         
-        'id': json['id'] == null ? undefined : json['id'],
-        'name': json['name'] == null ? undefined : json['name'],
+        'item': json['item'] == null ? undefined : json['item'],
         'line': json['line'] == null ? undefined : json['line'],
-        'current': json['current'] == null ? undefined : json['current'],
-        'yearToDate': json['yearToDate'] == null ? undefined : json['yearToDate'],
+        'amounts': json['amounts'] == null ? undefined : ((json['amounts'] as Array<any>).map(IncomeDimensionAmountDtoFromJSON)),
+        'total': json['total'] == null ? undefined : IncomeDimensionAmountDtoFromJSON(json['total']),
     };
 }
 
@@ -87,11 +88,10 @@ export function IncomeProjectRowDtoToJSONTyped(value?: IncomeProjectRowDto | nul
 
     return {
         
-        'id': value['id'],
-        'name': value['name'],
+        'item': value['item'],
         'line': value['line'],
-        'current': value['current'],
-        'yearToDate': value['yearToDate'],
+        'amounts': value['amounts'] == null ? undefined : ((value['amounts'] as Array<any>).map(IncomeDimensionAmountDtoToJSON)),
+        'total': IncomeDimensionAmountDtoToJSON(value['total']),
     };
 }
 

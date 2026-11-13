@@ -33,6 +33,7 @@ namespace KuaiJi.Modules.Reports.Application
             var dto = await _balanceSheetService.GetAsync(accountSetId, year, month, cancellationToken);
             var template = BalanceSheetTemplates.Resolve(accountSet.Standard);
             var (left, right) = BalanceSheetExportLayout.Build(template, dto.Lines);
+            var balance = BalanceSheetExportLayout.Balance(left, right);
 
             var company = string.IsNullOrWhiteSpace(accountSet.CompanyName)
                 ? accountSet.Name ?? "账套"
@@ -43,7 +44,8 @@ namespace KuaiJi.Modules.Reports.Application
                 periodEnd.ToString("yyyy-MM-dd"),
                 dto.TemplateTitle,
                 left,
-                right));
+                right,
+                balance));
 
             return (content, $"资产负债表_{dto.Year:D4}年{dto.Month:D2}月_{Sanitize(company)}_{DateTime.Now:yyyyMMdd}.xls");
         }

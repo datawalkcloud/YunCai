@@ -17,7 +17,7 @@ import {
     type AccountingPeriod,
 } from "@/accountSets/useCurrentAccountSet"
 
-/** 凭证状态：草稿 1 / 已过账 3（与后端 VoucherStatus 对齐；保存即入账，没有审核态）。 */
+/** 凭证状态：暂存 1 / 正常 3（与后端 VoucherStatus 对齐；保存即入账，没有审核态）。 */
 export const V_STATUS = {
     draft: 1,
     posted: 3,

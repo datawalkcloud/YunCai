@@ -144,6 +144,30 @@ export interface AccountsetsAccountSetIdLedgersKindExportGetRequest {
     accountId?: string;
 }
 
+export interface AccountsetsAccountSetIdLedgersKindPdfGetRequest {
+    accountSetId: string;
+    kind: string;
+    startDate?: Date;
+    endDate?: Date;
+    accountFrom?: string;
+    accountTo?: string;
+    maxLevel?: number;
+    minLevel?: number;
+    summaryKeyword?: string;
+    sortBy?: number;
+    showAssist?: boolean;
+    showCounterAccount?: boolean;
+    showOnlyLeaf?: boolean;
+    hideZeroBalance?: boolean;
+    hideNoActivity?: boolean;
+    hideTotalsNoActivity?: boolean;
+    includeIdleAccounts?: boolean;
+    assistType?: number;
+    secondaryAssistType?: number;
+    assistItemId?: string;
+    accountId?: string;
+}
+
 export interface AccountsetsAccountSetIdLedgersMultiColumnGetRequest {
     accountSetId: string;
     accountId?: string;
@@ -474,6 +498,67 @@ export interface LedgersApiInterface {
     /**
      */
     accountsetsAccountSetIdLedgersKindExportGet(requestParameters: AccountsetsAccountSetIdLedgersKindExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdLedgersKindPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} kind 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [accountFrom] 
+     * @param {string} [accountTo] 
+     * @param {number} [maxLevel] 
+     * @param {number} [minLevel] 
+     * @param {string} [summaryKeyword] 
+     * @param {number} [sortBy] 
+     * @param {boolean} [showAssist] 
+     * @param {boolean} [showCounterAccount] 
+     * @param {boolean} [showOnlyLeaf] 
+     * @param {boolean} [hideZeroBalance] 
+     * @param {boolean} [hideNoActivity] 
+     * @param {boolean} [hideTotalsNoActivity] 
+     * @param {boolean} [includeIdleAccounts] 
+     * @param {number} [assistType] 
+     * @param {number} [secondaryAssistType] 
+     * @param {string} [assistItemId] 
+     * @param {string} [accountId] 
+     * @throws {RequiredError}
+     * @memberof LedgersApiInterface
+     */
+    accountsetsAccountSetIdLedgersKindPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdLedgersKindPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} kind 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [accountFrom] 
+     * @param {string} [accountTo] 
+     * @param {number} [maxLevel] 
+     * @param {number} [minLevel] 
+     * @param {string} [summaryKeyword] 
+     * @param {number} [sortBy] 
+     * @param {boolean} [showAssist] 
+     * @param {boolean} [showCounterAccount] 
+     * @param {boolean} [showOnlyLeaf] 
+     * @param {boolean} [hideZeroBalance] 
+     * @param {boolean} [hideNoActivity] 
+     * @param {boolean} [hideTotalsNoActivity] 
+     * @param {boolean} [includeIdleAccounts] 
+     * @param {number} [assistType] 
+     * @param {number} [secondaryAssistType] 
+     * @param {string} [assistItemId] 
+     * @param {string} [accountId] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LedgersApiInterface
+     */
+    accountsetsAccountSetIdLedgersKindPdfGetRaw(requestParameters: AccountsetsAccountSetIdLedgersKindPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdLedgersKindPdfGet(requestParameters: AccountsetsAccountSetIdLedgersKindPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdLedgersMultiColumnGet without sending the request
@@ -1074,79 +1159,79 @@ export class LedgersApi extends runtime.BaseAPI implements LedgersApiInterface {
         const queryParameters: any = {};
 
         if (requestParameters['startDate'] != null) {
-            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+            queryParameters['StartDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
         }
 
         if (requestParameters['endDate'] != null) {
-            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+            queryParameters['EndDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
         }
 
         if (requestParameters['accountFrom'] != null) {
-            queryParameters['accountFrom'] = requestParameters['accountFrom'];
+            queryParameters['AccountFrom'] = requestParameters['accountFrom'];
         }
 
         if (requestParameters['accountTo'] != null) {
-            queryParameters['accountTo'] = requestParameters['accountTo'];
+            queryParameters['AccountTo'] = requestParameters['accountTo'];
         }
 
         if (requestParameters['maxLevel'] != null) {
-            queryParameters['maxLevel'] = requestParameters['maxLevel'];
+            queryParameters['MaxLevel'] = requestParameters['maxLevel'];
         }
 
         if (requestParameters['minLevel'] != null) {
-            queryParameters['minLevel'] = requestParameters['minLevel'];
+            queryParameters['MinLevel'] = requestParameters['minLevel'];
         }
 
         if (requestParameters['summaryKeyword'] != null) {
-            queryParameters['summaryKeyword'] = requestParameters['summaryKeyword'];
+            queryParameters['SummaryKeyword'] = requestParameters['summaryKeyword'];
         }
 
         if (requestParameters['sortBy'] != null) {
-            queryParameters['sortBy'] = requestParameters['sortBy'];
+            queryParameters['SortBy'] = requestParameters['sortBy'];
         }
 
         if (requestParameters['showAssist'] != null) {
-            queryParameters['showAssist'] = requestParameters['showAssist'];
+            queryParameters['ShowAssist'] = requestParameters['showAssist'];
         }
 
         if (requestParameters['showCounterAccount'] != null) {
-            queryParameters['showCounterAccount'] = requestParameters['showCounterAccount'];
+            queryParameters['ShowCounterAccount'] = requestParameters['showCounterAccount'];
         }
 
         if (requestParameters['showOnlyLeaf'] != null) {
-            queryParameters['showOnlyLeaf'] = requestParameters['showOnlyLeaf'];
+            queryParameters['ShowOnlyLeaf'] = requestParameters['showOnlyLeaf'];
         }
 
         if (requestParameters['hideZeroBalance'] != null) {
-            queryParameters['hideZeroBalance'] = requestParameters['hideZeroBalance'];
+            queryParameters['HideZeroBalance'] = requestParameters['hideZeroBalance'];
         }
 
         if (requestParameters['hideNoActivity'] != null) {
-            queryParameters['hideNoActivity'] = requestParameters['hideNoActivity'];
+            queryParameters['HideNoActivity'] = requestParameters['hideNoActivity'];
         }
 
         if (requestParameters['hideTotalsNoActivity'] != null) {
-            queryParameters['hideTotalsNoActivity'] = requestParameters['hideTotalsNoActivity'];
+            queryParameters['HideTotalsNoActivity'] = requestParameters['hideTotalsNoActivity'];
         }
 
         if (requestParameters['includeIdleAccounts'] != null) {
-            queryParameters['includeIdleAccounts'] = requestParameters['includeIdleAccounts'];
+            queryParameters['IncludeIdleAccounts'] = requestParameters['includeIdleAccounts'];
         }
 
         if (requestParameters['assistType'] != null) {
-            queryParameters['assistType'] = requestParameters['assistType'];
+            queryParameters['AssistType'] = requestParameters['assistType'];
         }
 
         if (requestParameters['secondaryAssistType'] != null) {
-            queryParameters['secondaryAssistType'] = requestParameters['secondaryAssistType'];
+            queryParameters['SecondaryAssistType'] = requestParameters['secondaryAssistType'];
         }
 
         if (requestParameters['assistItemId'] != null) {
-            queryParameters['assistItemId'] = requestParameters['assistItemId'];
+            queryParameters['AssistItemId'] = requestParameters['assistItemId'];
         }
 
         if (requestParameters['accountId'] != null) {
-            queryParameters['accountId'] = requestParameters['accountId'];
+            queryParameters['AccountId'] = requestParameters['accountId'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -1177,6 +1262,132 @@ export class LedgersApi extends runtime.BaseAPI implements LedgersApiInterface {
      */
     async accountsetsAccountSetIdLedgersKindExportGet(requestParameters: AccountsetsAccountSetIdLedgersKindExportGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.accountsetsAccountSetIdLedgersKindExportGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdLedgersKindPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdLedgersKindPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdLedgersKindPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdLedgersKindPdfGet().'
+            );
+        }
+
+        if (requestParameters['kind'] == null) {
+            throw new runtime.RequiredError(
+                'kind',
+                'Required parameter "kind" was null or undefined when calling accountsetsAccountSetIdLedgersKindPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['StartDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['EndDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['accountFrom'] != null) {
+            queryParameters['AccountFrom'] = requestParameters['accountFrom'];
+        }
+
+        if (requestParameters['accountTo'] != null) {
+            queryParameters['AccountTo'] = requestParameters['accountTo'];
+        }
+
+        if (requestParameters['maxLevel'] != null) {
+            queryParameters['MaxLevel'] = requestParameters['maxLevel'];
+        }
+
+        if (requestParameters['minLevel'] != null) {
+            queryParameters['MinLevel'] = requestParameters['minLevel'];
+        }
+
+        if (requestParameters['summaryKeyword'] != null) {
+            queryParameters['SummaryKeyword'] = requestParameters['summaryKeyword'];
+        }
+
+        if (requestParameters['sortBy'] != null) {
+            queryParameters['SortBy'] = requestParameters['sortBy'];
+        }
+
+        if (requestParameters['showAssist'] != null) {
+            queryParameters['ShowAssist'] = requestParameters['showAssist'];
+        }
+
+        if (requestParameters['showCounterAccount'] != null) {
+            queryParameters['ShowCounterAccount'] = requestParameters['showCounterAccount'];
+        }
+
+        if (requestParameters['showOnlyLeaf'] != null) {
+            queryParameters['ShowOnlyLeaf'] = requestParameters['showOnlyLeaf'];
+        }
+
+        if (requestParameters['hideZeroBalance'] != null) {
+            queryParameters['HideZeroBalance'] = requestParameters['hideZeroBalance'];
+        }
+
+        if (requestParameters['hideNoActivity'] != null) {
+            queryParameters['HideNoActivity'] = requestParameters['hideNoActivity'];
+        }
+
+        if (requestParameters['hideTotalsNoActivity'] != null) {
+            queryParameters['HideTotalsNoActivity'] = requestParameters['hideTotalsNoActivity'];
+        }
+
+        if (requestParameters['includeIdleAccounts'] != null) {
+            queryParameters['IncludeIdleAccounts'] = requestParameters['includeIdleAccounts'];
+        }
+
+        if (requestParameters['assistType'] != null) {
+            queryParameters['AssistType'] = requestParameters['assistType'];
+        }
+
+        if (requestParameters['secondaryAssistType'] != null) {
+            queryParameters['SecondaryAssistType'] = requestParameters['secondaryAssistType'];
+        }
+
+        if (requestParameters['assistItemId'] != null) {
+            queryParameters['AssistItemId'] = requestParameters['assistItemId'];
+        }
+
+        if (requestParameters['accountId'] != null) {
+            queryParameters['AccountId'] = requestParameters['accountId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Ledgers/{kind}/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"kind"}}`, encodeURIComponent(String(requestParameters['kind'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdLedgersKindPdfGetRaw(requestParameters: AccountsetsAccountSetIdLedgersKindPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdLedgersKindPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdLedgersKindPdfGet(requestParameters: AccountsetsAccountSetIdLedgersKindPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdLedgersKindPdfGetRaw(requestParameters, initOverrides);
     }
 
     /**

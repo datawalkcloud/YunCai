@@ -80,6 +80,14 @@ public sealed class BalanceSheetServiceTests : IDisposable
         Assert.Equal(9, BalanceSheetService.MapLine("410101", AccountCategory.Cost));
     }
 
+    [Fact]
+    public void MapLine_ResearchExpenditure_IsDevelopmentExpenditureRow()
+    {
+        // 研发支出不是在产品：单列「开发支出」，不并入存货
+        Assert.Equal(25, BalanceSheetService.MapLine("5301", AccountCategory.Cost));
+        Assert.Equal(25, BalanceSheetService.MapLine("5301001", AccountCategory.Cost));
+    }
+
     [Theory]
     [InlineData("2001", 32)] // 短期借款
     [InlineData("2202", 35)] // 应付账款
@@ -122,6 +130,7 @@ public sealed class BalanceSheetServiceTests : IDisposable
     [InlineData("4001", AccountCategory.Equity, 48, -1)]   // 实收资本
     [InlineData("4103", AccountCategory.Equity, 51, -1)]   // 本年利润 → 未分配利润
     [InlineData("6301", AccountCategory.ProfitAndLoss, 51, -1)]
+    [InlineData("5301", AccountCategory.Cost, 26, 1)]      // 研发支出 → 开发支出
     public void MapSmallBusinessLines_MapsToSmallBusinessRows(
         string code, AccountCategory category, int expectedLine, int expectedSign)
     {
@@ -138,6 +147,15 @@ public sealed class BalanceSheetServiceTests : IDisposable
 
         Assert.Contains((9, 1m), mapped);
         Assert.Contains((10, 1m), mapped);
+    }
+
+    [Fact]
+    public void MapSmallBusinessLines_DevelopmentExpenditureNotCountedAsInventory()
+    {
+        // 研发支出属开发支出，只落行 26，不并入存货 9 / 在产品 11
+        var mapped = BalanceSheetService.MapSmallBusinessLines("5301", AccountCategory.Cost);
+
+        Assert.Equal([(26, 1m)], mapped);
     }
 
     [Fact]

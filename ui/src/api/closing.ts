@@ -55,7 +55,7 @@ export interface PreCloseItemDto {
   title: string;
   amount: number;
   available: boolean;
-  /** ledger（本模块生成）/ salary（工资模块）/ unsupported。 */
+  /** ledger（本模块生成）/ check（已入账回显）/ salary（工资模块）/ template（自定义结转模板）/ unsupported。 */
   source: string;
   hint: string;
   generated: boolean;
@@ -305,6 +305,25 @@ export function cancelCarry(
   token?: string | null,
 ): Promise<{ message: string }> {
   return request(closingPath(accountSetId, "/cancel-carry"), token, {
+    method: "POST",
+    body: JSON.stringify({ year, month }),
+  });
+}
+
+export interface RenumberGapsResultDto {
+  message: string;
+  /** 本次实际调整凭证号的凭证张数。 */
+  changed: number;
+}
+
+/** 整理断号：把本期存在断号的凭证字重新连续编号（仅改凭证号）。 */
+export function renumberGaps(
+  accountSetId: string,
+  year: number,
+  month: number,
+  token?: string | null,
+): Promise<RenumberGapsResultDto> {
+  return request(closingPath(accountSetId, "/renumber"), token, {
     method: "POST",
     body: JSON.stringify({ year, month }),
   });

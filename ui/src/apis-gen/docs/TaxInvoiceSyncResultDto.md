@@ -9,6 +9,7 @@ Name | Type
 `fetched` | number
 `imported` | number
 `skipped` | number
+`summary` | [Array&lt;TaxInvoiceSyncSummaryDto&gt;](TaxInvoiceSyncSummaryDto.md)
 `needLogin` | boolean
 `message` | string
 `diagnostics` | Array&lt;string&gt;
@@ -25,6 +26,7 @@ const example = {
   "fetched": null,
   "imported": null,
   "skipped": null,
+  "summary": null,
   "needLogin": null,
   "message": null,
   "diagnostics": null,

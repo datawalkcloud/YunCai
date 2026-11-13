@@ -27,7 +27,9 @@ import type { ButtonProps, TableColumnsType } from "antd";
 import {
     CalendarOutlined,
     DownOutlined,
+    DownloadOutlined,
     LeftOutlined,
+    PrinterOutlined,
     ReloadOutlined,
     RightOutlined,
     SearchOutlined,
@@ -58,7 +60,11 @@ type BtnProps = Omit<ButtonProps, "type" | "variant" | "children" | "onClick"> &
     ref?: Ref<HTMLButtonElement>;
 };
 
-/** 页面按钮：主色实底 / 白底描边 / 链接 / 置灰。可选右侧 ▾ 分隔。 */
+/**
+ * 页面按钮：主色实底 / 白底描边 / 链接 / 置灰。
+ * `dropdown` 只在按钮**确实**被 <Dropdown> 包裹、点击会弹出菜单时才传，用来提示「还有选项」；
+ * 直接执行动作的按钮不要传，否则会出现一个没有菜单的向下箭头，还会被误认成下载图标。
+ */
 export function Btn({
     variant = "plain",
     children,
@@ -84,6 +90,18 @@ export function Btn({
             {dropdown && <DownOutlined className="ml-1 opacity-70" />}
         </Button>
     );
+}
+
+/**
+ * 导出 / 打印专用按钮：图标固定为语义图标（下载 / 打印机），不再用向下箭头冒充功能图标。
+ * 其余属性与 Btn 一致，真有下拉菜单时仍可叠加 `dropdown`（功能图标在左、菜单箭头在右）。
+ */
+export function ExportBtn(props: Omit<BtnProps, "icon">) {
+    return <Btn {...props} icon={<DownloadOutlined />} />;
+}
+
+export function PrintBtn(props: Omit<BtnProps, "icon">) {
+    return <Btn {...props} icon={<PrinterOutlined />} />;
 }
 
 /** 主色分裂按钮（如「生成凭证 ▾」）。 */
@@ -195,7 +213,7 @@ export function PeriodStepper({
                 type="button"
                 aria-label="上一期"
                 style={{ height: h, width: h }}
-                className="flex items-center justify-center bg-(--brand-fill) text-white disabled:opacity-60"
+                className="flex items-center justify-center bg-(--brand-fill) text-white disabled:cursor-not-allowed disabled:text-white/45"
                 disabled={!onPrev}
                 onClick={onPrev}
             >
@@ -246,7 +264,7 @@ export function PeriodStepper({
                 type="button"
                 aria-label="下一期"
                 style={{ height: h, width: h }}
-                className="flex items-center justify-center bg-(--brand-fill) text-white disabled:opacity-60"
+                className="flex items-center justify-center bg-(--brand-fill) text-white disabled:cursor-not-allowed disabled:text-white/45"
                 disabled={!onNext}
                 onClick={onNext}
             >

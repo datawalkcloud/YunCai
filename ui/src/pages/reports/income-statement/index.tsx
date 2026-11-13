@@ -125,8 +125,52 @@ function fmt(value: number, force = false): string {
     })
 }
 
-/** 依据后端行次金额，构建完整的利润表行序列（行次 1-32，与柠檬云企业会计准则 2007 版式一致）。 */
-function buildRows(map: AmountMap): { rows: StatementLine[]; net: { current: number; yearToDate: number } } {
+/**
+ * 小企业会计准则（会小企02表）利润表行序列：仅营业收入、营业成本、税金及附加、三项费用、
+ * 投资收益与营业外收支、所得税、净利润；不含「其中」子项、资产减值损失、公允价值变动收益、
+ * 其他综合收益与每股收益。营业利润 = 营业收入 − 成本 − 税金及附加 − 销售费用 − 管理费用 − 财务费用 + 投资收益；
+ * 行次沿用小企业会计准则编号（1-13），与柠檬云小企业准则版式一致。
+ */
+function buildSmallBusinessRows(map: AmountMap): StatementLine[] {
+    const get = (line: number) => amountOf(map, line)
+    const rev = get(1)
+    const cost = get(2)
+    const tax = get(3)
+    const sell = get(4)
+    const admin = get(5)
+    const fin = get(6)
+    const invest = get(9)
+    const opCur = rev.current - cost.current - tax.current - sell.current - admin.current - fin.current + invest.current
+    const opYtd = rev.yearToDate - cost.yearToDate - tax.yearToDate - sell.yearToDate - admin.yearToDate - fin.yearToDate + invest.yearToDate
+
+    const nonOpInc = get(12)
+    const nonOpExp = get(14)
+    const profitCur = opCur + nonOpInc.current - nonOpExp.current
+    const profitYtd = opYtd + nonOpInc.yearToDate - nonOpExp.yearToDate
+
+    const taxExpense = get(17)
+    const netCur = profitCur - taxExpense.current
+    const netYtd = profitYtd - taxExpense.yearToDate
+
+    return [
+        { label: "一、营业收入", line: 1, ...rev, kind: "item" },
+        { label: "减：营业成本", line: 2, ...cost, kind: "item", indent: 1 },
+        { label: "税金及附加", line: 3, ...tax, kind: "item", indent: 1 },
+        { label: "销售费用", line: 4, ...sell, kind: "item", indent: 1 },
+        { label: "管理费用", line: 5, ...admin, kind: "item", indent: 1 },
+        { label: "财务费用", line: 6, ...fin, kind: "item", indent: 1 },
+        { label: "加：投资收益（损失以“-”号填列）", line: 7, ...invest, kind: "item", indent: 1 },
+        { label: "二、营业利润（亏损以“－”号填列）", line: 8, current: opCur, yearToDate: opYtd, kind: "total" },
+        { label: "加：营业外收入", line: 9, ...nonOpInc, kind: "item", indent: 1 },
+        { label: "减：营业外支出", line: 10, ...nonOpExp, kind: "item", indent: 1 },
+        { label: "三、利润总额（亏损总额以“－”号填列）", line: 11, current: profitCur, yearToDate: profitYtd, kind: "total" },
+        { label: "减：所得税费用", line: 12, ...taxExpense, kind: "item", indent: 1 },
+        { label: "四、净利润（净亏损以“－”号填列）", line: 13, current: netCur, yearToDate: netYtd, kind: "total" },
+    ]
+}
+
+/** 企业会计准则（会企02表）利润表行序列：1-32 行，含「其中」子项、其他综合收益与每股收益。 */
+function buildEnterpriseRows(map: AmountMap): StatementLine[] {
     const operating = toItems(OPERATING_ITEMS, map)
     const operatingProfit = {
         current: netSum(OPERATING_SUM_ITEMS, map, "current"),
@@ -149,7 +193,7 @@ function buildRows(map: AmountMap): { rows: StatementLine[]; net: { current: num
         yearToDate: net.yearToDate + otherComprehensiveYtd,
     }
 
-    const rows: StatementLine[] = [
+    return [
         ...operating,
         { label: "二、营业利润（亏损以“－”号填列）", line: 11, ...operatingProfit, kind: "total" },
         ...adjust,
@@ -160,7 +204,15 @@ function buildRows(map: AmountMap): { rows: StatementLine[]; net: { current: num
         { label: "六、综合收益总额", line: 29, ...comprehensive, kind: "total" },
         ...toItems(EPS_ITEMS, map),
     ]
-    return { rows, net }
+}
+
+/**
+ * 依据账套会计标准选择利润表版式：小企业会计准则（枚举值 2）→ 简洁版（会小企02表）；其余 → 完整会企02表。
+ * 账套列表异步加载，标准未就绪时返回空表，避免小准则账套首屏先闪现 32 行会企02表版式。
+ */
+function buildRows(map: AmountMap, standard?: number): StatementLine[] {
+    if (standard == null) return []
+    return standard === 2 ? buildSmallBusinessRows(map) : buildEnterpriseRows(map)
 }
 
 /**
@@ -260,8 +312,8 @@ export default function IncomeStatementPage() {
                 map.set(l.line, { current: l.current ?? 0, yearToDate: l.yearToDate ?? 0 })
             }
         }
-        return buildRows(map).rows
-    }, [lines])
+        return buildRows(map, currentSet?.standard)
+    }, [lines, currentSet?.standard])
 
     /** 导出当前期间的利润表（后端生成 .xlsx）。 */
     const exportSheet = useCallback(async () => {
@@ -331,7 +383,7 @@ export default function IncomeStatementPage() {
                     meta={
                         <>
                             <span>编制单位：{currentSet?.companyName ?? "——"}</span>
-                            <span>会企02表</span>
+                            <span>{currentSet?.standard == null ? "——" : currentSet.standard === 2 ? "会小企02表" : "会企02表"}</span>
                             <span>{periodText}</span>
                             <span>单位：元</span>
                         </>

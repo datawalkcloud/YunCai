@@ -187,7 +187,7 @@ function SubsidiaryLedger({ initial }: { initial: LedgerConditions }) {
                 columns={columns}
                 data={rows}
                 loading={query.loading}
-                emptyText={accountSetId ? "该期间暂无明细账数据，请确认凭证已过账。" : "请先选择账套。"}
+                emptyText={accountSetId ? "该期间暂无明细账数据，请确认凭证为正常状态。" : "请先选择账套。"}
                 rowKey={(row) => row.rowKey}
                 rowClassName={(row) => kindRowClass(row.kind)}
                 onRowClick={(row) => {

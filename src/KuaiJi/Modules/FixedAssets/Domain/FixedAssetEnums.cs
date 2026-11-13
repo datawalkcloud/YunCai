@@ -44,5 +44,8 @@ namespace KuaiJi.Modules.FixedAssets.Domain
 
         /// <summary>每月计提折旧。</summary>
         Depreciation = 4,
+
+        /// <summary>新增资产（建卡时自动生成，仅用于变更记录展示）。</summary>
+        Add = 5,
     }
 }

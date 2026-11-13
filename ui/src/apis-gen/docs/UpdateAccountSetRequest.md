@@ -15,6 +15,9 @@ Name | Type
 `taxpayerNumber` | string
 `vatRate` | number
 `incomeTaxRate` | number
+`cityBuildTaxRate` | number
+`educationSurchargeRate` | number
+`localEducationSurchargeRate` | number
 `voucherWords` | string
 `taxRegion` | string
 `taxLoginType` | string
@@ -49,6 +52,9 @@ const example = {
   "taxpayerNumber": null,
   "vatRate": null,
   "incomeTaxRate": null,
+  "cityBuildTaxRate": null,
+  "educationSurchargeRate": null,
+  "localEducationSurchargeRate": null,
   "voucherWords": null,
   "taxRegion": null,
   "taxLoginType": null,

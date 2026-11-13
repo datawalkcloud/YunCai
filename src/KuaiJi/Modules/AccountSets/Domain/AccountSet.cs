@@ -94,6 +94,15 @@ namespace KuaiJi.Modules.AccountSets.Domain
         /// <summary>企业所得税税率（百分比数值，如 25 表示 25%）。</summary>
         public decimal IncomeTaxRate { get; private set; }
 
+        /// <summary>城市维护建设税税率（百分比数值）：市区 7%、县城与镇 5%、其他 1%。</summary>
+        public decimal CityBuildTaxRate { get; private set; } = 7m;
+
+        /// <summary>教育费附加率（百分比数值），法定 3%。</summary>
+        public decimal EducationSurchargeRate { get; private set; } = 3m;
+
+        /// <summary>地方教育附加率（百分比数值），法定 2%。</summary>
+        public decimal LocalEducationSurchargeRate { get; private set; } = 2m;
+
         /// <summary>报税地区（省级税务局名称，如“浙江省”）。电子税务局按省分域，助手据此决定打开哪个入口。</summary>
         public string? TaxRegion { get; private set; }
 
@@ -188,6 +197,11 @@ namespace KuaiJi.Modules.AccountSets.Domain
             string? industry = null)
         {
             Guard(name, companyName, baseCurrency, startYear, startMonth);
+            if (standard is not (AccountingStandard.Enterprise or AccountingStandard.SmallBusiness))
+            {
+                throw new ArgumentException("目前仅支持企业会计准则与小企业会计准则。");
+            }
+
             GuardCodingScheme(accountCodingScheme);
             var accountSet = new AccountSet(
                 Guid.NewGuid(),
@@ -236,11 +250,39 @@ namespace KuaiJi.Modules.AccountSets.Domain
                 throw new ArgumentException("记账本位币不能为空。");
             }
 
+            ValidateStandardChange(standard);
+
             CompanyName = companyName.Trim();
             Standard = standard;
             TaxpayerType = taxpayerType;
             BaseCurrency = baseCurrency.Trim();
             Industry = NullIfBlank(industry);
+        }
+
+        /// <summary>
+        /// 会计准则只支持企业会计准则与小企业会计准则；已建账套只允许从小企业升级为企业，不能反向切换。
+        /// </summary>
+        private void ValidateStandardChange(AccountingStandard standard)
+        {
+            if (standard == Standard)
+            {
+                return;
+            }
+
+            if (standard is not (AccountingStandard.Enterprise or AccountingStandard.SmallBusiness))
+            {
+                throw new ArgumentException("目前仅支持企业会计准则与小企业会计准则。");
+            }
+
+            if (Standard == AccountingStandard.Enterprise)
+            {
+                throw new ArgumentException("企业会计准则账套不能切换为小企业会计准则。");
+            }
+
+            if (Standard != AccountingStandard.SmallBusiness || standard != AccountingStandard.Enterprise)
+            {
+                throw new ArgumentException("目前只支持从小企业会计准则升级为企业会计准则。");
+            }
         }
 
         /// <summary>
@@ -267,7 +309,14 @@ namespace KuaiJi.Modules.AccountSets.Domain
         }
 
         /// <summary>更新涉税资料：纳税人识别号与税率。税率为百分比数值（0–100）。</summary>
-        public void UpdateTaxInfo(string? taxpayerNumber, decimal vatRate, decimal incomeTaxRate, bool? isExportEnterprise = null)
+        public void UpdateTaxInfo(
+            string? taxpayerNumber,
+            decimal vatRate,
+            decimal incomeTaxRate,
+            bool? isExportEnterprise = null,
+            decimal? cityBuildTaxRate = null,
+            decimal? educationSurchargeRate = null,
+            decimal? localEducationSurchargeRate = null)
         {
             if (vatRate < 0m || vatRate > 100m)
             {
@@ -286,6 +335,25 @@ namespace KuaiJi.Modules.AccountSets.Domain
             {
                 IsExportEnterprise = isExportEnterprise.Value;
             }
+
+            CityBuildTaxRate = CheckSurtaxRate(cityBuildTaxRate, "城市维护建设税税率") ?? CityBuildTaxRate;
+            EducationSurchargeRate = CheckSurtaxRate(educationSurchargeRate, "教育费附加率") ?? EducationSurchargeRate;
+            LocalEducationSurchargeRate = CheckSurtaxRate(localEducationSurchargeRate, "地方教育附加率") ?? LocalEducationSurchargeRate;
+        }
+
+        private static decimal? CheckSurtaxRate(decimal? rate, string label)
+        {
+            if (rate is null)
+            {
+                return null;
+            }
+
+            if (rate < 0m || rate > 100m)
+            {
+                throw new ArgumentException($"{label}必须在 0 到 100 之间。");
+            }
+
+            return rate;
         }
 
         /// <summary>

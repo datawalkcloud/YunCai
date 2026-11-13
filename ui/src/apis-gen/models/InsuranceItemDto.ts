@@ -49,6 +49,12 @@ export interface InsuranceItemDto {
      * @memberof InsuranceItemDto
      */
     personalRate?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof InsuranceItemDto
+     */
+    baseAmount?: number;
 }
 
 /**
@@ -73,6 +79,7 @@ export function InsuranceItemDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'modeText': json['modeText'] == null ? undefined : json['modeText'],
         'companyRate': json['companyRate'] == null ? undefined : json['companyRate'],
         'personalRate': json['personalRate'] == null ? undefined : json['personalRate'],
+        'baseAmount': json['baseAmount'] == null ? undefined : json['baseAmount'],
     };
 }
 
@@ -92,6 +99,7 @@ export function InsuranceItemDtoToJSONTyped(value?: InsuranceItemDto | null, ign
         'modeText': value['modeText'],
         'companyRate': value['companyRate'],
         'personalRate': value['personalRate'],
+        'baseAmount': value['baseAmount'],
     };
 }
 

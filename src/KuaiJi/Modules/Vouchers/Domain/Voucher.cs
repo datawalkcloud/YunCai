@@ -4,7 +4,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
 {
     /// <summary>
     /// 记账凭证聚合根。由凭证头（字/号、日期、附单据数）与若干会计分录组成。
-    /// 遵循「制单 → 过账」工作流：保存即登记入账并锁定；反过账退回草稿后可继续增删改分录。
+    /// 遵循「制单 → 过账」工作流：保存即登记入账并锁定；反过账退回暂存后可继续增删改分录。
     /// 过账要求借贷平衡且至少有一条分录。
     /// </summary>
     public class Voucher
@@ -76,7 +76,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         /// <summary>借贷是否平衡（且至少有一条分录）。</summary>
         public bool IsBalanced => _entries.Count > 0 && TotalDebit == TotalCredit;
 
-        /// <summary>制单：创建一张草稿凭证，须归属于某一账套。</summary>
+        /// <summary>制单：创建一张暂存凭证，须归属于某一账套。</summary>
         public static Voucher Create(Guid accountSetId, string word, int number, DateOnly date, string preparer, int attachmentCount = 0, string? remark = null)
         {
             if (accountSetId == Guid.Empty)
@@ -175,7 +175,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
             return entry;
         }
 
-        /// <summary>新增一条分录（仅草稿状态可用）。传入辅助核算取值时按科目配置登记。</summary>
+        /// <summary>新增一条分录（仅暂存状态可用）。传入辅助核算取值时按科目配置登记。</summary>
         public VoucherEntry AddEntry(string summary, Guid accountId, decimal debit, decimal credit, IReadOnlyCollection<AssistRef>? assists = null)
         {
             EnsureDraft();
@@ -191,7 +191,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
             return entry;
         }
 
-        /// <summary>修改一条分录（仅草稿状态可用）。传入空集合表示清除该分录的辅助核算取值。</summary>
+        /// <summary>修改一条分录（仅暂存状态可用）。传入空集合表示清除该分录的辅助核算取值。</summary>
         public void UpdateEntry(Guid entryId, string summary, Guid accountId, decimal debit, decimal credit, IReadOnlyCollection<AssistRef>? assists = null)
         {
             EnsureDraft();
@@ -204,7 +204,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
             Reindex();
         }
 
-        /// <summary>删除一条分录（仅草稿状态可用）。</summary>
+        /// <summary>删除一条分录（仅暂存状态可用）。</summary>
         public void RemoveEntry(Guid entryId)
         {
             EnsureDraft();
@@ -214,7 +214,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
             }
         }
 
-        /// <summary>修改凭证头信息（仅草稿状态可用）。</summary>
+        /// <summary>修改凭证头信息（仅暂存状态可用）。</summary>
         public void UpdateHeader(DateOnly date, int attachmentCount, string? remark = null)
         {
             EnsureDraft();
@@ -229,14 +229,14 @@ namespace KuaiJi.Modules.Vouchers.Domain
         }
 
         /// <summary>
-        /// 过账：草稿 → 已过账（登记入账）。要求借贷平衡且至少一条分录。
+        /// 过账：暂存 → 正常（登记入账）。要求借贷平衡且至少一条分录。
         /// 保存凭证时直接调用，因此制单即入账，不再有单独的审核环节。
         /// </summary>
         public void Post()
         {
             if (Status != VoucherStatus.Draft)
             {
-                throw new InvalidOperationException("凭证已过账，不能重复过账。");
+                throw new InvalidOperationException("凭证已是正常状态，不能重复入账。");
             }
 
             EnsurePostable();
@@ -244,21 +244,21 @@ namespace KuaiJi.Modules.Vouchers.Domain
         }
 
         /// <summary>
-        /// 反过账：已过账 → 草稿（撤销登记入账，重新变为可修改状态）。
+        /// 反过账：正常 → 暂存（撤销登记入账，重新变为可修改状态）。
         /// 与过账互为逆操作，用于入账后发现错误时退回修改。
         /// </summary>
         public void Unpost()
         {
             if (Status != VoucherStatus.Posted)
             {
-                throw new InvalidOperationException("只有已过账的凭证才能反过账。");
+                throw new InvalidOperationException("只有正常凭证才能反过账。");
             }
 
             Status = VoucherStatus.Draft;
         }
 
         /// <summary>
-        /// 复制一张凭证：保留分录与辅助核算，生成同凭证字下的新草稿。
+        /// 复制一张凭证：保留分录与辅助核算，生成同凭证字下的新暂存凭证。
         /// 摘要可整体加前缀（红冲用「冲销202601记-1_」这类前缀），金额可按需取反。
         /// </summary>
         public static Voucher Duplicate(
@@ -331,7 +331,7 @@ namespace KuaiJi.Modules.Vouchers.Domain
         {
             if (Status != VoucherStatus.Draft)
             {
-                throw new InvalidOperationException("凭证已过账，请先反过账再修改。");
+                throw new InvalidOperationException("凭证已是正常状态，请先反过账再修改。");
             }
         }
 

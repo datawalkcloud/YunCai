@@ -52,6 +52,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Pdf
                 // 加粗与缩进挂在 td 上：`table.grid td` 的规则优先级更高，选择器必须同样带上 td 才压得过。
                 .Append("table.grid td.strong, table.grid th.strong, table.grid tr.strong td { font-weight: bold; }")
                 .Append("table.grid td.i1 { padding-left: 3mm; } table.grid td.i2 { padding-left: 6mm; }")
+                .Append("table.grid td.nw, table.grid th.nw { white-space: nowrap; }")
                 .Append("table.grid td.empty { padding: 4mm 0; text-align: center; }")
                 .Append(".notes { margin-top: 2mm; } .notes p { margin: 0 0 0.8mm; font-size: 8pt; }")
                 .ToString();
@@ -112,7 +113,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Pdf
                 {
                     if (segment.Group is null)
                     {
-                        html.Append("<th rowspan='2' class='").Append(AlignClass(segment.Columns[0].Align)).Append("'>")
+                        html.Append("<th rowspan='2' class='").Append(HeaderClass(segment.Columns[0])).Append("'>")
                             .Append(PdfText.Esc(segment.Columns[0].Text)).Append("</th>");
                     }
                     else
@@ -127,7 +128,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Pdf
                 {
                     foreach (var column in segment.Columns)
                     {
-                        html.Append("<th class='").Append(AlignClass(column.Align)).Append("'>")
+                        html.Append("<th class='").Append(HeaderClass(column)).Append("'>")
                             .Append(PdfText.Esc(column.Text)).Append("</th>");
                     }
                 }
@@ -139,7 +140,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Pdf
                 html.Append("<tr>");
                 foreach (var column in columns)
                 {
-                    html.Append("<th class='").Append(AlignClass(column.Align)).Append("'>")
+                    html.Append("<th class='").Append(HeaderClass(column)).Append("'>")
                         .Append(PdfText.Esc(column.Text)).Append("</th>");
                 }
 
@@ -227,6 +228,12 @@ namespace KuaiJi.SharedKernel.Infrastructure.Pdf
             PdfAlign.Right => "t-right",
             _ => "t-left",
         };
+
+        /// <summary>表头单元格样式：列对齐 + 列上附加的样式类。</summary>
+        private static string HeaderClass(PrintColumn column)
+            => string.IsNullOrWhiteSpace(column.Css)
+                ? AlignClass(column.Align)
+                : $"{AlignClass(column.Align)} {column.Css}";
 
         /// <summary>单元格样式：对齐（单元格覆盖列）、缩进与加粗。</summary>
         private static string CellClass(PrintCell cell, IReadOnlyList<PrintColumn> columns, int startIndex)

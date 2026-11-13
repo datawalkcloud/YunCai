@@ -150,7 +150,7 @@ export default function VoucherSummaryPage() {
                     columns={columns}
                     data={treeRows}
                     loading={query.loading}
-                    emptyText={accountSetId ? "该期间暂无已过账凭证。" : "请先选择账套。"}
+                    emptyText={accountSetId ? "该期间暂无正常凭证。" : "请先选择账套。"}
                     rowKey={(row) => row.code}
                     rowClassName={(_, index) => (index % 2 === 1 ? "voucher-summary-row-alt" : "")}
                     expandable={{

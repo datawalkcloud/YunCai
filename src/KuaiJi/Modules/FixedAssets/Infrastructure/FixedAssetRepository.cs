@@ -20,6 +20,12 @@ namespace KuaiJi.Modules.FixedAssets.Infrastructure
                 .FirstOrDefaultAsync(c => c.AccountSetId == accountSetId && c.Id == id, cancellationToken);
         }
 
+        public Task<FixedAssetCategory?> GetCategoryForUpdateAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
+        {
+            return _context.FixedAssetCategories
+                .FirstOrDefaultAsync(c => c.AccountSetId == accountSetId && c.Id == id, cancellationToken);
+        }
+
         public async Task<IReadOnlyList<FixedAssetCategory>> GetCategoriesAsync(Guid accountSetId, CancellationToken cancellationToken = default)
         {
             var list = await _context.FixedAssetCategories.AsNoTracking()

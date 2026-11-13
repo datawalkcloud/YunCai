@@ -19,10 +19,11 @@ namespace KuaiJi.Modules.Reports.Domain.CashFlow
         /// <summary>现金及现金等价物科目的一级编码（库存现金/银行存款/其他货币资金，新旧准则一致）。</summary>
         public static readonly IReadOnlySet<string> CashAccountPrefixes = new HashSet<string> { "1001", "1002", "1012" };
 
-        /// <summary>投资活动涉及的资产类一级编码（短期投资/长期投资/固定资产/在建工程/无形资产/长期待摊等，兼容新旧准则）。</summary>
+        /// <summary>投资活动涉及的资产类一级编码（短期投资/长期投资/固定资产/在建工程/无形资产/长期待摊等，兼容新旧准则）。
+        /// 1401-1406 是存货类（材料采购/在途/原材料/库存商品等），归经营活动购买商品，不能列入投资。</summary>
         private static readonly IReadOnlySet<string> InvestingPrefixes = new HashSet<string>
         {
-            "1101", "1102", "1401", "1402", "1403", "1404", "1405", "1406",
+            "1101", "1102",
             "1501", "1503", "1511", "1512",
             "1601", "1602", "1603", "1604", "1605", "1606",
             "1701", "1702", "1703", "1711",
@@ -64,6 +65,12 @@ namespace KuaiJi.Modules.Reports.Domain.CashFlow
                     if (LoanPrefixes.Contains(p) || account.Name.Contains("借款"))
                     {
                         return isCashInflow ? 24 : 27; // 取得借款 / 偿还债务
+                    }
+                    // 增值税进项/销项是货款的组成部分：销售含税收现并入行 1，采购含税付现并入行 5；
+                    // 「支付的各项税费」只反映实际缴纳的税款，不能把计提的进销项拆到税费行。
+                    if (IsVatTurnoverAccount(account))
+                    {
+                        return isCashInflow ? 1 : 5;
                     }
                     if (account.Name.Contains("税"))
                     {
@@ -126,6 +133,71 @@ namespace KuaiJi.Modules.Reports.Domain.CashFlow
                     }
                     return isCashInflow ? 3 : 8; // 其他经营活动
             }
+        }
+
+        /// <summary>
+        /// 把小企业会计准则（会小企03表）的对手方科目归类到 22 行标准行次。
+        /// 先按小准则独有的行次拆分——利息付现单独进「偿还借款利息」、分配利润进「分配利润」——
+        /// 其余沿用一般企业归类结果再折到小准则行次（税费返还并入「收到其他经营」等）。
+        /// </summary>
+        public static int MapSmallBusinessLine(Account account, bool isCashInflow)
+        {
+            if (IsInterestAccount(account))
+            {
+                return isCashInflow ? 2 : 17; // 收到其他经营 / 偿还借款利息
+            }
+
+            if (IsProfitDistributionAccount(account))
+            {
+                return isCashInflow ? 15 : 18; // 吸收投资 / 分配利润
+            }
+
+            return CashFlowSmallBusinessRows.FromEnterpriseLine(MapLine(account, isCashInflow));
+        }
+
+        /// <summary>
+        /// 增值税流转税明细：进项（含待认证/待抵扣/留抵）、销项（含待转销）随货款计入商品现金流。
+        /// 实际缴纳的「已交税金」「未交增值税」等不属于这里，仍走税费行。
+        /// </summary>
+        private static bool IsVatTurnoverAccount(Account account)
+        {
+            if (Prefix(account.Code) != "2221")
+            {
+                return false;
+            }
+
+            return account.Name.Contains("进项")
+                   || account.Name.Contains("销项")
+                   || account.Name.Contains("待认证")
+                   || account.Name.Contains("待抵扣")
+                   || account.Name.Contains("待转销")
+                   || account.Name.Contains("留抵");
+        }
+
+        /// <summary>利息类科目：财务费用（新 6603 / 旧 5503）与应付利息（2231），名称含「利息」的损益/负债科目同样命中。</summary>
+        private static bool IsInterestAccount(Account account)
+        {
+            var p = Prefix(account.Code);
+            return account.Category switch
+            {
+                AccountCategory.ProfitAndLoss => p is "6603" or "5503" || account.Name.Contains("利息"),
+                AccountCategory.Liability => p is "2231" || account.Name.Contains("利息"),
+                _ => false,
+            };
+        }
+
+        /// <summary>利润分配类科目：权益类的利润分配/盈余公积/本年利润，以及负债类的应付利润。</summary>
+        private static bool IsProfitDistributionAccount(Account account)
+        {
+            var p = Prefix(account.Code);
+            return account.Category switch
+            {
+                AccountCategory.Equity => ProfitDistributePrefixes.Contains(p)
+                                           || account.Name.Contains("利润")
+                                           || account.Name.Contains("盈余公积"),
+                AccountCategory.Liability => account.Name.Contains("应付利润") || account.Name.Contains("股利"),
+                _ => false,
+            };
         }
 
         private static string Prefix(string code)

@@ -1,4 +1,5 @@
-import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router";
+import { createBrowserRouter, Outlet, useLocation, useNavigate } from "react-router";
+import { useEffect, useRef } from "react";
 import type { ComponentType, ReactNode } from "react";
 
 import Landing from "@/pages/landing";
@@ -12,8 +13,8 @@ import { AccountSetsProvider, useAccountSets } from "@/accountSets/AccountSetsCo
 // 账套下的业务页面按功能域拆成动态 chunk（见 ./groups/*），同域页面落进同一个 chunk，
 // 避免 70 多个路由各生成一个碎片文件。
 
-/** 校验令牌期间的占位界面，避免闪烁跳转。 */
-function AuthLoading() {
+/** 全站加载占位：令牌校验、账套解析、路由初始化期间都显示它，绝不渲染纯白。 */
+function AppLoading() {
     return (
         <div className="flex min-h-svh items-center justify-center text-muted-foreground">
             正在加载…
@@ -21,24 +22,43 @@ function AuthLoading() {
     );
 }
 
-/** 需要登录才能访问；未登录时跳转到登录页并记录来源。 */
+/**
+ * 命令式跳转：to 非空时在 effect 里 navigate，同一个目标只跳一次（StrictMode 下也不重复）。
+ * 声明式 <Navigate> 自身渲染 null，目标路由若是懒加载，chunk 就绪前整页会白掉；
+ * 用 hook 后由调用方继续渲染自己的占位/页面，跳转待提交期间界面始终有内容。
+ */
+function useRedirect(to: string | null, state?: unknown) {
+    const navigate = useNavigate();
+    const stateRef = useRef(state);
+    stateRef.current = state;
+    const lastTo = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!to || lastTo.current === to) return;
+        lastTo.current = to;
+        navigate(to, { replace: true, state: stateRef.current });
+    }, [navigate, to]);
+}
+
+/** 需要登录才能访问；未登录时跳转到登录页并记录来源，期间显示加载占位。 */
 function RequireAuth({ children }: { children: ReactNode }) {
     const { status } = useAuth();
     const location = useLocation();
+    const shouldRedirect = status !== "loading" && status !== "authenticated";
+    useRedirect(shouldRedirect ? "/login" : null, shouldRedirect ? { from: location.pathname } : undefined);
 
-    if (status === "loading") return <AuthLoading />;
-    if (status !== "authenticated") {
-        return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-    }
+    if (status === "loading" || shouldRedirect) return <AppLoading />;
     return <>{children}</>;
 }
 
-/** 已登录用户访问登录页时直接回到首页。 */
+/** 已登录用户访问登录页时回到来源页（默认 /app），跳转期间官网保持可见。 */
 function RedirectIfAuthed({ children }: { children: ReactNode }) {
     const { status } = useAuth();
+    const location = useLocation();
+    const from = (location.state as { from?: string } | null)?.from ?? "/app";
+    useRedirect(status === "authenticated" ? from : null);
 
-    if (status === "loading") return <AuthLoading />;
-    if (status === "authenticated") return <Navigate to="/app" replace />;
+    if (status === "loading") return <AppLoading />;
     return <>{children}</>;
 }
 
@@ -48,8 +68,9 @@ function RedirectIfAuthed({ children }: { children: ReactNode }) {
  */
 function DefaultAccountSetRedirect() {
     const { loading, defaultId, error } = useAccountSets();
+    useRedirect(!loading && !error && defaultId ? `/${defaultId}` : null);
 
-    if (loading) return <AuthLoading />;
+    if (loading) return <AppLoading />;
     if (error) {
         return (
             <div className="flex min-h-svh items-center justify-center text-destructive">
@@ -65,7 +86,8 @@ function DefaultAccountSetRedirect() {
             </div>
         );
     }
-    return <Navigate to={`/${defaultId}`} replace />;
+    // 跳转待提交期间保留加载占位，不要渲染 null 造成空白帧。
+    return <AppLoading />;
 }
 
 /**
@@ -88,21 +110,28 @@ const router = createBrowserRouter([
     {
         path: "/",
         element: <Landing />,
+        errorElement: <RouteErrorElement />,
+        hydrateFallbackElement: <AppLoading />,
     },
     // 登录弹窗底部的协议链接指向这里，避免出现死链。
     {
         path: "/terms",
         element: <TermsPage />,
+        errorElement: <RouteErrorElement />,
+        hydrateFallbackElement: <AppLoading />,
     },
     {
         path: "/privacy",
         element: <PrivacyPage />,
+        errorElement: <RouteErrorElement />,
+        hydrateFallbackElement: <AppLoading />,
     },
     // 停车平台风格主题演示（云中停·智慧停车 1:1 复刻 layout），公开可访问。
     {
         path: "/parking-demo",
         lazy: async () => ({ Component: (await import("@/pages/parking-demo")).default }),
         errorElement: <RouteErrorElement />,
+        hydrateFallbackElement: <AppLoading />,
     },
     // 受保护的应用区：登录后可访问，统一挂载账套上下文。
     // 外层 ErrorBoundary 是这一块的最后一道防线（路由级兜底之上的渲染异常）。
@@ -117,6 +146,7 @@ const router = createBrowserRouter([
             </ErrorBoundary>
         ),
         errorElement: <RouteErrorElement />,
+        hydrateFallbackElement: <AppLoading />,
         children: [
             // 登录后的默认落地：解析默认账套并跳转到 /{accountSetId}。
             { path: "app", element: <DefaultAccountSetRedirect />, errorElement: <RouteErrorElement /> },
@@ -220,13 +250,15 @@ const router = createBrowserRouter([
     },
     {
         // 登录不再是独立页面：/login 直接落在官网上并自动打开登录弹窗，
-        // 保护区回跳时带上的 state.from 由弹窗在登录成功后消费。
+        // 保护区回跳时带上的 state.from 由 RedirectIfAuthed / Landing 在登录成功后消费。
         path: "/login",
         element: (
             <RedirectIfAuthed>
                 <Landing autoOpenLogin />
             </RedirectIfAuthed>
         ),
+        errorElement: <RouteErrorElement />,
+        hydrateFallbackElement: <AppLoading />,
     },
 ]);
 

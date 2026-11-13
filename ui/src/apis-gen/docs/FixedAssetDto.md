@@ -21,6 +21,7 @@ Name | Type
 `netValue` | number
 `statusText` | string
 `clearedDate` | Date
+`isInitial` | boolean
 
 ## Example
 
@@ -44,6 +45,7 @@ const example = {
   "netValue": null,
   "statusText": null,
   "clearedDate": null,
+  "isInitial": null,
 } satisfies FixedAssetDto
 
 console.log(example)

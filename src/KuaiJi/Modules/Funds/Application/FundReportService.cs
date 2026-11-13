@@ -1,3 +1,4 @@
+using System.Globalization;
 using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Accounting.Domain;
 using KuaiJi.Modules.Funds.Domain;
@@ -20,7 +21,7 @@ namespace KuaiJi.Modules.Funds.Application
     /// 口径说明：日记账为手工登记台账（含未生成凭证的流水，全量参与汇总）；
     /// 核对总账的账面侧仅统计已过账凭证（与账簿一致）。
     /// 项目 / 部门维度取流水上登记的项目、部门（在「批量操作 - 指定项目/指定部门」中写入），
-    /// 未指定的流水归入「未填写」，与往来单位维度同一口径。
+    /// 未指定的流水不出现在辅助维度报表中（与柠檬云同一口径）。
     /// </summary>
     public sealed class FundReportService
     {
@@ -301,13 +302,13 @@ namespace KuaiJi.Modules.Funds.Application
             CancellationToken cancellationToken)
         {
             var categories = await _entryCategoryRepository.GetAllAsync(accountSetId, cancellationToken);
-            var typeByName = new Dictionary<string, EntryCategoryType>(StringComparer.Ordinal);
+            var infoByName = new Dictionary<string, (EntryCategoryType Type, string Code)>(StringComparer.Ordinal);
             foreach (var category in categories)
             {
-                typeByName[category.Name] = category.Type;
+                infoByName[category.Name] = (category.Type, category.Code);
             }
 
-            var buckets = SumBy(journals, start, end, e => string.IsNullOrWhiteSpace(e.Category) ? "未分类" : e.Category!);
+            var buckets = SumBy(journals, start, end, e => string.IsNullOrWhiteSpace(e.Category) ? "未分类" : e.Category!, IsNotTransfer);
 
             var term = keyword?.Trim();
             var incomeRows = new List<FundReportRowDto>();
@@ -318,13 +319,15 @@ namespace KuaiJi.Modules.Funds.Application
                          .ThenBy(p => p.Key, StringComparer.Ordinal))
             {
                 // 类别归属优先取收支类别档案；档案缺失（如已删除）时按金额方向判定。
-                var isIncome = typeByName.TryGetValue(name, out var type)
-                    ? type == EntryCategoryType.Income
+                var isIncome = infoByName.TryGetValue(name, out var info)
+                    ? info.Type == EntryCategoryType.Income
                     : value.Income >= value.Expense;
 
                 var row = new FundReportRowDto
                 {
-                    Name = name,
+                    // 报表只显示业务名称，去掉类别档案上的「收- / 支-」方向前缀（柠檬云同一口径）。
+                    Name = StripTypePrefix(name),
+                    Code = info.Code,
                     TotalIncome = value.Income,
                     TotalExpense = value.Expense,
                     Balance = value.Income - value.Expense,
@@ -347,7 +350,7 @@ namespace KuaiJi.Modules.Funds.Application
                     .Select((r, i) => new FundReportRowDto
                     {
                         Name = r.Name,
-                        Code = (i + 1).ToString(),
+                        Code = r.Code ?? (i + 1).ToString(CultureInfo.InvariantCulture),
                         TotalIncome = r.TotalIncome,
                         TotalExpense = r.TotalExpense,
                         Balance = r.Balance,
@@ -377,7 +380,13 @@ namespace KuaiJi.Modules.Funds.Application
             string name,
             string subtotalLabel)
         {
-            var buckets = SumBy(journals, start, end, e => field(e) ?? "未填写");
+            // 未挂该维度的流水不入表（柠檬云辅助维度报表只列已指定维度值的行）。
+            var buckets = SumBy(
+                journals,
+                start,
+                end,
+                e => field(e)!,
+                e => IsNotTransfer(e) && !string.IsNullOrWhiteSpace(field(e)));
             var term = keyword?.Trim();
             var rows = buckets
                 .Where(p => term is null || term.Length == 0 || p.Key.Contains(term, StringComparison.OrdinalIgnoreCase))
@@ -416,7 +425,15 @@ namespace KuaiJi.Modules.Funds.Application
             var secondaryField = DimFields[secondary];
             var subtotalLabel = "组合合计";
 
-            var buckets = SumBy(journals, start, end, e => $"{primaryField(e) ?? "未填写"}\u0001{secondaryField(e) ?? "未填写"}");
+            var buckets = SumBy(
+                journals,
+                start,
+                end,
+                e => $"{primaryField(e)!}\u0001{secondaryField(e)!}",
+                // 组合维度只统计两个维度都已指定的流水（与柠檬云一致，未填写的行不入表）。
+                e => IsNotTransfer(e)
+                     && !string.IsNullOrWhiteSpace(primaryField(e))
+                     && !string.IsNullOrWhiteSpace(secondaryField(e)));
             var term = keyword?.Trim();
             var rows = buckets
                 .Select(p =>
@@ -457,12 +474,23 @@ namespace KuaiJi.Modules.Funds.Application
             return ComboSecondaries.Contains(value) ? value : DimProject;
         }
 
-        /// <summary>按 <paramref name="keyOf"/> 分组累计区间内的收入 / 支出与笔数。</summary>
+        /// <summary>去掉类别档案上的方向前缀（收- / 支-），报表只显示业务名称（与柠檬云一致）。</summary>
+        private static string StripTypePrefix(string name) =>
+            name.StartsWith("收-", StringComparison.Ordinal) || name.StartsWith("支-", StringComparison.Ordinal)
+                ? name[2..]
+                : name;
+
+        /// <summary>内部转账只影响账户余额，不计入收支 / 往来 / 项目 / 部门等业务维度（与柠檬云资金报表一致）。</summary>
+        private static bool IsNotTransfer(JournalEntry entry) =>
+            !string.Equals(entry.Source, "内部转账", StringComparison.Ordinal);
+
+        /// <summary>按 <paramref name="keyOf"/> 分组累计区间内的收入 / 支出与笔数；<paramref name="include"/> 为空表示全部计入。</summary>
         private static Dictionary<string, (decimal Income, decimal Expense, int IncomeCount, int ExpenseCount)> SumBy(
             IReadOnlyList<Journal> journals,
             DateOnly start,
             DateOnly end,
-            Func<JournalEntry, string> keyOf)
+            Func<JournalEntry, string> keyOf,
+            Func<JournalEntry, bool>? include = null)
         {
             var buckets = new Dictionary<string, (decimal Income, decimal Expense, int IncomeCount, int ExpenseCount)>(StringComparer.Ordinal);
             foreach (var journal in journals)
@@ -470,6 +498,11 @@ namespace KuaiJi.Modules.Funds.Application
                 foreach (var entry in journal.Entries)
                 {
                     if (entry.Date < start || entry.Date > end)
+                    {
+                        continue;
+                    }
+
+                    if (include is not null && !include(entry))
                     {
                         continue;
                     }

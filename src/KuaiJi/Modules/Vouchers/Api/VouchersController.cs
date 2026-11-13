@@ -129,7 +129,7 @@ namespace KuaiJi.Modules.Vouchers.Api
             }
         }
 
-        /// <summary>编辑凭证（仅反过账退回的草稿可改），保存后重新过账。</summary>
+        /// <summary>编辑凭证（仅反过账退回的暂存可改），保存后重新过账。</summary>
         [HttpPut("{id:guid}")]
         public async Task<ActionResult<VoucherDetailDto>> Update(Guid accountSetId, Guid id, [FromBody] UpdateVoucherRequest request, CancellationToken cancellationToken)
         {
@@ -149,7 +149,7 @@ namespace KuaiJi.Modules.Vouchers.Api
             }
         }
 
-        /// <summary>删除凭证（含其全部分录）。已过账凭证不允许删除。</summary>
+        /// <summary>删除凭证（含其全部分录）。正常凭证不允许删除。</summary>
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid accountSetId, Guid id, CancellationToken cancellationToken)
         {
@@ -170,7 +170,7 @@ namespace KuaiJi.Modules.Vouchers.Api
             }
         }
 
-        /// <summary>反过账凭证：已过账 → 草稿（撤销登记入账），结账期间内禁止。</summary>
+        /// <summary>反过账凭证：正常 → 暂存（撤销登记入账），结账期间内禁止。</summary>
         [HttpPost("{id:guid}/unpost")]
         public async Task<ActionResult<VoucherDetailDto>> Unpost(Guid accountSetId, Guid id, CancellationToken cancellationToken)
         {

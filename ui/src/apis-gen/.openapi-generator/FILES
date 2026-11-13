@@ -204,9 +204,10 @@ docs/GenerateVouchersBatchResultDto.md
 docs/IitPersonnelSyncRequest.md
 docs/IitPersonnelSyncRow.md
 docs/IitPlainProbeRequest.md
-docs/IncomeDepartmentAmountDto.md
 docs/IncomeDepartmentDto.md
 docs/IncomeDepartmentRowDto.md
+docs/IncomeDimensionAmountDto.md
+docs/IncomeProjectColumnDto.md
 docs/IncomeProjectRowDto.md
 docs/IncomeStatementDto.md
 docs/IncomeStatementLineDto.md
@@ -308,6 +309,7 @@ docs/TaxIitReportResultDto.md
 docs/TaxIitReportRowDto.md
 docs/TaxInvoiceSyncJobDto.md
 docs/TaxInvoiceSyncResultDto.md
+docs/TaxInvoiceSyncSummaryDto.md
 docs/TaxKindItemDto.md
 docs/TaxKindRowDto.md
 docs/TaxKindsResultDto.md
@@ -531,9 +533,10 @@ models/GenerateVouchersBatchResultDto.ts
 models/IitPersonnelSyncRequest.ts
 models/IitPersonnelSyncRow.ts
 models/IitPlainProbeRequest.ts
-models/IncomeDepartmentAmountDto.ts
 models/IncomeDepartmentDto.ts
 models/IncomeDepartmentRowDto.ts
+models/IncomeDimensionAmountDto.ts
+models/IncomeProjectColumnDto.ts
 models/IncomeProjectRowDto.ts
 models/IncomeStatementDto.ts
 models/IncomeStatementLineDto.ts
@@ -626,6 +629,7 @@ models/TaxIitReportResultDto.ts
 models/TaxIitReportRowDto.ts
 models/TaxInvoiceSyncJobDto.ts
 models/TaxInvoiceSyncResultDto.ts
+models/TaxInvoiceSyncSummaryDto.ts
 models/TaxKindItemDto.ts
 models/TaxKindRowDto.ts
 models/TaxKindsResultDto.ts

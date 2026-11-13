@@ -15,10 +15,12 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdJournalsIdEntriesEntryIdPut**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesentryidput) | **PUT** /accountsets/{accountSetId}/Journals/{id}/entries/{entryId} |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesEntryIdVoucherPost**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesentryidvoucherpost) | **POST** /accountsets/{accountSetId}/Journals/{id}/entries/{entryId}/voucher |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesPost**](JournalsApi.md#accountsetsaccountsetidjournalsidentriespost) | **POST** /accountsets/{accountSetId}/Journals/{id}/entries |  |
+| [**accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesreceiptpdfget) | **GET** /accountsets/{accountSetId}/Journals/{id}/entries/receipt/pdf |  |
 | [**accountsetsAccountSetIdJournalsIdEntriesVouchersPost**](JournalsApi.md#accountsetsaccountsetidjournalsidentriesvoucherspost) | **POST** /accountsets/{accountSetId}/Journals/{id}/entries/vouchers |  |
 | [**accountsetsAccountSetIdJournalsIdExportGet**](JournalsApi.md#accountsetsaccountsetidjournalsidexportget) | **GET** /accountsets/{accountSetId}/Journals/{id}/export |  |
 | [**accountsetsAccountSetIdJournalsIdGet**](JournalsApi.md#accountsetsaccountsetidjournalsidget) | **GET** /accountsets/{accountSetId}/Journals/{id} |  |
 | [**accountsetsAccountSetIdJournalsIdImportPost**](JournalsApi.md#accountsetsaccountsetidjournalsidimportpost) | **POST** /accountsets/{accountSetId}/Journals/{id}/import |  |
+| [**accountsetsAccountSetIdJournalsIdPdfGet**](JournalsApi.md#accountsetsaccountsetidjournalsidpdfget) | **GET** /accountsets/{accountSetId}/Journals/{id}/pdf |  |
 | [**accountsetsAccountSetIdJournalsIdPut**](JournalsApi.md#accountsetsaccountsetidjournalsidput) | **PUT** /accountsets/{accountSetId}/Journals/{id} |  |
 | [**accountsetsAccountSetIdJournalsImportTemplateGet**](JournalsApi.md#accountsetsaccountsetidjournalsimporttemplateget) | **GET** /accountsets/{accountSetId}/Journals/import/template |  |
 | [**accountsetsAccountSetIdJournalsPost**](JournalsApi.md#accountsetsaccountsetidjournalspost) | **POST** /accountsets/{accountSetId}/Journals |  |
@@ -788,6 +790,77 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet
+
+> accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet(accountSetId, id, entryIds)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  JournalsApi,
+} from '';
+import type { AccountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new JournalsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string (optional)
+    entryIds: entryIds_example,
+  } satisfies AccountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **entryIds** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## accountsetsAccountSetIdJournalsIdEntriesVouchersPost
 
 > GenerateVouchersBatchResultDto accountsetsAccountSetIdJournalsIdEntriesVouchersPost(accountSetId, id, generateVouchersBatchRequest)
@@ -1056,6 +1129,164 @@ No authorization required
 
 - **Content-Type**: `multipart/form-data`
 - **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdJournalsIdPdfGet
+
+> accountsetsAccountSetIdJournalsIdPdfGet(accountSetId, id, startDate, endDate, columns, seqPrefix, date, summary, category, counterparty, income, expense, balance, voucher, seq, advVoucherDateFrom, advVoucherDateTo, advVoucherWord, advVoucherNoFrom, advVoucherNoTo, advCategory, advSettlementMethod, advCounterparty, advBillNo, advProject, advDepartment, advSummary, advRemark, advSource, advAmountFrom, advAmountTo, advHasVoucher)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  JournalsApi,
+} from '';
+import type { AccountsetsAccountSetIdJournalsIdPdfGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new JournalsApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    id: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Date (optional)
+    startDate: 2013-10-20,
+    // Date (optional)
+    endDate: 2013-10-20,
+    // string (optional)
+    columns: columns_example,
+    // string (optional)
+    seqPrefix: seqPrefix_example,
+    // string (optional)
+    date: date_example,
+    // string (optional)
+    summary: summary_example,
+    // string (optional)
+    category: category_example,
+    // string (optional)
+    counterparty: counterparty_example,
+    // string (optional)
+    income: income_example,
+    // string (optional)
+    expense: expense_example,
+    // string (optional)
+    balance: balance_example,
+    // string (optional)
+    voucher: voucher_example,
+    // string (optional)
+    seq: seq_example,
+    // Date (optional)
+    advVoucherDateFrom: 2013-10-20,
+    // Date (optional)
+    advVoucherDateTo: 2013-10-20,
+    // string (optional)
+    advVoucherWord: advVoucherWord_example,
+    // number (optional)
+    advVoucherNoFrom: 56,
+    // number (optional)
+    advVoucherNoTo: 56,
+    // string (optional)
+    advCategory: advCategory_example,
+    // string (optional)
+    advSettlementMethod: advSettlementMethod_example,
+    // string (optional)
+    advCounterparty: advCounterparty_example,
+    // string (optional)
+    advBillNo: advBillNo_example,
+    // string (optional)
+    advProject: advProject_example,
+    // string (optional)
+    advDepartment: advDepartment_example,
+    // string (optional)
+    advSummary: advSummary_example,
+    // string (optional)
+    advRemark: advRemark_example,
+    // string (optional)
+    advSource: advSource_example,
+    // number (optional)
+    advAmountFrom: 1.2,
+    // number (optional)
+    advAmountTo: 1.2,
+    // string (optional)
+    advHasVoucher: advHasVoucher_example,
+  } satisfies AccountsetsAccountSetIdJournalsIdPdfGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdJournalsIdPdfGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **id** | `string` |  | [Defaults to `undefined`] |
+| **startDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **columns** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **seqPrefix** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **date** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **summary** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **category** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **counterparty** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **income** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **expense** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **balance** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **voucher** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **seq** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advVoucherDateFrom** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **advVoucherDateTo** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **advVoucherWord** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advVoucherNoFrom** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **advVoucherNoTo** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **advCategory** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advSettlementMethod** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advCounterparty** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advBillNo** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advProject** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advDepartment** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advSummary** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advRemark** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advSource** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **advAmountFrom** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **advAmountTo** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **advHasVoucher** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 
 ### HTTP response details

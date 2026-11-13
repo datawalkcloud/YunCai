@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import dayjs from "dayjs"
 import { Alert, Button, Card, Checkbox, DatePicker, Dropdown, Input, InputNumber, Modal, Pagination, Select, Space, Table, Tooltip } from "antd"
 import type { TableColumnsType } from "antd"
-import { DownOutlined, FilterFilled, FullscreenOutlined, ReloadOutlined, SwapOutlined } from "@ant-design/icons"
+import { DownOutlined, DownloadOutlined, FilterFilled, FullscreenOutlined, PrinterOutlined, ReloadOutlined, SwapOutlined } from "@ant-design/icons"
 
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -651,7 +651,7 @@ export default function TransferPage() {
             >
                 显示全部
             </Checkbox>
-            <Button disabled={!transfers.length} loading={printing} onClick={() => void printList()}>
+            <Button icon={<PrinterOutlined />} disabled={!transfers.length} loading={printing} onClick={() => void printList()}>
                 打印列表
             </Button>
             <Dropdown
@@ -668,7 +668,7 @@ export default function TransferPage() {
                         ),
                 }}
             >
-                <Button>
+                <Button icon={<DownloadOutlined />}>
                     导出 <DownOutlined className="text-[10px]" />
                 </Button>
             </Dropdown>

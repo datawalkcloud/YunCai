@@ -30,14 +30,14 @@ internal sealed class ApiHarness : IDisposable
     /// <summary>另开一个数据库上下文，等于一次新的请求作用域，用于直查库做断言或补种数据。</summary>
     public AppDbContext NewContext() => _factory.NewContext();
 
-    /// <summary>经 POST /AccountSets 建一个独立账套（默认编码方案 4-2-2-2、凭证字「记,收,付,转」、启用期间为当年 1 月）。</summary>
-    public async Task<Guid> CreateAccountSetAsync(string name)
+    /// <summary>经 POST /AccountSets 建一个独立账套（默认企业准则、编码方案 4-2-2-2、启用期间为当年 1 月）。</summary>
+    public async Task<Guid> CreateAccountSetAsync(string name, AccountingStandard standard = AccountingStandard.Enterprise)
     {
         var response = await Client.PostAsJsonAsync("/AccountSets", new
         {
             name,
             companyName = $"{name}有限公司",
-            standard = (int)AccountingStandard.Enterprise,
+            standard = (int)standard,
             taxpayerType = (int)TaxpayerType.General,
             baseCurrency = "人民币",
             startYear = 2026,

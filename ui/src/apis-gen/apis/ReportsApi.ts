@@ -185,6 +185,24 @@ export interface AccountsetsAccountSetIdReportsIncomeStatementGetRequest {
     month?: number;
 }
 
+export interface AccountsetsAccountSetIdReportsPdfGetRequest {
+    accountSetId: string;
+    kind?: string;
+    year?: number;
+    month?: number;
+    quarter?: number;
+    startDate?: Date;
+    endDate?: Date;
+    accountFrom?: string;
+    accountTo?: string;
+    minLevel?: number;
+    maxLevel?: number;
+    hideZeroBalance?: boolean;
+    hideNoActivity?: boolean;
+    method?: string;
+    showLastYear?: boolean;
+}
+
 export interface AccountsetsAccountSetIdReportsProjectIncomeGetRequest {
     accountSetId: string;
     year?: number;
@@ -686,6 +704,55 @@ export interface ReportsApiInterface {
     /**
      */
     accountsetsAccountSetIdReportsIncomeStatementGet(requestParameters: AccountsetsAccountSetIdReportsIncomeStatementGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IncomeStatementDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} [kind] 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @param {number} [quarter] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [accountFrom] 
+     * @param {string} [accountTo] 
+     * @param {number} [minLevel] 
+     * @param {number} [maxLevel] 
+     * @param {boolean} [hideZeroBalance] 
+     * @param {boolean} [hideNoActivity] 
+     * @param {string} [method] 
+     * @param {boolean} [showLastYear] 
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} [kind] 
+     * @param {number} [year] 
+     * @param {number} [month] 
+     * @param {number} [quarter] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [accountFrom] 
+     * @param {string} [accountTo] 
+     * @param {number} [minLevel] 
+     * @param {number} [maxLevel] 
+     * @param {boolean} [hideZeroBalance] 
+     * @param {boolean} [hideNoActivity] 
+     * @param {string} [method] 
+     * @param {boolean} [showLastYear] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ReportsApiInterface
+     */
+    accountsetsAccountSetIdReportsPdfGetRaw(requestParameters: AccountsetsAccountSetIdReportsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdReportsPdfGet(requestParameters: AccountsetsAccountSetIdReportsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdReportsProjectIncomeGet without sending the request
@@ -1744,6 +1811,104 @@ export class ReportsApi extends runtime.BaseAPI implements ReportsApiInterface {
     async accountsetsAccountSetIdReportsIncomeStatementGet(requestParameters: AccountsetsAccountSetIdReportsIncomeStatementGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IncomeStatementDto> {
         const response = await this.accountsetsAccountSetIdReportsIncomeStatementGetRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdReportsPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdReportsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdReportsPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdReportsPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['kind'] != null) {
+            queryParameters['kind'] = requestParameters['kind'];
+        }
+
+        if (requestParameters['year'] != null) {
+            queryParameters['year'] = requestParameters['year'];
+        }
+
+        if (requestParameters['month'] != null) {
+            queryParameters['month'] = requestParameters['month'];
+        }
+
+        if (requestParameters['quarter'] != null) {
+            queryParameters['quarter'] = requestParameters['quarter'];
+        }
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['accountFrom'] != null) {
+            queryParameters['accountFrom'] = requestParameters['accountFrom'];
+        }
+
+        if (requestParameters['accountTo'] != null) {
+            queryParameters['accountTo'] = requestParameters['accountTo'];
+        }
+
+        if (requestParameters['minLevel'] != null) {
+            queryParameters['minLevel'] = requestParameters['minLevel'];
+        }
+
+        if (requestParameters['maxLevel'] != null) {
+            queryParameters['maxLevel'] = requestParameters['maxLevel'];
+        }
+
+        if (requestParameters['hideZeroBalance'] != null) {
+            queryParameters['hideZeroBalance'] = requestParameters['hideZeroBalance'];
+        }
+
+        if (requestParameters['hideNoActivity'] != null) {
+            queryParameters['hideNoActivity'] = requestParameters['hideNoActivity'];
+        }
+
+        if (requestParameters['method'] != null) {
+            queryParameters['method'] = requestParameters['method'];
+        }
+
+        if (requestParameters['showLastYear'] != null) {
+            queryParameters['showLastYear'] = requestParameters['showLastYear'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Reports/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsPdfGetRaw(requestParameters: AccountsetsAccountSetIdReportsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdReportsPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdReportsPdfGet(requestParameters: AccountsetsAccountSetIdReportsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdReportsPdfGetRaw(requestParameters, initOverrides);
     }
 
     /**

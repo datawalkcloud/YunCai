@@ -9,6 +9,7 @@ namespace KuaiJi.Modules.Reports.Application
     /// 财务概要信息应用服务：从科目余额与损益发生额归集核心指标——
     /// 资产总额、负债总额、所有者权益（存量，取时点余额）、营业收入、营业成本、
     /// 期间费用、利润总额、净利润（流量，取发生额）与资产负债率。
+    /// 应收款/应付款/应交税费/资金收入/资金支付取区间发生额，与柠檬云财务概要同口径。
     /// 流量指标剔除结转损益凭证，与利润表口径一致。
     /// </summary>
     public sealed class FinancialSummaryService
@@ -147,10 +148,10 @@ namespace KuaiJi.Modules.Reports.Application
                 LineAmount(currentMonth.start, currentMonth.end, 5), LineAmount(monthPriorYear.start, monthPriorYear.end, 5), LineAmount(priorMonth.start, priorMonth.end, 5)));
             rows.Add(Row("销售费用", LineAmount(ytd.start, ytd.end, 4), LineAmount(ytdPrior.start, ytdPrior.end, 4),
                 LineAmount(currentMonth.start, currentMonth.end, 4), LineAmount(monthPriorYear.start, monthPriorYear.end, 4), LineAmount(priorMonth.start, priorMonth.end, 4)));
-            rows.Add(Row("财务费用", LineAmount(ytd.start, ytd.end, 7), LineAmount(ytdPrior.start, ytdPrior.end, 7),
-                LineAmount(currentMonth.start, currentMonth.end, 7), LineAmount(monthPriorYear.start, monthPriorYear.end, 7), LineAmount(priorMonth.start, priorMonth.end, 7)));
+            rows.Add(Row("财务费用", LineAmount(ytd.start, ytd.end, 6), LineAmount(ytdPrior.start, ytdPrior.end, 6),
+                LineAmount(currentMonth.start, currentMonth.end, 6), LineAmount(monthPriorYear.start, monthPriorYear.end, 6), LineAmount(priorMonth.start, priorMonth.end, 6)));
 
-            // —— 应收/应付/应交税费：分组时点余额 ——
+            // —— 应收/应付/应交税费：区间发生额（资产借方为正、负债贷方为正），与对端「发生额」取数一致 ——
             static bool IsReceivable(Account a) =>
                 a.Category == AccountCategory.Asset && IncomeLineMapper.Prefix(a.Code) is "1122" or "1123" or "1131" or "1132" or "1221";
             static bool IsPayable(Account a) =>
@@ -159,9 +160,9 @@ namespace KuaiJi.Modules.Reports.Application
                 a.Category == AccountCategory.Liability
                 && (IncomeLineMapper.Prefix(a.Code) is "2171" or "2176" or "2221" || a.Name.Contains("税"));
 
-            decimal GroupBalance(DateOnly until, Func<Account, bool> filter, bool creditPositive)
+            decimal GroupMovement(DateOnly start, DateOnly end, Func<Account, bool> filter, bool creditPositive)
             {
-                var net = AccountNetCalculator.NetByAccountUpTo(accounts, vouchers, until);
+                var net = AccountNetCalculator.PeriodNetByAccount(vouchers, start, end);
                 decimal total = 0m;
                 foreach (var account in accounts.Where(filter))
                 {
@@ -174,17 +175,15 @@ namespace KuaiJi.Modules.Reports.Application
                 return total;
             }
 
-            var receivableEnd = GroupBalance(currentMonth.end, IsReceivable, creditPositive: false);
-            var receivableLastYear = GroupBalance(new DateOnly(resolvedYear - 1, 12, 31), IsReceivable, creditPositive: false);
-            var receivableLastMonth = GroupBalance(priorMonth.end, IsReceivable, creditPositive: false);
-            rows.Add(Row("应收款", receivableEnd, receivableLastYear, receivableEnd, receivableLastYear, receivableLastMonth));
+            decimal Receivable(DateOnly s, DateOnly e) => GroupMovement(s, e, IsReceivable, creditPositive: false);
+            rows.Add(Row("应收款", Receivable(ytd.start, ytd.end), Receivable(ytdPrior.start, ytdPrior.end),
+                Receivable(currentMonth.start, currentMonth.end), Receivable(monthPriorYear.start, monthPriorYear.end), Receivable(priorMonth.start, priorMonth.end)));
 
-            var payableEnd = GroupBalance(currentMonth.end, IsPayable, creditPositive: true);
-            var payableLastYear = GroupBalance(new DateOnly(resolvedYear - 1, 12, 31), IsPayable, creditPositive: true);
-            var payableLastMonth = GroupBalance(priorMonth.end, IsPayable, creditPositive: true);
-            rows.Add(Row("应付款", payableEnd, payableLastYear, payableEnd, payableLastYear, payableLastMonth));
+            decimal Payable(DateOnly s, DateOnly e) => GroupMovement(s, e, IsPayable, creditPositive: true);
+            rows.Add(Row("应付款", Payable(ytd.start, ytd.end), Payable(ytdPrior.start, ytdPrior.end),
+                Payable(currentMonth.start, currentMonth.end), Payable(monthPriorYear.start, monthPriorYear.end), Payable(priorMonth.start, priorMonth.end)));
 
-            // —— 资金状况：现金及现金等价物科目的收付发生额 ——
+            // —— 资金状况：现金及现金等价物科目的借/贷方毛发生额（红字按原始符号计入）——
             var cashAccountIds = accounts
                 .Where(a => a.Category == AccountCategory.Asset && IncomeLineMapper.Prefix(a.Code) is "1001" or "1002" or "1012")
                 .Select(a => a.Id)
@@ -192,19 +191,22 @@ namespace KuaiJi.Modules.Reports.Application
 
             (decimal In, decimal Out) CashFlow(DateOnly start, DateOnly end)
             {
-                var net = AccountNetCalculator.PeriodNetByAccount(vouchers, start, end);
                 decimal inflow = 0m;
                 decimal outflow = 0m;
-                foreach (var id in cashAccountIds)
+                foreach (var voucher in vouchers)
                 {
-                    var delta = net.GetValueOrDefault(id);
-                    if (delta > 0m)
+                    if (voucher.Date < start || voucher.Date > end)
                     {
-                        inflow += delta;
+                        continue;
                     }
-                    else
+
+                    foreach (var entry in voucher.Entries)
                     {
-                        outflow += -delta;
+                        if (cashAccountIds.Contains(entry.AccountId))
+                        {
+                            inflow += entry.Debit;
+                            outflow += entry.Credit;
+                        }
                     }
                 }
 
@@ -221,10 +223,9 @@ namespace KuaiJi.Modules.Reports.Application
             rows.Add(Row("资金收支", cashYtd.In - cashYtd.Out, cashYtdPrior.In - cashYtdPrior.Out,
                 cashMonth.In - cashMonth.Out, cashMonthPriorYear.In - cashMonthPriorYear.Out, cashPriorMonth.In - cashPriorMonth.Out));
 
-            var taxEnd = GroupBalance(currentMonth.end, IsTaxPayable, creditPositive: true);
-            var taxLastYear = GroupBalance(new DateOnly(resolvedYear - 1, 12, 31), IsTaxPayable, creditPositive: true);
-            var taxLastMonth = GroupBalance(priorMonth.end, IsTaxPayable, creditPositive: true);
-            rows.Add(Row("应交税费", taxEnd, taxLastYear, taxEnd, taxLastYear, taxLastMonth));
+            decimal Tax(DateOnly s, DateOnly e) => GroupMovement(s, e, IsTaxPayable, creditPositive: true);
+            rows.Add(Row("应交税费", Tax(ytd.start, ytd.end), Tax(ytdPrior.start, ytdPrior.end),
+                Tax(currentMonth.start, currentMonth.end), Tax(monthPriorYear.start, monthPriorYear.end), Tax(priorMonth.start, priorMonth.end)));
 
             // 资产负债率（%）= 负债总额 / 资产总额 * 100，本年累计列为期末值，本期列为同值。
             var yoyDebtRatio = Pct(currentEnd.DebtRatio, lastYearEnd.DebtRatio);

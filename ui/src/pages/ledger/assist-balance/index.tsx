@@ -174,7 +174,7 @@ export default function AssistBalancePage() {
                 <LedgerTable<BalanceRow>
                     columns={columns}
                     data={[]}
-                    emptyText="该期间暂无核算项目余额，请确认凭证已过账。"
+                    emptyText="该期间暂无核算项目余额，请确认凭证为正常状态。"
                     rowKey={(row) => row.rowKey}
                 />
             ) : (

@@ -90,16 +90,20 @@ namespace KuaiJi.Modules.Reports.Application
                     var (pyCredit, _) = priorYtd.GetValueOrDefault(account.Id);
                     var current = curCredit - curDebit;
                     var ytd = ytdCredit - ytdDebit;
+
+                    // 进项/销项等流转税明细的借方是采购进项或冲销，不是实际缴税，不能计入「已交」。
+                    var currentPaid = IsVatAccrualAccount(account) ? 0m : curDebit;
+                    var ytdPaid = IsVatAccrualAccount(account) ? 0m : ytdDebit;
                     return new TaxStatisticsRowDto
                     {
                         Code = account.Code,
                         Name = account.Name,
                         Line = index + 1,
                         CurrentAmount = Math.Round(current, 2, MidpointRounding.ToEven),
-                        CurrentPaidAmount = Math.Round(curDebit, 2, MidpointRounding.ToEven),
+                        CurrentPaidAmount = Math.Round(currentPaid, 2, MidpointRounding.ToEven),
                         CurrentYoyPercent = Yoy(current, pCredit),
                         YearToDateAmount = Math.Round(ytd, 2, MidpointRounding.ToEven),
-                        YearToDatePaidAmount = Math.Round(ytdDebit, 2, MidpointRounding.ToEven),
+                        YearToDatePaidAmount = Math.Round(ytdPaid, 2, MidpointRounding.ToEven),
                         YearToDateYoyPercent = Yoy(ytd, pyCredit),
                     };
                 })
@@ -119,6 +123,25 @@ namespace KuaiJi.Modules.Reports.Application
         private static bool IsTaxPrefix(string prefix)
         {
             return prefix is "2171" or "2176" or "2221";
+        }
+
+        /// <summary>
+        /// 增值税进项/销项等流转税明细：金额随商品货款核算，其借方发生额不属于「已交税费」。
+        /// 「已交税金」「未交增值税」等实际缴税科目不在排除范围内。
+        /// </summary>
+        private static bool IsVatAccrualAccount(Account account)
+        {
+            if (IncomeLineMapper.Prefix(account.Code) != "2221")
+            {
+                return false;
+            }
+
+            return account.Name.Contains("进项")
+                   || account.Name.Contains("销项")
+                   || account.Name.Contains("待认证")
+                   || account.Name.Contains("待抵扣")
+                   || account.Name.Contains("待转销")
+                   || account.Name.Contains("留抵");
         }
     }
 }

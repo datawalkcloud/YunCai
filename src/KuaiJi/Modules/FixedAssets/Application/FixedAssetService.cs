@@ -139,7 +139,7 @@ namespace KuaiJi.Modules.FixedAssets.Application
         /// <summary>修改资产类别；不存在时返回 null。</summary>
         public async Task<FixedAssetCategoryDto?> UpdateCategoryAsync(Guid accountSetId, Guid id, SaveFixedAssetCategoryRequest request, CancellationToken cancellationToken = default)
         {
-            var category = await _assetRepository.GetCategoryByIdAsync(accountSetId, id, cancellationToken);
+            var category = await _assetRepository.GetCategoryForUpdateAsync(accountSetId, id, cancellationToken);
             if (category is null)
             {
                 return null;
@@ -192,22 +192,59 @@ namespace KuaiJi.Modules.FixedAssets.Application
 
         // —— 卡片 ——
 
-        /// <summary>获取全部资产卡片。</summary>
-        public async Task<IReadOnlyList<FixedAssetDto>> GetAssetsAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        /// <summary>获取全部资产卡片（未指定期间时取当前口径）。</summary>
+        public Task<IReadOnlyList<FixedAssetDto>> GetAssetsAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+            => GetAssetsAsync(accountSetId, null, cancellationToken);
+
+        /// <summary>获取资产卡片；指定期间时按该期间回算累计折旧、本期折旧、净值与状态，
+        /// 期间早于卡片起用期间的不返回，与柠檬云资产页跟随期间的口径一致。</summary>
+        public async Task<IReadOnlyList<FixedAssetDto>> GetAssetsAsync(Guid accountSetId, int? period, CancellationToken cancellationToken = default)
         {
             var assets = await _assetRepository.GetAssetsAsync(accountSetId, cancellationToken);
             var categories = (await _assetRepository.GetCategoriesAsync(accountSetId, cancellationToken))
                 .ToDictionary(c => c.Id, c => c);
-            // 本期折旧取「最近一次计提期间」的折旧额：资产页通常就在当前期间查看。
-            var depreciationChanges = (await _assetRepository.GetChangesAsync(accountSetId, cancellationToken: cancellationToken))
+            // 累计折旧在卡片上只存当前值，历史期间用「当前值 − 该期间之后的折旧」回算。
+            var changes = await _assetRepository.GetChangesAsync(accountSetId, cancellationToken: cancellationToken);
+            var depreciationChanges = changes
                 .Where(c => c.Kind == FixedAssetChangeKind.Depreciation)
+                .ToList();
+            var originAdjustments = changes
+                .Where(c => c.Kind == FixedAssetChangeKind.OriginValueAdjust)
                 .ToList();
             var latestPeriod = depreciationChanges.Count == 0 ? 0 : depreciationChanges.Max(c => c.Period);
             return assets
+                .Where(a => period is not { } asOf || PeriodOf(a.StartDate) <= asOf)
                 .OrderBy(a => a.Code)
                 .Select(a =>
                 {
                     var category = categories.GetValueOrDefault(a.CategoryId);
+                    var assetDepreciation = depreciationChanges.Where(c => c.AssetId == a.Id).ToList();
+                    decimal originValue;
+                    decimal accumulated;
+                    decimal currentPeriod;
+                    if (period is { } asOf)
+                    {
+                        originValue = a.OriginValue - originAdjustments
+                            .Where(c => c.AssetId == a.Id && c.Period > asOf)
+                            .Sum(c => c.Amount);
+                        accumulated = a.AccumulatedDepreciation - assetDepreciation
+                            .Where(c => c.Period > asOf)
+                            .Sum(c => c.Amount);
+                        currentPeriod = assetDepreciation
+                            .Where(c => c.Period == asOf)
+                            .Sum(c => c.Amount);
+                    }
+                    else
+                    {
+                        originValue = a.OriginValue;
+                        accumulated = a.AccumulatedDepreciation;
+                        currentPeriod = latestPeriod == 0
+                            ? 0m
+                            : assetDepreciation.Where(c => c.Period == latestPeriod).Sum(c => c.Amount);
+                    }
+
+                    var clearedAsOf = a.ClearedDate is { } cleared
+                                      && (period is not { } clearedBy || PeriodOf(cleared) <= clearedBy);
                     return new FixedAssetDto
                     {
                         Id = a.Id,
@@ -219,22 +256,37 @@ namespace KuaiJi.Modules.FixedAssets.Application
                         Model = a.Model,
                         Dept = a.Dept,
                         StartDate = a.StartDate,
-                        OriginValue = a.OriginValue,
-                        AccumulatedDepreciation = a.AccumulatedDepreciation,
-                        CurrentPeriodDepreciation = latestPeriod == 0
-                            ? 0m
-                            : depreciationChanges
-                                .Where(c => c.AssetId == a.Id && c.Period == latestPeriod)
-                                .Sum(c => c.Amount),
-                        StatusText = a.Status == FixedAssetStatus.InUse ? "使用中" : "已清理",
+                        OriginValue = originValue,
+                        AccumulatedDepreciation = accumulated,
+                        CurrentPeriodDepreciation = currentPeriod,
+                        StatusText = clearedAsOf ? "已清理" : "使用中",
                         ClearedDate = a.ClearedDate,
+                        IsInitial = a.IsInitial,
                     };
                 })
                 .ToList();
         }
 
+        /// <summary>期初（资产初始化）卡片：只返回标记为初始化的卡片，口径同资产列表。</summary>
+        public async Task<IReadOnlyList<FixedAssetDto>> GetInitialAssetsAsync(Guid accountSetId, int? period, CancellationToken cancellationToken = default)
+        {
+            var initialIds = (await _assetRepository.GetAssetsAsync(accountSetId, cancellationToken))
+                .Where(a => a.IsInitial)
+                .Select(a => a.Id)
+                .ToHashSet();
+            var assets = await GetAssetsAsync(accountSetId, period, cancellationToken);
+            return assets.Where(a => initialIds.Contains(a.Id)).ToList();
+        }
+
         /// <summary>新建资产卡片（编号唯一，留空按「类别编码-序号」自动生成；可录入初始化累计折旧）。</summary>
-        public async Task<FixedAssetDto> CreateAssetAsync(Guid accountSetId, SaveFixedAssetRequest request, CancellationToken cancellationToken = default)
+        public Task<FixedAssetDto> CreateAssetAsync(Guid accountSetId, SaveFixedAssetRequest request, CancellationToken cancellationToken = default)
+            => CreateAssetCoreAsync(accountSetId, request, isInitial: false, cancellationToken);
+
+        /// <summary>新建期初（资产初始化）卡片。</summary>
+        public Task<FixedAssetDto> CreateInitialAssetAsync(Guid accountSetId, SaveFixedAssetRequest request, CancellationToken cancellationToken = default)
+            => CreateAssetCoreAsync(accountSetId, request, isInitial: true, cancellationToken);
+
+        private async Task<FixedAssetDto> CreateAssetCoreAsync(Guid accountSetId, SaveFixedAssetRequest request, bool isInitial, CancellationToken cancellationToken)
         {
             await EnsureAccountSetExistsAsync(accountSetId, cancellationToken);
             var category = await _assetRepository.GetCategoryByIdAsync(accountSetId, request.CategoryId, cancellationToken)
@@ -262,7 +314,8 @@ namespace KuaiJi.Modules.FixedAssets.Application
                     request.Model,
                     request.Dept,
                     request.StartDate,
-                    request.OriginValue);
+                    request.OriginValue,
+                    isInitial);
                 if (request.InitialAccumulatedDepreciation is { } initial)
                 {
                     asset.AdjustAccumulatedDepreciation(initial, asset.DepreciableBase(category.ResidualRate));
@@ -274,6 +327,17 @@ namespace KuaiJi.Modules.FixedAssets.Application
             }
 
             await _assetRepository.AddAssetAsync(asset, cancellationToken);
+            await _assetRepository.AddChangeAsync(
+                new FixedAssetChange(
+                    Guid.NewGuid(),
+                    accountSetId,
+                    asset.Id,
+                    FixedAssetChangeKind.Add,
+                    request.OriginValue.ToString("0.00", CultureInfo.InvariantCulture),
+                    request.OriginValue.ToString("0.00", CultureInfo.InvariantCulture),
+                    PeriodOf(asset.StartDate),
+                    request.OriginValue),
+                cancellationToken);
             await _assetRepository.SaveChangesAsync(cancellationToken);
             return (await GetAssetsAsync(accountSetId, cancellationToken)).First(a => a.Id == asset.Id);
         }
@@ -512,8 +576,16 @@ namespace KuaiJi.Modules.FixedAssets.Application
 
         // —— 变更记录 ——
 
-        /// <summary>获取变更记录（可按资产过滤），附关联凭证字号；凭证被删除时自愈清空关联。</summary>
-        public async Task<IReadOnlyList<FixedAssetChangeDto>> GetChangesAsync(Guid accountSetId, Guid? assetId = null, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 获取变更记录（可按资产 / 期间过滤），附关联凭证字号；凭证被删除时自愈清空关联。
+        /// 与柠檬云一致：变更记录只展示新增 / 调整 / 清理，每月计提放在折旧摊销明细表，不重复列出。
+        /// </summary>
+        public async Task<IReadOnlyList<FixedAssetChangeDto>> GetChangesAsync(
+            Guid accountSetId,
+            Guid? assetId = null,
+            int? startPeriod = null,
+            int? endPeriod = null,
+            CancellationToken cancellationToken = default)
         {
             var changes = await _assetRepository.GetChangesAsync(accountSetId, assetId, cancellationToken);
             var assets = (await _assetRepository.GetAssetsAsync(accountSetId, cancellationToken))
@@ -521,8 +593,14 @@ namespace KuaiJi.Modules.FixedAssets.Application
             var vouchersById = await LoadVouchersByIdAsync(accountSetId, cancellationToken);
             await ClearStaleVouchersAsync(changes, vouchersById, cancellationToken);
 
+            // 与柠檬云一致：同一期间内按资产编号升序，批量回填的同一时间戳不再出现随机顺序。
             return changes
-                .OrderByDescending(c => c.CreatedAt)
+                .Where(c => c.Kind != FixedAssetChangeKind.Depreciation)
+                .Where(c => startPeriod is not { } start || c.Period >= start)
+                .Where(c => endPeriod is not { } end || c.Period <= end)
+                .OrderByDescending(c => c.Period)
+                .ThenBy(c => assets.GetValueOrDefault(c.AssetId)?.Code ?? string.Empty)
+                .ThenByDescending(c => c.CreatedAt)
                 .Select(c =>
                 {
                     var asset = assets.GetValueOrDefault(c.AssetId);
@@ -595,7 +673,8 @@ namespace KuaiJi.Modules.FixedAssets.Application
             return new DepreciatePeriodResultDto { Period = period, DepreciatedCount = count, Skipped = skipped };
         }
 
-        /// <summary>折旧摊销明细表：指定期间全部资产的折旧取数。</summary>
+        /// <summary>折旧摊销明细表：指定期间全部资产的折旧取数（累计折旧按该期间回算）。
+        /// 与柠檬云一致：当期间尚未计提折旧时明细为空，不展示零额行。</summary>
         public async Task<IReadOnlyList<DepreciationLedgerRowDto>> GetDepreciationLedgerAsync(Guid accountSetId, int period, CancellationToken cancellationToken = default)
         {
             var assets = await _assetRepository.GetAssetsAsync(accountSetId, cancellationToken);
@@ -603,17 +682,28 @@ namespace KuaiJi.Modules.FixedAssets.Application
                 .ToDictionary(c => c.Id, c => c);
             var changes = await _assetRepository.GetChangesAsync(accountSetId, cancellationToken: cancellationToken);
             var yearPrefix = (period / 100).ToString("D4");
+            if (!changes.Any(c => c.Kind == FixedAssetChangeKind.Depreciation && c.Period == period))
+            {
+                return [];
+            }
 
             return assets
+                .Where(a => PeriodOf(a.StartDate) <= period)
                 .OrderBy(a => a.Code)
                 .Select(a =>
                 {
                     var category = categories.GetValueOrDefault(a.CategoryId);
-                    var periodDep = changes
-                        .Where(c => c.AssetId == a.Id && c.Kind == FixedAssetChangeKind.Depreciation && c.Period == period)
+                    var assetChanges = changes
+                        .Where(c => c.AssetId == a.Id && c.Kind == FixedAssetChangeKind.Depreciation)
+                        .ToList();
+                    var periodDep = assetChanges
+                        .Where(c => c.Period == period)
                         .Sum(c => c.Amount);
-                    var yearAccumulated = changes
-                        .Where(c => c.AssetId == a.Id && c.Kind == FixedAssetChangeKind.Depreciation && (c.Period / 100).ToString("D4") == yearPrefix && c.Period <= period)
+                    var yearAccumulated = assetChanges
+                        .Where(c => (c.Period / 100).ToString("D4") == yearPrefix && c.Period <= period)
+                        .Sum(c => c.Amount);
+                    var totalAccumulated = a.AccumulatedDepreciation - assetChanges
+                        .Where(c => c.Period > period)
                         .Sum(c => c.Amount);
                     return new DepreciationLedgerRowDto
                     {
@@ -627,21 +717,36 @@ namespace KuaiJi.Modules.FixedAssets.Application
                         OriginValue = a.OriginValue,
                         PeriodDepreciation = periodDep,
                         YearAccumulated = yearAccumulated,
-                        TotalAccumulated = a.AccumulatedDepreciation,
+                        TotalAccumulated = totalAccumulated,
                     };
                 })
                 .ToList();
         }
 
         /// <summary>资产汇总表：按部门或类别分组，原值 / 累计折旧 / 净值四列口径。
-        /// 期初数 = 期间开始前已存在部分的取值；本期增加 = 期间内起用（原值）或期间内计提（折旧）；
-        /// 本期减少 = 期间内清理；期末数 = 当前值。近似口径详见各分项注释。</summary>
+        /// 期末数按截止期间回算（不取卡片当前值），期初数取起始期间前一期；本期减少为期间内清理。</summary>
         public async Task<IReadOnlyList<FixedAssetSummaryRowDto>> GetSummaryAsync(Guid accountSetId, int startPeriod, int endPeriod, bool byCategory, CancellationToken cancellationToken = default)
         {
             var assets = await _assetRepository.GetAssetsAsync(accountSetId, cancellationToken);
             var categories = (await _assetRepository.GetCategoriesAsync(accountSetId, cancellationToken))
                 .ToDictionary(c => c.Id, c => c);
             var changes = await _assetRepository.GetChangesAsync(accountSetId, cancellationToken: cancellationToken);
+            var depreciationChanges = changes
+                .Where(c => c.Kind == FixedAssetChangeKind.Depreciation)
+                .ToList();
+            var originAdjustments = changes
+                .Where(c => c.Kind == FixedAssetChangeKind.OriginValueAdjust)
+                .ToList();
+
+            decimal OriginAsOf(FixedAsset asset, int period)
+                => asset.OriginValue - originAdjustments
+                    .Where(c => c.AssetId == asset.Id && c.Period > period)
+                    .Sum(c => c.Amount);
+
+            decimal AccumulatedAsOf(FixedAsset asset, int period)
+                => asset.AccumulatedDepreciation - depreciationChanges
+                    .Where(c => c.AssetId == asset.Id && c.Period > period)
+                    .Sum(c => c.Amount);
 
             var groups = byCategory
                 ? assets.GroupBy(a => categories.GetValueOrDefault(a.CategoryId)?.Name ?? string.Empty)
@@ -655,107 +760,241 @@ namespace KuaiJi.Modules.FixedAssets.Application
                     decimal depOpening = 0, depIncrease = 0, depDecrease = 0;
                     foreach (var asset in g)
                     {
-                        var startPeriodOfAsset = asset.StartDate.Year * 100 + asset.StartDate.Month;
-                        if (startPeriodOfAsset < startPeriod)
+                        var startPeriodOfAsset = PeriodOf(asset.StartDate);
+                        var clearedPeriod = asset.ClearedDate is { } cleared ? PeriodOf(cleared) : (int?)null;
+                        if (startPeriodOfAsset < startPeriod
+                            && (clearedPeriod is null || clearedPeriod >= startPeriod))
                         {
-                            originOpening += asset.OriginValue;
+                            originOpening += OriginAsOf(asset, startPeriod - 1);
+                            depOpening += AccumulatedAsOf(asset, startPeriod - 1);
                         }
-                        else if (startPeriodOfAsset <= endPeriod)
+                        else if (startPeriodOfAsset >= startPeriod && startPeriodOfAsset <= endPeriod)
                         {
-                            originIncrease += asset.OriginValue;
-                        }
-
-                        if (asset.ClearedDate is { } cleared)
-                        {
-                            var clearedPeriod = cleared.Year * 100 + cleared.Month;
-                            if (clearedPeriod >= startPeriod && clearedPeriod <= endPeriod)
-                            {
-                                originDecrease += asset.OriginValue;
-                            }
+                            originIncrease += OriginAsOf(asset, startPeriodOfAsset);
                         }
 
-                        var assetChanges = changes.Where(c => c.AssetId == asset.Id && c.Kind == FixedAssetChangeKind.Depreciation);
-                        foreach (var change in assetChanges)
+                        if (clearedPeriod is { } cp && cp >= startPeriod && cp <= endPeriod)
                         {
-                            if (change.Period < startPeriod)
-                            {
-                                depOpening += change.Amount;
-                            }
-                            else if (change.Period <= endPeriod)
-                            {
-                                depIncrease += change.Amount;
-                            }
+                            originDecrease += OriginAsOf(asset, cp - 1);
+                            depDecrease += AccumulatedAsOf(asset, cp - 1);
                         }
+
+                        depIncrease += depreciationChanges
+                            .Where(c => c.AssetId == asset.Id && c.Period >= startPeriod && c.Period <= endPeriod)
+                            .Sum(c => c.Amount);
                     }
 
-                    var originClosing = g.Where(a => a.Status == FixedAssetStatus.InUse).Sum(a => a.OriginValue);
-                    var depClosing = g.Sum(a => a.AccumulatedDepreciation);
                     return new FixedAssetSummaryRowDto
                     {
                         GroupName = g.Key,
                         OriginOpening = originOpening,
                         OriginIncrease = originIncrease,
                         OriginDecrease = originDecrease,
-                        OriginClosing = originClosing,
+                        OriginClosing = originOpening + originIncrease - originDecrease,
                         DepOpening = depOpening,
                         DepIncrease = depIncrease,
                         DepDecrease = depDecrease,
-                        DepClosing = depClosing,
+                        DepClosing = depOpening + depIncrease - depDecrease,
                     };
                 })
                 .ToList();
         }
 
-        /// <summary>资产核对总账：按类别分组，会计科目行（期初口径）与资产卡片行成对，附差异行。
-        /// 会计科目侧当前取科目期初余额（尚未叠加已过账凭证发生额），口径升级留待账簿源接入。</summary>
-        public async Task<IReadOnlyList<FixedAssetCheckRowDto>> GetCheckAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 资产核对总账：与柠檬云同构，按资产属性分五组（固定资产 / 累计折旧 / 无形资产 / 累计摊销 / 长期待摊费用），
+        /// 每组三行（会计科目 / 资产卡片 / 差异），列口径为期初、本期借方、本期贷方、余额。
+        /// 会计科目侧取科目期初 + 期间内已过账凭证发生额；资产卡片侧按截止期间回算原值与累计折旧，
+        /// 期间内新增 / 清理 / 计提计入借贷方。长期待摊费用按净值单行比对。
+        /// </summary>
+        public async Task<IReadOnlyList<FixedAssetCheckRowDto>> GetCheckAsync(
+            Guid accountSetId,
+            int? startPeriod = null,
+            int? endPeriod = null,
+            CancellationToken cancellationToken = default)
         {
+            var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken)
+                             ?? throw new FixedAssetException("指定的账套不存在。");
             var assets = await _assetRepository.GetAssetsAsync(accountSetId, cancellationToken);
             var categories = await _assetRepository.GetCategoriesAsync(accountSetId, cancellationToken);
+            var changes = await _assetRepository.GetChangesAsync(accountSetId, cancellationToken: cancellationToken);
             var accountsById = await LoadAccountsByIdAsync(accountSetId, cancellationToken);
+            var setting = await _assetRepository.GetVoucherSettingAsync(accountSetId, cancellationToken);
+            var resolved = ResolveVoucherAccounts(setting, accountsById);
+            var categoryById = categories.ToDictionary(c => c.Id, c => c);
+
+            var fallback = new[] { accountSet.StartYear * 100 + accountSet.StartMonth }
+                .Concat(assets.Select(a => PeriodOf(a.StartDate)))
+                .Concat(changes.Select(c => c.Period))
+                .DefaultIfEmpty(accountSet.StartYear * 100 + accountSet.StartMonth)
+                .Max();
+            var start = startPeriod ?? fallback;
+            var end = endPeriod ?? start;
+            if (end < start)
+            {
+                (start, end) = (end, start);
+            }
+
+            var postedVouchers = (await _voucherRepository.GetAllAsync(accountSetId, cancellationToken))
+                .Where(v => v.Status == VoucherStatus.Posted && v.DeletedAt is null)
+                .ToList();
+
+            (decimal Opening, decimal Debit, decimal Credit, decimal Balance) SubjectMovement(Guid accountId, bool isCreditDirection)
+            {
+                var account = accountsById.GetValueOrDefault(accountId);
+                var opening = account?.OpeningBalance ?? 0m;
+                decimal Signed(decimal debit, decimal credit) => isCreditDirection ? credit - debit : debit - credit;
+                decimal debitInRange = 0m, creditInRange = 0m;
+                foreach (var voucher in postedVouchers)
+                {
+                    var period = PeriodOf(voucher.Date);
+                    foreach (var entry in voucher.Entries.Where(e => e.AccountId == accountId))
+                    {
+                        if (period < start)
+                        {
+                            opening += Signed(entry.Debit, entry.Credit);
+                        }
+                        else if (period <= end)
+                        {
+                            debitInRange += entry.Debit;
+                            creditInRange += entry.Credit;
+                        }
+                    }
+                }
+
+                return (opening, debitInRange, creditInRange, opening + Signed(debitInRange, creditInRange));
+            }
+
+            static FixedAssetAttr AttrOf(FixedAsset asset, IReadOnlyDictionary<Guid, FixedAssetCategory> map)
+                => map.GetValueOrDefault(asset.CategoryId)?.Attr ?? FixedAssetAttr.Fixed;
+
+            decimal OriginAt(FixedAsset asset, int period)
+                => asset.OriginValue - changes
+                    .Where(c => c.AssetId == asset.Id && c.Kind == FixedAssetChangeKind.OriginValueAdjust && c.Period > period)
+                    .Sum(c => c.Amount);
+
+            decimal AccumulatedAt(FixedAsset asset, int period)
+                => asset.AccumulatedDepreciation - changes
+                    .Where(c => c.AssetId == asset.Id && c.Kind == FixedAssetChangeKind.Depreciation && c.Period > period)
+                    .Sum(c => c.Amount);
+
+            bool ClearedBy(FixedAsset asset, int period)
+                => asset.ClearedDate is { } cleared && PeriodOf(cleared) <= period;
+
+            int ClearedPeriod(FixedAsset asset)
+                => asset.ClearedDate is { } cleared ? PeriodOf(cleared) : 0;
+
+            static int PrevPeriod(int period)
+                => period % 100 == 1 ? (period / 100 - 1) * 100 + 12 : period - 1;
+
+            // 卡片侧原值四列：期初 = 期间前已存在且未清理卡片；本期借方 = 期末 − 期初 + 贷方；
+            // 贷方 = 期间内清理卡片原值 + 原值下调净额。
+            (decimal Opening, decimal Debit, decimal Credit, decimal Balance) OriginMovement(FixedAssetAttr attr, int period)
+            {
+                var group = assets.Where(a => AttrOf(a, categoryById) == attr).ToList();
+                var opening = group
+                    .Where(a => PeriodOf(a.StartDate) < start && !ClearedBy(a, PrevPeriod(start)))
+                    .Sum(a => OriginAt(a, PrevPeriod(start)));
+                var closing = group
+                    .Where(a => PeriodOf(a.StartDate) <= end && !ClearedBy(a, end))
+                    .Sum(a => OriginAt(a, end));
+                var credit = group
+                    .Where(a => ClearedPeriod(a) is var cp && cp >= start && cp <= end)
+                    .Sum(a => OriginAt(a, PrevPeriod(ClearedPeriod(a))));
+                credit += group
+                    .SelectMany(a => changes.Where(c => c.AssetId == a.Id && c.Kind == FixedAssetChangeKind.OriginValueAdjust
+                                                        && c.Period >= start && c.Period <= end && c.Amount < 0))
+                    .Sum(c => -c.Amount);
+                return (opening, closing - opening + credit, credit, closing);
+            }
+
+            // 卡片侧累计折旧四列：贷方 = 期间内计提 + 清理转出 + 上调；借方 = 期初 + 贷方 − 期末。
+            (decimal Opening, decimal Debit, decimal Credit, decimal Balance) AccumulatedMovement(FixedAssetAttr attr, int period)
+            {
+                var group = assets.Where(a => AttrOf(a, categoryById) == attr).ToList();
+                var opening = group
+                    .Where(a => PeriodOf(a.StartDate) < start && !ClearedBy(a, PrevPeriod(start)))
+                    .Sum(a => AccumulatedAt(a, PrevPeriod(start)));
+                var closing = group
+                    .Where(a => PeriodOf(a.StartDate) <= end && !ClearedBy(a, end))
+                    .Sum(a => AccumulatedAt(a, end));
+                var credit = changes
+                    .Where(c => c.Kind == FixedAssetChangeKind.Depreciation && c.Period >= start && c.Period <= end)
+                    .Where(c => group.Any(a => a.Id == c.AssetId))
+                    .Sum(c => c.Amount);
+                credit += group
+                    .SelectMany(a => changes.Where(c => c.AssetId == a.Id && c.Kind == FixedAssetChangeKind.AccumulatedDepreciationAdjust
+                                                        && c.Period >= start && c.Period <= end && c.Amount > 0))
+                    .Sum(c => c.Amount);
+                credit += group
+                    .Where(a => ClearedPeriod(a) is var cp && cp >= start && cp <= end)
+                    .Sum(a => AccumulatedAt(a, PrevPeriod(ClearedPeriod(a))));
+                return (opening, opening + credit - closing, credit, closing);
+            }
 
             var result = new List<FixedAssetCheckRowDto>();
-            foreach (var category in categories.OrderBy(c => c.Code))
+            void AddRows(string groupName, string subjectName, Guid[] subjectIds, bool subjectCreditDirection,
+                string cardName, (decimal Opening, decimal Debit, decimal Credit, decimal Balance) card)
             {
-                var subject = accountsById.GetValueOrDefault(category.SubjectAccountId);
-                result.Add(new FixedAssetCheckRowDto
+                result.Add(new FixedAssetCheckRowDto { Item = "▼ " + groupName, Name = string.Empty });
+                var subject = (Opening: 0m, Debit: 0m, Credit: 0m, Balance: 0m);
+                foreach (var id in subjectIds.Distinct())
                 {
-                    Item = "▼ " + category.Name,
-                    Name = string.Empty,
-                });
+                    var movement = SubjectMovement(id, subjectCreditDirection);
+                    subject = (subject.Opening + movement.Opening, subject.Debit + movement.Debit,
+                        subject.Credit + movement.Credit, subject.Balance + movement.Balance);
+                }
+
+                var subjectText = subjectIds
+                    .Select(id => accountsById.GetValueOrDefault(id))
+                    .FirstOrDefault(a => a is not null) is { } firstAccount
+                    ? firstAccount.Name
+                    : subjectName;
                 result.Add(new FixedAssetCheckRowDto
                 {
                     Item = "会计科目",
-                    Name = subject is null ? string.Empty : $"{subject.Code} {subject.Name}",
-                    Opening = subject?.OpeningBalance ?? 0m,
-                    Balance = subject?.OpeningBalance ?? 0m,
+                    Name = subjectText,
+                    Opening = subject.Opening,
+                    Debit = subject.Debit,
+                    Credit = subject.Credit,
+                    Balance = subject.Balance,
                 });
-                var cards = assets.Where(a => a.CategoryId == category.Id).ToList();
-                var origin = cards.Sum(a => a.OriginValue);
-                var accumulated = cards.Sum(a => a.AccumulatedDepreciation);
-                var cardText = category.Attr switch
-                {
-                    FixedAssetAttr.Intangible => "无形资产原值",
-                    FixedAssetAttr.LongTermExpense => "长期待摊费用净值",
-                    _ => "固定资产原值",
-                };
                 result.Add(new FixedAssetCheckRowDto
                 {
                     Item = "资产卡片",
-                    Name = cardText,
-                    Opening = origin,
-                    Balance = origin - accumulated,
+                    Name = cardName,
+                    Opening = card.Opening,
+                    Debit = card.Debit,
+                    Credit = card.Credit,
+                    Balance = card.Balance,
                 });
-                var diff = (subject?.OpeningBalance ?? 0m) - origin;
                 result.Add(new FixedAssetCheckRowDto
                 {
                     Item = "差异",
                     Name = string.Empty,
-                    Opening = diff,
-                    Balance = diff,
+                    Opening = subject.Opening - card.Opening,
+                    Debit = subject.Debit - card.Debit,
+                    Credit = subject.Credit - card.Credit,
+                    Balance = subject.Balance - card.Balance,
                     IsDiff = true,
                 });
             }
+
+            var fixedSubjectIds = categories.Where(c => c.Attr == FixedAssetAttr.Fixed).Select(c => c.SubjectAccountId).ToArray();
+            var intangibleSubjectIds = categories.Where(c => c.Attr == FixedAssetAttr.Intangible).Select(c => c.SubjectAccountId).ToArray();
+            var longTermSubjectIds = categories.Where(c => c.Attr == FixedAssetAttr.LongTermExpense).Select(c => c.SubjectAccountId).ToArray();
+
+            AddRows("固定资产", "固定资产", fixedSubjectIds, false, "固定资产原值", OriginMovement(FixedAssetAttr.Fixed, end));
+            AddRows("累计折旧", "累计折旧", resolved.Depreciation is { } dep ? [dep.Id] : [], true, "固定资产累计折旧", AccumulatedMovement(FixedAssetAttr.Fixed, end));
+            AddRows("无形资产", "无形资产", intangibleSubjectIds, false, "无形资产原值", OriginMovement(FixedAssetAttr.Intangible, end));
+            AddRows("无形资产累计摊销", "累计摊销", resolved.Amortization is { } amort ? [amort.Id] : [], true, "无形资产累计摊销", AccumulatedMovement(FixedAssetAttr.Intangible, end));
+
+            var longTermOrigin = OriginMovement(FixedAssetAttr.LongTermExpense, end);
+            var longTermAccum = AccumulatedMovement(FixedAssetAttr.LongTermExpense, end);
+            AddRows("长期待摊费用", "长期待摊费用", longTermSubjectIds, false, "长期待摊费用净值",
+                (longTermOrigin.Opening - longTermAccum.Opening,
+                 longTermOrigin.Debit + longTermAccum.Debit,
+                 longTermOrigin.Credit + longTermAccum.Credit,
+                 longTermOrigin.Balance - longTermAccum.Balance));
 
             return result;
         }
@@ -1288,9 +1527,9 @@ namespace KuaiJi.Modules.FixedAssets.Application
         }
 
         /// <summary>导出资产核对总账。</summary>
-        public async Task<byte[]> ExportCheckAsync(Guid accountSetId, CancellationToken cancellationToken = default)
+        public async Task<byte[]> ExportCheckAsync(Guid accountSetId, int? startPeriod = null, int? endPeriod = null, CancellationToken cancellationToken = default)
         {
-            var rows = await GetCheckAsync(accountSetId, cancellationToken);
+            var rows = await GetCheckAsync(accountSetId, startPeriod, endPeriod, cancellationToken);
             return FixedAssetExportBuilder.BuildCheck(rows);
         }
 
@@ -1322,6 +1561,8 @@ namespace KuaiJi.Modules.FixedAssets.Application
         }
 
         private static string FormatPeriod(int period) => period == 0 ? string.Empty : $"{period / 100:D4}-{period % 100:D2}";
+
+        private static int PeriodOf(DateOnly date) => date.Year * 100 + date.Month;
 
         /// <summary>按「类别编码-序号」生成下一个可用资产编号（如 01-003）。</summary>
         private async Task<string> GenerateAssetCodeAsync(Guid accountSetId, FixedAssetCategory category, CancellationToken cancellationToken)

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ComponentType, ReactNode } from "react"
 import { useNavigate } from "react-router"
+import { Button } from "antd"
 
 import {
     AccountBookOutlined,
@@ -191,17 +192,12 @@ function HeroBanner({
                 </div>
 
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => navigate(`${base}/vouchers/new`)}
-                        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md bg-(--pk-brand) px-3.5 text-[12.5px] font-medium text-white transition-colors hover:bg-(--pk-brand-hover)"
-                    >
-                        <PlusOutlined className="text-[12px]" />
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(`${base}/vouchers/new`)}>
                         新增凭证
-                    </button>
+                    </Button>
                     <button
                         type="button"
-                        onClick={() => navigate(`${base}/vouchers/manage`)}
+                        onClick={() => navigate(`${base}/vouchers/manage?import=1`)}
                         className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-(--pk-border) bg-(--pk-surface) px-3.5 text-[12.5px] text-(--pk-text) transition-colors hover:bg-(--pk-gray-bg)"
                     >
                         <UploadOutlined className="text-[12px]" />
@@ -635,14 +631,9 @@ function RecentVouchersCard({
                         <FileTextOutlined />
                     </span>
                     <p className={"text-[12px] " + MUTED}>本期还没有凭证，新增第一张凭证开始记账。</p>
-                    <button
-                        type="button"
-                        onClick={() => navigate(`${base}/vouchers/new`)}
-                        className="mt-1 inline-flex h-7 cursor-pointer items-center gap-1 rounded-md bg-(--pk-brand) px-3 text-[12px] text-white hover:bg-(--pk-brand-hover)"
-                    >
-                        <PlusOutlined className="text-[11px]" />
+                    <Button type="primary" icon={<PlusOutlined />} className="mt-1" onClick={() => navigate(`${base}/vouchers/new`)}>
                         新增凭证
-                    </button>
+                    </Button>
                 </div>
             ) : (
                 <div className="min-w-0 overflow-x-auto">
@@ -800,14 +791,9 @@ function OnboardingStrip() {
                 >
                     录入期初
                 </button>
-                <button
-                    type="button"
-                    onClick={() => navigate(`${base}/vouchers/new`)}
-                    className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md bg-(--pk-brand) px-3 text-[12px] text-white hover:bg-(--pk-brand-hover)"
-                >
-                    <PlusOutlined className="text-[11px]" />
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(`${base}/vouchers/new`)}>
                     新增凭证
-                </button>
+                </Button>
             </div>
         </section>
     )

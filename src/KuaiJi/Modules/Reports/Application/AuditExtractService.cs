@@ -158,7 +158,7 @@ namespace KuaiJi.Modules.Reports.Application
                 new() { ["项目"] = "期初借贷差额", ["内容"] = Math.Round(totalOpeningDebit - totalOpeningCredit, 2) },
                 new() { ["项目"] = "本期借贷发生额", ["内容"] = $"{Math.Round(totalDebit, 2):0.00} / {Math.Round(totalCredit, 2):0.00}" },
                 new() { ["项目"] = "取数时间", ["内容"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") },
-                new() { ["项目"] = "说明", ["内容"] = "本工作簿由系统按已记账凭证实时生成，可直接导入审计软件；金额单位为元。" },
+                new() { ["项目"] = "说明", ["内容"] = "本工作簿由系统按正常凭证实时生成，可直接导入审计软件；金额单位为元。" },
             };
 
             var sheets = new Dictionary<string, object>
@@ -186,8 +186,8 @@ namespace KuaiJi.Modules.Reports.Application
 
         private static string StatusText(VoucherStatus status) => status switch
         {
-            VoucherStatus.Draft => "草稿",
-            VoucherStatus.Posted => "已记账",
+            VoucherStatus.Draft => "暂存",
+            VoucherStatus.Posted => "正常",
             _ => "未知",
         };
     }

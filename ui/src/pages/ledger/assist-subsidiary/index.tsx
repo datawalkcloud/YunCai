@@ -162,7 +162,7 @@ export default function AssistSubsidiaryPage() {
                 <LedgerTable<AssistRow>
                     columns={columns}
                     data={[]}
-                    emptyText="该期间暂无核算项目明细，请确认凭证已过账。"
+                    emptyText="该期间暂无核算项目明细，请确认凭证为正常状态。"
                     rowKey={(row) => row.rowKey}
                 />
             ) : (

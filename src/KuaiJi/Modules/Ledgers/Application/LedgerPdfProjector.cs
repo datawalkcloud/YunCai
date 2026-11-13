@@ -332,7 +332,7 @@ namespace KuaiJi.Modules.Ledgers.Application
             var tail = new List<string> { "单位：元" };
             if (meta.UnpostedVoucherCount > 0)
             {
-                tail.Add($"本期有 {meta.UnpostedVoucherCount} 张未过账凭证，未纳入账簿。");
+                tail.Add($"本期有 {meta.UnpostedVoucherCount} 张暂存凭证，未纳入账簿。");
             }
 
             if (notes is { Count: > 0 }) tail.AddRange(notes);
@@ -346,7 +346,7 @@ namespace KuaiJi.Modules.Ledgers.Application
                 Notes = tail,
                 Landscape = landscape,
                 PrintedAt = DateTimeOffset.Now,
-                EmptyText = "该期间暂无数据，请确认凭证已过账。",
+                EmptyText = "该期间暂无数据，请确认凭证为正常状态。",
             };
         }
 

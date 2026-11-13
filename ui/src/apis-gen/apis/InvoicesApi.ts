@@ -149,6 +149,15 @@ export interface AccountsetsAccountSetIdInvoicesImportTemplateGetRequest {
     direction?: number;
 }
 
+export interface AccountsetsAccountSetIdInvoicesPdfGetRequest {
+    accountSetId: string;
+    direction?: number;
+    startDate?: Date;
+    endDate?: Date;
+    status?: number;
+    period?: string;
+}
+
 export interface AccountsetsAccountSetIdInvoicesPostRequest {
     accountSetId: string;
     saveInvoiceRequest: SaveInvoiceRequest;
@@ -526,6 +535,37 @@ export interface InvoicesApiInterface {
     /**
      */
     accountsetsAccountSetIdInvoicesImportTemplateGet(requestParameters: AccountsetsAccountSetIdInvoicesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [direction] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {number} [status] 
+     * @param {string} [period] 
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [direction] 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {number} [status] 
+     * @param {string} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof InvoicesApiInterface
+     */
+    accountsetsAccountSetIdInvoicesPdfGetRaw(requestParameters: AccountsetsAccountSetIdInvoicesPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdInvoicesPdfGet(requestParameters: AccountsetsAccountSetIdInvoicesPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdInvoicesPost without sending the request
@@ -1402,6 +1442,68 @@ export class InvoicesApi extends runtime.BaseAPI implements InvoicesApiInterface
      */
     async accountsetsAccountSetIdInvoicesImportTemplateGet(requestParameters: AccountsetsAccountSetIdInvoicesImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.accountsetsAccountSetIdInvoicesImportTemplateGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdInvoicesPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdInvoicesPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdInvoicesPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdInvoicesPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['direction'] != null) {
+            queryParameters['direction'] = requestParameters['direction'];
+        }
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['startDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['endDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/invoices/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesPdfGetRaw(requestParameters: AccountsetsAccountSetIdInvoicesPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdInvoicesPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdInvoicesPdfGet(requestParameters: AccountsetsAccountSetIdInvoicesPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdInvoicesPdfGetRaw(requestParameters, initOverrides);
     }
 
     /**

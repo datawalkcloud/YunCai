@@ -170,6 +170,10 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
 
                 entity.Property(e => e.VatRate).HasColumnName("vat_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(13m);
                 entity.Property(e => e.IncomeTaxRate).HasColumnName("income_tax_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(25m);
+                // 附加税费率：库默认值给存量账套补法定 7 / 3 / 2，补列后即为可计提状态。
+                entity.Property(e => e.CityBuildTaxRate).HasColumnName("city_build_tax_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(7m);
+                entity.Property(e => e.EducationSurchargeRate).HasColumnName("education_surcharge_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(3m);
+                entity.Property(e => e.LocalEducationSurchargeRate).HasColumnName("local_education_surcharge_rate").HasColumnType("numeric(5,2)").IsRequired().HasDefaultValue(2m);
                 entity.Property(e => e.VoucherWords).HasColumnName("voucher_words").IsRequired().HasMaxLength(100).HasDefaultValue(AccountSet.DefaultVoucherWords);
                 entity.Property(e => e.ClosedPeriod).HasColumnName("closed_period").IsRequired().HasDefaultValue(0);
                 entity.Property(e => e.CarriedPeriod).HasColumnName("carried_period").IsRequired().HasDefaultValue(0);
@@ -523,9 +527,9 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.SmartKeywords).HasColumnName("smart_keywords").HasMaxLength(EntryCategory.MaxKeywordsLength);
                 entity.Property(e => e.VoucherSubjectId).HasColumnName("voucher_subject_id");
 
-                // 同一账套同一类型内类别名称唯一；同一账套内编码唯一。
+                // 同一账套同一类型内类别名称唯一；编码在「账套 + 类型」内唯一（收入与支出各自从 1 编号）。
                 entity.HasIndex(e => new { e.AccountSetId, e.Type, e.Name }).IsUnique();
-                entity.HasIndex(e => new { e.AccountSetId, e.Code }).IsUnique();
+                entity.HasIndex(e => new { e.AccountSetId, e.Type, e.Code }).IsUnique();
 
                 // 收支类别归属于账套；账套非空时不可删除（Restrict）。
                 entity.HasOne<AccountSet>()
@@ -761,6 +765,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.OriginValue).HasColumnName("origin_value").HasColumnType("numeric(18,2)").IsRequired();
                 entity.Property(e => e.AccumulatedDepreciation).HasColumnName("accumulated_depreciation").HasColumnType("numeric(18,2)").IsRequired();
                 entity.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+                entity.Property(e => e.IsInitial).HasColumnName("is_initial").HasDefaultValue(false).IsRequired();
                 entity.Property(e => e.LastDepreciatedPeriod).HasColumnName("last_depreciated_period").IsRequired();
                 entity.Property(e => e.ClearedDate).HasColumnName("cleared_date");
 
@@ -1004,6 +1009,7 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.CompanyRate).HasColumnName("company_rate").HasColumnType("numeric(5,2)").IsRequired();
                 entity.Property(e => e.PersonalRate).HasColumnName("personal_rate").HasColumnType("numeric(5,2)");
                 entity.Property(e => e.SortOrder).HasColumnName("sort_order").IsRequired();
+                entity.Property(e => e.BaseAmount).HasColumnName("base_amount").HasColumnType("numeric(18,2)").HasDefaultValue(0m).IsRequired();
 
                 entity.HasIndex(e => new { e.AccountSetId, e.Name }).IsUnique();
 
@@ -1023,6 +1029,8 @@ namespace KuaiJi.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.EmployeeId).HasColumnName("employee_id").IsRequired();
                 entity.Property(e => e.InsuranceItemId).HasColumnName("insurance_item_id").IsRequired();
                 entity.Property(e => e.InsuranceBase).HasColumnName("insurance_base").HasColumnType("numeric(18,2)").IsRequired();
+                entity.Property(e => e.CompanyRate).HasColumnName("company_rate").HasColumnType("numeric(5,2)");
+                entity.Property(e => e.PersonalRate).HasColumnName("personal_rate").HasColumnType("numeric(5,2)");
 
                 entity.HasIndex(e => new { e.EmployeeId, e.InsuranceItemId }).IsUnique();
 

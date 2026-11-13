@@ -109,6 +109,12 @@ export interface FixedAssetDto {
      * @memberof FixedAssetDto
      */
     clearedDate?: Date | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof FixedAssetDto
+     */
+    isInitial?: boolean;
 }
 
 /**
@@ -143,6 +149,7 @@ export function FixedAssetDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'netValue': json['netValue'] == null ? undefined : json['netValue'],
         'statusText': json['statusText'] == null ? undefined : json['statusText'],
         'clearedDate': json['clearedDate'] == null ? undefined : (new Date(json['clearedDate'])),
+        'isInitial': json['isInitial'] == null ? undefined : json['isInitial'],
     };
 }
 
@@ -172,6 +179,7 @@ export function FixedAssetDtoToJSONTyped(value?: FixedAssetDto | null, ignoreDis
         'netValue': value['netValue'],
         'statusText': value['statusText'],
         'clearedDate': value['clearedDate'] == null ? value['clearedDate'] : value['clearedDate'].toISOString().substring(0,10),
+        'isInitial': value['isInitial'],
     };
 }
 

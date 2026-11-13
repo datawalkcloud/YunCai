@@ -48,9 +48,10 @@ namespace KuaiJi.Modules.Reports.Application
             var yearEnd = monthEnd;
 
             var (monthByLine, ytdByLine, monthOpening, yearOpening) = Accumulate(
-                accounts, vouchers, monthStart, monthEnd, yearStart, yearEnd);
-            var lastYear = AccumulateLastYear(accounts, vouchers, monthStart, 1);
-            var lines = BuildLines(monthByLine, ytdByLine, monthOpening, yearOpening, lastYear.ByLine, lastYear.Opening);
+                accountSet.Standard, accounts, vouchers, monthStart, monthEnd, yearStart, yearEnd);
+            var lastYear = AccumulateLastYear(accountSet.Standard, accounts, vouchers, monthStart, 1);
+            var lines = BuildLines(monthByLine, ytdByLine, monthOpening, yearOpening, accountSet.Standard,
+                lastYear.ByLine, lastYear.Opening);
 
             return new CashFlowDto
             {
@@ -63,8 +64,8 @@ namespace KuaiJi.Modules.Reports.Application
 
         /// <summary>
         /// 现金流量表（辅助核算法）：按现金分录上挂的「现金流」辅助项目归集到标准行次。
-        /// 项目编码前两位对应主表行号（如 01 → 第 1 行、05 → 第 5 行），未挂项目或编码无法对应的
-        /// 现金收付不计入；小计/净额/期初期末与其他口径共用同一套汇总。
+        /// 预置项目按名称对应主表行次（编码是 01–18 顺序号）、自定义项目退回「编码前两位即行号」，
+        /// 未挂项目或无法对应的现金收付不计入；小计/净额/期初期末与其他口径共用同一套汇总。
         /// </summary>
         public async Task<CashFlowDto> GetAssistAsync(
             Guid accountSetId,
@@ -85,15 +86,16 @@ namespace KuaiJi.Modules.Reports.Application
             var itemsById = cashFlowItems.ToDictionary(i => i.Id);
             var cashAccountIds = CashAccountIds(accounts);
 
-            var periodByLine = AccumulateAssist(vouchers, itemsById, cashAccountIds, monthStart, monthEnd);
-            var ytdByLine = AccumulateAssist(vouchers, itemsById, cashAccountIds, yearStart, monthEnd);
-            var lastYearByLine = AccumulateAssist(vouchers, itemsById, cashAccountIds, lastYearStart, lastYearEnd);
+            var periodByLine = AccumulateAssist(accountSet.Standard, vouchers, itemsById, cashAccountIds, monthStart, monthEnd);
+            var ytdByLine = AccumulateAssist(accountSet.Standard, vouchers, itemsById, cashAccountIds, yearStart, monthEnd);
+            var lastYearByLine = AccumulateAssist(accountSet.Standard, vouchers, itemsById, cashAccountIds, lastYearStart, lastYearEnd);
 
             var lines = BuildLines(
                 periodByLine,
                 ytdByLine,
                 CashOpening(accounts, vouchers, cashAccountIds, monthStart),
                 CashOpening(accounts, vouchers, cashAccountIds, yearStart),
+                accountSet.Standard,
                 lastYearByLine,
                 CashOpening(accounts, vouchers, cashAccountIds, lastYearStart));
 
@@ -118,9 +120,10 @@ namespace KuaiJi.Modules.Reports.Application
             var yearEnd = quarterEnd;
 
             var (quarterByLine, ytdByLine, quarterOpening, yearOpening) = Accumulate(
-                accounts, vouchers, quarterStart, quarterEnd, yearStart, yearEnd);
-            var lastYear = AccumulateLastYear(accounts, vouchers, quarterStart, 3);
-            var lines = BuildLines(quarterByLine, ytdByLine, quarterOpening, yearOpening, lastYear.ByLine, lastYear.Opening);
+                accountSet.Standard, accounts, vouchers, quarterStart, quarterEnd, yearStart, yearEnd);
+            var lastYear = AccumulateLastYear(accountSet.Standard, accounts, vouchers, quarterStart, 3);
+            var lines = BuildLines(quarterByLine, ytdByLine, quarterOpening, yearOpening, accountSet.Standard,
+                lastYear.ByLine, lastYear.Opening);
 
             return new CashFlowQuarterDto
             {
@@ -162,7 +165,7 @@ namespace KuaiJi.Modules.Reports.Application
                         return;
                     }
 
-                    var line = CashFlowClassifier.MapLine(account, inflow);
+                    var line = ClassifyLine(accountSet.Standard, account, inflow);
                     rows.Add(new CashFlowWorkpaperRowDto
                     {
                         Date = v.Date,
@@ -171,7 +174,7 @@ namespace KuaiJi.Modules.Reports.Application
                         AccountCode = account.Code,
                         AccountName = account.Name,
                         Line = line,
-                        LineName = CashFlowStandardRows.ByLine.TryGetValue(line, out var def) ? def.Name : $"行次{line}",
+                        LineName = LineName(accountSet.Standard, line),
                         Inflow = inflow,
                         Amount = Round(amount),
                     });
@@ -206,6 +209,7 @@ namespace KuaiJi.Modules.Reports.Application
         /// 期初余额分别取期间窗口起点与年初时点的现金科目余额。
         /// </summary>
         private (Dictionary<int, decimal> periodByLine, Dictionary<int, decimal> ytdByLine, decimal periodOpening, decimal yearOpening) Accumulate(
+            AccountingStandard standard,
             IReadOnlyList<Account> accounts,
             List<Voucher> vouchers,
             DateOnly periodStart,
@@ -228,7 +232,7 @@ namespace KuaiJi.Modules.Reports.Application
                         return;
                     }
 
-                    var line = CashFlowClassifier.MapLine(account, inflow);
+                    var line = ClassifyLine(standard, account, inflow);
                     target[line] = target.GetValueOrDefault(line) + amount;
                 });
             }
@@ -263,10 +267,11 @@ namespace KuaiJi.Modules.Reports.Application
         }
 
         /// <summary>
-        /// 辅助核算法：按现金分录上挂的现金流项目编码前两位归入主表行号。同一分录挂多个项目时
+        /// 辅助核算法：按现金分录上挂的现金流项目归入主表行次。同一分录挂多个项目时
         /// 净收付均分；流入行取正数、流出行取相反数（流出仍为正）。
         /// </summary>
         private static Dictionary<int, decimal> AccumulateAssist(
+            AccountingStandard standard,
             List<Voucher> vouchers,
             IReadOnlyDictionary<Guid, AssistItem> itemsById,
             HashSet<Guid> cashAccountIds,
@@ -301,34 +306,18 @@ namespace KuaiJi.Modules.Reports.Application
                     var share = (entry.Debit - entry.Credit) / itemIds.Count;
                     foreach (var itemId in itemIds)
                     {
-                        if (!itemsById.TryGetValue(itemId, out var item) || AssistItemLine(item.Code) is not { } line)
+                        if (!itemsById.TryGetValue(itemId, out var item) || ResolveAssistLine(standard, item) is not { } line)
                         {
                             continue;
                         }
 
-                        var signed = CashFlowStandardRows.ByLine[line].Kind == CashFlowRowKind.Inflow ? share : -share;
+                        var signed = LineDef(standard, line).Kind == CashFlowRowKind.Inflow ? share : -share;
                         byLine[line] = byLine.GetValueOrDefault(line) + signed;
                     }
                 }
             }
 
             return byLine;
-        }
-
-        /// <summary>现金流项目编码前两位对应主表行号；只有流入/流出明细行可挂项目，其余编码返回 null。</summary>
-        private static int? AssistItemLine(string code)
-        {
-            var trimmed = (code ?? string.Empty).Trim();
-            var digits = trimmed.Length >= 2 ? trimmed[..2] : trimmed;
-            if (!int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var line))
-            {
-                return null;
-            }
-
-            return CashFlowStandardRows.ByLine.TryGetValue(line, out var def)
-                   && def.Kind is CashFlowRowKind.Inflow or CashFlowRowKind.Outflow
-                ? line
-                : null;
         }
 
         /// <summary>
@@ -380,6 +369,7 @@ namespace KuaiJi.Modules.Reports.Application
         /// 供报表「显示上年累计金额」列使用。
         /// </summary>
         private (Dictionary<int, decimal> ByLine, decimal Opening) AccumulateLastYear(
+            AccountingStandard standard,
             IReadOnlyList<Account> accounts,
             List<Voucher> vouchers,
             DateOnly periodStart,
@@ -390,7 +380,7 @@ namespace KuaiJi.Modules.Reports.Application
             var lastYearStart = new DateOnly(lastYearPeriodStart.Year, 1, 1);
 
             var (_, ytdByLine, _, ytdOpening) = Accumulate(
-                accounts, vouchers, lastYearPeriodStart, lastYearPeriodEnd, lastYearStart, lastYearPeriodEnd);
+                standard, accounts, vouchers, lastYearPeriodStart, lastYearPeriodEnd, lastYearStart, lastYearPeriodEnd);
             return (ytdByLine, ytdOpening);
         }
 
@@ -408,6 +398,36 @@ namespace KuaiJi.Modules.Reports.Application
         internal static HashSet<Guid> CashAccountIds(IReadOnlyList<Account> accounts)
         {
             return CashAccounts(accounts).Select(a => a.Id).ToHashSet();
+        }
+
+        /// <summary>对手方科目归类：小企业准则归 22 行（会小企03表），其余归 35 行（会企03表）。</summary>
+        private static int ClassifyLine(AccountingStandard standard, Account account, bool inflow)
+        {
+            return standard == AccountingStandard.SmallBusiness
+                ? CashFlowClassifier.MapSmallBusinessLine(account, inflow)
+                : CashFlowClassifier.MapLine(account, inflow);
+        }
+
+        private static CashFlowRowDef LineDef(AccountingStandard standard, int line)
+        {
+            return standard == AccountingStandard.SmallBusiness
+                ? CashFlowSmallBusinessRows.ByLine[line]
+                : CashFlowStandardRows.ByLine[line];
+        }
+
+        private static string LineName(AccountingStandard standard, int line)
+        {
+            var definitions = standard == AccountingStandard.SmallBusiness
+                ? CashFlowSmallBusinessRows.ByLine
+                : CashFlowStandardRows.ByLine;
+            return definitions.TryGetValue(line, out var def) ? def.Name : $"行次{line}";
+        }
+
+        private static int? ResolveAssistLine(AccountingStandard standard, AssistItem item)
+        {
+            return standard == AccountingStandard.SmallBusiness
+                ? CashFlowSmallBusinessRows.ResolveAssistItemLine(item.Code, item.Name)
+                : CashFlowStandardRows.ResolveAssistItemLine(item.Code, item.Name);
         }
 
         /// <summary>
@@ -453,11 +473,31 @@ namespace KuaiJi.Modules.Reports.Application
             Dictionary<int, decimal> ytdByLine,
             decimal periodOpeningCash,
             decimal yearOpeningCash,
+            AccountingStandard standard,
             Dictionary<int, decimal>? lastYearByLine = null,
             decimal lastYearOpeningCash = 0m)
         {
+            var smallBusiness = standard == AccountingStandard.SmallBusiness;
+
             void Fill(Dictionary<int, decimal> byLine, decimal openingCash)
             {
+                if (smallBusiness)
+                {
+                    // 会小企03表没有流入/流出小计，各活动直接由明细行算出净额；净增加额/期初/期末落在 20-22。
+                    foreach (var section in new[] { CashFlowSection.Operating, CashFlowSection.Investing, CashFlowSection.Financing })
+                    {
+                        var netLine = CashFlowSmallBusinessRows.NetLine(section);
+                        byLine[netLine] = CashFlowSmallBusinessRows.InflowLines(section).Sum(l => byLine.GetValueOrDefault(l))
+                                          - CashFlowSmallBusinessRows.OutflowLines(section).Sum(l => byLine.GetValueOrDefault(l));
+                    }
+
+                    var smallNet = byLine.GetValueOrDefault(7) + byLine.GetValueOrDefault(13) + byLine.GetValueOrDefault(19);
+                    byLine[CashFlowSmallBusinessRows.NetIncreaseLine] = smallNet;
+                    byLine[CashFlowSmallBusinessRows.OpeningCashLine] = openingCash;
+                    byLine[CashFlowSmallBusinessRows.EndingCashLine] = openingCash + smallNet;
+                    return;
+                }
+
                 foreach (var section in new[] { CashFlowSection.Operating, CashFlowSection.Investing, CashFlowSection.Financing })
                 {
                     var (inflowLine, outflowLine, netLine) = CashFlowStandardRows.SubtotalLines(section);
@@ -479,8 +519,9 @@ namespace KuaiJi.Modules.Reports.Application
                 Fill(lastYearByLine, lastYearOpeningCash);
             }
 
+            var definitions = smallBusiness ? CashFlowSmallBusinessRows.All : CashFlowStandardRows.All;
             var lines = new List<CashFlowLineDto>();
-            foreach (var def in CashFlowStandardRows.All)
+            foreach (var def in definitions)
             {
                 lines.Add(new CashFlowLineDto
                 {

@@ -107,14 +107,14 @@ namespace KuaiJi.Modules.Reports.Application
                 ReportExportKind.TrialBalance => await TrialBalanceAsync(accountSetId, setName, year, month, cancellationToken),
                 // 资产负债表按账套准则导出两栏 .xls，由 BalanceSheetXlsExportService 处理。
                 ReportExportKind.BalanceSheet => throw new ReportException("资产负债表导出使用专用 .xls 版式。"),
-                ReportExportKind.IncomeStatement => await IncomeAsync(accountSetId, setName, false, year, month, quarter, cancellationToken),
-                ReportExportKind.IncomeQuarter => await IncomeAsync(accountSetId, setName, true, year, month, quarter, cancellationToken),
-                ReportExportKind.CashFlow => await CashFlowAsync(accountSetId, setName, false, year, month, quarter, cancellationToken),
-                ReportExportKind.CashFlowQuarter => await CashFlowAsync(accountSetId, setName, true, year, month, quarter, cancellationToken),
-                ReportExportKind.DepartmentIncome => await DepartmentIncomeAsync(accountSetId, setName, year, month, cancellationToken),
-                ReportExportKind.ProjectIncome => await ProjectIncomeAsync(accountSetId, setName, year, month, cancellationToken),
+                ReportExportKind.IncomeStatement => await IncomeAsync(accountSetId, setName, false, year, month, quarter, accountSet.Standard, cancellationToken),
+                ReportExportKind.IncomeQuarter => await IncomeAsync(accountSetId, setName, true, year, month, quarter, accountSet.Standard, cancellationToken),
+                ReportExportKind.CashFlow => await CashFlowAsync(accountSetId, setName, false, year, month, quarter, accountSet.Standard, cancellationToken),
+                ReportExportKind.CashFlowQuarter => await CashFlowAsync(accountSetId, setName, true, year, month, quarter, accountSet.Standard, cancellationToken),
+                ReportExportKind.DepartmentIncome => await DepartmentIncomeAsync(accountSetId, setName, year, month, accountSet.Standard, cancellationToken),
+                ReportExportKind.ProjectIncome => await ProjectIncomeAsync(accountSetId, setName, year, month, accountSet.Standard, cancellationToken),
                 ReportExportKind.ExpenseDetail => await ExpenseDetailAsync(accountSetId, setName, year, month, cancellationToken),
-                ReportExportKind.EquityChange => await EquityChangeAsync(accountSetId, setName, year, cancellationToken),
+                ReportExportKind.EquityChange => await EquityChangeAsync(accountSetId, setName, year, accountSet.Standard, cancellationToken),
                 ReportExportKind.TaxStatistics => await TaxAsync(accountSetId, setName, year, month, cancellationToken),
                 _ => await FinancialSummaryAsync(accountSetId, setName, year, month, cancellationToken),
             };
@@ -166,39 +166,86 @@ namespace KuaiJi.Modules.Reports.Application
             }
 
             rows.Add(new object?[] { "", "合计", totals[0], totals[1], totals[2], totals[3], totals[4], totals[5] });
-            return Wrap("科目余额表", dto.PeriodText ?? "", setName, columns, rows, $"{dto.StartDate} 至 {dto.EndDate}，仅统计已过账凭证");
+            return Wrap("科目余额表", dto.PeriodText ?? "", setName, columns, rows, $"{dto.StartDate} 至 {dto.EndDate}，仅统计正常凭证");
         }
 
-        private async Task<FlatWorkbook> IncomeAsync(Guid accountSetId, string setName, bool quarter, int? year, int? month, int? quarterNo, CancellationToken ct)
+        private async Task<FlatWorkbook> IncomeAsync(Guid accountSetId, string setName, bool quarter, int? year, int? month, int? quarterNo, AccountingStandard standard, CancellationToken ct)
         {
             if (quarter)
             {
                 var q = await _incomeStatementService.GetQuarterAsync(accountSetId, year, quarterNo, ct);
                 var columns = new[] { "行次", "项目", "本季金额", "本年累计金额" };
-                var rows = ProjectIncomeLines(q.Lines, curTitle: null);
-                return Wrap("利润表季报", q.PeriodText ?? "", setName, columns, rows, "明细行次取自凭证发生额；营业利润/利润总额/净利润等合计行未含，需按行次公式汇总");
+                var rows = ProjectIncomeLines(q.Lines, standard);
+                var note = standard == AccountingStandard.SmallBusiness
+                    ? "小企业会计准则（会小企02表）版式；合计行由系统按行次公式汇总"
+                    : "明细行次取自凭证发生额；营业利润/利润总额/净利润等合计行未含，需按行次公式汇总";
+                return Wrap("利润表季报", q.PeriodText ?? "", setName, columns, rows, note);
             }
 
             var dto = await _incomeStatementService.GetAsync(accountSetId, year, month, ct);
             var cols = new[] { "行次", "项目", "本期金额", "本年累计金额" };
-            var body = ProjectIncomeLines(dto.Lines, curTitle: null);
-            return Wrap("利润表", dto.PeriodText ?? "", setName, cols, body, "明细行次取自凭证发生额；营业利润/利润总额/净利润等合计行未含，需按行次公式汇总");
+            var body = ProjectIncomeLines(dto.Lines, standard);
+            var note2 = standard == AccountingStandard.SmallBusiness
+                ? "小企业会计准则（会小企02表）版式；合计行由系统按行次公式汇总"
+                : "明细行次取自凭证发生额；营业利润/利润总额/净利润等合计行未含，需按行次公式汇总";
+            return Wrap("利润表", dto.PeriodText ?? "", setName, cols, body, note2);
         }
 
         private static List<IReadOnlyList<object?>> ProjectIncomeLines(
-            IReadOnlyList<IncomeStatementLineDto>? lines, string? curTitle)
+            IReadOnlyList<IncomeStatementLineDto>? lines, AccountingStandard standard)
         {
-            var rows = new List<IReadOnlyList<object?>>();
-            foreach (var l in lines ?? [])
+            // 小企业会计准则（会小企02表）：只列营业收入/成本/税金及附加/三项费用/投资收益/营业外收支/所得税/净利润，
+            // 不含「其中」子项、资产减值损失、公允价值变动收益、其他综合收益与每股收益；合计行由行次公式现算。
+            if (standard == AccountingStandard.SmallBusiness)
             {
-                rows.Add(new object?[] { l.Line, IncomeLineMapper.LineName(l.Line), l.Current, l.YearToDate });
+                var map = (lines ?? []).GroupBy(l => l.Line)
+                    .ToDictionary(g => g.Key, g => (Current: g.Sum(l => l.Current), YearToDate: g.Sum(l => l.YearToDate)));
+                decimal Of(int k) => map.TryGetValue(k, out var v) ? v.Current : 0m;
+                decimal Ytd(int k) => map.TryGetValue(k, out var v) ? v.YearToDate : 0m;
+                decimal Op() => Of(1) - Of(2) - Of(3) - Of(4) - Of(5) - Of(6) + Of(9);
+                decimal OpYtd() => Ytd(1) - Ytd(2) - Ytd(3) - Ytd(4) - Ytd(5) - Ytd(6) + Ytd(9);
+                decimal Profit() => Op() + Of(12) - Of(14);
+                decimal ProfitYtd() => OpYtd() + Ytd(12) - Ytd(14);
+                decimal Net() => Profit() - Of(17);
+                decimal NetYtd() => ProfitYtd() - Ytd(17);
+                var rows = new List<IReadOnlyList<object?>>();
+                void Row(int displayLine, string label, decimal cur, decimal ytd) => rows.Add(new object?[] { displayLine, label, cur, ytd });
+                Row(1, "一、营业收入", Of(1), Ytd(1));
+                Row(2, "减：营业成本", Of(2), Ytd(2));
+                Row(3, "税金及附加", Of(3), Ytd(3));
+                Row(4, "销售费用", Of(4), Ytd(4));
+                Row(5, "管理费用", Of(5), Ytd(5));
+                Row(6, "财务费用", Of(6), Ytd(6));
+                Row(7, "加：投资收益（损失以“-”号填列）", Of(9), Ytd(9));
+                Row(8, "二、营业利润（亏损以“-”号填列）", Op(), OpYtd());
+                Row(9, "加：营业外收入", Of(12), Ytd(12));
+                Row(10, "减：营业外支出", Of(14), Ytd(14));
+                Row(11, "三、利润总额（亏损总额以“-”号填列）", Profit(), ProfitYtd());
+                Row(12, "减：所得税费用", Of(17), Ytd(17));
+                Row(13, "四、净利润（净亏损以“-”号填列）", Net(), NetYtd());
+                return rows;
             }
 
-            return rows;
+            var raw = new List<IReadOnlyList<object?>>();
+            foreach (var l in lines ?? [])
+            {
+                raw.Add(new object?[] { l.Line, IncomeLineMapper.LineName(l.Line), l.Current, l.YearToDate });
+            }
+
+            return raw;
         }
 
-        private async Task<FlatWorkbook> CashFlowAsync(Guid accountSetId, string setName, bool quarter, int? year, int? month, int? quarterNo, CancellationToken ct)
+        private async Task<FlatWorkbook> CashFlowAsync(
+            Guid accountSetId,
+            string setName,
+            bool quarter,
+            int? year,
+            int? month,
+            int? quarterNo,
+            AccountingStandard standard,
+            CancellationToken ct)
         {
+            var smallBusiness = standard == AccountingStandard.SmallBusiness;
             var columns = new[] { "行次", "项目", (quarter ? "本季金额" : "本期金额"), "本年累计金额" };
             List<IReadOnlyList<object?>> rows = new();
             string period;
@@ -220,28 +267,103 @@ namespace KuaiJi.Modules.Reports.Application
                     rows.Add(new object?[] { l.Line, l.Name, l.Current, l.YearToDate });
                 }
 
-                // 补充资料（间接法）随月报一并导出，行次另起一段，便于与主表勾稽。
-                var supplement = await _cashFlowSupplementService.GetPeriodAsync(accountSetId, year, month, ct);
-                rows.Add(new object?[] { null, "现金流量表补充资料", null, null });
-                foreach (var l in supplement.Lines ?? [])
+                // 补充资料（间接法）只随一般企业月报导出；小企业会计准则（会小企03表）没有补充资料。
+                if (!smallBusiness)
                 {
-                    rows.Add(new object?[] { l.Line, l.Name, l.Current, l.YearToDate });
-                }
+                    var supplement = await _cashFlowSupplementService.GetPeriodAsync(accountSetId, year, month, ct);
+                    rows.Add(new object?[] { null, "现金流量表补充资料", null, null });
+                    foreach (var l in supplement.Lines ?? [])
+                    {
+                        rows.Add(new object?[] { l.Line, l.Name, l.Current, l.YearToDate });
+                    }
 
-                rows.Add(new object?[]
-                {
-                    null,
-                    $"补充资料调节净额与主表经营活动净额差异：{(supplement.Difference):0.00}",
-                    null,
-                    null,
-                });
+                    rows.Add(new object?[]
+                    {
+                        null,
+                        $"补充资料调节净额与主表经营活动净额差异：{(supplement.Difference):0.00}",
+                        null,
+                        null,
+                    });
+                }
             }
 
-            return Wrap(quarter ? "现金流量表季报" : "现金流量表", period, setName, columns, rows,
-                "直接法简化工作底稿口径；现金科目=1001/1002/1012；月报附补充资料（间接法）");
+            var note = smallBusiness
+                ? "小企业会计准则（会小企03表）版式；直接法简化工作底稿口径；现金科目=1001/1002/1012"
+                : "直接法简化工作底稿口径；现金科目=1001/1002/1012；月报附补充资料（间接法）";
+            return Wrap(quarter ? "现金流量表季报" : "现金流量表", period, setName, columns, rows, note);
         }
 
-        private async Task<FlatWorkbook> DepartmentIncomeAsync(Guid accountSetId, string setName, int? year, int? month, CancellationToken ct)
+        /// <summary>部门/项目利润表小准则（会小企02表）行集：13 行简化版，合计行（营业利润/利润总额/净利润）逐维度按小准则公式现算，
+        /// 与利润表主表、PDF 部门利润表保持一致。includeTotalColumn 用于项目利润表（多一列各维度求和）。</summary>
+        private static List<IReadOnlyList<object?>> BuildSmallBusinessDimensionRows(
+            IReadOnlyDictionary<int, IReadOnlyList<IncomeDimensionAmountDto>> byLine,
+            int dimensionCount,
+            bool includeTotalColumn)
+        {
+            decimal Dim(int key, int i, Func<IncomeDimensionAmountDto, decimal> pick)
+                => byLine.TryGetValue(key, out var amts) && i < amts.Count ? pick(amts[i]) : 0m;
+            decimal Op(int i, Func<IncomeDimensionAmountDto, decimal> p)
+                => Dim(1, i, p) - Dim(2, i, p) - Dim(3, i, p) - Dim(4, i, p) - Dim(5, i, p) - Dim(6, i, p) + Dim(9, i, p);
+            decimal Tot(int i, Func<IncomeDimensionAmountDto, decimal> p) => Op(i, p) + Dim(12, i, p) - Dim(14, i, p);
+            decimal Net(int i, Func<IncomeDimensionAmountDto, decimal> p) => Tot(i, p) - Dim(17, i, p);
+
+            // DisplayLine, DataLine, Label, TotalKind(0=明细, 1=营业利润, 2=利润总额, 3=净利润)
+            var layout = new (int DisplayLine, int DataLine, string Label, int TotalKind)[]
+            {
+                (1, 1, "一、营业收入", 0),
+                (2, 2, "减：营业成本", 0),
+                (3, 3, "税金及附加", 0),
+                (4, 4, "销售费用", 0),
+                (5, 5, "管理费用", 0),
+                (6, 6, "财务费用", 0),
+                (7, 9, "加：投资收益（损失以“-”号填列）", 0),
+                (8, 0, "二、营业利润（亏损以“-”号填列）", 1),
+                (9, 12, "加：营业外收入", 0),
+                (10, 14, "减：营业外支出", 0),
+                (11, 0, "三、利润总额（亏损总额以“-”号填列）", 2),
+                (12, 17, "减：所得税费用", 0),
+                (13, 0, "四、净利润（净亏损以“-”号填列）", 3),
+            };
+
+            var rows = new List<IReadOnlyList<object?>>();
+            foreach (var (displayLine, dataLine, label, totalKind) in layout)
+            {
+                var row = new List<object?> { label, displayLine };
+                decimal curSum = 0m, ytdSum = 0m;
+                for (var i = 0; i < dimensionCount; i++)
+                {
+                    decimal cur, ytd;
+                    if (totalKind == 0)
+                    {
+                        var amts = byLine.GetValueOrDefault(dataLine);
+                        cur = amts is not null && i < amts.Count ? amts[i].Current : 0m;
+                        ytd = amts is not null && i < amts.Count ? amts[i].YearToDate : 0m;
+                    }
+                    else
+                    {
+                        cur = totalKind switch { 1 => Op(i, a => a.Current), 2 => Tot(i, a => a.Current), _ => Net(i, a => a.Current) };
+                        ytd = totalKind switch { 1 => Op(i, a => a.YearToDate), 2 => Tot(i, a => a.YearToDate), _ => Net(i, a => a.YearToDate) };
+                    }
+
+                    row.Add(cur);
+                    row.Add(ytd);
+                    curSum += cur;
+                    ytdSum += ytd;
+                }
+
+                if (includeTotalColumn)
+                {
+                    row.Add(curSum);
+                    row.Add(ytdSum);
+                }
+
+                rows.Add(row);
+            }
+
+            return rows;
+        }
+
+        private async Task<FlatWorkbook> DepartmentIncomeAsync(Guid accountSetId, string setName, int? year, int? month, AccountingStandard standard, CancellationToken ct)
         {
             var dto = await _assistIncomeService.GetByDepartmentAsync(accountSetId, year, month, ct);
             var departments = dto.Departments ?? [];
@@ -252,28 +374,78 @@ namespace KuaiJi.Modules.Reports.Application
                 columns.Add($"{d.Name}-本年累计金额");
             }
 
-            var rows = new List<IReadOnlyList<object?>>();
-            foreach (var r in dto.Rows ?? [])
+            List<IReadOnlyList<object?>> rows;
+            if (standard == AccountingStandard.SmallBusiness)
             {
-                var row = new List<object?> { r.Item, r.Line };
-                for (var i = 0; i < departments.Count; i++)
+                rows = BuildSmallBusinessDimensionRows(
+                    (dto.Rows ?? []).GroupBy(r => r.Line).ToDictionary(g => g.Key, g => g.First().Amounts ?? []),
+                    departments.Count, includeTotalColumn: false);
+            }
+            else
+            {
+                rows = new List<IReadOnlyList<object?>>();
+                foreach (var r in dto.Rows ?? [])
                 {
-                    row.Add(r.Amounts?.Count > i ? r.Amounts[i].Current : null);
-                    row.Add(r.Amounts?.Count > i ? r.Amounts[i].YearToDate : null);
-                }
+                    var row = new List<object?> { r.Item, r.Line };
+                    for (var i = 0; i < departments.Count; i++)
+                    {
+                        row.Add(r.Amounts?.Count > i ? r.Amounts[i].Current : null);
+                        row.Add(r.Amounts?.Count > i ? r.Amounts[i].YearToDate : null);
+                    }
 
-                rows.Add(row);
+                    rows.Add(row);
+                }
             }
 
-            return Wrap("部门利润表", dto.PeriodText ?? "", setName, columns, rows, "仅列示本年有损益发生的部门");
+            var note = standard == AccountingStandard.SmallBusiness
+                ? "小企业会计准则（会小企02表）版式；合计行由系统按行次公式汇总"
+                : "按部门辅助核算归集收入与费用，仅列示本年有损益发生的部门";
+            return Wrap("部门利润表", dto.PeriodText ?? "", setName, columns, rows, note);
         }
 
-        private async Task<FlatWorkbook> ProjectIncomeAsync(Guid accountSetId, string setName, int? year, int? month, CancellationToken ct)
+        private async Task<FlatWorkbook> ProjectIncomeAsync(Guid accountSetId, string setName, int? year, int? month, AccountingStandard standard, CancellationToken ct)
         {
             var dto = await _assistIncomeService.GetByProjectAsync(accountSetId, year, month, ct);
-            var columns = new[] { "项目", "行次", "本期利润", "本年累计利润" };
-            var rows = (dto.Rows ?? []).Select(r => (IReadOnlyList<object?>)new object?[] { r.Name, r.Line, r.Current, r.YearToDate }).ToList();
-            return Wrap("项目利润表", dto.PeriodText ?? "", setName, columns, rows, "利润=收入-成本费用，按分录辅助核算「项目」归集");
+            var projects = dto.Projects ?? [];
+            var columns = new List<string> { "项目", "行次" };
+            foreach (var p in projects)
+            {
+                columns.Add($"{p.Name}-本期金额");
+                columns.Add($"{p.Name}-本年累计金额");
+            }
+
+            columns.Add("合计-本期金额");
+            columns.Add("合计-本年累计金额");
+
+            List<IReadOnlyList<object?>> rows;
+            if (standard == AccountingStandard.SmallBusiness)
+            {
+                rows = BuildSmallBusinessDimensionRows(
+                    (dto.Rows ?? []).GroupBy(r => r.Line).ToDictionary(g => g.Key, g => g.First().Amounts ?? []),
+                    projects.Count, includeTotalColumn: true);
+            }
+            else
+            {
+                rows = new List<IReadOnlyList<object?>>();
+                foreach (var r in dto.Rows ?? [])
+                {
+                    var row = new List<object?> { r.Item, r.Line };
+                    for (var i = 0; i < projects.Count; i++)
+                    {
+                        row.Add(r.Amounts?.Count > i ? r.Amounts[i].Current : null);
+                        row.Add(r.Amounts?.Count > i ? r.Amounts[i].YearToDate : null);
+                    }
+
+                    row.Add(r.Total?.Current);
+                    row.Add(r.Total?.YearToDate);
+                    rows.Add(row);
+                }
+            }
+
+            var note = standard == AccountingStandard.SmallBusiness
+                ? "小企业会计准则（会小企02表）版式；合计行由系统按行次公式汇总"
+                : "按项目辅助核算归集收入与成本费用；各项目列=该项目的收入-成本费用，合计列为各项目求和";
+            return Wrap("项目利润表", dto.PeriodText ?? "", setName, columns, rows, note);
         }
 
         private async Task<FlatWorkbook> ExpenseDetailAsync(Guid accountSetId, string setName, int? year, int? month, CancellationToken ct)
@@ -291,12 +463,15 @@ namespace KuaiJi.Modules.Reports.Application
             return Wrap("费用明细表", dto.PeriodText ?? "", setName, columns, rows, "成本类与损益类（借方向）科目；非叶级次由下级汇总");
         }
 
-        private async Task<FlatWorkbook> EquityChangeAsync(Guid accountSetId, string setName, int? year, CancellationToken ct)
+        private async Task<FlatWorkbook> EquityChangeAsync(Guid accountSetId, string setName, int? year, AccountingStandard standard, CancellationToken ct)
         {
             var dto = await _equityChangeService.GetAsync(accountSetId, year, ct);
             var columns = new[] { "项目", "上年期初", "上年期末", "本年期初", "本年期末" };
             var rows = (dto.Rows ?? []).Select(r => (IReadOnlyList<object?>)new object?[] { r.Item, r.PriorBegin, r.PriorEnd, r.CurrentBegin, r.CurrentEnd }).ToList();
-            return Wrap("所有者权益变动表", dto.PeriodText ?? "", setName, columns, rows, "贷方为正；未结转损益并入未分配利润");
+            var note = standard == AccountingStandard.SmallBusiness
+                ? "小企业会计准则不要求编制本表，按管理参考口径列示；会计政策变更与差错更正采用未来适用法，不追溯调整；贷方为正，未结转损益并入未分配利润"
+                : "贷方为正；未结转损益并入未分配利润";
+            return Wrap("所有者权益变动表", dto.PeriodText ?? "", setName, columns, rows, note);
         }
 
         private async Task<FlatWorkbook> TaxAsync(Guid accountSetId, string setName, int? year, int? month, CancellationToken ct)

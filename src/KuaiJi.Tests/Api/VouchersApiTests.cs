@@ -9,7 +9,7 @@ namespace KuaiJi.Tests.Api;
 /// 凭证 HTTP 集成测试：走真实组合根（认证、模型绑定、Problem Details、业务异常→400 中文文案全部生效），
 /// 数据库换成内存 SQLite。锁住的是「HTTP 边界上的行为」，与 VoucherLifecycleTests（直接调用应用服务）互补：
 /// - 制单人取自 JWT 的 displayName 声明，而不是请求体；
-/// - 保存即入账：制单直接返回「已过账」，不平衡在保存时就被 400 拦下；编辑走反过账 → 改 → 保存重新过账；
+/// - 保存即入账：制单直接返回「正常」，不平衡在保存时就被 400 拦下；编辑走反过账 → 改 → 保存重新过账；
 /// - 查询串里的日期能被 LenientDateOnlyModelBinder 接住（前端客户端会序列化成 ISO 带时间缀，默认绑定器会 400）；
 /// - 软删除后列表默认不可见、?deleted=true 才见回收站；
 /// - 凭证 PDF 由服务端渲染，返回 application/pdf 附件。
@@ -70,8 +70,8 @@ public sealed class VouchersApiTests : IDisposable
 
         Assert.Equal(1, posted!.Number);
         Assert.Equal("记-1", posted.VoucherNo);
-        // 保存即入账：不再有审核环节，制单返回的就是已过账状态。
-        Assert.Equal("已过账", posted.StatusText);
+        // 保存即入账：不再有审核环节，制单返回的就是正常状态。
+        Assert.Equal("正常", posted.StatusText);
         Assert.True(posted.IsBalanced);
         Assert.Equal(100m, posted.TotalDebit);
         Assert.Equal(100m, posted.TotalCredit);
@@ -83,11 +83,11 @@ public sealed class VouchersApiTests : IDisposable
         // 反过账退回草稿；再反一次必须被状态机拦下。
         var unposted = await _client.PostAsync($"{VouchersPath(id)}/{posted.Id}/unpost", null);
         Assert.Equal(HttpStatusCode.OK, unposted.StatusCode);
-        Assert.Equal("草稿", (await unposted.Content.ReadFromJsonAsync<VoucherModel>())!.StatusText);
+        Assert.Equal("暂存", (await unposted.Content.ReadFromJsonAsync<VoucherModel>())!.StatusText);
 
         var badUnpost = await _client.PostAsync($"{VouchersPath(id)}/{posted.Id}/unpost", null);
         Assert.Equal(HttpStatusCode.BadRequest, badUnpost.StatusCode);
-        Assert.Contains("只有已过账的凭证才能反过账", await badUnpost.Content.ReadAsStringAsync());
+        Assert.Contains("只有正常凭证才能反过账", await badUnpost.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public sealed class VouchersApiTests : IDisposable
         var response = await _client.DeleteAsync($"{VouchersPath(id)}/{voucher!.Id}");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("已过账，不能删除", await response.Content.ReadAsStringAsync());
+        Assert.Contains("已是正常状态，不能删除", await response.Content.ReadAsStringAsync());
 
         // 拒绝删除后凭证必须还在原位，不能被部分删除。
         var list = await _client.GetFromJsonAsync<List<VoucherModel>>(VouchersPath(id));
@@ -171,7 +171,7 @@ public sealed class VouchersApiTests : IDisposable
             VouchersPath(id),
             JsonContent(Body("记", "2026-02-15", ("付办公费", cash, 100m, 0m), ("付办公费", counter, 0m, 100m))));
         var voucher = await created.Content.ReadFromJsonAsync<VoucherModel>();
-        // 制单即已过账，移入回收站前必须先反过账退回草稿。
+        // 制单即入账，移入回收站前必须先反过账退回暂存。
         await _client.PostAsync($"{VouchersPath(id)}/{voucher!.Id}/unpost", null);
 
         var response = await _client.DeleteAsync($"{VouchersPath(id)}/{voucher.Id}");
@@ -186,12 +186,12 @@ public sealed class VouchersApiTests : IDisposable
         // 回收站点开某张凭证查看/还原依赖这条口径，这里是有意为之的不对称。
         var detail = await _client.GetFromJsonAsync<VoucherModel>($"{VouchersPath(id)}/{voucher.Id}");
         Assert.Equal(voucher.Id, detail!.Id);
-        Assert.Equal("草稿", detail.StatusText);
+        Assert.Equal("暂存", detail.StatusText);
 
         // 还原后回到正常列表，状态仍是草稿。
         var restored = await _client.PostAsync($"{VouchersPath(id)}/{voucher.Id}/restore", null);
         Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
-        Assert.Equal("草稿", (await restored.Content.ReadFromJsonAsync<VoucherModel>())!.StatusText);
+        Assert.Equal("暂存", (await restored.Content.ReadFromJsonAsync<VoucherModel>())!.StatusText);
         Assert.Single((await _client.GetFromJsonAsync<List<VoucherModel>>(VouchersPath(id)))!);
     }
 

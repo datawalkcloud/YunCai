@@ -46,6 +46,7 @@ import { toISODate, fmtAmount } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { PrintVoucherSheet } from "@/pages/closing/print-sheet"
 import { AmountCells, AmountHeaderCell } from "@/components/voucher/amount-grid"
+import { VOUCHER_AMOUNT_WIDTH, VOUCHER_HEAD_H, VOUCHER_ROW_H } from "@/components/voucher/voucher-paper"
 import { AssistItemSelect } from "@/components/assist/assist-item-select"
 import { assistLabel } from "@/components/assist/constants"
 import { useAccountAssistConfigs, useAssistItemsMany } from "@/components/assist/assist-store"
@@ -53,13 +54,12 @@ import { useKeepAliveActive } from "@/components/layout/dashboard/route-tabs-con
 
 /* ================= 常量 ================= */
 
-/** 单个金额位宽度（px）；借方 / 贷方各 11 位，组宽 = 11 × 20 = 220。 */
-const CELL_W = 20
-const GROUP_W = CELL_W * 11
+/** 金额栏与纸样尺寸取自只读纸样组件，避免录入与预览的版式各自漂移。 */
+const GROUP_W = VOUCHER_AMOUNT_WIDTH
 
 /** 纸样尺寸：表头 60，分录行与合计行 70，与凭证纸面比例一致。 */
-const HEAD_H = 60
-const ROW_H = 70
+const HEAD_H = VOUCHER_HEAD_H
+const ROW_H = VOUCHER_ROW_H
 
 /** 纸样左右留白：行操作浮标悬停时落在这段槽位里，不挤占表体列宽。 */
 const GUTTER = 30

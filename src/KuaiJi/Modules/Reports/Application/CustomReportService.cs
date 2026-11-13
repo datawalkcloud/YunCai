@@ -90,10 +90,28 @@ namespace KuaiJi.Modules.Reports.Application
 
             // 逐科目逐月累计净发生额，再按口径合成为月值。
             var monthlyNet = new Dictionary<Guid, decimal[]>();
-            foreach (var voucher in vouchers.Where(v => v.Date.Year == resolvedYear))
+            // 渲染年年初结转：建账期初 + 该年之前所有已过账分录，否则跨年渲染会把上年发生额丢掉。
+            var carryForward = new Dictionary<Guid, decimal>();
+            foreach (var account in accounts)
+            {
+                // 期初按科目方向存正数，转成借-贷净额与账簿口径一致。
+                carryForward[account.Id] = account.Direction == BalanceDirection.Debit ? account.OpeningBalance : -account.OpeningBalance;
+            }
+
+            foreach (var voucher in vouchers.Where(v => v.Date.Year <= resolvedYear))
             {
                 foreach (var entry in voucher.Entries)
                 {
+                    if (voucher.Date.Year < resolvedYear)
+                    {
+                        if (carryForward.TryGetValue(entry.AccountId, out var carried))
+                        {
+                            carryForward[entry.AccountId] = carried + entry.Debit - entry.Credit;
+                        }
+
+                        continue;
+                    }
+
                     if (!monthlyNet.TryGetValue(entry.AccountId, out var months))
                     {
                         months = monthlyNet[entry.AccountId] = new decimal[12];
@@ -108,7 +126,7 @@ namespace KuaiJi.Modules.Reports.Application
             {
                 var months = monthlyNet.GetValueOrDefault(account.Id) ?? new decimal[12];
                 var values = new decimal[12];
-                decimal running = account.OpeningBalance;
+                decimal running = carryForward.GetValueOrDefault(account.Id);
                 decimal total = 0m;
                 for (var m = 0; m < 12; m++)
                 {

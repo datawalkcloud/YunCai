@@ -111,13 +111,15 @@ function BoolRadio({
 export interface AccountSetFieldsProps {
     values: AccountSetForm
     errors: AccountSetErrors
-    /** 编辑态：启用年月与会计准则锁定，凭证字可改。 */
+    /** 编辑态：启用年月锁定，凭证字可改。 */
     editing: boolean
+    /** 企业会计准则账套不可再切回小企业准则；小企业准则可单向升级。 */
+    standardLocked?: boolean
     onChange: <K extends keyof AccountSetForm>(key: K, value: AccountSetForm[K]) => void
 }
 
 /** 基本信息页。 */
-export function BasicInfoFields({ values, errors, editing, onChange }: AccountSetFieldsProps) {
+export function BasicInfoFields({ values, errors, editing, standardLocked, onChange }: AccountSetFieldsProps) {
     return (
         <div className="flex flex-col gap-5">
             <Row label="账套名称" htmlFor="account-set-name" required error={errors.name}>
@@ -149,13 +151,20 @@ export function BasicInfoFields({ values, errors, editing, onChange }: AccountSe
                 label="会计准则"
                 htmlFor="account-set-standard"
                 required
-                tip="决定科目体系与报表格式；已有凭证时不建议改，改后需重新核对期初与报表。"
+                tip={
+                    standardLocked
+                        ? "会计准则已锁定：企业会计准则不能退回小企业会计准则。"
+                        : editing
+                          ? "小企业会计准则可升级为企业会计准则，升级后不可退回；切换后需重新核对科目与报表。"
+                          : "决定科目体系与报表格式。"
+                }
             >
                 <Select
                     id="account-set-standard"
                     className={FORM_CONTROL_W}
                     value={values.standard}
                     options={STANDARDS}
+                    disabled={standardLocked}
                     onChange={(v) => onChange("standard", v)}
                 />
             </Row>
@@ -269,7 +278,7 @@ export function FunctionParamsFields({ values, editing, onChange }: AccountSetFi
 }
 
 /** 税务信息页。 */
-export function TaxInfoFields({ values, errors, onChange }: AccountSetFieldsProps) {
+export function TaxInfoFields({ values, errors, editing, onChange }: AccountSetFieldsProps) {
     const incomplete = !values.taxpayerNumber || !values.taxRegion
     return (
         <div className="flex flex-col gap-7">
@@ -327,7 +336,7 @@ export function TaxInfoFields({ values, errors, onChange }: AccountSetFieldsProp
                     <span className="w-[150px] shrink-0 pt-1 text-right text-[13px] leading-6 text-(--foreground)">
                         税率：
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <span className="flex items-center gap-1">
                             <NumberField
                                 id="account-set-vat-rate"
@@ -352,8 +361,52 @@ export function TaxInfoFields({ values, errors, onChange }: AccountSetFieldsProp
                             />
                             <span className="text-[12.5px] text-(--muted-foreground)">% 企业所得税</span>
                         </span>
+                        <span className="flex items-center gap-1">
+                            <NumberField
+                                id="account-set-city-build-tax-rate"
+                                className="w-[90px]"
+                                value={values.cityBuildTaxRate}
+                                onChange={(v) => onChange("cityBuildTaxRate", v)}
+                                min={0}
+                                max={100}
+                                precision={2}
+                                disabled={!editing}
+                            />
+                            <span className="text-[12.5px] text-(--muted-foreground)">% 城建税</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <NumberField
+                                id="account-set-education-surcharge-rate"
+                                className="w-[90px]"
+                                value={values.educationSurchargeRate}
+                                onChange={(v) => onChange("educationSurchargeRate", v)}
+                                min={0}
+                                max={100}
+                                precision={2}
+                                disabled={!editing}
+                            />
+                            <span className="text-[12.5px] text-(--muted-foreground)">% 教育费附加</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <NumberField
+                                id="account-set-local-education-surcharge-rate"
+                                className="w-[90px]"
+                                value={values.localEducationSurchargeRate}
+                                onChange={(v) => onChange("localEducationSurchargeRate", v)}
+                                min={0}
+                                max={100}
+                                precision={2}
+                                disabled={!editing}
+                            />
+                            <span className="text-[12.5px] text-(--muted-foreground)">% 地方教育附加</span>
+                        </span>
                     </div>
                 </div>
+                {!editing && (
+                    <div className="pl-[163px] text-[12px] text-(--muted-foreground)">
+                        附加税费率决定期末检查「计提税金」的计提比例，新建账套按法定 7 / 3 / 2 登记，创建后可修改。
+                    </div>
+                )}
             </Group>
 
             <Group title="企税申报登录" hint="用于一键取票、增值税/企业所得税等税种申报、快速登录税局办理业务">

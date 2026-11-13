@@ -29,6 +29,7 @@ import type { MenuProps, TableColumnsType } from "antd"
 import {
     DeleteOutlined,
     DownOutlined,
+    DownloadOutlined,
     FileExcelOutlined,
     FileTextOutlined,
     PlusOutlined,
@@ -309,15 +310,16 @@ function StatusPill({ record }: { record: VoucherListItemDto }) {
     )
 }
 
-/** 工具栏下拉按钮：文案 + 菜单项，沿用原型的 Button + DownOutlined 样式。 */
+/** 工具栏下拉按钮：功能图标（可选）+ 文案 + 菜单箭头，箭头只表示「有菜单」，不充当功能图标。 */
 function toolbarDropdown(
     text: string,
     items: NonNullable<MenuProps["items"]>,
     onClick: MenuProps["onClick"],
+    icon?: React.ReactNode,
 ) {
     return (
         <Dropdown trigger={["click"]} menu={{ items, onClick }}>
-            <Button>
+            <Button icon={icon}>
                 {text}
                 <DownOutlined style={{ fontSize: 10 }} />
             </Button>
@@ -750,7 +752,7 @@ export default function VoucherManagePage() {
     const [filterOpen, setFilterOpen] = useState(false)
     /** 表头上方的即时筛选：关键字（凭证号/摘要/金额）与状态，都在已加载结果内过滤，不发请求。 */
     const [quickKeyword, setQuickKeyword] = useState("")
-    // 账簿页的未入账提示会带 ?status=draft 跳进来，直接落到草稿视图。
+    // 账簿页的未入账提示会带 ?status=draft 跳进来，直接落到暂存视图。
     const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "posted">(() => {
         const status = searchParams.get("status")
         return status === "draft" || status === "posted" ? status : "all"
@@ -817,13 +819,20 @@ export default function VoucherManagePage() {
         }
     }, [])
 
+    // 首页「导入凭证」带 ?import=1 直达导入抽屉；页面被 KeepAlive 复用时也能响应参数变化。
+    useEffect(() => {
+        if (searchParams.get("import") === "1") {
+            setImportOpen(true)
+        }
+    }, [searchParams])
+
     async function handleDelete(v: VoucherListItemDto) {
         if (deletingId || !v.id) return
         setDeletingId(v.id)
         setError(null)
         try {
             const api = new VouchersApi(apiConfig(token))
-            // 已过账凭证先反过账再删除；所属期间已结账时由后端拦下。
+            // 正常凭证先反过账再删除；所属期间已结账时由后端拦下。
             if (v.status === 3) {
                 await api.accountsetsAccountSetIdVouchersIdUnpostPost({ accountSetId, id: v.id })
             }
@@ -1070,7 +1079,7 @@ export default function VoucherManagePage() {
                 const failed: string[] = []
                 for (const id of ids) {
                     try {
-                        // 已过账凭证先反过账再删除。
+                        // 正常凭证先反过账再删除。
                         if (vouchers.find((v) => v.id === id)?.status === 3) {
                             await api.accountsetsAccountSetIdVouchersIdUnpostPost({ accountSetId, id })
                         }
@@ -1190,7 +1199,7 @@ export default function VoucherManagePage() {
         }
     }
 
-    /** 即时筛选后的结果：关键字匹配凭证号、摘要、科目名与金额，状态区分已过账/草稿。 */
+    /** 即时筛选后的结果：关键字匹配凭证号、摘要、科目名与金额，状态区分正常/暂存。 */
     const visibleVouchers = useMemo(() => {
         const keyword = quickKeyword.trim().toLowerCase()
         return vouchers.filter((v) => {
@@ -1392,6 +1401,7 @@ export default function VoucherManagePage() {
                                         { key: "all", label: "所有凭证" },
                                     ],
                                     ({ key }) => void handleExport(key as "ids" | "query" | "all"),
+                                    <DownloadOutlined />,
                                 )}
                                 <Button disabled={!accountSetId} onClick={() => setImportOpen(true)}>
                                     导入凭证
@@ -1489,8 +1499,8 @@ export default function VoucherManagePage() {
                             value={statusFilter}
                             options={[
                                 { value: "all", label: "全部状态" },
-                                { value: "draft", label: "草稿" },
-                                { value: "posted", label: "已过账" },
+                                { value: "draft", label: "暂存" },
+                                { value: "posted", label: "正常" },
                             ]}
                             onChange={(value) => {
                                 setStatusFilter(value as typeof statusFilter)
@@ -1692,7 +1702,7 @@ export default function VoucherManagePage() {
                         </div>
                     </Radio.Group>
                     <div className="text-[12px] text-(--muted-foreground)">
-                        编号从 1 开始重新连续编排，已删除（回收站）的凭证不占号；范围内含已过账凭证时不允许重排。
+                        编号从 1 开始重新连续编排，已删除（回收站）的凭证不占号；范围内含正常凭证时不允许重排。
                     </div>
                 </div>
             </Modal>

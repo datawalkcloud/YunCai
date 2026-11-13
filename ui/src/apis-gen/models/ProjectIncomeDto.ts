@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { IncomeProjectColumnDto } from './IncomeProjectColumnDto';
+import {
+    IncomeProjectColumnDtoFromJSON,
+    IncomeProjectColumnDtoFromJSONTyped,
+    IncomeProjectColumnDtoToJSON,
+    IncomeProjectColumnDtoToJSONTyped,
+} from './IncomeProjectColumnDto';
 import type { IncomeProjectRowDto } from './IncomeProjectRowDto';
 import {
     IncomeProjectRowDtoFromJSON,
@@ -47,6 +54,12 @@ export interface ProjectIncomeDto {
     periodText?: string;
     /**
      * 
+     * @type {Array<IncomeProjectColumnDto>}
+     * @memberof ProjectIncomeDto
+     */
+    projects?: Array<IncomeProjectColumnDto>;
+    /**
+     * 
      * @type {Array<IncomeProjectRowDto>}
      * @memberof ProjectIncomeDto
      */
@@ -73,6 +86,7 @@ export function ProjectIncomeDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'year': json['year'] == null ? undefined : json['year'],
         'month': json['month'] == null ? undefined : json['month'],
         'periodText': json['periodText'] == null ? undefined : json['periodText'],
+        'projects': json['projects'] == null ? undefined : ((json['projects'] as Array<any>).map(IncomeProjectColumnDtoFromJSON)),
         'rows': json['rows'] == null ? undefined : ((json['rows'] as Array<any>).map(IncomeProjectRowDtoFromJSON)),
     };
 }
@@ -91,6 +105,7 @@ export function ProjectIncomeDtoToJSONTyped(value?: ProjectIncomeDto | null, ign
         'year': value['year'],
         'month': value['month'],
         'periodText': value['periodText'],
+        'projects': value['projects'] == null ? undefined : ((value['projects'] as Array<any>).map(IncomeProjectColumnDtoToJSON)),
         'rows': value['rows'] == null ? undefined : ((value['rows'] as Array<any>).map(IncomeProjectRowDtoToJSON)),
     };
 }

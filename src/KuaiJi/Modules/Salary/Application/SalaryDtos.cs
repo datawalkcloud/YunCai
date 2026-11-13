@@ -92,12 +92,16 @@ namespace KuaiJi.Modules.Salary.Application
         public static string StatusTextOf(EmployeeStatus status) => status == EmployeeStatus.Active ? "在职" : "离职";
     }
 
-    /// <summary>员工某险种的缴纳基数。</summary>
+    /// <summary>员工某险种的缴纳基数与个人比例覆盖（比例为空沿用险种默认）。</summary>
     public sealed class EmployeeInsuranceDto
     {
         public Guid InsuranceItemId { get; init; }
 
         public decimal InsuranceBase { get; init; }
+
+        public decimal? CompanyRate { get; init; }
+
+        public decimal? PersonalRate { get; init; }
     }
 
     /// <summary>新建 / 修改员工请求。</summary>
@@ -170,12 +174,16 @@ namespace KuaiJi.Modules.Salary.Application
         public string? Remark { get; init; }
     }
 
-    /// <summary>员工缴纳基数请求行。</summary>
+    /// <summary>员工缴纳基数与个人比例请求行；比例为空沿用险种默认。</summary>
     public sealed class SaveEmployeeInsuranceRequest
     {
         public Guid InsuranceItemId { get; init; }
 
         public decimal InsuranceBase { get; init; }
+
+        public decimal? CompanyRate { get; init; }
+
+        public decimal? PersonalRate { get; init; }
     }
 
     /// <summary>五险一金配置 DTO。</summary>
@@ -192,12 +200,16 @@ namespace KuaiJi.Modules.Salary.Application
 
         public decimal? PersonalRate { get; init; }
 
+        /// <summary>默认缴纳基数；员工未单独设置基数时按此值计算（0 表示未设置）。</summary>
+        public decimal BaseAmount { get; init; }
+
         public static InsuranceItemDto FromDomain(InsuranceItem item) => new()
         {
             Id = item.Id,
             Name = item.Name,
             CompanyRate = item.CompanyRate,
             PersonalRate = item.PersonalRate,
+            BaseAmount = item.BaseAmount,
         };
     }
 
@@ -209,6 +221,9 @@ namespace KuaiJi.Modules.Salary.Application
         public decimal CompanyRate { get; init; }
 
         public decimal? PersonalRate { get; init; }
+
+        /// <summary>默认缴纳基数；0 表示未设置。</summary>
+        public decimal BaseAmount { get; init; }
     }
 
     /// <summary>月度工资单 DTO。</summary>

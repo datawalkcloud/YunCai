@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, App, Button, DatePicker, Form, Input, Modal, Select, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
-import { BookOutlined, ExclamationCircleFilled, LoginOutlined, QuestionCircleOutlined } from "@ant-design/icons";
+import { BookOutlined, ExclamationCircleFilled, LoginOutlined, PlusOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
@@ -268,7 +268,7 @@ export function TaxKindsPage() {
                         <Button type="primary" loading={refreshing} onClick={() => void refreshTaxKinds()}>
                             更新税费种认定
                         </Button>
-                        <Button onClick={() => setAddOpen(true)}>新增</Button>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>新增</Button>
                         <Button onClick={removeSelected}>删除</Button>
                     </div>
                 </div>

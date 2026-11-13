@@ -28,7 +28,7 @@ export const PILL: Record<PillTone, { bg: string; fg: string }> = {
     gray: { bg: "var(--tone-gray-soft)", fg: "var(--tone-gray)" },
 }
 
-/** 凭证状态 → 标签档位：已过账绿、草稿蓝；借贷不平衡一律红。 */
+/** 凭证状态 → 标签档位：正常绿、暂存蓝；借贷不平衡一律红。 */
 export function voucherStatusTone(status?: number, isBalanced?: boolean): PillTone {
     if (isBalanced === false) return "red"
     switch (status) {

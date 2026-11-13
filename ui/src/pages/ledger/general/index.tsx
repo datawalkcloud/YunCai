@@ -351,7 +351,7 @@ export default function GeneralLedgerPage() {
                 columns={columns}
                 data={lines}
                 loading={query.loading}
-                emptyText={accountSetId ? "该期间暂无总账数据，请确认凭证已过账。" : "请先选择账套。"}
+                emptyText={accountSetId ? "该期间暂无总账数据，请确认凭证为正常状态。" : "请先选择账套。"}
                 rowKey={(line) => line.rowKey}
                 rowClassName={(line) => (line.kind === "group" ? "cursor-pointer bg-muted/60 font-medium" : "")}
                 onRow={(line) => (line.kind === "group" ? { onClick: () => toggleGroup(line.code) } : {})}

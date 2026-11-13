@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { TaxInvoiceSyncSummaryDto } from './TaxInvoiceSyncSummaryDto';
+import {
+    TaxInvoiceSyncSummaryDtoFromJSON,
+    TaxInvoiceSyncSummaryDtoFromJSONTyped,
+    TaxInvoiceSyncSummaryDtoToJSON,
+    TaxInvoiceSyncSummaryDtoToJSONTyped,
+} from './TaxInvoiceSyncSummaryDto';
+
 /**
  * 
  * @export
@@ -37,6 +45,12 @@ export interface TaxInvoiceSyncResultDto {
      * @memberof TaxInvoiceSyncResultDto
      */
     skipped?: number;
+    /**
+     * 
+     * @type {Array<TaxInvoiceSyncSummaryDto>}
+     * @memberof TaxInvoiceSyncResultDto
+     */
+    summary?: Array<TaxInvoiceSyncSummaryDto> | null;
     /**
      * 
      * @type {boolean}
@@ -89,6 +103,7 @@ export function TaxInvoiceSyncResultDtoFromJSONTyped(json: any, ignoreDiscrimina
         'fetched': json['fetched'] == null ? undefined : json['fetched'],
         'imported': json['imported'] == null ? undefined : json['imported'],
         'skipped': json['skipped'] == null ? undefined : json['skipped'],
+        'summary': json['summary'] == null ? undefined : ((json['summary'] as Array<any>).map(TaxInvoiceSyncSummaryDtoFromJSON)),
         'needLogin': json['needLogin'] == null ? undefined : json['needLogin'],
         'message': json['message'] == null ? undefined : json['message'],
         'diagnostics': json['diagnostics'] == null ? undefined : json['diagnostics'],
@@ -111,6 +126,7 @@ export function TaxInvoiceSyncResultDtoToJSONTyped(value?: TaxInvoiceSyncResultD
         'fetched': value['fetched'],
         'imported': value['imported'],
         'skipped': value['skipped'],
+        'summary': value['summary'] == null ? undefined : ((value['summary'] as Array<any>).map(TaxInvoiceSyncSummaryDtoToJSON)),
         'needLogin': value['needLogin'],
         'message': value['message'],
         'diagnostics': value['diagnostics'],

@@ -13,7 +13,7 @@ namespace KuaiJi.Modules.Funds.Application
 
         public string TypeText { get; init; } = null!;
 
-        /// <summary>类别编码（同一账套内唯一，默认按序编号）。</summary>
+        /// <summary>类别编码（同一账套同一类型内唯一，收入与支出各自按序编号）。</summary>
         public string Code { get; init; } = null!;
 
         public string Name { get; init; } = null!;

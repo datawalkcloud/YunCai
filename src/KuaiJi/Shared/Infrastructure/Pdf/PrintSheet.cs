@@ -41,11 +41,13 @@ namespace KuaiJi.SharedKernel.Infrastructure.Pdf
     /// <param name="Group">上级分组表头（如「期初余额」）；相邻同组列在表头第一行合并为一格。为 null 时该列跨两行。</param>
     /// <param name="Width">列宽，如「12%」；省略则由内容自适应。</param>
     /// <param name="Align">本列单元格的默认对齐。</param>
+    /// <param name="Css">附加到表头单元格的样式类，见 <see cref="PdfCss"/>。</param>
     public sealed record PrintColumn(
         string Text,
         string? Group = null,
         string? Width = null,
-        string Align = PdfAlign.Left);
+        string Align = PdfAlign.Left,
+        string Css = "");
 
     /// <summary>表体单元格。传入 decimal / decimal? 时按金额格式输出，其余按文本输出。</summary>
     /// <param name="Value">单元格内容：null 留白，decimal 走金额格式，其它调用 ToString()。</param>
@@ -86,5 +88,8 @@ namespace KuaiJi.SharedKernel.Infrastructure.Pdf
 
         /// <summary>小计、合计等加重行。</summary>
         public const string Strong = "strong";
+
+        /// <summary>单元格内容不折行（金额列用，避免数字被拆成两行）。</summary>
+        public const string NoWrap = "nw";
     }
 }

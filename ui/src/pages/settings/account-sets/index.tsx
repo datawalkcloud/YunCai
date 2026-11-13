@@ -6,11 +6,9 @@ import {
     CheckOutlined,
     CopyOutlined,
     EditOutlined,
-    LockOutlined,
     PlusOutlined,
     ReloadOutlined,
     DeleteOutlined,
-    UnlockOutlined,
 } from "@ant-design/icons"
 import dayjs from "dayjs"
 import { useNavigate } from "react-router"
@@ -161,41 +159,6 @@ export default function AccountSetsPage() {
         }
     }
 
-    /** 月结账：按后端给出的下一待结期间顺序推进，结账前需期间内凭证全部已过账。 */
-    async function closePeriod(set: AccountSetDto) {
-        if (!set.id || busyId || !set.nextCloseYear || !set.nextCloseMonth) return
-        if (!(await confirm(`确定对账套「${set.name}」执行 ${set.nextCloseYear} 年 ${set.nextCloseMonth} 月的结账吗？结账后该期间凭证将不可增删改。`))) return
-        setBusyId(set.id)
-        setListError(null)
-        try {
-            await new AccountSetsApi(apiConfig(token)).accountSetsIdClosePeriodPost({
-                id: set.id,
-                closePeriodRequest: { year: set.nextCloseYear, month: set.nextCloseMonth },
-            })
-            await load()
-        } catch (err) {
-            setListError(await apiErrorMessage(err, "结账失败，请重试。"))
-        } finally {
-            setBusyId(null)
-        }
-    }
-
-    /** 反结账：退回最近一个已结期间。 */
-    async function reopenPeriod(set: AccountSetDto) {
-        if (!set.id || busyId || !set.closedPeriod) return
-        if (!(await confirm(`确定对账套「${set.name}」反结账吗？将退回最近一个已结期间（${set.closedPeriod}）。`))) return
-        setBusyId(set.id)
-        setListError(null)
-        try {
-            await new AccountSetsApi(apiConfig(token)).accountSetsIdReopenPeriodPost({ id: set.id })
-            await load()
-        } catch (err) {
-            setListError(await apiErrorMessage(err, "反结账失败，请重试。"))
-        } finally {
-            setBusyId(null)
-        }
-    }
-
     function openCreate() {
         setEditing(null)
         fillForm({ ...emptyForm(), startPeriod: dayjs().toDate() })
@@ -246,6 +209,9 @@ export default function AccountSetsPage() {
                         taxpayerNumber: values.taxpayerNumber?.trim() || undefined,
                         vatRate: values.vatRate ?? undefined,
                         incomeTaxRate: values.incomeTaxRate ?? undefined,
+                        cityBuildTaxRate: values.cityBuildTaxRate ?? undefined,
+                        educationSurchargeRate: values.educationSurchargeRate ?? undefined,
+                        localEducationSurchargeRate: values.localEducationSurchargeRate ?? undefined,
                         isExportEnterprise: values.isExport ?? false,
                         taxRegion: values.taxRegion || undefined,
                         taxLoginType: values.taxLoginType || undefined,
@@ -289,6 +255,8 @@ export default function AccountSetsPage() {
         values: formValues,
         errors: formErrors,
         editing: !!editing,
+        // 只有小企业准则账套能切换（升级为企业准则）；企业准则与历史其他准则一律锁定。
+        standardLocked: !!editing && editing.standard !== 2,
         onChange: setFormValue,
     }
 
@@ -358,6 +326,10 @@ export default function AccountSetsPage() {
                                     <KeyValue label="纳税人识别号">{set.taxpayerNumber || "—"}</KeyValue>
                                     <KeyValue label="报税地区">{set.taxRegion || "—"}</KeyValue>
                                     <KeyValue label="增值税 / 所得税">{set.vatRate ?? "—"}% / {set.incomeTaxRate ?? "—"}%</KeyValue>
+                                    <KeyValue label="附加税（城建 / 教育 / 地方）">
+                                        {set.cityBuildTaxRate ?? "—"}% / {set.educationSurchargeRate ?? "—"}% /{" "}
+                                        {set.localEducationSurchargeRate ?? "—"}%
+                                    </KeyValue>
                                     <KeyValue label="凭证字">{set.voucherWords || "—"}</KeyValue>
                                     <KeyValue label="启用期间">{set.startPeriod}</KeyValue>
                                     <KeyValue label="已结至">{set.closedPeriod || "未结账"}</KeyValue>
@@ -379,20 +351,6 @@ export default function AccountSetsPage() {
                                         {set.isCurrent ? "当前账套" : "设为当前"}
                                     </Button>
                                     <div className="flex items-center gap-0">
-                                        <Button
-                                            type="text"
-                                            disabled={busyId === set.id}
-                                            onClick={() => void closePeriod(set)}
-                                            title={set.nextCloseYear && set.nextCloseMonth ? `结账（${set.nextCloseYear} 年 ${set.nextCloseMonth} 月）` : "结账"}
-                                            icon={<LockOutlined />}
-                                        />
-                                        <Button
-                                            type="text"
-                                            disabled={!set.closedPeriod || busyId === set.id}
-                                            onClick={() => void reopenPeriod(set)}
-                                            title={set.closedPeriod ? `反结账（退回 ${set.closedPeriod}）` : "尚未结账"}
-                                            icon={<UnlockOutlined />}
-                                        />
                                         <Button
                                             type="text"
                                             onClick={() => openEdit(set)}

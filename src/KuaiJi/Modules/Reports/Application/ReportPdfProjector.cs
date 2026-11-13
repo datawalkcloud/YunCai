@@ -1,4 +1,5 @@
 using System.Globalization;
+using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Ledgers.Application;
 using KuaiJi.Modules.Reports.Domain;
 using KuaiJi.SharedKernel.Infrastructure.Pdf;
@@ -12,8 +13,8 @@ namespace KuaiJi.Modules.Reports.Application
     /// </summary>
     public static class ReportPdfProjector
     {
-        /// <summary>页头与文件名需要的账套信息：报表 DTO 只带期间文本，编制单位与账套名由控制器注入。</summary>
-        public sealed record PrintContext(string AccountSetName, string? CompanyName = null);
+        /// <summary>页头与文件名需要的账套信息：报表 DTO 只带期间文本，编制单位与账套名由控制器注入；Standard 决定利润表版式。</summary>
+        public sealed record PrintContext(string AccountSetName, AccountingStandard Standard, string? CompanyName = null);
 
         /// <summary>
         /// 投影为打印稿。<paramref name="page"/> 是与 <paramref name="kind"/> 对应的报表 DTO；
@@ -33,6 +34,7 @@ namespace KuaiJi.Modules.Reports.Application
             ReportExportKind.TrialBalance => TrialBalance((TrialBalanceDto)page, context, options),
             ReportExportKind.IncomeStatement => Income((IncomeStatementDto)page, context, showLastYear),
             ReportExportKind.IncomeQuarter => IncomeQuarter((IncomeStatementQuarterDto)page, context, showLastYear),
+            ReportExportKind.DepartmentIncome => DepartmentIncome((DepartmentIncomeDto)page, context),
             ReportExportKind.CashFlow => CashFlow((CashFlowDto)page, context, supplement, showLastYear),
             ReportExportKind.CashFlowQuarter => CashFlowQuarter((CashFlowQuarterDto)page, context, showLastYear),
             ReportExportKind.ExpenseDetail => ExpenseDetail((ExpenseDetailDto)page, context),
@@ -47,6 +49,7 @@ namespace KuaiJi.Modules.Reports.Application
             TrialBalanceDto dto => $"{MonthOf(dto.StartDate)}-{MonthOf(dto.EndDate)}",
             IncomeStatementDto dto => $"{dto.Year:D4}{dto.Month:D2}",
             IncomeStatementQuarterDto dto => $"{dto.Year:D4}Q{dto.Quarter}",
+            DepartmentIncomeDto dto => $"{dto.Year:D4}{dto.Month:D2}",
             CashFlowDto dto => $"{dto.Year:D4}{dto.Month:D2}",
             CashFlowQuarterDto dto => $"{dto.Year:D4}Q{dto.Quarter}",
             ExpenseDetailDto dto => $"{dto.Year:D4}{dto.Month:D2}",
@@ -130,53 +133,72 @@ namespace KuaiJi.Modules.Reports.Application
                 notes:
                 [
                     balanced ? "试算平衡：借方合计 = 贷方合计。" : "试算不平衡，请核对数据。",
-                    "仅统计已过账凭证。",
+                    "仅统计正常凭证。",
                 ]);
         }
 
         /* ---------- 利润表（月报 / 季报） ---------- */
 
-        /// <summary>会企02表行模板（行次 1-32，名称与缩进层级与页面一致）。</summary>
-        private static readonly (int Line, string Label, int Indent)[] IncomeTemplate =
+        /// <summary>利润表合计行类型：决定行次公式的取值种类。</summary>
+        private enum IncomeTotalKind { None, Operating, Profit, Net, Comprehensive }
+
+        /// <summary>企业会计准则（会企02表）行模板：行次 1-32，名称与缩进层级与页面一致。DataLine 为后端行次（取数键），DisplayLine 为打印行次。</summary>
+        private static readonly (int DataLine, int DisplayLine, string Label, int Indent, IncomeTotalKind Total)[] IncomeTemplateEnterprise =
         [
-            (1, "一、营业收入", 0),
-            (2, "减：营业成本", 1),
-            (3, "税金及附加", 1),
-            (4, "销售费用", 1),
-            (5, "管理费用", 1),
-            (6, "财务费用", 1),
-            (33, "其中：利息费用（收入以“-”号填列）", 2),
-            (7, "资产减值损失", 1),
-            (8, "加：公允价值变动收益（损失以“－”号填列）", 1),
-            (9, "投资收益（损失以“－”号填列）", 1),
-            (10, "其中：对联营企业和合营企业的投资收益", 2),
-            (11, "二、营业利润（亏损以“－”号填列）", 0),
-            (12, "加：营业外收入", 1),
-            (34, "其中：政府补助", 2),
-            (13, "其中：非流动资产处置利得", 2),
-            (14, "减：营业外支出", 1),
-            (15, "其中：非流动资产处置损失", 2),
-            (16, "三、利润总额（亏损总额以“－”号填列）", 0),
-            (17, "减：所得税费用", 1),
-            (18, "四、净利润（净亏损以“－”号填列）", 0),
-            (19, "五、其他综合收益的税后净额", 0),
-            (20, "(一)以后不能重分类进损益的其他综合收益", 1),
-            (21, "1.重新计量设定受益计划净负债或净资产的变动", 2),
-            (22, "2.权益法下在被投资单位不能重分类进损益的其他综合收益中享有的份额", 2),
-            (23, "(二)以后将重分类进损益的其他综合收益", 1),
-            (24, "1.权益法下在被投资单位以后将重分类进损益的其他综合收益中享有的份额", 2),
-            (25, "2.可供出售金融资产公允价值变动损益", 2),
-            (26, "3.持有至到期投资重分类可供出售金融资产损益", 2),
-            (27, "4.现金流量套期损益的有效部分", 2),
-            (28, "5.外币财务报表折算差额", 2),
-            (29, "六、综合收益总额", 0),
-            (30, "七、每股收益：", 0),
-            (31, "(一) 基本每股收益", 1),
-            (32, "(二) 稀释每股收益", 1),
+            (1, 1, "一、营业收入", 0, IncomeTotalKind.None),
+            (2, 2, "减：营业成本", 1, IncomeTotalKind.None),
+            (3, 3, "税金及附加", 1, IncomeTotalKind.None),
+            (4, 4, "销售费用", 1, IncomeTotalKind.None),
+            (5, 5, "管理费用", 1, IncomeTotalKind.None),
+            (6, 6, "财务费用", 1, IncomeTotalKind.None),
+            (33, 33, "其中：利息费用（收入以“-”号填列）", 2, IncomeTotalKind.None),
+            (7, 7, "资产减值损失", 1, IncomeTotalKind.None),
+            (8, 8, "加：公允价值变动收益（损失以“－”号填列）", 1, IncomeTotalKind.None),
+            (9, 9, "投资收益（损失以“－”号填列）", 1, IncomeTotalKind.None),
+            (10, 10, "其中：对联营企业和合营企业的投资收益", 2, IncomeTotalKind.None),
+            (11, 11, "二、营业利润（亏损以“－”号填列）", 0, IncomeTotalKind.Operating),
+            (12, 12, "加：营业外收入", 1, IncomeTotalKind.None),
+            (34, 34, "其中：政府补助", 2, IncomeTotalKind.None),
+            (13, 13, "其中：非流动资产处置利得", 2, IncomeTotalKind.None),
+            (14, 14, "减：营业外支出", 1, IncomeTotalKind.None),
+            (15, 15, "其中：非流动资产处置损失", 2, IncomeTotalKind.None),
+            (16, 16, "三、利润总额（亏损总额以“－”号填列）", 0, IncomeTotalKind.Profit),
+            (17, 17, "减：所得税费用", 1, IncomeTotalKind.None),
+            (18, 18, "四、净利润（净亏损以“－”号填列）", 0, IncomeTotalKind.Net),
+            (19, 19, "五、其他综合收益的税后净额", 0, IncomeTotalKind.None),
+            (20, 20, "(一)以后不能重分类进损益的其他综合收益", 1, IncomeTotalKind.None),
+            (21, 21, "1.重新计量设定受益计划净负债或净资产的变动", 2, IncomeTotalKind.None),
+            (22, 22, "2.权益法下在被投资单位不能重分类进损益的其他综合收益中享有的份额", 2, IncomeTotalKind.None),
+            (23, 23, "(二)以后将重分类进损益的其他综合收益", 1, IncomeTotalKind.None),
+            (24, 24, "1.权益法下在被投资单位以后将重分类进损益的其他综合收益中享有的份额", 2, IncomeTotalKind.None),
+            (25, 25, "2.可供出售金融资产公允价值变动损益", 2, IncomeTotalKind.None),
+            (26, 26, "3.持有至到期投资重分类可供出售金融资产损益", 2, IncomeTotalKind.None),
+            (27, 27, "4.现金流量套期损益的有效部分", 2, IncomeTotalKind.None),
+            (28, 28, "5.外币财务报表折算差额", 2, IncomeTotalKind.None),
+            (29, 29, "六、综合收益总额", 0, IncomeTotalKind.Comprehensive),
+            (30, 30, "七、每股收益：", 0, IncomeTotalKind.None),
+            (31, 31, "(一) 基本每股收益", 1, IncomeTotalKind.None),
+            (32, 32, "(二) 稀释每股收益", 1, IncomeTotalKind.None),
         ];
 
-        /// <summary>合计行的行次：营业利润 / 利润总额 / 净利润 / 综合收益总额（后端只回明细行，页面与打印都现算）。</summary>
-        private static bool IsIncomeTotal(int line) => line is 11 or 16 or 18 or 29;
+        /// <summary>小企业会计准则（会小企02表）行模板：仅营业收入/成本/税金及附加/三项费用/投资收益/营业外收支/所得税/净利润；
+        /// 不含「其中」子项、资产减值损失、公允价值变动收益、其他综合收益与每股收益。DisplayLine 为小企业准则行次（1-13）。</summary>
+        private static readonly (int DataLine, int DisplayLine, string Label, int Indent, IncomeTotalKind Total)[] IncomeTemplateSmallBusiness =
+        [
+            (1, 1, "一、营业收入", 0, IncomeTotalKind.None),
+            (2, 2, "减：营业成本", 1, IncomeTotalKind.None),
+            (3, 3, "税金及附加", 1, IncomeTotalKind.None),
+            (4, 4, "销售费用", 1, IncomeTotalKind.None),
+            (5, 5, "管理费用", 1, IncomeTotalKind.None),
+            (6, 6, "财务费用", 1, IncomeTotalKind.None),
+            (9, 7, "加：投资收益（损失以“-”号填列）", 1, IncomeTotalKind.None),
+            (0, 8, "二、营业利润（亏损以“-”号填列）", 0, IncomeTotalKind.Operating),
+            (12, 9, "加：营业外收入", 1, IncomeTotalKind.None),
+            (14, 10, "减：营业外支出", 1, IncomeTotalKind.None),
+            (0, 11, "三、利润总额（亏损总额以“-”号填列）", 0, IncomeTotalKind.Profit),
+            (17, 12, "减：所得税费用", 1, IncomeTotalKind.None),
+            (0, 13, "四、净利润（净亏损以“-”号填列）", 0, IncomeTotalKind.Net),
+        ];
 
         private static PrintSheet Income(IncomeStatementDto dto, PrintContext context, bool showLastYear)
             => IncomeSheet("利润表", "本期金额", dto.PeriodText, MapOf(dto.Lines), context, showLastYear);
@@ -193,53 +215,170 @@ namespace KuaiJi.Modules.Reports.Application
             bool showLastYear)
         {
             var columns = ReportColumns(currentTitle, showLastYear, withFormula: false);
+            var template = context.Standard == AccountingStandard.SmallBusiness ? IncomeTemplateSmallBusiness : IncomeTemplateEnterprise;
             var rows = new List<PrintRow>();
-            foreach (var (line, label, indent) in IncomeTemplate)
+            foreach (var (dataLine, displayLine, label, indent, total) in template)
             {
-                var isTotal = IsIncomeTotal(line);
+                var isTotal = total != IncomeTotalKind.None;
                 rows.Add(new PrintRow(
-                    IncomeCells(map, line, label, indent, isTotal, showLastYear),
+                    IncomeCells(map, dataLine, displayLine, label, indent, total, context.Standard, showLastYear),
                     isTotal ? PdfCss.Strong : string.Empty));
             }
 
-            return Sheet(title, context, periodText, columns, rows, "会企02表",
-                notes: ["明细行次取自已过账凭证发生额；结转损益凭证不计入。"]);
+            var subtitle = context.Standard == AccountingStandard.SmallBusiness ? "会小企02表" : "会企02表";
+            return Sheet(title, context, periodText, columns, rows, subtitle,
+                notes: ["明细行次取自正常凭证发生额；结转损益凭证不计入。"]);
         }
 
         private static List<PrintCell> IncomeCells(
             IReadOnlyDictionary<int, LineAmount> map,
-            int line,
+            int dataLine,
+            int displayLine,
             string label,
             int indent,
-            bool isTotal,
+            IncomeTotalKind total,
+            AccountingStandard standard,
             bool showLastYear)
         {
             decimal Of(Func<LineAmount, decimal> pick)
-                => isTotal ? IncomeTotal(map, line, pick) : map.TryGetValue(line, out var hit) ? pick(hit) : 0m;
+                => total == IncomeTotalKind.None
+                    ? (map.TryGetValue(dataLine, out var hit) ? pick(hit) : 0m)
+                    : IncomeTotal(key => map.TryGetValue(key, out var hit) ? pick(hit) : 0m, total, standard);
 
-            return ReportCells(label, line, indent, Of(a => a.YearToDate), Of(a => a.LastYear), Of(a => a.Current), showLastYear, isTotal);
+            return ReportCells(label, displayLine, indent, Of(a => a.YearToDate), Of(a => a.LastYear), Of(a => a.Current), showLastYear, total != IncomeTotalKind.None);
         }
 
-        /// <summary>营业利润 / 利润总额 / 净利润 / 综合收益总额的行次公式：减项行取负，「其中」行不参与。</summary>
+        /// <summary>营业利润 / 利润总额 / 净利润 / 综合收益总额的行次公式：减项行取负，「其中」行不参与；小企业准则不含资产减值损失与公允价值变动收益。
+        /// valueOf(key) 返回已取好口径（本期/累计/上年）的某行次金额，由调用方按会计标准提供正确行次数据，便于部门利润表逐维度复用同一公式。</summary>
         private static decimal IncomeTotal(
-            IReadOnlyDictionary<int, LineAmount> map,
-            int line,
-            Func<LineAmount, decimal> pick)
+            Func<int, decimal> valueOf,
+            IncomeTotalKind total,
+            AccountingStandard standard)
         {
-            decimal Of(int key) => map.TryGetValue(key, out var hit) ? pick(hit) : 0m;
-            decimal Net()
-                => Of(1) + Of(8) + Of(9) - Of(2) - Of(3) - Of(4) - Of(5) - Of(6) - Of(7);
-            decimal Total() => Net() + Of(12) - Of(14);
-            decimal Profit() => Total() - Of(17);
-
-            return line switch
+            decimal Of(int key) => valueOf(key);
+            // 小企业会计准则：营业利润 = 营业收入 − 成本 − 税金及附加 − 销售费用 − 管理费用 − 财务费用 + 投资收益。
+            if (standard == AccountingStandard.SmallBusiness)
             {
-                11 => Net(),
-                16 => Total(),
-                18 => Profit(),
-                29 => Profit() + Of(19),
+                decimal Operating() => Of(1) - Of(2) - Of(3) - Of(4) - Of(5) - Of(6) + Of(9);
+                decimal Profit() => Operating() + Of(12) - Of(14);
+                decimal Net() => Profit() - Of(17);
+                return total switch
+                {
+                    IncomeTotalKind.Operating => Operating(),
+                    IncomeTotalKind.Profit => Profit(),
+                    IncomeTotalKind.Net => Net(),
+                    _ => 0m,
+                };
+            }
+
+            decimal NetE() => Of(1) + Of(8) + Of(9) - Of(2) - Of(3) - Of(4) - Of(5) - Of(6) - Of(7);
+            decimal TotalE() => NetE() + Of(12) - Of(14);
+            decimal ProfitE() => TotalE() - Of(17);
+            return total switch
+            {
+                IncomeTotalKind.Operating => NetE(),
+                IncomeTotalKind.Profit => TotalE(),
+                IncomeTotalKind.Net => ProfitE(),
+                IncomeTotalKind.Comprehensive => ProfitE() + Of(19),
                 _ => 0m,
             };
+        }
+
+        /* ---------- 部门利润表 ---------- */
+
+        /// <summary>
+        /// 部门利润表：项目/行次 + 每个部门两列（本期、本年累计），行模板与「利润表」一致；
+        /// 营业利润/利润总额/净利润三个合计行由后端按部门现算，部门多时转横向。
+        /// </summary>
+        private static PrintSheet DepartmentIncome(DepartmentIncomeDto dto, PrintContext context)
+        {
+            var departments = dto.Departments ?? [];
+            // 部门多时列宽不够，转横向；两个部门以内纵向即可一页放下整张 32 行模板。
+            var landscape = departments.Count >= 3;
+            // 百分比列宽必须是整数：渲染器遇到小数百分比会退回按内容自动分配，金额列被压窄折行。
+            var amountWidth = departments.Count switch
+            {
+                <= 1 => 22,
+                2 => 13,
+                3 => 10,
+                4 => 8,
+                _ => 7,
+            };
+            var labelWidth = Math.Max(10, 94 - amountWidth * departments.Count * 2);
+            var columns = new List<PrintColumn>
+            {
+                new("项目", Width: $"{labelWidth}%"),
+                // 表头不折行：列宽偏窄时「行次」会被拆成两行。
+                new("行次", Width: "6%", Align: PdfAlign.Center, Css: PdfCss.NoWrap),
+            };
+
+            foreach (var department in departments)
+            {
+                columns.Add(new PrintColumn("本期金额", department.Name, $"{amountWidth}%", PdfAlign.Right));
+                columns.Add(new PrintColumn("本年累计金额", department.Name, $"{amountWidth}%", PdfAlign.Right));
+            }
+
+            var byLine = (dto.Rows ?? [])
+                .GroupBy(r => r.Line)
+                .ToDictionary(g => g.Key, g => g.First().Amounts ?? []);
+
+            // 明细行直接按行次取数；合计行（营业利润/利润总额/净利润）按与「利润表」相同的公式逐部门计算，
+            // 保证部门利润表合计列与主表一致，并随账套会计标准切换版式。
+            decimal DimOf(int key, int i, Func<IncomeDimensionAmountDto, decimal> pick)
+                => byLine.TryGetValue(key, out var amts) && i < amts.Count ? pick(amts[i]) : 0m;
+
+            var isSmall = context.Standard == AccountingStandard.SmallBusiness;
+            var template = isSmall ? IncomeTemplateSmallBusiness : IncomeTemplateEnterprise;
+            var subtitle = isSmall ? "会小企02表" : "会企02表";
+
+            var rows = new List<PrintRow>();
+            if (departments.Count > 0)
+            {
+                foreach (var (dataLine, displayLine, label, indent, total) in template)
+                {
+                    var isTotal = total != IncomeTotalKind.None;
+                    var cells = new List<PrintCell>
+                    {
+                        new(label, Css: isTotal ? PdfCss.Strong : IndentOfClass(indent)),
+                        new(displayLine.ToString(), Align: PdfAlign.Center),
+                    };
+                    for (var i = 0; i < departments.Count; i++)
+                    {
+                        IncomeDimensionAmountDto? amount = null;
+                        if (isTotal)
+                        {
+                            // 合计行按主表公式逐部门计算，dataLine 不参与取数。
+                            amount = new IncomeDimensionAmountDto
+                            {
+                                Current = IncomeTotal(key => DimOf(key, i, a => a.Current), total, context.Standard),
+                                YearToDate = IncomeTotal(key => DimOf(key, i, a => a.YearToDate), total, context.Standard),
+                            };
+                        }
+                        else if (byLine.TryGetValue(dataLine, out var amts) && i < amts.Count)
+                        {
+                            amount = amts[i];
+                        }
+
+                        // 合计行 0 也印 0.00，明细行按账页惯例留白；金额不折行，列宽随数字撑开。
+                        cells.Add(isTotal
+                            ? new PrintCell(PdfText.AmountAlways(amount?.Current), Css: PdfCss.NoWrap)
+                            : new PrintCell(amount?.Current, Css: PdfCss.NoWrap));
+                        cells.Add(isTotal
+                            ? new PrintCell(PdfText.AmountAlways(amount?.YearToDate), Css: PdfCss.NoWrap)
+                            : new PrintCell(amount?.YearToDate, Css: PdfCss.NoWrap));
+                    }
+
+                    rows.Add(new PrintRow(cells, isTotal ? PdfCss.Strong : string.Empty));
+                }
+            }
+
+            return Sheet("部门利润表", context, dto.PeriodText, columns, rows, subtitle,
+                notes:
+                [
+                    "按部门辅助核算归集收入与费用，仅列示本年有损益发生的部门。",
+                    "明细行次取自正常凭证发生额；结转损益凭证不计入。",
+                ],
+                landscape: landscape);
         }
 
         /* ---------- 现金流量表（月报 / 季报） ---------- */
@@ -287,6 +426,36 @@ namespace KuaiJi.Modules.Reports.Application
             ("六、期末现金及现金等价物余额", 35, false),
         ];
 
+        /// <summary>会小企03表模板：3 个活动小标题 + 22 个标准行次（无流入/流出小计、无补充资料）。</summary>
+        private static readonly (string Label, int Line, bool IsSection)[] CashFlowSmallBusinessTemplate =
+        [
+            ("一、经营活动产生的现金流量：", 0, true),
+            ("销售产成品、商品、提供劳务收到的现金", 1, false),
+            ("收到其他与经营活动有关的现金", 2, false),
+            ("购买原材料、商品、接受劳务支付的现金", 3, false),
+            ("支付的职工薪酬", 4, false),
+            ("支付的税费", 5, false),
+            ("支付其他与经营活动有关的现金", 6, false),
+            ("经营活动产生的现金流量净额", 7, false),
+            ("二、投资活动产生的现金流量：", 0, true),
+            ("收回短期投资、长期债券投资和长期股权投资收到的现金", 8, false),
+            ("取得投资收益收到的现金", 9, false),
+            ("处置固定资产、无形资产和其他非流动资产收回的现金净额", 10, false),
+            ("短期投资、长期债券投资和长期股权投资支付的现金", 11, false),
+            ("购建固定资产、无形资产和其他非流动资产支付的现金", 12, false),
+            ("投资活动产生的现金流量净额", 13, false),
+            ("三、筹资活动产生的现金流量：", 0, true),
+            ("取得借款收到的现金", 14, false),
+            ("吸收投资者投资收到的现金", 15, false),
+            ("偿还借款本金支付的现金", 16, false),
+            ("偿还借款利息支付的现金", 17, false),
+            ("分配利润支付的现金", 18, false),
+            ("筹资活动产生的现金流量净额", 19, false),
+            ("四、现金净增加额", 20, false),
+            ("加：期初现金余额", 21, false),
+            ("五、期末现金余额", 22, false),
+        ];
+
         /// <summary>补充资料三段小标题（按行的 Group 切换时插入，同页面文案）。</summary>
         private static readonly Dictionary<int, string> SupplementTitles = new()
         {
@@ -302,13 +471,20 @@ namespace KuaiJi.Modules.Reports.Application
             bool showLastYear)
         {
             var map = MapOf(dto.Lines);
+            var smallBusiness = context.Standard == AccountingStandard.SmallBusiness;
             // 「取数公式」列只在公式法取数时出现（直接法、辅助核算法后端不回公式）。
             var withFormula = (dto.Lines ?? []).Any(l => !string.IsNullOrWhiteSpace(l.Formula));
             var columns = ReportColumns("本期金额", showLastYear, withFormula);
-            var rows = CashFlowRows(map, columns.Count, withFormula, showLastYear);
+            var template = smallBusiness ? CashFlowSmallBusinessTemplate : CashFlowTemplate;
+            var rows = CashFlowRows(map, columns.Count, withFormula, showLastYear, template, smallBusiness);
 
-            var notes = new List<string> { "直接法简化工作底稿口径；现金科目=1001/1002/1012。" };
-            if (supplement is { Lines.Count: > 0 })
+            var notes = new List<string>
+            {
+                smallBusiness
+                    ? "小企业会计准则（会小企03表）版式；直接法简化工作底稿口径；现金科目=1001/1002/1012。"
+                    : "直接法简化工作底稿口径；现金科目=1001/1002/1012。",
+            };
+            if (!smallBusiness && supplement is { Lines.Count: > 0 })
             {
                 rows.Add(FullWidthRow("补充资料（将净利润调节为经营活动现金流量）", columns.Count));
                 var lastGroup = 0;
@@ -331,26 +507,37 @@ namespace KuaiJi.Modules.Reports.Application
                           $"差异 {PdfText.AmountAlways(supplement.Difference)} 元。");
             }
 
-            return Sheet("现金流量表", context, dto.PeriodText, columns, rows, "会企03表", notes: notes);
+            return Sheet("现金流量表", context, dto.PeriodText, columns, rows,
+                smallBusiness ? "会小企03表" : "会企03表", notes: notes);
         }
 
         private static PrintSheet CashFlowQuarter(CashFlowQuarterDto dto, PrintContext context, bool showLastYear)
         {
             var map = MapOf(dto.Lines);
+            var smallBusiness = context.Standard == AccountingStandard.SmallBusiness;
             var columns = ReportColumns("本季金额", showLastYear, withFormula: false);
-            var rows = CashFlowRows(map, columns.Count, withFormula: false, showLastYear);
-            return Sheet("现金流量表季报", context, dto.PeriodText, columns, rows, "会企03表",
-                notes: ["直接法简化工作底稿口径；现金科目=1001/1002/1012。"]);
+            var template = smallBusiness ? CashFlowSmallBusinessTemplate : CashFlowTemplate;
+            var rows = CashFlowRows(map, columns.Count, withFormula: false, showLastYear, template, smallBusiness);
+            return Sheet("现金流量表季报", context, dto.PeriodText, columns, rows,
+                smallBusiness ? "会小企03表" : "会企03表",
+                notes:
+                [
+                    smallBusiness
+                        ? "小企业会计准则（会小企03表）版式；直接法简化工作底稿口径；现金科目=1001/1002/1012。"
+                        : "直接法简化工作底稿口径；现金科目=1001/1002/1012。",
+                ]);
         }
 
         private static List<PrintRow> CashFlowRows(
             IReadOnlyDictionary<int, LineAmount> map,
             int columnCount,
             bool withFormula,
-            bool showLastYear)
+            bool showLastYear,
+            IReadOnlyList<(string Label, int Line, bool IsSection)> template,
+            bool smallBusiness)
         {
             var rows = new List<PrintRow>();
-            foreach (var (label, line, isSection) in CashFlowTemplate)
+            foreach (var (label, line, isSection) in template)
             {
                 if (isSection)
                 {
@@ -358,9 +545,12 @@ namespace KuaiJi.Modules.Reports.Application
                     continue;
                 }
 
+                // 小准则的净额、净增加额、期末余额行加粗，与主表观感一致（该表没有流入/流出小计行）。
+                var strong = smallBusiness && line is 7 or 13 or 19 or 20 or 22;
                 var amount = map.TryGetValue(line, out var hit) ? hit : new LineAmount(0m, 0m, 0m);
                 rows.Add(new PrintRow(ReportCells(label, line, 1, amount.YearToDate, amount.LastYear, amount.Current,
-                    showLastYear, strong: false, formula: withFormula ? amount.Formula : null)));
+                    showLastYear, strong, formula: withFormula ? amount.Formula : null),
+                    strong ? PdfCss.Strong : string.Empty));
             }
 
             return rows;
@@ -416,7 +606,7 @@ namespace KuaiJi.Modules.Reports.Application
         /// <summary>税种分组：与页面一致的固定四组（按科目名称包含关键字归集）+「其他税费」兜底 + 合计，每组列「应交 / 已交」两行。</summary>
         private static readonly (string Title, string FallbackLabel, string[] Keywords)[] TaxGroups =
         [
-            ("（一）增值税：", "增值税", ["增值税"]),
+            ("（一）增值税：", "增值税", ["增值税", "销项税额", "进项税额"]),
             ("（二）所得税：", "所得税", ["所得税"]),
             ("（三）消费税：", "消费税", ["消费税"]),
             ("（四）城建税：", "城建税", ["城建税", "城市维护建设税"]),
@@ -443,12 +633,16 @@ namespace KuaiJi.Modules.Reports.Application
             decimal totalCurPaid = 0m;
             decimal totalYtdPaid = 0m;
 
+            // 科目名若已带「应交/已交」前缀（如种子账套的「应交所得税」），先剥离，避免叠加成「应交应交所得税」。
+            static string Clean(string s) => s.StartsWith("应交") || s.StartsWith("已交") ? s[2..] : s;
+
             void Pair(string label, decimal ytd, decimal cur, decimal ytdPaid, decimal curPaid, bool strong = false)
             {
+                var L = Clean(label);
                 seq += 1;
-                rows.Add(TaxRow($"应交{label}", seq, ytd, cur, strong));
+                rows.Add(TaxRow($"应交{L}", seq, ytd, cur, strong));
                 seq += 1;
-                rows.Add(TaxRow($"已交{label}", seq, ytdPaid, curPaid, strong));
+                rows.Add(TaxRow($"已交{L}", seq, ytdPaid, curPaid, strong));
             }
 
             foreach (var (title, fallback, keywords) in TaxGroups)
@@ -675,7 +869,8 @@ namespace KuaiJi.Modules.Reports.Application
             IReadOnlyList<PrintRow> rows,
             string? subtitle = null,
             string? subject = null,
-            IReadOnlyList<string>? notes = null)
+            IReadOnlyList<string>? notes = null,
+            bool landscape = false)
         {
             var company = string.IsNullOrWhiteSpace(context.CompanyName) ? context.AccountSetName : context.CompanyName!;
             var head = new List<PrintMeta>
@@ -697,8 +892,9 @@ namespace KuaiJi.Modules.Reports.Application
                 Columns = columns,
                 Rows = rows,
                 Notes = tail,
+                Landscape = landscape,
                 PrintedAt = DateTimeOffset.Now,
-                EmptyText = "该期间暂无数据，请确认凭证已过账。",
+                EmptyText = "该期间暂无数据，请确认凭证为正常状态。",
             };
         }
 

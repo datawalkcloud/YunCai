@@ -12,6 +12,7 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdTransfersIdVoucherPost**](TransfersApi.md#accountsetsaccountsetidtransfersidvoucherpost) | **POST** /accountsets/{accountSetId}/transfers/{id}/voucher |  |
 | [**accountsetsAccountSetIdTransfersImportPost**](TransfersApi.md#accountsetsaccountsetidtransfersimportpost) | **POST** /accountsets/{accountSetId}/transfers/import |  |
 | [**accountsetsAccountSetIdTransfersImportTemplateGet**](TransfersApi.md#accountsetsaccountsetidtransfersimporttemplateget) | **GET** /accountsets/{accountSetId}/transfers/import/template |  |
+| [**accountsetsAccountSetIdTransfersPdfGet**](TransfersApi.md#accountsetsaccountsetidtransferspdfget) | **GET** /accountsets/{accountSetId}/transfers/pdf |  |
 | [**accountsetsAccountSetIdTransfersPost**](TransfersApi.md#accountsetsaccountsetidtransferspost) | **POST** /accountsets/{accountSetId}/transfers |  |
 | [**accountsetsAccountSetIdTransfersVouchersPost**](TransfersApi.md#accountsetsaccountsetidtransfersvoucherspost) | **POST** /accountsets/{accountSetId}/transfers/vouchers |  |
 
@@ -532,6 +533,98 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **accountSetId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdTransfersPdfGet
+
+> accountsetsAccountSetIdTransfersPdfGet(accountSetId, startDate, endDate, showAll, date, summary, from, to, amount, voucher)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  TransfersApi,
+} from '';
+import type { AccountsetsAccountSetIdTransfersPdfGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new TransfersApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // Date (optional)
+    startDate: 2013-10-20,
+    // Date (optional)
+    endDate: 2013-10-20,
+    // boolean (optional)
+    showAll: true,
+    // string (optional)
+    date: date_example,
+    // string (optional)
+    summary: summary_example,
+    // string (optional)
+    from: from_example,
+    // string (optional)
+    to: to_example,
+    // string (optional)
+    amount: amount_example,
+    // string (optional)
+    voucher: voucher_example,
+  } satisfies AccountsetsAccountSetIdTransfersPdfGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdTransfersPdfGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **startDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **showAll** | `boolean` |  | [Optional] [Defaults to `undefined`] |
+| **date** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **summary** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **amount** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **voucher** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 

@@ -9,6 +9,7 @@ Name | Type
 `name` | string
 `companyRate` | number
 `personalRate` | number
+`baseAmount` | number
 
 ## Example
 
@@ -20,6 +21,7 @@ const example = {
   "name": null,
   "companyRate": null,
   "personalRate": null,
+  "baseAmount": null,
 } satisfies SaveInsuranceRequest
 
 console.log(example)

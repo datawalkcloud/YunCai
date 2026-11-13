@@ -8,6 +8,8 @@ Name | Type
 ------------ | -------------
 `insuranceItemId` | string
 `insuranceBase` | number
+`companyRate` | number
+`personalRate` | number
 
 ## Example
 
@@ -18,6 +20,8 @@ import type { SaveEmployeeInsuranceRequest } from ''
 const example = {
   "insuranceItemId": null,
   "insuranceBase": null,
+  "companyRate": null,
+  "personalRate": null,
 } satisfies SaveEmployeeInsuranceRequest
 
 console.log(example)

@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 /* ============================================================
  * 服务条款 / 隐私政策
@@ -7,12 +8,13 @@ import { Link } from "react-router";
  * 内容为面向中小企业财务 SaaS 的通用条款骨架，正式上线前需由法务定稿。
  * ============================================================ */
 
+/* 配色取全站 token，跟「主题设置」的主题色与明暗走。 */
 const C = {
-  ink: "#1a1a1a",
-  sub: "#646464",
-  faint: "#b0b0b0",
-  brand: "#079d55",
-  line: "#ececec",
+  ink: "var(--foreground)",
+  sub: "var(--muted-foreground)",
+  faint: "var(--icon-muted)",
+  brand: "var(--brand)",
+  line: "var(--border)",
 };
 
 type Block = { h: string; p: string[] };
@@ -35,15 +37,18 @@ function LegalPage({
         style={{ borderColor: C.line }}
       >
         <div className="mx-auto flex h-full w-full max-w-[1240px] items-center justify-between px-5 md:px-8">
-          <Link to="/" className="flex items-baseline gap-1.5">
-            <span className="text-[16px] font-medium tracking-tight" style={{ color: C.ink }}>
-              云财
-            </span>
-            <span
-              className="text-[9.5px] font-light uppercase tracking-[0.2em]"
-              style={{ color: "#c0c0c0" }}
-            >
-              KuaiJi
+          <Link to="/" className="flex items-center gap-2">
+            <BrandLogo size={26} />
+            <span className="flex items-baseline gap-1.5">
+              <span className="text-[16px] font-medium tracking-tight" style={{ color: C.ink }}>
+                云财
+              </span>
+              <span
+                className="text-[9.5px] font-light uppercase tracking-[0.2em]"
+                style={{ color: "#c0c0c0" }}
+              >
+                KuaiJi
+              </span>
             </span>
           </Link>
           <Link
@@ -59,7 +64,7 @@ function LegalPage({
       <main className="mx-auto w-full max-w-[720px] px-5 py-14 md:px-0 md:py-20">
         <span
           className="inline-flex h-6 items-center rounded-full px-[14px] text-[12.5px] font-medium"
-          style={{ background: "#f3f9f6", color: C.brand }}
+          style={{ background: "var(--brand-soft)", color: C.brand }}
         >
           {tag}
         </span>

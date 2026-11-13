@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
-import type { IncomeDepartmentAmountDto } from './IncomeDepartmentAmountDto';
+import type { IncomeDimensionAmountDto } from './IncomeDimensionAmountDto';
 import {
-    IncomeDepartmentAmountDtoFromJSON,
-    IncomeDepartmentAmountDtoFromJSONTyped,
-    IncomeDepartmentAmountDtoToJSON,
-    IncomeDepartmentAmountDtoToJSONTyped,
-} from './IncomeDepartmentAmountDto';
+    IncomeDimensionAmountDtoFromJSON,
+    IncomeDimensionAmountDtoFromJSONTyped,
+    IncomeDimensionAmountDtoToJSON,
+    IncomeDimensionAmountDtoToJSONTyped,
+} from './IncomeDimensionAmountDto';
 
 /**
  * 
@@ -41,10 +41,16 @@ export interface IncomeDepartmentRowDto {
     line?: number;
     /**
      * 
-     * @type {Array<IncomeDepartmentAmountDto>}
+     * @type {Array<IncomeDimensionAmountDto>}
      * @memberof IncomeDepartmentRowDto
      */
-    amounts?: Array<IncomeDepartmentAmountDto>;
+    amounts?: Array<IncomeDimensionAmountDto>;
+    /**
+     * 
+     * @type {IncomeDimensionAmountDto}
+     * @memberof IncomeDepartmentRowDto
+     */
+    total?: IncomeDimensionAmountDto;
 }
 
 /**
@@ -66,7 +72,8 @@ export function IncomeDepartmentRowDtoFromJSONTyped(json: any, ignoreDiscriminat
         
         'item': json['item'] == null ? undefined : json['item'],
         'line': json['line'] == null ? undefined : json['line'],
-        'amounts': json['amounts'] == null ? undefined : ((json['amounts'] as Array<any>).map(IncomeDepartmentAmountDtoFromJSON)),
+        'amounts': json['amounts'] == null ? undefined : ((json['amounts'] as Array<any>).map(IncomeDimensionAmountDtoFromJSON)),
+        'total': json['total'] == null ? undefined : IncomeDimensionAmountDtoFromJSON(json['total']),
     };
 }
 
@@ -83,7 +90,8 @@ export function IncomeDepartmentRowDtoToJSONTyped(value?: IncomeDepartmentRowDto
         
         'item': value['item'],
         'line': value['line'],
-        'amounts': value['amounts'] == null ? undefined : ((value['amounts'] as Array<any>).map(IncomeDepartmentAmountDtoToJSON)),
+        'amounts': value['amounts'] == null ? undefined : ((value['amounts'] as Array<any>).map(IncomeDimensionAmountDtoToJSON)),
+        'total': IncomeDimensionAmountDtoToJSON(value['total']),
     };
 }
 

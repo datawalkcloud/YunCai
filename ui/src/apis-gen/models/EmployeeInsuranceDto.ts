@@ -31,6 +31,18 @@ export interface EmployeeInsuranceDto {
      * @memberof EmployeeInsuranceDto
      */
     insuranceBase?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof EmployeeInsuranceDto
+     */
+    companyRate?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof EmployeeInsuranceDto
+     */
+    personalRate?: number | null;
 }
 
 /**
@@ -52,6 +64,8 @@ export function EmployeeInsuranceDtoFromJSONTyped(json: any, ignoreDiscriminator
         
         'insuranceItemId': json['insuranceItemId'] == null ? undefined : json['insuranceItemId'],
         'insuranceBase': json['insuranceBase'] == null ? undefined : json['insuranceBase'],
+        'companyRate': json['companyRate'] == null ? undefined : json['companyRate'],
+        'personalRate': json['personalRate'] == null ? undefined : json['personalRate'],
     };
 }
 
@@ -68,6 +82,8 @@ export function EmployeeInsuranceDtoToJSONTyped(value?: EmployeeInsuranceDto | n
         
         'insuranceItemId': value['insuranceItemId'],
         'insuranceBase': value['insuranceBase'],
+        'companyRate': value['companyRate'],
+        'personalRate': value['personalRate'],
     };
 }
 

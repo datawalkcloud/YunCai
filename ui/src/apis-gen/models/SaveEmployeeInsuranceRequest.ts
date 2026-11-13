@@ -31,6 +31,18 @@ export interface SaveEmployeeInsuranceRequest {
      * @memberof SaveEmployeeInsuranceRequest
      */
     insuranceBase?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof SaveEmployeeInsuranceRequest
+     */
+    companyRate?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof SaveEmployeeInsuranceRequest
+     */
+    personalRate?: number | null;
 }
 
 /**
@@ -52,6 +64,8 @@ export function SaveEmployeeInsuranceRequestFromJSONTyped(json: any, ignoreDiscr
         
         'insuranceItemId': json['insuranceItemId'] == null ? undefined : json['insuranceItemId'],
         'insuranceBase': json['insuranceBase'] == null ? undefined : json['insuranceBase'],
+        'companyRate': json['companyRate'] == null ? undefined : json['companyRate'],
+        'personalRate': json['personalRate'] == null ? undefined : json['personalRate'],
     };
 }
 
@@ -68,6 +82,8 @@ export function SaveEmployeeInsuranceRequestToJSONTyped(value?: SaveEmployeeInsu
         
         'insuranceItemId': value['insuranceItemId'],
         'insuranceBase': value['insuranceBase'],
+        'companyRate': value['companyRate'],
+        'personalRate': value['personalRate'],
     };
 }
 

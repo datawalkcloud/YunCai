@@ -7,10 +7,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Btn, EmptyTip, Page, PeriodStepper, RefreshIcon, Table, ToolRow, WipBtn } from "./components/ui";
 import type { Col, Row } from "./components/ui";
+import { usePeriodStepper } from "./components/usePeriodStepper";
 import { InvoicesApi, type InvoiceDto } from "@/apis-gen";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
-import { shiftPeriod, useDefaultAccountingPeriod, type AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig } from "@/lib/api-client";
 
 const money = (v: number): string =>
@@ -21,9 +21,7 @@ const monthOf = (v: Date | string | null | undefined): string =>
     v ? new Date(v).toISOString().substring(0, 7) : "";
 
 export function LemonVatCalc() {
-    const defaultPeriod = useDefaultAccountingPeriod();
-    const [userPeriod, setUserPeriod] = useState<AccountingPeriod | null>(null);
-    const period = userPeriod ?? defaultPeriod;
+    const { period, stepper } = usePeriodStepper();
     const { token } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
 
@@ -97,11 +95,7 @@ export function LemonVatCalc() {
                 left={
                     <>
                         <span className="text-[13px] text-(--muted-foreground)">税款所属期：</span>
-                        <PeriodStepper
-                            text={`${period.year}年${period.month}月`}
-                            onPrev={() => setUserPeriod(shiftPeriod(period, -1))}
-                            onNext={() => setUserPeriod(shiftPeriod(period, 1))}
-                        />
+                        <PeriodStepper {...stepper} />
                         <Btn variant="primary" title="按当前税款所属期重新测算" onClick={() => void load()}>
                             查询
                         </Btn>

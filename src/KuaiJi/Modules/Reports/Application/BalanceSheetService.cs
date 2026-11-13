@@ -161,10 +161,11 @@ namespace KuaiJi.Modules.Reports.Application
 
         private static int MapAssetLine(string code, AccountCategory category)
         {
-            // 成本类（生产成本、制造费用、劳务成本等）余额属在产品，列入存货。
+            // 成本类（生产成本、制造费用、劳务成本等）余额属在产品，列入存货；
+            // 研发支出余额属「开发支出」，单列行 25。
             if (category == AccountCategory.Cost)
             {
-                return 9;
+                return Prefix(code) == "5301" ? 25 : 9;
             }
 
             var p = Prefix(code);
@@ -340,7 +341,8 @@ namespace KuaiJi.Modules.Reports.Application
 
                 case AccountCategory.Cost:
                     // 生产成本、制造费用等余额属在产品：计入存货总额，并列入「在产品」明细行。
-                    return [(9, 1m), (11, 1m)];
+                    // 研发支出（5301）属「开发支出」，单列非流动资产行 26，不并入存货。
+                    return p == "5301" ? [(26, 1m)] : [(9, 1m), (11, 1m)];
 
                 case AccountCategory.Liability:
                     return [(MapSmallBusinessLiabilityLine(p), -1m)];

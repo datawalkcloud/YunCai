@@ -37,6 +37,15 @@ namespace KuaiJi.Modules.AccountSets.Application
         /// <summary>企业所得税税率（百分比数值）。</summary>
         public decimal IncomeTaxRate { get; init; }
 
+        /// <summary>城市维护建设税税率（百分比数值），附加税计提用。</summary>
+        public decimal CityBuildTaxRate { get; init; }
+
+        /// <summary>教育费附加率（百分比数值）。</summary>
+        public decimal EducationSurchargeRate { get; init; }
+
+        /// <summary>地方教育附加率（百分比数值）。</summary>
+        public decimal LocalEducationSurchargeRate { get; init; }
+
         /// <summary>报税地区（省级税务局名称，如“浙江省”），未填写为 null。</summary>
         public string? TaxRegion { get; init; }
 
@@ -122,6 +131,9 @@ namespace KuaiJi.Modules.AccountSets.Application
                 TaxpayerNumber = accountSet.TaxpayerNumber,
                 VatRate = accountSet.VatRate,
                 IncomeTaxRate = accountSet.IncomeTaxRate,
+                CityBuildTaxRate = accountSet.CityBuildTaxRate,
+                EducationSurchargeRate = accountSet.EducationSurchargeRate,
+                LocalEducationSurchargeRate = accountSet.LocalEducationSurchargeRate,
                 TaxRegion = accountSet.TaxRegion,
                 TaxLoginType = accountSet.TaxLoginType,
                 TaxIdentityType = accountSet.TaxIdentityType,
@@ -199,6 +211,15 @@ namespace KuaiJi.Modules.AccountSets.Application
 
         /// <summary>企业所得税税率（百分比数值）；不传则不修改。</summary>
         public decimal? IncomeTaxRate { get; init; }
+
+        /// <summary>城市维护建设税税率（百分比数值）；不传则不修改。</summary>
+        public decimal? CityBuildTaxRate { get; init; }
+
+        /// <summary>教育费附加率（百分比数值）；不传则不修改。</summary>
+        public decimal? EducationSurchargeRate { get; init; }
+
+        /// <summary>地方教育附加率（百分比数值）；不传则不修改。</summary>
+        public decimal? LocalEducationSurchargeRate { get; init; }
 
         /// <summary>凭证字列表（逗号分隔）；不传则不修改。</summary>
         public string? VoucherWords { get; init; }

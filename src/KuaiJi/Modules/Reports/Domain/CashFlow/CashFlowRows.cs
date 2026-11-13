@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace KuaiJi.Modules.Reports.Domain.CashFlow
 {
     /// <summary>现金流量表活动分类。</summary>
@@ -86,6 +88,94 @@ namespace KuaiJi.Modules.Reports.Domain.CashFlow
         /// <summary>行次 → 定义索引，便于服务层快速取行元数据。</summary>
         public static readonly IReadOnlyDictionary<int, CashFlowRowDef> ByLine =
             All.ToDictionary(r => r.Line, r => r);
+
+        /// <summary>
+        /// 系统预置的现金流辅助项目名称 → 主表行次。预置项目编码是 01–18 的顺序号而非行号
+        /// （如「03 购买原材料…」对应第 5 行、「04 支付的职工薪酬」对应第 6 行），
+        /// 必须按名称归集；名称匹配不到时再沿用「编码前两位即行号」的旧约定。
+        /// </summary>
+        private static readonly IReadOnlyDictionary<string, int> AssistItemLinesByName =
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["销售产成品、商品、提供劳务收到的现金"] = 1,
+                ["销售商品、提供劳务收到的现金"] = 1,
+                ["收到的税费返还"] = 2,
+                ["税费返还"] = 2,
+                ["收到其他与经营活动有关的现金"] = 3,
+                ["购买原材料、商品、接受劳务支付的现金"] = 5,
+                ["购买商品、接受劳务支付的现金"] = 5,
+                ["支付的职工薪酬"] = 6,
+                ["支付给职工以及为职工支付的现金"] = 6,
+                ["支付的税费"] = 7,
+                ["支付的各项税费"] = 7,
+                ["支付其他与经营活动有关的现金"] = 8,
+                ["收回短期投资、长期债券投资和长期股权投资收到的现金"] = 11,
+                ["收回投资收到的现金"] = 11,
+                ["取得投资收益收到的现金"] = 12,
+                ["处置固定资产、无形资产和其他非流动资产收回的现金净额"] = 13,
+                ["处置固定资产、无形资产和其他长期资产收回的现金净额"] = 13,
+                ["收到其他与投资活动有关的现金"] = 15,
+                ["购建固定资产、无形资产和其他非流动资产支付的现金"] = 17,
+                ["购建固定资产、无形资产和其他长期资产支付的现金"] = 17,
+                ["短期投资、长期债券投资和长期股权投资支付的现金"] = 18,
+                ["投资支付的现金"] = 18,
+                ["支付其他与投资活动有关的现金"] = 20,
+                ["吸收投资者投资收到的现金"] = 23,
+                ["吸收投资收到的现金"] = 23,
+                ["取得借款收到的现金"] = 24,
+                ["收到其他与筹资活动有关的现金"] = 25,
+                ["偿还借款本金支付的现金"] = 27,
+                ["偿还债务支付的现金"] = 27,
+                ["偿还借款利息支付的现金"] = 28,
+                ["分配利润支付的现金"] = 28,
+                ["分配股利、利润或偿付利息支付的现金"] = 28,
+                ["支付其他与筹资活动有关的现金"] = 29,
+            };
+
+        /// <summary>不参与主表归集的预置项目（内部划转、期初余额），即使名称或编码碰巧可解析也不能入行。</summary>
+        private static readonly IReadOnlySet<string> AssistItemIgnoredNames =
+            new HashSet<string>(StringComparer.Ordinal) { "现金内部流转", "期初现金余额" };
+
+        /// <summary>
+        /// 现金流辅助项目 → 主表行次：先按预置名称精确匹配，再退回「编码前两位即行号」，
+        /// 只接受可挂项目的流入/流出明细行；内部划转、期初余额与无法解析的项目返回 null。
+        /// </summary>
+        public static int? ResolveAssistItemLine(string? code, string? name)
+        {
+            var key = NormalizeAssistName(name);
+            if (AssistItemIgnoredNames.Contains(key))
+            {
+                return null;
+            }
+
+            if (AssistItemLinesByName.TryGetValue(key, out var byName))
+            {
+                return byName;
+            }
+
+            var trimmed = (code ?? string.Empty).Trim();
+            var digits = trimmed.Length >= 2 ? trimmed[..2] : trimmed;
+            if (!int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var line))
+            {
+                return null;
+            }
+
+            return ByLine.TryGetValue(line, out var def)
+                   && def.Kind is CashFlowRowKind.Inflow or CashFlowRowKind.Outflow
+                ? line
+                : null;
+        }
+
+        private static string NormalizeAssistName(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return string.Empty;
+            }
+
+            var chars = name.Where(c => !char.IsWhiteSpace(c) && c != '　').ToArray();
+            return new string(chars).Trim();
+        }
 
         /// <summary>按行次归集后计算的小计行来源：流入小计/流出小计/净额各包含哪些明细行。</summary>
         public static IReadOnlyList<int> InflowLines(CashFlowSection section) =>

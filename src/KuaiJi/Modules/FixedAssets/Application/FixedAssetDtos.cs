@@ -90,6 +90,9 @@ namespace KuaiJi.Modules.FixedAssets.Application
         public string StatusText { get; init; } = null!;
 
         public DateOnly? ClearedDate { get; init; }
+
+        /// <summary>是否为期初（资产初始化）卡片。</summary>
+        public bool IsInitial { get; init; }
     }
 
     /// <summary>新建 / 修改资产卡片请求。</summary>
@@ -176,6 +179,7 @@ namespace KuaiJi.Modules.FixedAssets.Application
 
         public static string KindTextOf(FixedAssetChangeKind kind) => kind switch
         {
+            FixedAssetChangeKind.Add => "新增",
             FixedAssetChangeKind.OriginValueAdjust => "原值调整",
             FixedAssetChangeKind.AccumulatedDepreciationAdjust => "累计折旧调整",
             FixedAssetChangeKind.Clearing => "资产清理",

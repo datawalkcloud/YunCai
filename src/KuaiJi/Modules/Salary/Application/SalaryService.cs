@@ -93,7 +93,13 @@ namespace KuaiJi.Modules.Salary.Application
                         PayStartDate = e.PayStartDate,
                         PaysSocialInsurance = e.PaysSocialInsurance,
                         Insurances = basesByEmployee.GetValueOrDefault(e.Id) is { } bases
-                            ? bases.Select(b => new EmployeeInsuranceDto { InsuranceItemId = b.InsuranceItemId, InsuranceBase = b.InsuranceBase }).ToList()
+                            ? bases.Select(b => new EmployeeInsuranceDto
+                            {
+                                InsuranceItemId = b.InsuranceItemId,
+                                InsuranceBase = b.InsuranceBase,
+                                CompanyRate = b.CompanyRate,
+                                PersonalRate = b.PersonalRate,
+                            }).ToList()
                             : [],
                         SubjectAccountId = e.SubjectAccountId,
                         SubjectText = subject is null ? string.Empty : $"{subject.Code} {subject.Name}",
@@ -216,7 +222,7 @@ namespace KuaiJi.Modules.Salary.Application
             }
 
             var existing = await _salaryRepository.GetInsuranceAsync(accountSetId, cancellationToken);
-            var item = new InsuranceItem(Guid.NewGuid(), accountSetId, name, request.CompanyRate, request.PersonalRate, existing.Count + 1);
+            var item = new InsuranceItem(Guid.NewGuid(), accountSetId, name, request.CompanyRate, request.PersonalRate, existing.Count + 1, request.BaseAmount);
             await _salaryRepository.AddInsuranceAsync(item, cancellationToken);
             await _salaryRepository.SaveChangesAsync(cancellationToken);
             return InsuranceItemDto.FromDomain(item);
@@ -239,7 +245,7 @@ namespace KuaiJi.Modules.Salary.Application
 
             try
             {
-                item.Update(name, request.CompanyRate, request.PersonalRate);
+                item.Update(name, request.CompanyRate, request.PersonalRate, request.BaseAmount);
             }
             catch (ArgumentException ex)
             {
@@ -1307,7 +1313,7 @@ namespace KuaiJi.Modules.Salary.Application
             Remark = employee.Remark,
         };
 
-        /// <summary>整批替换员工缴纳基数；不缴五险一金或未带行时清空。</summary>
+        /// <summary>整批替换员工缴纳基数与个人比例；不缴五险一金或未带行时清空。</summary>
         private async Task ReplaceEmployeeInsurancesAsync(
             Guid accountSetId,
             Guid employeeId,
@@ -1326,13 +1332,21 @@ namespace KuaiJi.Modules.Salary.Application
 
             foreach (var line in request.Insurances ?? [])
             {
-                if (line.InsuranceItemId == Guid.Empty || line.InsuranceBase <= 0m)
+                if (line.InsuranceItemId == Guid.Empty
+                    || (line.InsuranceBase <= 0m && line.CompanyRate is null && line.PersonalRate is null))
                 {
                     continue;
                 }
 
                 await _salaryRepository.AddEmployeeInsuranceAsync(
-                    new EmployeeInsurance(Guid.NewGuid(), accountSetId, employeeId, line.InsuranceItemId, line.InsuranceBase),
+                    new EmployeeInsurance(
+                        Guid.NewGuid(),
+                        accountSetId,
+                        employeeId,
+                        line.InsuranceItemId,
+                        line.InsuranceBase,
+                        line.CompanyRate,
+                        line.PersonalRate),
                     cancellationToken);
             }
         }

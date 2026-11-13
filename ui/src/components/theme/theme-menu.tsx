@@ -43,10 +43,9 @@ function ThemePanel() {
     const { theme, setTheme, density, setDensity, radius, setRadius, primary, setPrimary } = useTheme()
 
     return (
-        <div className="w-[268px] rounded-xl border border-border bg-popover p-3 shadow-lg">
+        <div className="w-[300px] rounded-xl border border-border bg-popover p-4 shadow-lg">
             <Segmented
                 block
-                size="small"
                 value={theme}
                 onChange={(value) => setTheme(value as Theme)}
                 options={[
@@ -56,13 +55,12 @@ function ThemePanel() {
                 ]}
             />
 
-            <div className="mt-3 flex items-center justify-between">
-                <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+            <div className="mt-4 flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CompressOutlined />
                     紧凑主题
                 </span>
                 <Switch
-                    size="small"
                     checked={density === "compact"}
                     onChange={(checked) => setDensity(checked ? "compact" : "default")}
                 />
@@ -104,7 +102,7 @@ function ThemePanel() {
 }
 
 function SectionLabel({ children }: { children: string }) {
-    return <div className="mb-1.5 mt-3 text-[13px] text-muted-foreground">{children}</div>
+    return <div className="mb-1.5 mt-4 text-sm text-muted-foreground">{children}</div>
 }
 
 /** 圆角预览：用一块小方块按档位画出实际圆角，选择时看得见效果。 */
@@ -122,7 +120,7 @@ function RadiusChip({ step, active, onClick }: { step: Radius; active: boolean; 
                 style={{ borderRadius: `${step}px` }}
                 aria-hidden
             />
-            <span className="text-[12px] leading-none">{RADIUS_LABELS[step]}</span>
+            <span className="text-[13px] leading-none">{RADIUS_LABELS[step]}</span>
         </button>
     )
 }

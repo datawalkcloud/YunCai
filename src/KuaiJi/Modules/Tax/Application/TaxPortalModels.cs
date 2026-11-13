@@ -647,6 +647,9 @@ namespace KuaiJi.Modules.Tax.Application
         /// <summary>已存在或数据不完整而跳过的张数。</summary>
         public int Skipped { get; init; }
 
+        /// <summary>税局取回的发票按销项/进项汇总，页面上的「取票记录」表格直接渲染它。</summary>
+        public IReadOnlyList<TaxInvoiceSyncSummaryDto>? Summary { get; init; }
+
         public bool NeedLogin { get; init; }
 
         public string? Message { get; init; }
@@ -656,6 +659,33 @@ namespace KuaiJi.Modules.Tax.Application
         public IReadOnlyList<string>? Warnings { get; init; }
 
         public DateTimeOffset FetchedAt { get; init; } = DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// 一键取票结果按方向汇总的一行。金额取税局票面的合计口径：不含税额与税额分列，
+    /// 价税合计为两者相加；红冲票的票面金额为负数，参与合计后即为净发生额。
+    /// </summary>
+    public sealed class TaxInvoiceSyncSummaryDto
+    {
+        /// <summary>销项发票 / 进项发票。</summary>
+        public string Direction { get; init; } = string.Empty;
+
+        /// <summary>本次取数的开票日期区间，与发起取票时填的一致。</summary>
+        public DateOnly PeriodStart { get; init; }
+
+        public DateOnly PeriodEnd { get; init; }
+
+        /// <summary>税局在该区间返回的张数（含已存在而跳过的）。</summary>
+        public int Count { get; init; }
+
+        /// <summary>不含税金额合计。</summary>
+        public decimal Amount { get; init; }
+
+        /// <summary>税额合计。</summary>
+        public decimal Tax { get; init; }
+
+        /// <summary>价税合计。</summary>
+        public decimal Total { get; init; }
     }
 
     /// <summary>一键取票后台任务的进展；取数在税局无头浏览器里跑，页面按任务标识轮询。</summary>

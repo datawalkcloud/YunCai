@@ -86,13 +86,41 @@ namespace KuaiJi.Modules.FixedAssets.Api
             }
         }
 
-        /// <summary>获取全部资产卡片。</summary>
+        /// <summary>获取资产卡片；传 period（yyyyMM）时按该期间回算折旧与净值。</summary>
         [HttpGet("assets")]
-        public async Task<ActionResult<IReadOnlyList<FixedAssetDto>>> GetAssets(Guid accountSetId, CancellationToken cancellationToken)
+        public async Task<ActionResult<IReadOnlyList<FixedAssetDto>>> GetAssets(Guid accountSetId, int? period, CancellationToken cancellationToken)
         {
             try
             {
-                return Ok(await _assetService.GetAssetsAsync(accountSetId, cancellationToken));
+                return Ok(await _assetService.GetAssetsAsync(accountSetId, period, cancellationToken));
+            }
+            catch (FixedAssetException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>获取期初（资产初始化）卡片；传 period（yyyyMM）时按该期间回算。</summary>
+        [HttpGet("initial-assets")]
+        public async Task<ActionResult<IReadOnlyList<FixedAssetDto>>> GetInitialAssets(Guid accountSetId, int? period, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _assetService.GetInitialAssetsAsync(accountSetId, period, cancellationToken));
+            }
+            catch (FixedAssetException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>新建期初（资产初始化）卡片。</summary>
+        [HttpPost("initial-assets")]
+        public async Task<ActionResult<FixedAssetDto>> CreateInitialAsset(Guid accountSetId, [FromBody] SaveFixedAssetRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _assetService.CreateInitialAssetAsync(accountSetId, request, cancellationToken));
             }
             catch (FixedAssetException ex)
             {
@@ -159,11 +187,16 @@ namespace KuaiJi.Modules.FixedAssets.Api
             }
         }
 
-        /// <summary>获取变更记录（可按资产过滤）。</summary>
+        /// <summary>获取变更记录（可按资产 / 期间过滤）。</summary>
         [HttpGet("changes")]
-        public async Task<ActionResult<IReadOnlyList<FixedAssetChangeDto>>> GetChanges(Guid accountSetId, [FromQuery] Guid? assetId, CancellationToken cancellationToken)
+        public async Task<ActionResult<IReadOnlyList<FixedAssetChangeDto>>> GetChanges(
+            Guid accountSetId,
+            [FromQuery] Guid? assetId,
+            [FromQuery] int? startPeriod,
+            [FromQuery] int? endPeriod,
+            CancellationToken cancellationToken)
         {
-            return Ok(await _assetService.GetChangesAsync(accountSetId, assetId, cancellationToken));
+            return Ok(await _assetService.GetChangesAsync(accountSetId, assetId, startPeriod, endPeriod, cancellationToken));
         }
 
         /// <summary>按期间批量计提折旧。</summary>
@@ -202,11 +235,15 @@ namespace KuaiJi.Modules.FixedAssets.Api
             return Ok(await _assetService.GetSummaryAsync(accountSetId, startPeriod, endPeriod, byCategory, cancellationToken));
         }
 
-        /// <summary>资产核对总账（类别分组：会计科目 vs 资产卡片 + 差异）。</summary>
+        /// <summary>资产核对总账（按资产属性五组：会计科目 vs 资产卡片 + 差异，期间口径）。</summary>
         [HttpGet("check")]
-        public async Task<ActionResult<IReadOnlyList<FixedAssetCheckRowDto>>> GetCheck(Guid accountSetId, CancellationToken cancellationToken)
+        public async Task<ActionResult<IReadOnlyList<FixedAssetCheckRowDto>>> GetCheck(
+            Guid accountSetId,
+            [FromQuery] int? startPeriod,
+            [FromQuery] int? endPeriod,
+            CancellationToken cancellationToken)
         {
-            return Ok(await _assetService.GetCheckAsync(accountSetId, cancellationToken));
+            return Ok(await _assetService.GetCheckAsync(accountSetId, startPeriod, endPeriod, cancellationToken));
         }
 
         // —— 凭证科目设置 ——
@@ -480,11 +517,15 @@ namespace KuaiJi.Modules.FixedAssets.Api
 
         /// <summary>导出资产核对总账。</summary>
         [HttpGet("check/export")]
-        public async Task<IActionResult> ExportCheck(Guid accountSetId, CancellationToken cancellationToken)
+        public async Task<IActionResult> ExportCheck(
+            Guid accountSetId,
+            [FromQuery] int? startPeriod,
+            [FromQuery] int? endPeriod,
+            CancellationToken cancellationToken)
         {
             try
             {
-                var bytes = await _assetService.ExportCheckAsync(accountSetId, cancellationToken);
+                var bytes = await _assetService.ExportCheckAsync(accountSetId, startPeriod, endPeriod, cancellationToken);
                 return File(bytes, FixedAssetExportBuilder.ContentType, "资产核对总账.xlsx");
             }
             catch (FixedAssetException ex)
@@ -497,7 +538,7 @@ namespace KuaiJi.Modules.FixedAssets.Api
 
         /// <summary>
         /// 打印固定资产清单（资产列表页签的表格，含表尾合计）。
-        /// <c>period</c>（yyyyMM）只写进页头与文件名，取数与 <c>GET assets</c> 完全一致。
+        /// 取数与 <c>GET assets</c> 一致，按期间回算。
         /// </summary>
         [HttpGet("assets/pdf")]
         public async Task<IActionResult> PrintAssets(
@@ -508,7 +549,7 @@ namespace KuaiJi.Modules.FixedAssets.Api
             try
             {
                 var context = await PrintContextAsync(accountSetId, cancellationToken);
-                var assets = await _assetService.GetAssetsAsync(accountSetId, cancellationToken);
+                var assets = await _assetService.GetAssetsAsync(accountSetId, period, cancellationToken);
                 return Pdf(FixedAssetsPdfProjector.Assets(assets, context, PeriodText(period)), context, period);
             }
             catch (FixedAssetException ex)
@@ -527,7 +568,7 @@ namespace KuaiJi.Modules.FixedAssets.Api
             try
             {
                 var context = await PrintContextAsync(accountSetId, cancellationToken);
-                var assets = await _assetService.GetAssetsAsync(accountSetId, cancellationToken);
+                var assets = await _assetService.GetInitialAssetsAsync(accountSetId, period, cancellationToken);
                 return Pdf(FixedAssetsPdfProjector.InitialAssets(assets, context, PeriodText(period)), context, period);
             }
             catch (FixedAssetException ex)
@@ -565,7 +606,7 @@ namespace KuaiJi.Modules.FixedAssets.Api
             try
             {
                 var context = await PrintContextAsync(accountSetId, cancellationToken);
-                var rows = await _assetService.GetCheckAsync(accountSetId, cancellationToken);
+                var rows = await _assetService.GetCheckAsync(accountSetId, period, period, cancellationToken);
                 return Pdf(FixedAssetsPdfProjector.Check(rows, context), context, period);
             }
             catch (FixedAssetException ex)

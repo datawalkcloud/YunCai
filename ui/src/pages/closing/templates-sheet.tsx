@@ -428,7 +428,7 @@ export function ClosingTemplatesSheet({
                                 </div>
                             </div>
                         ))}
-                        <Button icon={<PlusOutlined />} onClick={() => setLines((rows) => [...rows, newLine()])}>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setLines((rows) => [...rows, newLine()])}>
                             添加行
                         </Button>
                     </div>

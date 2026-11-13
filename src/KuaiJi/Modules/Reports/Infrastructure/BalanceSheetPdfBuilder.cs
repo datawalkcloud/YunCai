@@ -5,13 +5,14 @@ using PaperSharp;
 
 namespace KuaiJi.Modules.Reports.Infrastructure
 {
-    /// <summary>资产负债表 PDF 模型：抬头信息 + 左右两半版式（与 .xls 导出共用同一版式布局）。</summary>
+    /// <summary>资产负债表 PDF 模型：抬头信息 + 左右两半版式 + 底部平衡结论（与 .xls 导出共用同一版式布局）。</summary>
     public sealed record BalanceSheetPdfModel(
         string CompanyName,
         string DateText,
         string TemplateTitle,
         IReadOnlyList<BalanceSheetExportRow> Left,
-        IReadOnlyList<BalanceSheetExportRow> Right);
+        IReadOnlyList<BalanceSheetExportRow> Right,
+        BalanceSheetExportBalance Balance);
 
     /// <summary>
     /// 资产负债表 PDF 生成器：A4 纵向、左右两栏八列版式，PaperSharp 渲染为矢量 PDF。
@@ -49,7 +50,10 @@ namespace KuaiJi.Modules.Reports.Infrastructure
                 html.Append("</tr>");
             }
 
-            html.Append("</tbody></table></body></html>");
+            html.Append("</tbody></table>");
+            html.Append("<div class='balance").Append(model.Balance.Balanced ? "" : " warn").Append("'>")
+                .Append(Escape(model.Balance.Conclusion)).Append("</div>");
+            html.Append("</body></html>");
 
             const string css = """
                 @page { size: 210mm 297mm; margin: 0; }
@@ -68,6 +72,8 @@ namespace KuaiJi.Modules.Reports.Infrastructure
                 .total { font-weight: bold; }
                 .line { text-align: center; }
                 .amount { text-align: right; }
+                .balance { margin-top: 2.5mm; font-size: 9pt; }
+                .balance.warn { color: #c00000; }
                 """;
 
             return Renderer.RenderPdf(html.ToString(), css, PageSize.A4);

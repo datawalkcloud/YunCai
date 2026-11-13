@@ -11,6 +11,7 @@ Name | Type
 `modeText` | string
 `companyRate` | number
 `personalRate` | number
+`baseAmount` | number
 
 ## Example
 
@@ -24,6 +25,7 @@ const example = {
   "modeText": null,
   "companyRate": null,
   "personalRate": null,
+  "baseAmount": null,
 } satisfies InsuranceItemDto
 
 console.log(example)

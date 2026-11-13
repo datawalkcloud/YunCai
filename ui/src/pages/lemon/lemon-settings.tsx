@@ -51,6 +51,8 @@ import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 
 import {
     Btn,
+
+    ExportBtn,
     CheckBox,
     ComboBox,
     DateInput,
@@ -702,13 +704,13 @@ export function LemonVoucherTemplate() {
                 left={
                     <>
                         <Btn variant="primary" onClick={() => void openCreate()}>新建</Btn>
-                        <Btn
+                        <ExportBtn
                             disabled={busy}
                             title="导出全部凭证模板为 .xlsx（导出后可直接修改再导回）"
                             onClick={() => void exportTemplates()}
                         >
                             导出
-                        </Btn>
+                        </ExportBtn>
                         <Btn disabled={busy} title="从 .xlsx 导入凭证模板（同名模板跳过）" onClick={() => importRef.current?.click()}>
                             导入
                         </Btn>
@@ -727,7 +729,7 @@ export function LemonVoucherTemplate() {
                         />
                     </>
                 }
-                right={<RefreshIcon />}
+                right={<RefreshIcon onClick={() => void load()} />}
             />
             <div className="flex-1 px-4">
                 <AntTable
@@ -1376,7 +1378,18 @@ export function LemonBoss() {
     return (
         <Page>
             <ToolRow
-                left={<PeriodStepper text={`${year}年${String(month).padStart(2, "0")}月`} onPrev={() => shift(-1)} onNext={() => shift(1)} />}
+                left={
+                    <PeriodStepper
+                        text={`${year}年${month}月`}
+                        onPrev={() => shift(-1)}
+                        onNext={() => shift(1)}
+                        value={{ year, month }}
+                        onPick={(p) => {
+                            setYear(p.year);
+                            setMonth(p.month);
+                        }}
+                    />
+                }
                 right={<RefreshIcon onClick={() => void load()} />}
             />
 
@@ -1624,12 +1637,9 @@ export function LemonBackup() {
                             </>
                         }
                         right={
-                            <>
-                                <span className="text-[13px] text-(--muted-foreground)">
-                                    {lastBackup ? `上次备份：${lastBackup}` : "尚未备份"}
-                                </span>
-                                <RefreshIcon />
-                            </>
+                            <span className="text-[13px] text-(--muted-foreground)">
+                                {lastBackup ? `上次备份：${lastBackup}` : "尚未备份"}
+                            </span>
                         }
                     />
                     <div className="mx-auto max-w-[980px] w-full flex-1 px-4">
@@ -1666,7 +1676,6 @@ export function LemonBackup() {
                                 </span>
                             </>
                         }
-                        right={<RefreshIcon />}
                     />
                     <div className="mx-auto max-w-[980px] w-full rounded-2xl bg-(--table-zebra-bg) p-5 text-[13px] leading-7 text-(--foreground)">
                         <div className="font-bold">归档说明:</div>

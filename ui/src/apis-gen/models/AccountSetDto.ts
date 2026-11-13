@@ -105,6 +105,24 @@ export interface AccountSetDto {
     incomeTaxRate?: number;
     /**
      * 
+     * @type {number}
+     * @memberof AccountSetDto
+     */
+    cityBuildTaxRate?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountSetDto
+     */
+    educationSurchargeRate?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof AccountSetDto
+     */
+    localEducationSurchargeRate?: number;
+    /**
+     * 
      * @type {string}
      * @memberof AccountSetDto
      */
@@ -262,6 +280,9 @@ export function AccountSetDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'taxpayerNumber': json['taxpayerNumber'] == null ? undefined : json['taxpayerNumber'],
         'vatRate': json['vatRate'] == null ? undefined : json['vatRate'],
         'incomeTaxRate': json['incomeTaxRate'] == null ? undefined : json['incomeTaxRate'],
+        'cityBuildTaxRate': json['cityBuildTaxRate'] == null ? undefined : json['cityBuildTaxRate'],
+        'educationSurchargeRate': json['educationSurchargeRate'] == null ? undefined : json['educationSurchargeRate'],
+        'localEducationSurchargeRate': json['localEducationSurchargeRate'] == null ? undefined : json['localEducationSurchargeRate'],
         'taxRegion': json['taxRegion'] == null ? undefined : json['taxRegion'],
         'taxLoginType': json['taxLoginType'] == null ? undefined : json['taxLoginType'],
         'taxIdentityType': json['taxIdentityType'] == null ? undefined : json['taxIdentityType'],
@@ -311,6 +332,9 @@ export function AccountSetDtoToJSONTyped(value?: AccountSetDto | null, ignoreDis
         'taxpayerNumber': value['taxpayerNumber'],
         'vatRate': value['vatRate'],
         'incomeTaxRate': value['incomeTaxRate'],
+        'cityBuildTaxRate': value['cityBuildTaxRate'],
+        'educationSurchargeRate': value['educationSurchargeRate'],
+        'localEducationSurchargeRate': value['localEducationSurchargeRate'],
         'taxRegion': value['taxRegion'],
         'taxLoginType': value['taxLoginType'],
         'taxIdentityType': value['taxIdentityType'],

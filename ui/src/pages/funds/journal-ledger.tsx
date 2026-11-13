@@ -31,7 +31,7 @@ import {
 } from "antd"
 import type { TableColumnsType } from "antd"
 import { FilterTriggerButton } from "@/components/page/filter-trigger-button"
-import { DownOutlined, EllipsisOutlined, FilterFilled, FullscreenOutlined, PlusOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons"
+import { DownOutlined, DownloadOutlined, EllipsisOutlined, FilterFilled, FullscreenOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons"
 import dayjs from "dayjs"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
@@ -1898,7 +1898,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                     },
                 }}
             >
-                <Button disabled={!detail} loading={printing}>
+                <Button icon={<PrinterOutlined />} disabled={!detail} loading={printing}>
                     打印 <DownOutlined className="text-[10px]" />
                 </Button>
             </Dropdown>
@@ -1954,7 +1954,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                     },
                 }}
             >
-                <Button disabled={!journalId}>
+                <Button icon={<DownloadOutlined />} disabled={!journalId}>
                     导出 <DownOutlined className="text-[10px]" />
                 </Button>
             </Dropdown>

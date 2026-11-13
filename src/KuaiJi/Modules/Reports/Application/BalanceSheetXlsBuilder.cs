@@ -9,7 +9,8 @@ namespace KuaiJi.Modules.Reports.Application
         string DateText,
         string TemplateTitle,
         IReadOnlyList<BalanceSheetExportRow> Left,
-        IReadOnlyList<BalanceSheetExportRow> Right);
+        IReadOnlyList<BalanceSheetExportRow> Right,
+        BalanceSheetExportBalance Balance);
 
     /// <summary>
     /// 资产负债表 .xls 导出：两栏八列版式（左资产、右负债和所有者权益），
@@ -37,6 +38,7 @@ namespace KuaiJi.Modules.Reports.Application
             WriteTitle(sheet, styles, model);
             WriteHeader(sheet, styles);
             WriteBody(sheet, styles, model);
+            WriteConclusion(sheet, styles, model);
 
             sheet.PrintSetup.Landscape = true;
             sheet.FitToPage = true;
@@ -110,8 +112,20 @@ namespace KuaiJi.Modules.Reports.Application
             }
         }
 
-        private static void WriteSide(IRow row, int firstColumn, BalanceSheetExportRow? source, Styles styles)
+        /// <summary>表格末尾空一行写平衡结论：平衡为普通黑字，不平衡用红字加粗。</summary>
+        private static void WriteConclusion(ISheet sheet, Styles styles, BalanceSheetXlsModel model)
         {
+            var rowIndex = FirstBodyRowIndex + Math.Max(model.Left.Count, model.Right.Count) + 1;
+            var row = sheet.CreateRow(rowIndex);
+            row.HeightInPoints = 20;
+
+            var note = row.CreateCell(0);
+            note.SetCellValue(model.Balance.Conclusion);
+            note.CellStyle = model.Balance.Balanced ? styles.Note : styles.NoteWarn;
+            sheet.AddMergedRegion(new CellRangeAddress(rowIndex, rowIndex, 0, ColumnCount - 1));
+        }
+
+        private static void WriteSide(IRow row, int firstColumn, BalanceSheetExportRow? source, Styles styles)        {
             if (source is null)
             {
                 for (var column = firstColumn; column < firstColumn + 4; column++)
@@ -203,6 +217,14 @@ namespace KuaiJi.Modules.Reports.Application
                 AmountBold = amountBold;
 
                 Blank = CreateBordered(workbook, 10, bold: false, HorizontalAlignment.Center);
+
+                var note = CreateBase(workbook, 10, bold: false);
+                note.Alignment = HorizontalAlignment.Left;
+                Note = note;
+
+                var noteWarn = CreateBase(workbook, 10, bold: true, IndexedColors.Red.Index);
+                noteWarn.Alignment = HorizontalAlignment.Left;
+                NoteWarn = noteWarn;
             }
 
             public ICellStyle Title { get; }
@@ -220,13 +242,20 @@ namespace KuaiJi.Modules.Reports.Application
             public ICellStyle Amount { get; }
             public ICellStyle AmountBold { get; }
             public ICellStyle Blank { get; }
+            public ICellStyle Note { get; }
+            public ICellStyle NoteWarn { get; }
 
-            private static ICellStyle CreateBase(IWorkbook workbook, short fontSize, bool bold)
+            private static ICellStyle CreateBase(IWorkbook workbook, short fontSize, bool bold, short? fontColor = null)
             {
                 var style = workbook.CreateCellStyle();
                 var font = workbook.CreateFont();
                 font.FontHeightInPoints = fontSize;
                 font.IsBold = bold;
+                if (fontColor is { } color)
+                {
+                    font.Color = color;
+                }
+
                 style.SetFont(font);
                 style.Alignment = HorizontalAlignment.Center;
                 style.VerticalAlignment = VerticalAlignment.Center;

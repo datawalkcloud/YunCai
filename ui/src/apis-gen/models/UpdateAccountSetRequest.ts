@@ -75,6 +75,24 @@ export interface UpdateAccountSetRequest {
     incomeTaxRate?: number | null;
     /**
      * 
+     * @type {number}
+     * @memberof UpdateAccountSetRequest
+     */
+    cityBuildTaxRate?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof UpdateAccountSetRequest
+     */
+    educationSurchargeRate?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof UpdateAccountSetRequest
+     */
+    localEducationSurchargeRate?: number | null;
+    /**
+     * 
      * @type {string}
      * @memberof UpdateAccountSetRequest
      */
@@ -203,6 +221,9 @@ export function UpdateAccountSetRequestFromJSONTyped(json: any, ignoreDiscrimina
         'taxpayerNumber': json['taxpayerNumber'] == null ? undefined : json['taxpayerNumber'],
         'vatRate': json['vatRate'] == null ? undefined : json['vatRate'],
         'incomeTaxRate': json['incomeTaxRate'] == null ? undefined : json['incomeTaxRate'],
+        'cityBuildTaxRate': json['cityBuildTaxRate'] == null ? undefined : json['cityBuildTaxRate'],
+        'educationSurchargeRate': json['educationSurchargeRate'] == null ? undefined : json['educationSurchargeRate'],
+        'localEducationSurchargeRate': json['localEducationSurchargeRate'] == null ? undefined : json['localEducationSurchargeRate'],
         'voucherWords': json['voucherWords'] == null ? undefined : json['voucherWords'],
         'taxRegion': json['taxRegion'] == null ? undefined : json['taxRegion'],
         'taxLoginType': json['taxLoginType'] == null ? undefined : json['taxLoginType'],
@@ -243,6 +264,9 @@ export function UpdateAccountSetRequestToJSONTyped(value?: UpdateAccountSetReque
         'taxpayerNumber': value['taxpayerNumber'],
         'vatRate': value['vatRate'],
         'incomeTaxRate': value['incomeTaxRate'],
+        'cityBuildTaxRate': value['cityBuildTaxRate'],
+        'educationSurchargeRate': value['educationSurchargeRate'],
+        'localEducationSurchargeRate': value['localEducationSurchargeRate'],
         'voucherWords': value['voucherWords'],
         'taxRegion': value['taxRegion'],
         'taxLoginType': value['taxLoginType'],

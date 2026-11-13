@@ -8,7 +8,8 @@ Name | Type
 ------------ | -------------
 `item` | string
 `line` | number
-`amounts` | [Array&lt;IncomeDepartmentAmountDto&gt;](IncomeDepartmentAmountDto.md)
+`amounts` | [Array&lt;IncomeDimensionAmountDto&gt;](IncomeDimensionAmountDto.md)
+`total` | [IncomeDimensionAmountDto](IncomeDimensionAmountDto.md)
 
 ## Example
 
@@ -20,6 +21,7 @@ const example = {
   "item": null,
   "line": null,
   "amounts": null,
+  "total": null,
 } satisfies IncomeDepartmentRowDto
 
 console.log(example)

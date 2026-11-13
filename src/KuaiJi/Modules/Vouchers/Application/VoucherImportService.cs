@@ -7,7 +7,7 @@ namespace KuaiJi.Modules.Vouchers.Application
 {
     /// <summary>
     /// 凭证导入应用服务：解析文件 → 自动补建缺失科目（按编码方案拆分层级） → 按凭证号聚合分录 → 原样写入凭证。
-    /// 借贷平衡的凭证导入后直接过账入账；不平衡的保留为草稿并给出告警，待修正后再保存。
+    /// 借贷平衡的凭证导入后直接过账入账；不平衡的保留为暂存并给出告警，待修正后再保存。
     /// </summary>
     public sealed class VoucherImportService
     {
@@ -151,7 +151,7 @@ namespace KuaiJi.Modules.Vouchers.Application
                 if (!voucher.IsBalanced)
                 {
                     warnings.Add(
-                        $"凭证「{head.VoucherNo}」（{head.Date:yyyy-MM-dd}）借方 {voucher.TotalDebit:0.##} 与贷方 {voucher.TotalCredit:0.##} 不平衡，已按草稿导入，修正并保存后才会入账。");
+                        $"凭证「{head.VoucherNo}」（{head.Date:yyyy-MM-dd}）借方 {voucher.TotalDebit:0.##} 与贷方 {voucher.TotalCredit:0.##} 不平衡，已按暂存导入，修正并保存后才会入账。");
                 }
                 else
                 {

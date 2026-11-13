@@ -318,6 +318,16 @@ namespace KuaiJi.Modules.Closing.Application
         public string Message { get; init; } = "";
     }
 
+    /// <summary>整理断号结果。</summary>
+    public sealed class RenumberGapsResultDto
+    {
+        /// <summary>结果说明。</summary>
+        public string Message { get; init; } = "";
+
+        /// <summary>本次实际调整凭证号的凭证张数。</summary>
+        public int Changed { get; init; }
+    }
+
     /// <summary>结转模板（含行明细，科目按编码/名称解析）。</summary>
     public sealed class ClosingTemplateDto
     {

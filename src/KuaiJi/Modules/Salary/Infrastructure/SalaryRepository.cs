@@ -69,7 +69,7 @@ namespace KuaiJi.Modules.Salary.Infrastructure
 
         public Task<InsuranceItem?> GetInsuranceByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default)
         {
-            return _context.InsuranceItems.AsNoTracking()
+            return _context.InsuranceItems
                 .FirstOrDefaultAsync(i => i.AccountSetId == accountSetId && i.Id == id, cancellationToken);
         }
 

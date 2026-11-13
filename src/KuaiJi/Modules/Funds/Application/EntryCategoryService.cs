@@ -50,7 +50,7 @@ namespace KuaiJi.Modules.Funds.Application
                 .ToList();
         }
 
-        /// <summary>新建收支类别。同一账套同一类型内名称不可重复，编码不可重复（空则自动编号）。</summary>
+        /// <summary>新建收支类别。同一账套同一类型内名称不可重复，编码在「账套 + 类型」内不可重复（空则按类型自动编号）。</summary>
         public async Task<EntryCategoryDto> CreateAsync(Guid accountSetId, CreateEntryCategoryRequest request, CancellationToken cancellationToken = default)
         {
             await EnsureAccountSetExists(accountSetId, cancellationToken);
@@ -69,8 +69,8 @@ namespace KuaiJi.Modules.Funds.Application
             }
 
             var existing = await _categoryRepository.GetAllAsync(accountSetId, cancellationToken);
-            var code = string.IsNullOrWhiteSpace(request.Code) ? NextCode(existing) : request.Code.Trim();
-            if (existing.Any(c => string.Equals(c.Code, code, StringComparison.Ordinal)))
+            var code = string.IsNullOrWhiteSpace(request.Code) ? NextCode(existing, type) : request.Code.Trim();
+            if (existing.Any(c => c.Type == type && string.Equals(c.Code, code, StringComparison.Ordinal)))
             {
                 throw new JournalException($"类别编码「{code}」已存在。");
             }
@@ -136,7 +136,7 @@ namespace KuaiJi.Modules.Funds.Application
                 if (!string.IsNullOrWhiteSpace(request.Code) && !string.Equals(request.Code.Trim(), category.Code, StringComparison.Ordinal))
                 {
                     var code = request.Code.Trim();
-                    if (existing.Any(c => c.Id != category.Id && string.Equals(c.Code, code, StringComparison.Ordinal)))
+                    if (existing.Any(c => c.Id != category.Id && c.Type == category.Type && string.Equals(c.Code, code, StringComparison.Ordinal)))
                     {
                         throw new JournalException($"类别编码「{code}」已存在。");
                     }
@@ -277,10 +277,10 @@ namespace KuaiJi.Modules.Funds.Application
                 EntryCategory category;
                 try
                 {
-                    var code = string.IsNullOrWhiteSpace(row.Code) ? NextCode(existing) : row.Code.Trim();
-                    if (existing.Any(c => string.Equals(c.Code, code, StringComparison.Ordinal)))
+                    var code = string.IsNullOrWhiteSpace(row.Code) ? NextCode(existing, type) : row.Code.Trim();
+                    if (existing.Any(c => c.Type == type && string.Equals(c.Code, code, StringComparison.Ordinal)))
                     {
-                        code = NextCode(existing);
+                        code = NextCode(existing, type);
                     }
 
                     category = EntryCategory.Create(accountSetId, type, name, code);
@@ -338,13 +338,15 @@ namespace KuaiJi.Modules.Funds.Application
 
         /* ---------------- 内部工具 ---------------- */
 
-        /// <summary>下一个编码：取现有纯数字编码的最大值 + 1（无数字编码时从 1 开始）。</summary>
-        private static string NextCode(IReadOnlyList<EntryCategory> existing)
+        /// <summary>下一个编码：取同类型现有纯数字编码的最大值 + 1（无数字编码时从 1 开始）。</summary>
+        private static string NextCode(IReadOnlyList<EntryCategory> existing, EntryCategoryType type)
         {
             var max = 0;
             foreach (var category in existing)
             {
-                if (int.TryParse(category.Code, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > max)
+                if (category.Type == type
+                    && int.TryParse(category.Code, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+                    && value > max)
                 {
                     max = value;
                 }

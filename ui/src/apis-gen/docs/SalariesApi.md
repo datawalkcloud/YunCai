@@ -9,6 +9,7 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdSalaryBillsGet**](SalariesApi.md#accountsetsaccountsetidsalarybillsget) | **GET** /accountsets/{accountSetId}/salary/bills |  |
 | [**accountsetsAccountSetIdSalaryBillsIdDelete**](SalariesApi.md#accountsetsaccountsetidsalarybillsiddelete) | **DELETE** /accountsets/{accountSetId}/salary/bills/{id} |  |
 | [**accountsetsAccountSetIdSalaryBillsImportPost**](SalariesApi.md#accountsetsaccountsetidsalarybillsimportpost) | **POST** /accountsets/{accountSetId}/salary/bills/import |  |
+| [**accountsetsAccountSetIdSalaryBillsPdfGet**](SalariesApi.md#accountsetsaccountsetidsalarybillspdfget) | **GET** /accountsets/{accountSetId}/salary/bills/pdf |  |
 | [**accountsetsAccountSetIdSalaryBillsPost**](SalariesApi.md#accountsetsaccountsetidsalarybillspost) | **POST** /accountsets/{accountSetId}/salary/bills |  |
 | [**accountsetsAccountSetIdSalaryEmployeesBulkDeletePost**](SalariesApi.md#accountsetsaccountsetidsalaryemployeesbulkdeletepost) | **POST** /accountsets/{accountSetId}/salary/employees/bulk-delete |  |
 | [**accountsetsAccountSetIdSalaryEmployeesExportGet**](SalariesApi.md#accountsetsaccountsetidsalaryemployeesexportget) | **GET** /accountsets/{accountSetId}/salary/employees/export |  |
@@ -28,6 +29,7 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdSalaryPayslipsPdfGet**](SalariesApi.md#accountsetsaccountsetidsalarypayslipspdfget) | **GET** /accountsets/{accountSetId}/salary/payslips/pdf |  |
 | [**accountsetsAccountSetIdSalarySummaryExportGet**](SalariesApi.md#accountsetsaccountsetidsalarysummaryexportget) | **GET** /accountsets/{accountSetId}/salary/summary/export |  |
 | [**accountsetsAccountSetIdSalarySummaryGet**](SalariesApi.md#accountsetsaccountsetidsalarysummaryget) | **GET** /accountsets/{accountSetId}/salary/summary |  |
+| [**accountsetsAccountSetIdSalarySummaryPdfGet**](SalariesApi.md#accountsetsaccountsetidsalarysummarypdfget) | **GET** /accountsets/{accountSetId}/salary/summary/pdf |  |
 | [**accountsetsAccountSetIdSalaryVoucherSettingGet**](SalariesApi.md#accountsetsaccountsetidsalaryvouchersettingget) | **GET** /accountsets/{accountSetId}/salary/voucher-setting |  |
 | [**accountsetsAccountSetIdSalaryVoucherSettingPut**](SalariesApi.md#accountsetsaccountsetidsalaryvouchersettingput) | **PUT** /accountsets/{accountSetId}/salary/voucher-setting |  |
 
@@ -366,6 +368,74 @@ No authorization required
 
 - **Content-Type**: `multipart/form-data`
 - **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdSalaryBillsPdfGet
+
+> accountsetsAccountSetIdSalaryBillsPdfGet(accountSetId, period)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  SalariesApi,
+} from '';
+import type { AccountsetsAccountSetIdSalaryBillsPdfGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new SalariesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    period: 56,
+  } satisfies AccountsetsAccountSetIdSalaryBillsPdfGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdSalaryBillsPdfGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **period** | `number` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 
 ### HTTP response details
@@ -1658,6 +1728,77 @@ No authorization required
 
 - **Content-Type**: Not defined
 - **Accept**: `text/plain`, `application/json`, `text/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdSalarySummaryPdfGet
+
+> accountsetsAccountSetIdSalarySummaryPdfGet(accountSetId, startPeriod, endPeriod)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  SalariesApi,
+} from '';
+import type { AccountsetsAccountSetIdSalarySummaryPdfGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new SalariesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    startPeriod: 56,
+    // number (optional)
+    endPeriod: 56,
+  } satisfies AccountsetsAccountSetIdSalarySummaryPdfGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdSalarySummaryPdfGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **startPeriod** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **endPeriod** | `number` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 
 ### HTTP response details

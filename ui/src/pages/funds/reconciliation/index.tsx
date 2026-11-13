@@ -6,6 +6,7 @@
  * 出纳余额与总账科目余额不一致的账户在名称后标「不平」并在余额后附差异，便于逐项核对。
  */
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router"
 import { App, Button, Card, Checkbox, DatePicker, Select, Space, Table, Tooltip, Typography } from "antd"
 import type { TableColumnsType } from "antd"
 import { ReloadOutlined } from "@ant-design/icons"
@@ -40,6 +41,7 @@ const AMOUNT_RIGHT = "whitespace-nowrap text-right tabular-nums"
 export default function ReconciliationPage() {
     const { message } = App.useApp()
     const { token } = useAuth()
+    const navigate = useNavigate()
     const accountSetId = useCurrentAccountSetId() ?? ""
 
     // 会计期间（年月）+ 核对日（日）。默认当前月当天，打开即能看到核对结果。
@@ -222,7 +224,7 @@ export default function ReconciliationPage() {
                                 现金和银行账户没有关联科目，无法展示核对总账数据
                                 <Typography.Link
                                     className="ml-1 text-[12.5px]"
-                                    onClick={() => message.info("请到「资金 → 账户设置」中为该账户关联会计科目后重新查询。")}
+                                    onClick={() => navigate(`/${accountSetId}/funds/account`)}
                                 >
                                     去关联科目 &gt;&gt;
                                 </Typography.Link>

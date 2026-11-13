@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Table as AntTable } from "antd";
+import { Modal, QRCode, Table as AntTable } from "antd";
 import {
     CheckCircleOutlined,
     InfoCircleOutlined,
@@ -19,6 +19,8 @@ import {
 
 import {
     Btn,
+    ExportBtn,
+    PrintBtn,
     CheckBox,
     Dialog,
     EmptyTip,
@@ -38,7 +40,7 @@ import type { Col, PeriodStepperProps, Row } from "./components/ui";
 import { usePeriodStepper } from "./components/usePeriodStepper";
 import { useAuth } from "@/auth/AuthContext";
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
-import { useDefaultAccountingPeriod } from "@/accountSets/useCurrentAccountSet";
+import { useCurrentAccountSet, useDefaultAccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import type { AccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { apiConfig, apiErrorMessage } from "@/lib/api-client";
 import { downloadReportExport } from "@/lib/report-download";
@@ -253,6 +255,61 @@ function ReloadButton({ onClick }: { onClick: () => void }) {
     );
 }
 
+/** 报表口径说明：点开后逐条列出该表的取数口径，替代原先不可点的静态文字。 */
+function HelpButton({ label = "帮助", title, items }: { label?: string; title: string; items: string[] }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <>
+            <button
+                type="button"
+                className="flex cursor-pointer items-center gap-1 text-[13px] text-(--muted-foreground) hover:text-(--brand)"
+                onClick={() => setOpen(true)}
+            >
+                <InfoCircleOutlined className="text-[14px]" /> {label}
+            </button>
+            <Modal open={open} title={title} width={620} footer={null} onCancel={() => setOpen(false)}>
+                <ul className="list-disc space-y-2 pl-5 text-[13px] leading-6 text-(--foreground)">
+                    {items.map((t) => (
+                        <li key={t}>{t}</li>
+                    ))}
+                </ul>
+            </Modal>
+        </>
+    );
+}
+
+/** 报表分享：当前页链接生成二维码，并支持复制链接发给同事。 */
+function ShareButton({ label = "微信分享" }: { label?: string }) {
+    const [open, setOpen] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const url = typeof window === "undefined" ? "" : window.location.href;
+    const copy = async () => {
+        if (!url) {
+            return;
+        }
+        try {
+            await navigator.clipboard?.writeText(url);
+            setCopied(true);
+        } catch {
+            setCopied(false);
+        }
+    };
+    return (
+        <>
+            <Btn onClick={() => { setCopied(false); setOpen(true); }}>{label}</Btn>
+            <Modal open={open} title="扫码分享" width={420} footer={null} onCancel={() => setOpen(false)}>
+                <div className="flex flex-col items-center gap-3 py-2">
+                    <QRCode value={url || "about:blank"} size={200} />
+                    <div className="break-all text-center text-[12px] text-(--muted-foreground)">{url}</div>
+                    <Btn variant="primary" onClick={() => void copy()}>
+                        {copied ? "已复制" : "复制链接"}
+                    </Btn>
+                </div>
+            </Modal>
+        </>
+    );
+}
+
 /** 报表导出：调用后端 /reports/export 下载 .xlsx；kind 与页面一一对应。 */
 function useReportExport() {
     const { token } = useAuth();
@@ -389,8 +446,56 @@ function buildIncomeRows(
     ];
 }
 
+/**
+ * 小企业会计准则（会小企02表）利润表季报行：13 行简化版，
+ * 合计行按小准则公式现算（营业利润加投资收益），不含「其中」子项与其他综合收益。
+ */
+function buildSmallBusinessIncomeRows(
+    lines?: Array<{ line?: number; current?: number; yearToDate?: number; lastYear?: number }>,
+): StmtRow[] {
+    const byLine = new Map<number, IncomeLineValues>();
+    for (const l of lines ?? []) {
+        if (l?.line != null) {
+            byLine.set(l.line, {
+                current: l.current ?? 0,
+                yearToDate: l.yearToDate ?? 0,
+                lastYear: l.lastYear ?? 0,
+            });
+        }
+    }
+    type Key = keyof IncomeLineValues;
+    const v = (line: number, key: Key) => byLine.get(line)?.[key] ?? 0;
+    const s = (line: number, key: Key) => nf(byLine.get(line)?.[key]);
+    const op = (key: Key) =>
+        v(1, key) - v(2, key) - v(3, key) - v(4, key) - v(5, key) - v(6, key) + v(9, key);
+    const profit = (key: Key) => op(key) + v(12, key) - v(14, key);
+    const net = (key: Key) => profit(key) - v(17, key);
+    const ly = (line: number) => nf(byLine.get(line)?.lastYear);
+    const mk = (label: string, seq: string, line: number) =>
+        item(label, seq, s(line, "yearToDate"), s(line, "current"), { indent: true }, ly(line));
+    const total = (label: string, seq: string, f: (key: Key) => number) =>
+        item(label, seq, nf(f("yearToDate")), nf(f("current")), {}, nf(f("lastYear")));
+
+    return [
+        item("一、营业收入", "1", s(1, "yearToDate"), s(1, "current"), {}, ly(1)),
+        mk("减：营业成本", "2", 2),
+        mk("税金及附加", "3", 3),
+        mk("销售费用", "4", 4),
+        mk("管理费用", "5", 5),
+        mk("财务费用", "6", 6),
+        item("加：投资收益（损失以“-”号填列）", "7", s(9, "yearToDate"), s(9, "current"), { indent: true }, ly(9)),
+        total("二、营业利润（亏损以“－”号填列）", "8", op),
+        mk("加：营业外收入", "9", 12),
+        mk("减：营业外支出", "10", 14),
+        total("三、利润总额（亏损总额以“－”号填列）", "11", profit),
+        mk("减：所得税费用", "12", 17),
+        total("四、净利润（净亏损以“－”号填列）", "13", net),
+    ];
+}
+
 export function LemonIncomeQuarter() {
     const { period, stepper } = usePeriodStepper(3);
+    const currentSet = useCurrentAccountSet();
     const exp = useReportExport();
     const prn = useReportPrint();
     const [showLastYear, setShowLastYear] = useState(false);
@@ -416,9 +521,9 @@ export function LemonIncomeQuarter() {
                             checked={showLastYear}
                             onChange={setShowLastYear}
                         />
-                        <Btn dropdown loading={prn.printing} onClick={() => void prn.run("income-quarter", { year: period.year, quarter: quarterOf(period), showLastYear })}>打印</Btn>
-                        <Btn dropdown onClick={() => void exp.run("income-quarter", { year: period.year, quarter: quarterOf(period) })}>导出</Btn>
-                        <WipBtn>微信分享</WipBtn>
+                        <PrintBtn loading={prn.printing} onClick={() => void prn.run("income-quarter", { year: period.year, quarter: quarterOf(period), showLastYear })}>打印</PrintBtn>
+                        <ExportBtn onClick={() => void exp.run("income-quarter", { year: period.year, quarter: quarterOf(period) })}>导出</ExportBtn>
+                        <ShareButton />
                         <ReloadButton onClick={reload} />
                     </>
                 }
@@ -426,7 +531,19 @@ export function LemonIncomeQuarter() {
             {loading && <LoadTip />}
             {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
-                <Table cols={INCOME_COLS("本季金额", false, showLastYear)} rows={buildIncomeRows(data?.lines)} zebra={false} />
+                <Table
+                    cols={INCOME_COLS("本季金额", false, showLastYear)}
+                    // 账套会计标准异步加载：未就绪时不先铺会企02表 32 行版式，
+                    // 避免小准则账套首屏闪现复杂表格（标准就绪后由 loading 态显示 13 行）。
+                    rows={
+                        currentSet?.standard == null
+                            ? []
+                            : currentSet.standard === 2
+                              ? buildSmallBusinessIncomeRows(data?.lines)
+                              : buildIncomeRows(data?.lines)
+                    }
+                    zebra={false}
+                />
             </div>
             {exp.toast && <Toast text={exp.toast} onClose={exp.clearToast} />}
             {prn.toast && <Toast text={prn.toast} onClose={prn.clearToast} />}
@@ -454,7 +571,10 @@ function CashFlowPage({
     const prn = useReportPrint();
     const { token } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
-    /** 公式法 / 辅助核算法切换（仅月报）：前者按凭证对手方科目自动归类并可由取数公式调整，
+    const currentSet = useCurrentAccountSet();
+    /** 小企业会计准则（会小企03表）：22 行、无补充资料，直接法取数；公式法/辅助核算法仅对一般企业开放。 */
+    const smallBusiness = currentSet?.standard === 2;
+    /** 公式法 / 辅助核算法切换（仅一般企业月报）：前者按凭证对手方科目自动归类并可由取数公式调整，
      *  后者按凭证现金分录上挂的「现金流」辅助项目归集。 */
     const [method, setMethod] = useState<"formula" | "assist">("formula");
     const [showLastYear, setShowLastYear] = useState(false);
@@ -470,7 +590,7 @@ function CashFlowPage({
                       year: period.year,
                       quarter: quarterOf(period),
                   })
-            : variant === "standard"
+            : smallBusiness || variant === "standard"
               ? (api, accountSetId) =>
                     api.accountsetsAccountSetIdReportsCashFlowGet({
                         accountSetId,
@@ -490,7 +610,7 @@ function CashFlowPage({
                           year: period.year,
                           month: period.month,
                       }),
-        variant === "month" ? method : "direct",
+        variant === "month" && !smallBusiness ? method : "direct",
     );
 
     // 补充资料只有标准表现才取数（它是间接法调节表，与公式法无关）。
@@ -500,7 +620,7 @@ function CashFlowPage({
     } = useReportData<CashFlowSupplementDto | null>(
         period,
         "现金流量表补充资料加载失败",
-        variant === "standard"
+        variant === "standard" && !smallBusiness
             ? (api, accountSetId) =>
                   api.accountsetsAccountSetIdReportsCashFlowSupplementGet({
                       accountSetId,
@@ -508,6 +628,7 @@ function CashFlowPage({
                       month: period.month,
                   })
             : async () => null,
+        smallBusiness ? "small-business" : "standard",
     );
 
     // 公式配置：打开「编辑公式」时才取数。
@@ -648,11 +769,42 @@ function CashFlowPage({
         const std = CF_LINE_MAP[seq];
         return {
             ...item(label, seq, cell(seq, "yearToDate"), cell(seq, "current"), { indent: true }, cell(seq, "lastYear")),
-            formula: variant === "month" && method === "formula" && std != null ? formulaByLine.get(std) ?? "" : undefined,
+            formula:
+                !smallBusiness && variant === "month" && method === "formula" && std != null
+                    ? formulaByLine.get(std) ?? ""
+                    : undefined,
         };
     };
+    // 小企业会计准则（会小企03表）：22 行、无流入/流出小计，筹资流出拆为本金/利息/分配利润。
+    const smallBusinessRows: StmtRow[] = [
+        item("一、经营活动产生的现金流量：", ""),
+        mk("销售产成品、商品、提供劳务收到的现金", "1"),
+        mk("收到其他与经营活动有关的现金", "2"),
+        mk("购买原材料、商品、接受劳务支付的现金", "3"),
+        mk("支付的职工薪酬", "4"),
+        mk("支付的税费", "5"),
+        mk("支付其他与经营活动有关的现金", "6"),
+        mk("经营活动产生的现金流量净额", "7"),
+        item("二、投资活动产生的现金流量：", ""),
+        mk("收回短期投资、长期债券投资和长期股权投资收到的现金", "8"),
+        mk("取得投资收益收到的现金", "9"),
+        mk("处置固定资产、无形资产和其他非流动资产收回的现金净额", "10"),
+        mk("短期投资、长期债券投资和长期股权投资支付的现金", "11"),
+        mk("购建固定资产、无形资产和其他非流动资产支付的现金", "12"),
+        mk("投资活动产生的现金流量净额", "13"),
+        item("三、筹资活动产生的现金流量：", ""),
+        mk("取得借款收到的现金", "14"),
+        mk("吸收投资者投资收到的现金", "15"),
+        mk("偿还借款本金支付的现金", "16"),
+        mk("偿还借款利息支付的现金", "17"),
+        mk("分配利润支付的现金", "18"),
+        mk("筹资活动产生的现金流量净额", "19"),
+        mk("四、现金净增加额", "20"),
+        mk("加：期初现金余额", "21"),
+        mk("五、期末现金余额", "22"),
+    ];
     // 行次与文案严格对齐柠檬云「现金流量表」（企业会计准则 2007 版式，38 行）
-    const rows: StmtRow[] = [
+    const enterpriseRows: StmtRow[] = [
         item("一、经营活动产生的现金流量：", ""),
         mk("销售商品、提供劳务收到的现金", "1"),
         mk("收到的税费返还", "2"),
@@ -692,6 +844,8 @@ function CashFlowPage({
         mk("加：期初现金及现金等价物的余额", "34"),
         mk("六、期末现金及现金等价物余额", "35"),
     ];
+    // 准则未就绪时不先渲染会企03表 38 行版式，避免小准则账套首屏闪现复杂表格。
+    const rows = currentSet?.standard == null ? [] : smallBusiness ? smallBusinessRows : enterpriseRows;
 
     const cols: Col[] = [
         { key: "item", title: "项目" },
@@ -701,7 +855,7 @@ function CashFlowPage({
             ? [{ key: "ly", title: "上年累计金额", align: "right", width: "160px", neg: true } as Col]
             : []),
         { key: "cur", title: variant === "quarter" ? "本季金额" : "本期金额", align: "right", width: "140px", neg: true },
-        ...(method === "formula" && variant === "month"
+        ...(method === "formula" && variant === "month" && !smallBusiness
             ? [
                   {
                       key: "formula",
@@ -723,10 +877,10 @@ function CashFlowPage({
     };
     const supplementRows: Row[] = [];
     let lastGroup = 0;
-    if (variant === "standard" && (supplement?.lines ?? []).length > 0) {
+    if (variant === "standard" && !smallBusiness && (supplement?.lines ?? []).length > 0) {
         supplementRows.push({ item: <span className="font-medium">补充资料</span>, seq: "" });
     }
-    for (const l of variant === "standard" ? supplement?.lines ?? [] : []) {
+    for (const l of variant === "standard" && !smallBusiness ? supplement?.lines ?? [] : []) {
         const group = l.group ?? 1;
         if (group !== lastGroup) {
             supplementRows.push({
@@ -859,7 +1013,8 @@ function CashFlowPage({
         void prn.run("cash-flow", {
             year: period.year,
             month: period.month,
-            ...(variant === "month" ? { method } : {}),
+            // 小企业准则固定走直接法（会小企03表）；不传 method 时后端才附补充资料，投影层会按准则忽略。
+            ...(variant === "month" && !smallBusiness ? { method } : {}),
             showLastYear,
         });
     };
@@ -872,7 +1027,7 @@ function CashFlowPage({
                         {/* antd 输入框自带 width:100%，Tailwind 的 w-[90px] 压不过，宽度只能走内联样式 */}
                         {variant === "standard" && <FakeSelect text="月报" style={{ width: 90 }} />}
                         <PeriodStepper {...stepper} />
-                        {variant === "month" && (
+                        {variant === "month" && !smallBusiness && (
                             <Select
                                 value={method}
                                 onChange={(v) => setMethod(v === "assist" ? "assist" : "formula")}
@@ -882,15 +1037,31 @@ function CashFlowPage({
                                 ]}
                             />
                         )}
-                        {variant === "month" && (
-                            <span className="flex items-center gap-1 text-[13px] text-(--muted-foreground)">
-                                <InfoCircleOutlined className="text-[14px]" /> 帮助
-                            </span>
+                        {variant === "month" && !smallBusiness && (
+                            <HelpButton
+                                title="现金流量表口径说明"
+                                items={[
+                                    "现金科目：一级编码 1001 库存现金、1002 银行存款、1012 其他货币资金；只统计已过账凭证。",
+                                    "每张凭证的现金净收付按金额比例分摊到对手方科目，再由对手方科目归类到会企03表主表行次。",
+                                    "公式法按预置归类规则自动取数，可逐行编辑公式；辅助核算法按现金流辅助核算项目取数。",
+                                    "增值税进项 / 销项随货款归入购买商品、销售商品行；「支付的各项税费」只反映实际缴纳税款。",
+                                    smallBusiness
+                                        ? "小企业会计准则采用会小企03表 22 行版式，筹资流出按偿还本金、利息、分配利润拆分。"
+                                        : "主表之外另附补充资料（间接法），经营活动净额与主表口径对齐。",
+                                ]}
+                            />
                         )}
                         {variant === "standard" && (
-                            <span className="flex items-center gap-1 text-[13px] text-(--muted-foreground)">
-                                <InfoCircleOutlined className="text-[14px]" /> 报表说明
-                            </span>
+                            <HelpButton
+                                label="报表说明"
+                                title="标准现金流量表（会企03表）说明"
+                                items={[
+                                    "标准表为会企03表完整版式：主表 35 行直接法，另附补充资料（间接法）。",
+                                    "主表按经营活动、投资活动、筹资活动三段列示流入、流出与净额，并计算现金净增加额与期末余额。",
+                                    "补充资料以净利润为起点，调整非付现项目与经营性应收应付变动，经营活动净额应与主表一致。",
+                                    "现金口径为主表同一套现金科目（1001/1002/1012），仅统计已过账凭证。",
+                                ]}
+                            />
                         )}
                     </>
                 }
@@ -902,22 +1073,23 @@ function CashFlowPage({
                             onChange={setShowLastYear}
                         />
                         {variant !== "quarter" && <Btn onClick={() => void opening.show()}>期初</Btn>}
-                        {variant === "month" && <Btn onClick={() => void workpaper.show()}>报表底稿</Btn>}
-                        {variant === "month" && method === "formula" && (
+                        {variant === "month" && !smallBusiness && (
+                            <Btn onClick={() => void workpaper.show()}>报表底稿</Btn>
+                        )}
+                        {variant === "month" && !smallBusiness && method === "formula" && (
                             <Btn onClick={() => void formulaSettings.show()}>编辑公式</Btn>
                         )}
                         {variant === "standard" && <WipBtn>现金流量调整</WipBtn>}
                         {variant === "standard" ? (
                             <>
-                                <Btn dropdown onClick={() => void exp.run("cash-flow", { year: period.year, month: period.month })}>导出</Btn>
-                                <Btn dropdown loading={prn.printing} onClick={printCashFlow}>打印</Btn>
-                                <WipBtn>分享</WipBtn>
+                                <ExportBtn onClick={() => void exp.run("cash-flow", { year: period.year, month: period.month })}>导出</ExportBtn>
+                                <PrintBtn loading={prn.printing} onClick={printCashFlow}>打印</PrintBtn>
+                                <ShareButton label="分享" />
                             </>
                         ) : (
                             <>
-                                <Btn dropdown loading={prn.printing} onClick={printCashFlow}>打印</Btn>
-                                <Btn
-                                    dropdown
+                                <PrintBtn loading={prn.printing} onClick={printCashFlow}>打印</PrintBtn>
+                                <ExportBtn
                                     onClick={() =>
                                         void exp.run(
                                             variant === "quarter" ? "cash-flow-quarter" : "cash-flow",
@@ -928,8 +1100,8 @@ function CashFlowPage({
                                     }
                                 >
                                     导出
-                                </Btn>
-                                <WipBtn>微信分享</WipBtn>
+                                </ExportBtn>
+                                <ShareButton />
                             </>
                         )}
                         <ReloadButton onClick={reload} />
@@ -938,17 +1110,19 @@ function CashFlowPage({
             />
             {variant === "month" && (
                 <div className="px-4 pb-2 text-[12.5px] text-(--muted-foreground)">
-                    {method === "formula"
-                        ? "公式法：按凭证对手方科目自动归类到主表行次，可逐行编辑取数公式；归类明细见「报表底稿」。"
-                        : "辅助核算法：按现金分录上挂的「现金流」辅助项目归集到主表行次（项目编码前两位即行号），未挂项目的现金收付不计入。"}
+                    {smallBusiness
+                        ? "小企业会计准则（会小企03表）：22 行直接法版式；现金科目=1001/1002/1012，筹资流出按本金/利息/分配利润拆分。"
+                        : method === "formula"
+                          ? "公式法：按凭证对手方科目自动归类到主表行次，可逐行编辑取数公式；归类明细见「报表底稿」。"
+                          : "辅助核算法：按现金分录上挂的「现金流」辅助项目归集到主表行次（项目编码前两位即行号），未挂项目的现金收付不计入。"}
                 </div>
             )}
             {loading && <LoadTip />}
             {error && <ErrorTip text={error} />}
-            {variant === "standard" && supplementError && <ErrorTip text={supplementError} />}
+            {variant === "standard" && !smallBusiness && supplementError && <ErrorTip text={supplementError} />}
             <div className="flex-1 px-4 pb-4">
                 <Table cols={cols} rows={rows} zebra={false} />
-                {variant === "standard" && (
+                {variant === "standard" && !smallBusiness && (
                     <div className="mt-6">
                         <div className="mb-2 flex items-center gap-2 text-[13px] font-medium text-(--foreground)">
                             补充资料
@@ -1075,11 +1249,123 @@ export function LemonStandardCashFlow() {
 
 /* ---------- 部门利润表 ---------- */
 
+/** 部门/项目利润表后端行：两类 DTO 结构一致，按行次取各维度金额。 */
+type DimensionAmount = { current?: number; yearToDate?: number };
+type DimensionSourceRow = {
+    line?: number;
+    amounts?: DimensionAmount[];
+    total?: DimensionAmount;
+};
+type DimensionRow = {
+    /** 稳定唯一行标识：企业准则模板里有空行次的「其中」行，不能直接用 line 作 rowKey。 */
+    key: string;
+    line: number;
+    item: ReactNode;
+    amounts?: DimensionAmount[];
+    total?: DimensionAmount;
+};
+
+/**
+ * 小企业会计准则（会小企02表）部门/项目利润表版式：13 行，
+ * 不含「其中」子项、资产减值损失、公允价值变动收益、其他综合收益与每股收益。
+ * dataLine=0 的行为合计行，按小准则公式逐维度现算（营业利润加投资收益）。
+ */
+const SMALL_BUSINESS_DIMENSION_LAYOUT: Array<{
+    seq: number;
+    label: string;
+    dataLine: number;
+    total: 0 | 1 | 2 | 3;
+    indent?: boolean;
+}> = [
+    { seq: 1, label: "一、营业收入", dataLine: 1, total: 0 },
+    { seq: 2, label: "减：营业成本", dataLine: 2, total: 0, indent: true },
+    { seq: 3, label: "税金及附加", dataLine: 3, total: 0, indent: true },
+    { seq: 4, label: "销售费用", dataLine: 4, total: 0, indent: true },
+    { seq: 5, label: "管理费用", dataLine: 5, total: 0, indent: true },
+    { seq: 6, label: "财务费用", dataLine: 6, total: 0, indent: true },
+    { seq: 7, label: "加：投资收益（损失以“-”号填列）", dataLine: 9, total: 0, indent: true },
+    { seq: 8, label: "二、营业利润（亏损以“－”号填列）", dataLine: 0, total: 1 },
+    { seq: 9, label: "加：营业外收入", dataLine: 12, total: 0, indent: true },
+    { seq: 10, label: "减：营业外支出", dataLine: 14, total: 0, indent: true },
+    { seq: 11, label: "三、利润总额（亏损总额以“－”号填列）", dataLine: 0, total: 2 },
+    { seq: 12, label: "减：所得税费用", dataLine: 17, total: 0, indent: true },
+    { seq: 13, label: "四、净利润（净亏损以“－”号填列）", dataLine: 0, total: 3 },
+];
+
+/**
+ * 依据账套会计标准生成部门/项目利润表展示行：小企业会计准则（枚举值 2）切会小企02表，
+ * 其余沿用会企02表 32 行模板。小准则的营业利润/利润总额/净利润逐维度按行次公式现算，
+ * 合计列为各维度求和，与利润表主表、PDF、Excel 导出口径一致。
+ */
+function buildDimensionRows(
+    rows: DimensionSourceRow[],
+    dimensionCount: number,
+    standard?: number,
+): DimensionRow[] {
+    // 账套会计标准尚未加载完成时不要先按「企业会计准则」铺满 32 行模板：
+    // 否则会短暂闪现复杂版式，且标准就绪后切换版式时可能因重复 key 残留 DOM 行。
+    if (standard == null) return [];
+    const byLine = new Map(rows.map((r) => [Number(r.line), r]));
+    if (standard !== 2) {
+        // 企业会计准则：整表铺满 32 行模板，缺失行补空（原行为）。
+        // 模板里有空行次的「其中」子项（Number("") === 0），必须用独立 key 保证 rowKey 唯一。
+        return buildIncomeRows().map((tpl, index) => {
+            const line = Number(tpl.seq);
+            const hit = byLine.get(line);
+            return { key: tpl.seq === "" ? `sub-${index}` : tpl.seq, line, item: tpl.item, amounts: hit?.amounts, total: hit?.total };
+        });
+    }
+
+    type Key = "current" | "yearToDate";
+    const dim = (line: number, i: number, key: Key) => byLine.get(line)?.amounts?.[i]?.[key] ?? 0;
+    const op = (i: number, key: Key) =>
+        dim(1, i, key) - dim(2, i, key) - dim(3, i, key) - dim(4, i, key) - dim(5, i, key) - dim(6, i, key) + dim(9, i, key);
+    const profit = (i: number, key: Key) => op(i, key) + dim(12, i, key) - dim(14, i, key);
+    const net = (i: number, key: Key) => profit(i, key) - dim(17, i, key);
+    const totalOf = (calc: 1 | 2 | 3, i: number, key: Key) =>
+        calc === 1 ? op(i, key) : calc === 2 ? profit(i, key) : net(i, key);
+
+    return SMALL_BUSINESS_DIMENSION_LAYOUT.map(({ seq, label, dataLine, total, indent }) => {
+        const amounts: DimensionAmount[] = [];
+        let curSum = 0;
+        let ytdSum = 0;
+        for (let i = 0; i < dimensionCount; i++) {
+            const current = total === 0 ? dim(dataLine, i, "current") : totalOf(total, i, "current");
+            const yearToDate = total === 0 ? dim(dataLine, i, "yearToDate") : totalOf(total, i, "yearToDate");
+            amounts.push({ current, yearToDate });
+            curSum += current;
+            ytdSum += yearToDate;
+        }
+
+        return {
+            key: String(seq),
+            line: seq,
+            item: item(label, String(seq), "", "", { indent }).item,
+            amounts,
+            total: { current: curSum, yearToDate: ytdSum },
+        };
+    });
+}
+
 /** 部门利润表行模型：项目 + 行次 + 各部门本期/本年累计金额。 */
 type DeptIncomeRow = {
+    key: string;
     line: number;
     item: ReactNode;
     amounts?: Array<{ current?: number; yearToDate?: number }>;
+};
+
+/** 项目利润表行模型：利润表模板行 + 后端按行次命中的项目金额（含合计）。 */
+type ProjIncomeRow = {
+    key: string;
+    line: number;
+    item: ReactNode;
+    row?: {
+        item?: string;
+        line?: number;
+        amounts?: Array<{ current?: number; yearToDate?: number }>;
+        total?: { current?: number; yearToDate?: number };
+    };
 };
 
 /** 自定义报表（透视）行模型：科目 × 12 个月 + 合计。 */
@@ -1099,7 +1385,9 @@ type EquityRow = {
 
 export function LemonDepartmentIncome() {
     const { period, stepper } = usePeriodStepper(1);
+    const currentSet = useCurrentAccountSet();
     const exp = useReportExport();
+    const prn = useReportPrint();
     const { data, loading, error, reload } = useReportData(
         period,
         "部门利润表加载失败",
@@ -1113,34 +1401,33 @@ export function LemonDepartmentIncome() {
 
     const departments = data?.departments ?? [];
     const rows = data?.rows ?? [];
-    // 接口只返回有金额的行；按「利润表」的 32 行模板铺满，缺失行补空，
-    // 与柠檬云部门利润表一致（整表列出，无数据行显示空/0.00）。
-    const fullRows = useMemo(() => {
-        const template = buildIncomeRows();
-        const byLine = new Map(rows.map((r) => [Number(r.line), r]));
-        return template.map((tpl) => {
-            const line = Number(tpl.seq);
-            const hit = byLine.get(line);
-            return { line, item: tpl.item, amounts: hit?.amounts };
-        });
-    }, [rows]);
+    // 按账套会计标准切换版式：小企业会计准则用会小企02表 13 行，其余沿用会企02表 32 行模板铺满，
+    // 缺失行补空（整表列出，无数据行显示空/0.00）；账套标准未就绪时 buildDimensionRows 返回空表。
+    const fullRows = useMemo<DeptIncomeRow[]>(
+        () => buildDimensionRows(rows, departments.length, currentSet?.standard),
+        [rows, departments.length, currentSet?.standard],
+    );
     return (
         <Page>
             <ToolRow
                 left={
                     <>
                         <PeriodStepper {...stepper} />
-                        <span
-                            className="flex items-center gap-1 text-[13px] text-(--muted-foreground)"
-                            title="按部门辅助核算归集收入与费用，仅统计已过账凭证；完整口径见导出报表"
-                        >
-                            <InfoCircleOutlined className="text-[14px]" /> 帮助
-                        </span>
+                        <HelpButton
+                            title="部门利润表口径说明"
+                            items={[
+                                "按凭证分录上的部门辅助核算归集收入与费用，只统计已过账凭证。",
+                                "行次归集与利润表一致；期末结转损益凭证整张剔除，避免与损益类发生额重复。",
+                                "未填部门的损益发生额汇总到「未分配部门」列，各列合计应等于利润表同口径金额。",
+                                "表头金额为「本年累计」与「本期」，与账套会计标准对应的会企/会小企版式一致。",
+                            ]}
+                        />
                     </>
                 }
                 right={
                     <>
-                        <Btn dropdown onClick={() => void exp.run("department-income", { year: period.year, month: period.month })}>导出</Btn>
+                        <PrintBtn loading={prn.printing} onClick={() => void prn.run("department-income", { year: period.year, month: period.month })}>打印</PrintBtn>
+                        <ExportBtn onClick={() => void exp.run("department-income", { year: period.year, month: period.month })}>导出</ExportBtn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
@@ -1150,7 +1437,7 @@ export function LemonDepartmentIncome() {
             <div className="flex-1 px-4">
                 <AntTable<DeptIncomeRow>
                     pagination={false}
-                    rowKey={(r) => r.line}
+                    rowKey={(r) => r.key}
                     dataSource={fullRows}
                     scroll={{ x: "max-content" }}
                     locale={{ emptyText: "暂无数据" }}
@@ -1178,6 +1465,7 @@ export function LemonDepartmentIncome() {
             </div>
             <Pager total={rows.length} />
             {exp.toast && <Toast text={exp.toast} onClose={exp.clearToast} />}
+            {prn.toast && <Toast text={prn.toast} onClose={prn.clearToast} />}
         </Page>
     );
 }
@@ -1186,6 +1474,7 @@ export function LemonDepartmentIncome() {
 
 export function LemonProjectIncome() {
     const { period, stepper } = usePeriodStepper(1);
+    const currentSet = useCurrentAccountSet();
     const exp = useReportExport();
     const { data, loading, error, reload } = useReportData(
         period,
@@ -1199,34 +1488,44 @@ export function LemonProjectIncome() {
     );
     const [tipClosed, setTipClosed] = useState(false);
 
-    // 与「利润表」一致的 32 行模板：接口只返回有金额的行，其余补空，整表列出
-    const rows = useMemo(() => {
-        const byLine = new Map((data?.rows ?? []).map((r) => [Number(r.line), r]));
-        return buildIncomeRows().map((tpl) => {
-            const line = Number(tpl.seq);
-            const hit = byLine.get(line);
-            return {
-                item: hit?.name ?? tpl.item,
-                seq: String(line),
-                cur: nf(hit?.current),
-                ytd: nf(hit?.yearToDate),
-            };
-        });
-    }, [data?.rows]);
-    const cols: Col[] = [
-        { key: "item", title: "项目" },
-        SEQ_COL,
-        { key: "cur", title: "本期金额", align: "right", width: "160px", neg: true },
-        { key: "ytd", title: "本年累计金额", align: "right", width: "160px", neg: true },
-    ];
-    const showTip = rows.length === 0 && !loading && !error && !tipClosed;
+    const projects = data?.projects ?? [];
+    const rows = data?.rows ?? [];
+    // 接口按「项目」维度逐行拆解收入与成本费用（与部门利润表同一套行归集）：
+    // 明细项目行 + 营业利润/利润总额/净利润计算行，每行含各项目金额与合计列。
+    // 按账套会计标准切换版式：小企业会计准则用会小企02表 13 行，其余沿用会企02表 32 行模板铺满，
+    // 缺失行补空（整表列出，无数据行显示空/0.00）；账套标准未就绪时 buildDimensionRows 返回空表。
+    const fullRows = useMemo<ProjIncomeRow[]>(
+        () =>
+            buildDimensionRows(rows, projects.length, currentSet?.standard).map((d) => ({
+                key: d.key,
+                line: d.line,
+                item: d.item,
+                row: { line: d.line, amounts: d.amounts, total: d.total },
+            })),
+        [rows, projects.length, currentSet?.standard],
+    );
+
+    const showTip = projects.length === 0 && !loading && !error && !tipClosed;
     return (
         <Page>
-            <ReportTool
-                {...stepper}
+            <ToolRow
+                left={
+                    <>
+                        <PeriodStepper {...stepper} />
+                        <HelpButton
+                            title="项目利润表口径说明"
+                            items={[
+                                "按凭证分录上的项目辅助核算归集收入与费用，只统计已过账凭证。",
+                                "行次归集与利润表一致；期末结转损益凭证整张剔除。",
+                                "未填项目的损益发生额汇总到「未分配项目」列，各项目列合计与利润表同口径金额一致。",
+                                "表头金额为「本年累计」与「本期」，版式随账套会计标准切换。",
+                            ]}
+                        />
+                    </>
+                }
                 right={
                     <>
-                        <Btn dropdown onClick={() => void exp.run("project-income", { year: period.year, month: period.month })}>导出</Btn>
+                        <ExportBtn onClick={() => void exp.run("project-income", { year: period.year, month: period.month })}>导出</ExportBtn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
@@ -1234,7 +1533,49 @@ export function LemonProjectIncome() {
             {loading && <LoadTip />}
             {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
-                <Table cols={cols} rows={rows} zebra={false} empty={<EmptyTip />} />
+                <AntTable<ProjIncomeRow>
+                    pagination={false}
+                    rowKey={(r) => r.key}
+                    dataSource={fullRows}
+                    scroll={{ x: "max-content" }}
+                    locale={{ emptyText: "暂无数据" }}
+                    columns={[
+                        { title: "项目", dataIndex: "item", align: "left" },
+                        { title: "行次", dataIndex: "line", width: 60, align: "center", className: "text-(--muted-foreground)" },
+                        ...projects.map((p, i) => ({
+                            title: p.name,
+                            align: "center" as const,
+                            children: [
+                                {
+                                    title: "本期金额",
+                                    align: "right" as const,
+                                    render: (_: unknown, r: ProjIncomeRow) => nf(r.row?.amounts?.[i]?.current),
+                                },
+                                {
+                                    title: "本年累计金额",
+                                    align: "right" as const,
+                                    render: (_: unknown, r: ProjIncomeRow) => nf(r.row?.amounts?.[i]?.yearToDate),
+                                },
+                            ],
+                        })),
+                        {
+                            title: "合计",
+                            align: "center" as const,
+                            children: [
+                                {
+                                    title: "本期金额",
+                                    align: "right" as const,
+                                    render: (_: unknown, r: ProjIncomeRow) => nf(r.row?.total?.current),
+                                },
+                                {
+                                    title: "本年累计金额",
+                                    align: "right" as const,
+                                    render: (_: unknown, r: ProjIncomeRow) => nf(r.row?.total?.yearToDate),
+                                },
+                            ],
+                        },
+                    ]}
+                />
             </div>
             <Pager total={rows.length} />
             {exp.toast && <Toast text={exp.toast} onClose={exp.clearToast} />}
@@ -1388,15 +1729,19 @@ export function LemonPivot() {
     };
 
     const fmtTime = (v: Date | string | null | undefined): string => (v ? new Date(v).toLocaleString("zh-CN", { hour12: false }) : "");
+    const allChecked = reports.length > 0 && reports.every((r) => checked.has(String(r.id ?? "")));
+    const toggleAll = () =>
+        setChecked(allChecked ? new Set() : new Set(reports.map((r) => String(r.id ?? ""))));
     const cols: Col[] = [
         {
             key: "ck",
-            title: <CheckBox label="" />,
+            title: <CheckBox label="" checked={allChecked} onChange={toggleAll} />,
             width: "40px",
             render: (row: Row) => (
-                <span
-                    className="cursor-pointer"
-                    onClick={() =>
+                <CheckBox
+                    label=""
+                    checked={checked.has(String(row.id))}
+                    onChange={() =>
                         setChecked((prev) => {
                             const next = new Set(prev);
                             if (next.has(String(row.id))) {
@@ -1407,9 +1752,7 @@ export function LemonPivot() {
                             return next;
                         })
                     }
-                >
-                    <CheckBox label="" checked={checked.has(String(row.id))} />
-                </span>
+                />
             ),
         },
         { key: "code", title: "报表编码", width: "140px" },
@@ -1678,15 +2021,13 @@ export function LemonExpenseDetail() {
                 left={
                     <>
                         <PeriodStepper {...stepper} />
-                        <span className="cursor-pointer" onClick={() => setExpandAll((v) => !v)}>
-                            <CheckBox label="展开所有级次" checked={expandAll} />
-                        </span>
+                        <CheckBox label="展开所有级次" checked={expandAll} onChange={() => setExpandAll((v) => !v)} />
                     </>
                 }
                 right={
                     <>
-                        <Btn dropdown loading={prn.printing} onClick={() => void prn.run("expense-detail", { year: period.year, month: period.month })}>打印</Btn>
-                        <Btn onClick={() => void exp.run("expense-detail", { year: period.year, month: period.month })}>导出</Btn>
+                        <PrintBtn loading={prn.printing} onClick={() => void prn.run("expense-detail", { year: period.year, month: period.month })}>打印</PrintBtn>
+                        <ExportBtn onClick={() => void exp.run("expense-detail", { year: period.year, month: period.month })}>导出</ExportBtn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
@@ -1708,12 +2049,18 @@ const EQ_COLS = ["实收资本", "优先股", "永续债", "其他", "资本公�
 
 /** 列下标 → 后端权益桶（0 实收资本 / 1 资本公积 / 2 盈余公积 / 3 未分配利润 / 4 合计）。 */
 const EQ_BUCKET_BY_COL: Record<number, number> = { 0: 0, 4: 1, 8: 2, 9: 3, 10: 4 };
+
+/** 小企业会计准则的权益项目只有四类：实收资本、资本公积、盈余公积、未分配利润（无其他权益工具/库存股/其他综合收益/专项储备）。 */
+const SB_EQ_COL_INDEXES = [0, 4, 8, 9, 10];
 const EQ_ITEMS = ["实收资本（或股本）", "资本公积", "盈余公积", "未分配利润", "所有者权益合计"];
 
 export function LemonEquityChange() {
     // 后端端点仅按年度取数（equity-change?year=），步进器按年切换。
     const { period, stepper } = usePeriodStepper(12);
     const exp = useReportExport();
+    const currentSet = useCurrentAccountSet();
+    /** 小企业会计准则不要求编制所有者权益变动表，按管理参考口径简化版式（未来适用法，不设追溯调整行）。 */
+    const smallBusiness = currentSet?.standard === 2;
     const { data, loading, error, reload } = useReportData(
         period,
         "所有者权益变动表加载失败",
@@ -1738,7 +2085,8 @@ export function LemonEquityChange() {
     const deltaOf = (r: EquityChangeRowDto, begin: "currentBegin" | "priorBegin", end: "currentEnd" | "priorEnd"): number =>
         (r[end] ?? 0) - (r[begin] ?? 0);
 
-    const rows = [
+    /** 一般企业：会企04表行次，含会计政策变更/前期差错更正与综合收益总额。 */
+    const enterpriseRows = [
         { label: "一、上年年末余额", v: (c: number) => val(c, (r) => r.priorEnd), pv: (c: number) => val(c, (r) => r.priorBegin) },
         { label: "  加：会计政策变更", v: () => "", pv: () => "" },
         { label: "  前期差错更正", v: () => "", pv: () => "" },
@@ -1755,6 +2103,22 @@ export function LemonEquityChange() {
         { label: "  （四）所有者权益内部结转", v: () => "", pv: () => "" },
         { label: "四、本年年末余额", v: (c: number) => val(c, (r) => r.currentEnd), pv: (c: number) => val(c, (r) => r.priorEnd) },
     ];
+    /** 小企业会计准则：未来适用法不追溯调整，故无会计政策变更/前期差错更正行，也无综合收益与其他权益工具。 */
+    const smallBusinessRows = [
+        { label: "一、上年年末余额", v: (c: number) => val(c, (r) => r.priorEnd), pv: (c: number) => val(c, (r) => r.priorBegin) },
+        { label: "二、本年年初余额", v: (c: number) => val(c, (r) => r.currentBegin), pv: (c: number) => val(c, (r) => r.priorBegin) },
+        { label: "三、本年增减变动金额（减少以“-”号填列）", v: (c: number) => val(c, (r) => deltaOf(r, "currentBegin", "currentEnd")), pv: (c: number) => val(c, (r) => deltaOf(r, "priorBegin", "priorEnd")) },
+        { label: "  （一）净利润", v: () => "", pv: () => "" },
+        { label: "  （二）所有者投入和减少资本", v: () => "", pv: () => "" },
+        { label: "    1.所有者投入的普通股", v: () => "", pv: () => "" },
+        { label: "  （三）利润分配", v: () => "", pv: () => "" },
+        { label: "    1.提取盈余公积", v: () => "", pv: () => "" },
+        { label: "    2.对所有者（或股东）的分配", v: () => "", pv: () => "" },
+        { label: "  （四）所有者权益内部结转", v: () => "", pv: () => "" },
+        { label: "四、本年年末余额", v: (c: number) => val(c, (r) => r.currentEnd), pv: (c: number) => val(c, (r) => r.priorEnd) },
+    ];
+    // 准则未就绪时不先渲染会企04表 16 行版式，避免小准则账套首屏闪现复杂表格。
+    const rows = currentSet?.standard == null ? [] : smallBusiness ? smallBusinessRows : enterpriseRows;
 
     const total = byName.get(EQ_ITEMS[4]);
     // 勾稽：四个权益桶之和应等于「所有者权益合计」行（期初、期末各校验一次）。
@@ -1789,6 +2153,14 @@ export function LemonEquityChange() {
             render: (_: unknown, r: EquityRow) => (prior ? r.pv(k + 4) : r.v(k + 4)),
         })),
     ];
+    /** 小企业会计准则列组：只列准则内的四个权益项目与合计。 */
+    const smallBusinessYearColumns = (prior: boolean) =>
+        SB_EQ_COL_INDEXES.map((c) => ({
+            title: EQ_COLS[c],
+            align: "right" as const,
+            className: "tabular-nums",
+            render: (_: unknown, r: EquityRow) => (prior ? r.pv(c) : r.v(c)),
+        }));
     return (
         <Page>
             <ToolRow
@@ -1796,12 +2168,23 @@ export function LemonEquityChange() {
                     <>
                         <span className="text-[13px] text-(--muted-foreground)">会计年度：</span>
                         <PeriodStepper {...stepper} />
-                        <span
-                            className="flex items-center gap-1 text-[13px] text-(--muted-foreground)"
-                            title="按年度列示实收资本、资本公积、盈余公积与未分配利润的期初期末及变动，仅统计已过账凭证"
-                        >
-                            <InfoCircleOutlined className="text-[14px]" /> 报表说明
-                        </span>
+                        <HelpButton
+                            label="报表说明"
+                            title="所有者权益变动表说明"
+                            items={
+                                smallBusiness
+                                    ? [
+                                          "小企业会计准则不要求编制本表；本页按管理参考口径列示实收资本、资本公积、盈余公积、未分配利润的期初期末及变动。",
+                                          "只统计已过账凭证；会计政策变更与差错更正采用未来适用法，不追溯调整。",
+                                          "本年增减变动按「净利润 / 直接计入所有者权益的利得和损失 / 所有者投入和减少资本 / 利润分配」分项列示。",
+                                      ]
+                                    : [
+                                          "按年度列示实收资本、资本公积、盈余公积与未分配利润的期初余额、本年增减变动与期末余额。",
+                                          "只统计已过账凭证；本年增减变动按净利润、其他综合收益、所有者投入与利润分配分项列示。",
+                                          "各权益科目期末之和应与「所有者权益合计」一致，不一致时页面会直接提示差额。",
+                                      ]
+                            }
+                        />
                         {!balanced && !loading && !error && (
                             <span
                                 className="text-[13px] text-(--danger)"
@@ -1816,11 +2199,16 @@ export function LemonEquityChange() {
                 right={
                     <>
                         <WipBtn title="报表公式编辑尚未接入后端，建设中">编辑公式</WipBtn>
-                        <Btn onClick={() => void exp.run("equity-change", { year: period.year })}>导出</Btn>
+                        <ExportBtn onClick={() => void exp.run("equity-change", { year: period.year })}>导出</ExportBtn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
             />
+            {smallBusiness && (
+                <div className="px-4 pb-2 text-[12.5px] text-(--muted-foreground)">
+                    小企业会计准则不要求编制所有者权益变动表：本页为管理参考口径，只列实收资本、资本公积、盈余公积、未分配利润四项；会计政策变更与差错更正采用未来适用法，不追溯调整。
+                </div>
+            )}
             {loading && <LoadTip />}
             {error && <ErrorTip text={error} />}
             <div className="flex-1 px-4">
@@ -1831,8 +2219,16 @@ export function LemonEquityChange() {
                     scroll={{ x: "max-content" }}
                     columns={[
                         { title: "项目", dataIndex: "label", align: "left" },
-                        { title: "本年金额", align: "center", children: equityYearColumns(false) },
-                        { title: "上年金额", align: "center", children: equityYearColumns(true) },
+                        {
+                            title: "本年金额",
+                            align: "center",
+                            children: smallBusiness ? smallBusinessYearColumns(false) : equityYearColumns(false),
+                        },
+                        {
+                            title: "上年金额",
+                            align: "center",
+                            children: smallBusiness ? smallBusinessYearColumns(true) : equityYearColumns(true),
+                        },
                     ]}
                 />
             </div>
@@ -1855,8 +2251,10 @@ export function LemonTaxReport() {
 
     const accounts = data?.rows ?? [];
     /** 税种分组（与柠檬云一致：固定六组、每组「应交 / 已交」两行，共 18 行） */
+    // 增值税分组需同时收纳「应交增值税」与「销项税额/进项税额」等 VAT 子科目；
+    // 后者名称含「税额」而非「增值税」，按原关键字会漏进「其他税费」。
     const groups: Array<[string, (name: string) => boolean]> = [
-        ["（一）增值税：", (n) => n.includes("增值税")],
+        ["（一）增值税：", (n) => n.includes("增值税") || n.includes("销项税额") || n.includes("进项税额")],
         ["（二）所得税：", (n) => n.includes("所得税")],
         ["（三）消费税：", (n) => n.includes("消费税")],
         ["（四）城建税：", (n) => n.includes("城建税") || n.includes("城市维护建设税")],
@@ -1869,11 +2267,14 @@ export function LemonTaxReport() {
     let totalCurPaid = 0;
     let totalYtdPaid = 0;
 
+    // 科目名若已带「应交/已交」前缀（如种子账套的「应交所得税」），需先剥离，避免叠加成「应交应交所得税」。
+    const cleanTaxLabel = (s: string) => s.replace(/^(应交|已交)/, "");
     const pushPair = (label: string, amountYtd: number, amountCur: number, paidYtd: number, paidCur: number) => {
+        const L = cleanTaxLabel(label);
         seq += 1;
-        rows.push(item(`应交${label}`, String(seq), nf(amountYtd), nf(amountCur), { indent: true }));
+        rows.push(item(`应交${L}`, String(seq), nf(amountYtd), nf(amountCur), { indent: true }));
         seq += 1;
-        rows.push({ ...item(`已交${label}`, String(seq), nf(paidYtd), nf(paidCur), { indent: true }), ytdYoy: "", curYoy: "" });
+        rows.push({ ...item(`已交${L}`, String(seq), nf(paidYtd), nf(paidCur), { indent: true }), ytdYoy: "", curYoy: "" });
     };
 
     for (const [sec, match] of groups) {
@@ -1882,7 +2283,6 @@ export function LemonTaxReport() {
         let amountYtd = 0;
         let paidCur = 0;
         let paidYtd = 0;
-        let label = sec.replace(/^（[一二三四五六]）/, "").replace("：", "");
         for (let i = 0; i < accounts.length; i++) {
             const a = accounts[i]!;
             if (!match(a.name ?? "")) {
@@ -1893,8 +2293,10 @@ export function LemonTaxReport() {
             amountYtd += a.yearToDateAmount ?? 0;
             paidCur += a.currentPaidAmount ?? 0;
             paidYtd += a.yearToDatePaidAmount ?? 0;
-            label = a.name ?? label;
         }
+        // 组名固定为税种（增值税/所得税/消费税/城建税）；组内多个明细科目（销项、进项、已交）只汇总金额，
+        // 不能拿最后一个科目名当标签，否则「增值税」会被标成「销项税额」。
+        const label = sec.replace(/^（[一二三四五六]）/, "").replace("：", "");
         totalCur += amountCur;
         totalYtd += amountYtd;
         totalCurPaid += paidCur;
@@ -1946,8 +2348,8 @@ export function LemonTaxReport() {
                 {...stepper}
                 right={
                     <>
-                        <Btn onClick={() => void exp.run("tax", { year: period.year, month: period.month })}>导出</Btn>
-                        <Btn loading={prn.printing} onClick={() => void prn.run("tax", { year: period.year, month: period.month })}>打印</Btn>
+                        <ExportBtn onClick={() => void exp.run("tax", { year: period.year, month: period.month })}>导出</ExportBtn>
+                        <PrintBtn loading={prn.printing} onClick={() => void prn.run("tax", { year: period.year, month: period.month })}>打印</PrintBtn>
                         <ReloadButton onClick={reload} />
                     </>
                 }
@@ -2039,8 +2441,8 @@ export function LemonFinancialSummary() {
                 {...stepper}
                 right={
                     <>
-                        <Btn dropdown loading={prn.printing} onClick={() => void prn.run("financial-summary", { year: period.year, month: period.month })}>打印</Btn>
-                        <Btn onClick={() => void exp.run("financial-summary", { year: period.year, month: period.month })}>导出</Btn>
+                        <PrintBtn loading={prn.printing} onClick={() => void prn.run("financial-summary", { year: period.year, month: period.month })}>打印</PrintBtn>
+                        <ExportBtn onClick={() => void exp.run("financial-summary", { year: period.year, month: period.month })}>导出</ExportBtn>
                         <ReloadButton onClick={reload} />
                     </>
                 }

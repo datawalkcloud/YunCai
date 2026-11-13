@@ -33,7 +33,7 @@ export function LedgerPageShell({ panel, meta, error, side, children }: LedgerPa
                         <Alert
                             type="warning"
                             showIcon
-                            title={`${meta?.periodText ?? ""} 内有 ${unposted} 张草稿凭证未纳入账簿，请先在凭证页打开并保存入账。`}
+                            title={`${meta?.periodText ?? ""} 内有 ${unposted} 张暂存凭证未纳入账簿，请先在凭证页打开并保存入账。`}
                             action={
                                 accountSetId ? (
                                     <Link

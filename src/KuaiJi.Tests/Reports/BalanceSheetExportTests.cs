@@ -2,6 +2,7 @@ using System.Text;
 using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Reports.Application;
 using KuaiJi.Modules.Reports.Infrastructure;
+using NPOI.HSSF.UserModel;
 using Xunit;
 
 namespace KuaiJi.Tests.Reports;
@@ -71,7 +72,8 @@ public sealed class BalanceSheetExportTests
             [Line(1, 20_010.18m), Line(48, 20_001m), Line(51, 9.18m)]);
 
         var bytes = BalanceSheetXlsBuilder.Build(new BalanceSheetXlsModel(
-            "测试1有限公司", "2026年10月31日", "会小企01表", left, right));
+            "测试1有限公司", "2026年10月31日", "会小企01表", left, right,
+            BalanceSheetExportLayout.Balance(left, right)));
 
         Assert.True(bytes.Length > 0);
         // .xls 是 OLE2 复合文档，文件头固定为 D0 CF 11 E0
@@ -86,9 +88,59 @@ public sealed class BalanceSheetExportTests
             [Line(1, 20_010.18m), Line(48, 20_001m), Line(51, 9.18m)]);
 
         var bytes = BalanceSheetPdfBuilder.Build(new BalanceSheetPdfModel(
-            "测试1有限公司", "2026-10-31", "会小企01表", left, right));
+            "测试1有限公司", "2026-10-31", "会小企01表", left, right,
+            BalanceSheetExportLayout.Balance(left, right)));
 
         Assert.True(bytes.Length > 1_000);
         Assert.Equal("%PDF-", Encoding.ASCII.GetString(bytes, 0, 5));
+    }
+
+    [Fact]
+    public void Balance_ConcludesEqualityWhenTotalsMatch()
+    {
+        var (left, right) = BalanceSheetExportLayout.Build(
+            BalanceSheetTemplate.Enterprise,
+            [Line(1, 100m, 80m), Line(35, 40m, 30m), Line(55, 60m, 50m)]);
+
+        var balance = BalanceSheetExportLayout.Balance(left, right);
+
+        Assert.True(balance.Balanced);
+        Assert.Equal(0m, balance.EndingDifference);
+        Assert.Equal(0m, balance.OpeningDifference);
+        Assert.Contains("平衡结论：资产总计 = 负债和所有者权益（或股东权益）总计", balance.Conclusion);
+        Assert.Contains("期末 100.00 元，年初 80.00 元", balance.Conclusion);
+    }
+
+    [Fact]
+    public void Balance_ReportsDifferenceWhenTotalsDiffer()
+    {
+        var (left, right) = BalanceSheetExportLayout.Build(
+            BalanceSheetTemplate.SmallBusiness,
+            [Line(1, 20_010.18m), Line(48, 20_000m)]);
+
+        var balance = BalanceSheetExportLayout.Balance(left, right);
+
+        Assert.False(balance.Balanced);
+        Assert.Equal(10.18m, balance.EndingDifference);
+        Assert.Contains("试算不平衡，请核对数据", balance.Conclusion);
+        Assert.Contains("期末差额 10.18 元", balance.Conclusion);
+    }
+
+    [Fact]
+    public void XlsBuilder_WritesBalanceConclusionAfterBody()
+    {
+        var (left, right) = BalanceSheetExportLayout.Build(
+            BalanceSheetTemplate.SmallBusiness,
+            [Line(1, 20_010.18m), Line(48, 20_000m)]);
+
+        var bytes = BalanceSheetXlsBuilder.Build(new BalanceSheetXlsModel(
+            "测试1有限公司", "2026年10月31日", "会小企01表", left, right,
+            BalanceSheetExportLayout.Balance(left, right)));
+
+        using var stream = new MemoryStream(bytes);
+        var sheet = new HSSFWorkbook(stream).GetSheet("资产负债表");
+        var noteRow = sheet.GetRow(4 + Math.Max(left.Count, right.Count) + 1);
+        Assert.NotNull(noteRow);
+        Assert.Contains("平衡结论：试算不平衡", noteRow.GetCell(0).StringCellValue);
     }
 }

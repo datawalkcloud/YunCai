@@ -101,6 +101,7 @@ export interface AccountsetsAccountSetIdFixedassetsAssetsExportGetRequest {
 
 export interface AccountsetsAccountSetIdFixedassetsAssetsGetRequest {
     accountSetId: string;
+    period?: number;
 }
 
 export interface AccountsetsAccountSetIdFixedassetsAssetsIdClearPostRequest {
@@ -135,6 +136,11 @@ export interface AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetReques
     accountSetId: string;
 }
 
+export interface AccountsetsAccountSetIdFixedassetsAssetsPdfGetRequest {
+    accountSetId: string;
+    period?: number;
+}
+
 export interface AccountsetsAccountSetIdFixedassetsAssetsPostRequest {
     accountSetId: string;
     saveFixedAssetRequest: SaveFixedAssetRequest;
@@ -167,6 +173,8 @@ export interface AccountsetsAccountSetIdFixedassetsCategoriesPostRequest {
 export interface AccountsetsAccountSetIdFixedassetsChangesGetRequest {
     accountSetId: string;
     assetId?: string;
+    startPeriod?: number;
+    endPeriod?: number;
 }
 
 export interface AccountsetsAccountSetIdFixedassetsChangesIdVoucherPostRequest {
@@ -182,10 +190,19 @@ export interface AccountsetsAccountSetIdFixedassetsChangesIdVoucherPreviewGetReq
 
 export interface AccountsetsAccountSetIdFixedassetsCheckExportGetRequest {
     accountSetId: string;
+    startPeriod?: number;
+    endPeriod?: number;
 }
 
 export interface AccountsetsAccountSetIdFixedassetsCheckGetRequest {
     accountSetId: string;
+    startPeriod?: number;
+    endPeriod?: number;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsCheckPdfGetRequest {
+    accountSetId: string;
+    period?: number;
 }
 
 export interface AccountsetsAccountSetIdFixedassetsDepreciatePostRequest {
@@ -203,6 +220,11 @@ export interface AccountsetsAccountSetIdFixedassetsDepreciationLedgerGetRequest 
     period?: number;
 }
 
+export interface AccountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequest {
+    accountSetId: string;
+    period?: number;
+}
+
 export interface AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest {
     accountSetId: string;
     period?: number;
@@ -211,6 +233,21 @@ export interface AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest
 export interface AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest {
     accountSetId: string;
     generateDepreciationVoucherRequest: GenerateDepreciationVoucherRequest;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsInitialAssetsGetRequest {
+    accountSetId: string;
+    period?: number;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequest {
+    accountSetId: string;
+    period?: number;
+}
+
+export interface AccountsetsAccountSetIdFixedassetsInitialAssetsPostRequest {
+    accountSetId: string;
+    saveFixedAssetRequest: SaveFixedAssetRequest;
 }
 
 export interface AccountsetsAccountSetIdFixedassetsSummaryExportGetRequest {
@@ -313,6 +350,7 @@ export interface FixedAssetsApiInterface {
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsAssetsGet without sending the request
      * @param {string} accountSetId 
+     * @param {number} [period] 
      * @throws {RequiredError}
      * @memberof FixedAssetsApiInterface
      */
@@ -321,6 +359,7 @@ export interface FixedAssetsApiInterface {
     /**
      * 
      * @param {string} accountSetId 
+     * @param {number} [period] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof FixedAssetsApiInterface
@@ -474,6 +513,29 @@ export interface FixedAssetsApiInterface {
     accountsetsAccountSetIdFixedassetsAssetsImportTemplateGet(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsImportTemplateGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsAssetsPdfGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsAssetsPdfGet(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsAssetsPost without sending the request
      * @param {string} accountSetId 
      * @param {SaveFixedAssetRequest} saveFixedAssetRequest 
@@ -613,6 +675,8 @@ export interface FixedAssetsApiInterface {
      * Creates request options for accountsetsAccountSetIdFixedassetsChangesGet without sending the request
      * @param {string} accountSetId 
      * @param {string} [assetId] 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
      * @throws {RequiredError}
      * @memberof FixedAssetsApiInterface
      */
@@ -622,6 +686,8 @@ export interface FixedAssetsApiInterface {
      * 
      * @param {string} accountSetId 
      * @param {string} [assetId] 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof FixedAssetsApiInterface
@@ -683,6 +749,8 @@ export interface FixedAssetsApiInterface {
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsCheckExportGet without sending the request
      * @param {string} accountSetId 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
      * @throws {RequiredError}
      * @memberof FixedAssetsApiInterface
      */
@@ -691,6 +759,8 @@ export interface FixedAssetsApiInterface {
     /**
      * 
      * @param {string} accountSetId 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof FixedAssetsApiInterface
@@ -704,6 +774,8 @@ export interface FixedAssetsApiInterface {
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsCheckGet without sending the request
      * @param {string} accountSetId 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
      * @throws {RequiredError}
      * @memberof FixedAssetsApiInterface
      */
@@ -712,6 +784,8 @@ export interface FixedAssetsApiInterface {
     /**
      * 
      * @param {string} accountSetId 
+     * @param {number} [startPeriod] 
+     * @param {number} [endPeriod] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof FixedAssetsApiInterface
@@ -721,6 +795,29 @@ export interface FixedAssetsApiInterface {
     /**
      */
     accountsetsAccountSetIdFixedassetsCheckGet(requestParameters: AccountsetsAccountSetIdFixedassetsCheckGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FixedAssetCheckRowDto>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsCheckPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsCheckPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsCheckPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsCheckPdfGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsCheckPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsCheckPdfGet(requestParameters: AccountsetsAccountSetIdFixedassetsCheckPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsDepreciatePost without sending the request
@@ -792,6 +889,29 @@ export interface FixedAssetsApiInterface {
     accountsetsAccountSetIdFixedassetsDepreciationLedgerGet(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DepreciationLedgerRowDto>>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGet(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationVoucherGet without sending the request
      * @param {string} accountSetId 
      * @param {number} [period] 
@@ -836,6 +956,75 @@ export interface FixedAssetsApiInterface {
     /**
      */
     accountsetsAccountSetIdFixedassetsDepreciationVoucherPost(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DepreciationVoucherInfoDto>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsInitialAssetsGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsInitialAssetsGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsInitialAssetsGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<FixedAssetDto>>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsInitialAssetsGet(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FixedAssetDto>>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsInitialAssetsPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {number} [period] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsInitialAssetsPdfGet(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsInitialAssetsPost without sending the request
+     * @param {string} accountSetId 
+     * @param {SaveFixedAssetRequest} saveFixedAssetRequest 
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsInitialAssetsPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPostRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {SaveFixedAssetRequest} saveFixedAssetRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FixedAssetsApiInterface
+     */
+    accountsetsAccountSetIdFixedassetsInitialAssetsPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetDto>>;
+
+    /**
+     */
+    accountsetsAccountSetIdFixedassetsInitialAssetsPost(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetDto>;
 
     /**
      * Creates request options for accountsetsAccountSetIdFixedassetsSummaryExportGet without sending the request
@@ -1102,6 +1291,10 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -1473,6 +1666,52 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsAssetsPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsAssetsPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/assets/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsPdfGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsAssetsPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsAssetsPdfGet(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsAssetsPdfGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsAssetsPost without sending the request
      */
     async accountsetsAccountSetIdFixedassetsAssetsPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsAssetsPostRequest): Promise<runtime.RequestOpts> {
@@ -1791,6 +2030,14 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
             queryParameters['assetId'] = requestParameters['assetId'];
         }
 
+        if (requestParameters['startPeriod'] != null) {
+            queryParameters['startPeriod'] = requestParameters['startPeriod'];
+        }
+
+        if (requestParameters['endPeriod'] != null) {
+            queryParameters['endPeriod'] = requestParameters['endPeriod'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -1945,6 +2192,14 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
 
         const queryParameters: any = {};
 
+        if (requestParameters['startPeriod'] != null) {
+            queryParameters['startPeriod'] = requestParameters['startPeriod'];
+        }
+
+        if (requestParameters['endPeriod'] != null) {
+            queryParameters['endPeriod'] = requestParameters['endPeriod'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -1987,6 +2242,14 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
 
         const queryParameters: any = {};
 
+        if (requestParameters['startPeriod'] != null) {
+            queryParameters['startPeriod'] = requestParameters['startPeriod'];
+        }
+
+        if (requestParameters['endPeriod'] != null) {
+            queryParameters['endPeriod'] = requestParameters['endPeriod'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -2015,6 +2278,52 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
     async accountsetsAccountSetIdFixedassetsCheckGet(requestParameters: AccountsetsAccountSetIdFixedassetsCheckGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FixedAssetCheckRowDto>> {
         const response = await this.accountsetsAccountSetIdFixedassetsCheckGetRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsCheckPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsCheckPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsCheckPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsCheckPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/check/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsCheckPdfGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsCheckPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsCheckPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsCheckPdfGet(requestParameters: AccountsetsAccountSetIdFixedassetsCheckPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsCheckPdfGetRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -2164,6 +2473,52 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/depreciation-ledger/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGet(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsDepreciationLedgerPdfGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdFixedassetsDepreciationVoucherGet without sending the request
      */
     async accountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherGetRequest): Promise<runtime.RequestOpts> {
@@ -2260,6 +2615,152 @@ export class FixedAssetsApi extends runtime.BaseAPI implements FixedAssetsApiInt
      */
     async accountsetsAccountSetIdFixedassetsDepreciationVoucherPost(requestParameters: AccountsetsAccountSetIdFixedassetsDepreciationVoucherPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DepreciationVoucherInfoDto> {
         const response = await this.accountsetsAccountSetIdFixedassetsDepreciationVoucherPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsInitialAssetsGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsInitialAssetsGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsInitialAssetsGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/initial-assets`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsInitialAssetsGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<FixedAssetDto>>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsInitialAssetsGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(FixedAssetDtoFromJSON));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsInitialAssetsGet(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<FixedAssetDto>> {
+        const response = await this.accountsetsAccountSetIdFixedassetsInitialAssetsGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsInitialAssetsPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsInitialAssetsPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['period'] != null) {
+            queryParameters['period'] = requestParameters['period'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/initial-assets/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRaw(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsInitialAssetsPdfGet(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdFixedassetsInitialAssetsPdfGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdFixedassetsInitialAssetsPost without sending the request
+     */
+    async accountsetsAccountSetIdFixedassetsInitialAssetsPostRequestOpts(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdFixedassetsInitialAssetsPost().'
+            );
+        }
+
+        if (requestParameters['saveFixedAssetRequest'] == null) {
+            throw new runtime.RequiredError(
+                'saveFixedAssetRequest',
+                'Required parameter "saveFixedAssetRequest" was null or undefined when calling accountsetsAccountSetIdFixedassetsInitialAssetsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/accountsets/{accountSetId}/fixedassets/initial-assets`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveFixedAssetRequestToJSON(requestParameters['saveFixedAssetRequest']),
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsInitialAssetsPostRaw(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FixedAssetDto>> {
+        const requestOptions = await this.accountsetsAccountSetIdFixedassetsInitialAssetsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FixedAssetDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdFixedassetsInitialAssetsPost(requestParameters: AccountsetsAccountSetIdFixedassetsInitialAssetsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FixedAssetDto> {
+        const response = await this.accountsetsAccountSetIdFixedassetsInitialAssetsPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

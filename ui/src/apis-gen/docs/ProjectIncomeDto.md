@@ -9,6 +9,7 @@ Name | Type
 `year` | number
 `month` | number
 `periodText` | string
+`projects` | [Array&lt;IncomeProjectColumnDto&gt;](IncomeProjectColumnDto.md)
 `rows` | [Array&lt;IncomeProjectRowDto&gt;](IncomeProjectRowDto.md)
 
 ## Example
@@ -21,6 +22,7 @@ const example = {
   "year": null,
   "month": null,
   "periodText": null,
+  "projects": null,
   "rows": null,
 } satisfies ProjectIncomeDto
 

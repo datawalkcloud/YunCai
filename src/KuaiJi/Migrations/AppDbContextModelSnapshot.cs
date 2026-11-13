@@ -60,6 +60,12 @@ namespace KuaiJi.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("carried_period");
 
+                    b.Property<decimal>("CityBuildTaxRate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(7m)
+                        .HasColumnName("city_build_tax_rate");
+
                     b.Property<int>("ClosedPeriod")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -71,6 +77,12 @@ namespace KuaiJi.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("company_name");
+
+                    b.Property<decimal>("EducationSurchargeRate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(3m)
+                        .HasColumnName("education_surcharge_rate");
 
                     b.Property<string>("EnabledAssistTypes")
                         .IsRequired()
@@ -126,6 +138,12 @@ namespace KuaiJi.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("is_export_enterprise");
+
+                    b.Property<decimal>("LocalEducationSurchargeRate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(2m)
+                        .HasColumnName("local_education_surcharge_rate");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -943,6 +961,12 @@ namespace KuaiJi.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("dept");
 
+                    b.Property<bool>("IsInitial")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_initial");
+
                     b.Property<int>("LastDepreciatedPeriod")
                         .HasColumnType("integer")
                         .HasColumnName("last_depreciated_period");
@@ -1324,7 +1348,7 @@ namespace KuaiJi.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountSetId", "Code")
+                    b.HasIndex("AccountSetId", "Type", "Code")
                         .IsUnique();
 
                     b.HasIndex("AccountSetId", "Type", "Name")
@@ -1931,6 +1955,10 @@ namespace KuaiJi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("account_set_id");
 
+                    b.Property<decimal?>("CompanyRate")
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("company_rate");
+
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid")
                         .HasColumnName("employee_id");
@@ -1942,6 +1970,10 @@ namespace KuaiJi.Migrations
                     b.Property<Guid>("InsuranceItemId")
                         .HasColumnType("uuid")
                         .HasColumnName("insurance_item_id");
+
+                    b.Property<decimal?>("PersonalRate")
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("personal_rate");
 
                     b.HasKey("Id");
 
@@ -1962,6 +1994,12 @@ namespace KuaiJi.Migrations
                     b.Property<Guid>("AccountSetId")
                         .HasColumnType("uuid")
                         .HasColumnName("account_set_id");
+
+                    b.Property<decimal>("BaseAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("base_amount");
 
                     b.Property<decimal>("CompanyRate")
                         .HasColumnType("numeric(5,2)")

@@ -176,8 +176,39 @@ namespace KuaiJi.Modules.Tax.Application
                 Imported = outcome.Imported,
                 Skipped = outcome.Skipped,
                 Warnings = outcome.Warnings,
+                Summary = Summarize(fetch.Rows, start, end),
                 FetchedAt = fetch.FetchedAt,
             };
+        }
+
+        /// <summary>
+        /// 按销项/进项汇总税局取回的发票。两个方向都出一行，没取到也报 0 张，
+        /// 页面据此说明「这个区间确实没有票」而不是「没查」。
+        /// </summary>
+        private static IReadOnlyList<TaxInvoiceSyncSummaryDto> Summarize(
+            IReadOnlyList<TaxInvoiceRecord> rows,
+            DateOnly start,
+            DateOnly end)
+        {
+            InvoiceDirection[] directions = [InvoiceDirection.Sales, InvoiceDirection.Purchase];
+            return directions
+                .Select(direction =>
+                {
+                    var group = rows.Where(row => row.Direction == direction).ToList();
+                    var amount = group.Sum(row => row.Amount);
+                    var tax = group.Sum(row => row.Tax);
+                    return new TaxInvoiceSyncSummaryDto
+                    {
+                        Direction = direction == InvoiceDirection.Sales ? "销项发票" : "进项发票",
+                        PeriodStart = start,
+                        PeriodEnd = end,
+                        Count = group.Count,
+                        Amount = amount,
+                        Tax = tax,
+                        Total = amount + tax,
+                    };
+                })
+                .ToList();
         }
 
         private static TaxInvoiceSyncResultDto Failed(string message) => new()

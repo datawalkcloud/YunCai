@@ -77,6 +77,9 @@ namespace KuaiJi.Modules.FixedAssets.Domain
         /// <summary>资产状态。</summary>
         public FixedAssetStatus Status { get; private set; }
 
+        /// <summary>是否为期初（资产初始化）卡片；期初卡片只在「资产初始化」页签展示。</summary>
+        public bool IsInitial { get; private set; }
+
         /// <summary>最后计提折旧的期间（yyyyMM，0 表示未计提过）。</summary>
         public int LastDepreciatedPeriod { get; private set; }
 
@@ -91,7 +94,7 @@ namespace KuaiJi.Modules.FixedAssets.Domain
         public decimal MonthlyDepreciation(decimal residualRate, int months)
             => months <= 0 ? 0m : decimal.Round(DepreciableBase(residualRate) / months, 2);
 
-        /// <summary>新建资产卡片，须归属于某一账套。</summary>
+        /// <summary>新建资产卡片，须归属于某一账套；<paramref name="isInitial"/> 标记期初初始化卡片。</summary>
         public static FixedAsset Create(
             Guid accountSetId,
             string code,
@@ -100,7 +103,8 @@ namespace KuaiJi.Modules.FixedAssets.Domain
             string? model,
             string? dept,
             DateOnly startDate,
-            decimal originValue)
+            decimal originValue,
+            bool isInitial = false)
         {
             GuardCommon(code, name, startDate, originValue);
             return new FixedAsset(
@@ -112,7 +116,10 @@ namespace KuaiJi.Modules.FixedAssets.Domain
                 Normalize(model),
                 Normalize(dept),
                 startDate,
-                originValue);
+                originValue)
+            {
+                IsInitial = isInitial,
+            };
         }
 
         /// <summary>修改卡片要素（编号 / 类别 / 名称 / 型号 / 部门 / 起用日 / 原值）。</summary>

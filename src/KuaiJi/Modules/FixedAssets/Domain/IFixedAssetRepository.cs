@@ -5,6 +5,9 @@ namespace KuaiJi.Modules.FixedAssets.Domain
     {
         // —— 类别 ——
         Task<FixedAssetCategory?> GetCategoryByIdAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default);
+
+        /// <summary>跟踪查询（需要回写时使用；AsNoTracking 实例改完不落库）。</summary>
+        Task<FixedAssetCategory?> GetCategoryForUpdateAsync(Guid accountSetId, Guid id, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<FixedAssetCategory>> GetCategoriesAsync(Guid accountSetId, CancellationToken cancellationToken = default);
         Task<bool> CategoryCodeExistsAsync(Guid accountSetId, string code, Guid? excludeId = null, CancellationToken cancellationToken = default);
         Task AddCategoryAsync(FixedAssetCategory category, CancellationToken cancellationToken = default);

@@ -10,6 +10,7 @@ namespace KuaiJi.Modules.Reports.Application
     /// 部门利润表与项目利润表应用服务：从已过账凭证的损益类分录出发，
     /// 按分录登记的辅助核算维度（部门/项目）拆解收入、成本费用，并计算各行利润。
     /// 含「本年利润」科目的结转凭证剔除，与利润表口径一致。
+    /// 部门与项目共用同一套行归集逻辑（<see cref="BuildAssistRows"/>），仅维度类型与列头不同。
     /// </summary>
     public sealed class AssistIncomeService
     {
@@ -35,7 +36,7 @@ namespace KuaiJi.Modules.Reports.Application
         {
             var data = await LoadAsync(accountSetId, cancellationToken);
             var (resolvedYear, resolvedMonth) = ReportPeriodResolver.Resolve(data.AccountSet, data.PostedVouchers, year, month);
-            var (currentByDeptLine, ytdByDeptLine, departmentIds) = AccumulateByAssist(
+            var (currentByDept, ytdByDept, departmentIds) = AccumulateByAssist(
                 data, AssistType.Department, resolvedYear, resolvedMonth);
 
             var departments = departmentIds
@@ -44,7 +45,16 @@ namespace KuaiJi.Modules.Reports.Application
                 .Select(a => new IncomeDepartmentDto { Id = a!.Id, Name = a.Name })
                 .ToList();
 
-            var rows = BuildDepartmentRows(currentByDeptLine, ytdByDeptLine, departmentIds, departments.Count);
+            var rows = BuildAssistRows(departmentIds, currentByDept, ytdByDept)
+                .Select(r => new IncomeDepartmentRowDto
+                {
+                    Item = r.Item,
+                    Line = r.Line,
+                    Amounts = r.Amounts,
+                    Total = r.Total,
+                })
+                .ToList();
+
             return new DepartmentIncomeDto
             {
                 Year = resolvedYear,
@@ -55,39 +65,41 @@ namespace KuaiJi.Modules.Reports.Application
             };
         }
 
-        /// <summary>项目利润表：每个项目一行，本期利润额与本年累计利润额。</summary>
+        /// <summary>项目利润表：按辅助核算「项目」维度拆解收入、成本费用与利润，每个项目一列并附合计列。</summary>
         public async Task<ProjectIncomeDto> GetByProjectAsync(Guid accountSetId, int? year, int? month, CancellationToken cancellationToken = default)
         {
             var data = await LoadAsync(accountSetId, cancellationToken);
             var (resolvedYear, resolvedMonth) = ReportPeriodResolver.Resolve(data.AccountSet, data.PostedVouchers, year, month);
-            var (currentByProject, ytdByProject, _) = AccumulateProfitByAssist(
+            var (currentByProject, ytdByProject, projectIds) = AccumulateByAssist(
                 data, AssistType.Project, resolvedYear, resolvedMonth);
 
-            var rows = new List<IncomeProjectRowDto>();
-            foreach (var projectId in currentByProject.Keys.Union(ytdByProject.Keys).OrderBy(id =>
-                     data.AssistItemsById.GetValueOrDefault(id)?.Code ?? string.Empty))
-            {
-                var item = data.AssistItemsById.GetValueOrDefault(projectId);
-                if (item is null)
-                {
-                    continue;
-                }
+            // 项目列按编码排序，与金额列下标保持一致。
+            var orderedProjectIds = projectIds
+                .OrderBy(id => data.AssistItemsById.GetValueOrDefault(id)?.Code ?? string.Empty)
+                .ToList();
 
-                rows.Add(new IncomeProjectRowDto
+            var projects = orderedProjectIds
+                .Select(id => data.AssistItemsById.GetValueOrDefault(id))
+                .Where(a => a is not null)
+                .Select(a => new IncomeProjectColumnDto { Id = a!.Id, Name = a.Name })
+                .ToList();
+
+            var rows = BuildAssistRows(orderedProjectIds, currentByProject, ytdByProject)
+                .Select(r => new IncomeProjectRowDto
                 {
-                    Id = item.Id,
-                    Name = item.Name,
-                    Line = rows.Count + 1,
-                    Current = Math.Round(currentByProject.GetValueOrDefault(projectId), 2, MidpointRounding.ToEven),
-                    YearToDate = Math.Round(ytdByProject.GetValueOrDefault(projectId), 2, MidpointRounding.ToEven),
-                });
-            }
+                    Item = r.Item,
+                    Line = r.Line,
+                    Amounts = r.Amounts,
+                    Total = r.Total,
+                })
+                .ToList();
 
             return new ProjectIncomeDto
             {
                 Year = resolvedYear,
                 Month = resolvedMonth,
                 PeriodText = $"{resolvedYear:D4}年{resolvedMonth:D2}月",
+                Projects = projects,
                 Rows = rows,
             };
         }
@@ -186,129 +198,77 @@ namespace KuaiJi.Modules.Reports.Application
             return (currentByAssist, ytdByAssist, assistItemIds);
         }
 
-        /// <summary>项目维度的损益净额（收入为正、成本费用为负），返回 (本期, 本年累计, 出现过的档案 id)。</summary>
-        private (Dictionary<Guid, decimal> currentByProject,
-                 Dictionary<Guid, decimal> ytdByProject,
-                 List<Guid> assistItemIds) AccumulateProfitByAssist(
-            (AccountSet AccountSet, Dictionary<Guid, Account> AccountsById, List<Voucher> PostedVouchers, Dictionary<Guid, AssistItem> AssistItemsById) data,
-            AssistType assistType,
-            int resolvedYear,
-            int resolvedMonth)
-        {
-            var (currentByAssist, ytdByAssist, assistItemIds) = AccumulateByAssist(data, assistType, resolvedYear, resolvedMonth);
-            return (SumProfit(currentByAssist), SumProfit(ytdByAssist), assistItemIds);
-        }
-
-        /// <summary>把行次金额折叠成项目利润：收入行（贷方为正）加总、费用行（借方为正）取负后相加。</summary>
-        private static Dictionary<Guid, decimal> SumProfit(Dictionary<Guid, Dictionary<int, decimal>> byAssist)
-        {
-            var result = new Dictionary<Guid, decimal>();
-            foreach (var (assistItemId, byLine) in byAssist)
-            {
-                decimal profit = 0m;
-                foreach (var (line, amount) in byLine)
-                {
-                    profit += IncomeLineMapper.IsRevenueLine(line) ? amount : -amount;
-                }
-
-                result[assistItemId] = profit;
-            }
-
-            return result;
-        }
-
-        /// <summary>组装部门利润表行集：明细项目行 + 营业利润/利润总额/净利润计算行。</summary>
-        private static List<IncomeDepartmentRowDto> BuildDepartmentRows(
+        /// <summary>
+        /// 组装维度利润表行集：损益明细行（按行次升序去重）+ 营业利润/利润总额/净利润计算行。
+        /// 每个维度一列（金额与列头顺序对齐），另计算合计列（所有维度同行的本期/累计之和）。
+        /// 合计列由各维度金额直接相加得出——计算行也是线性运算，故合计等于按合计口径再算一次。
+        /// </summary>
+        private static List<AssistRow> BuildAssistRows(
+            IReadOnlyList<Guid> itemIds,
             Dictionary<Guid, Dictionary<int, decimal>> currentByAssist,
-            Dictionary<Guid, Dictionary<int, decimal>> ytdByAssist,
-            IReadOnlyList<Guid> departmentIds,
-            int departmentCount)
+            Dictionary<Guid, Dictionary<int, decimal>> ytdByAssist)
         {
-            // 部门利润表展示行：损益明细行（按行次升序去重）+ 三个计算行。
             var detailLines = currentByAssist.Values.SelectMany(d => d.Keys)
                 .Union(ytdByAssist.Values.SelectMany(d => d.Keys))
                 .Distinct()
                 .OrderBy(l => l)
                 .ToList();
 
-            decimal LineAmount(Dictionary<Guid, Dictionary<int, decimal>> source, int line, int deptIndex)
+            decimal LineAmount(Dictionary<Guid, Dictionary<int, decimal>> source, int line, int index)
             {
-                if (deptIndex >= departmentIds.Count)
+                if (index >= itemIds.Count)
                 {
                     return 0m;
                 }
 
-                return source.GetValueOrDefault(departmentIds[deptIndex]).GetValueOrDefault(line);
+                return source.GetValueOrDefault(itemIds[index]).GetValueOrDefault(line);
             }
 
-            decimal Profit(Dictionary<Guid, Dictionary<int, decimal>> source, int deptIndex)
-            {
-                // 利润 = Σ收入行 + Σ(-费用行)，再扣减营业外收支（含在行集里，直接对全部行求「收入正费用负」）。
-                decimal total = 0m;
-                foreach (var line in detailLines)
+            IncomeDimensionAmountDto Round(decimal current, decimal yearToDate) =>
+                new()
                 {
-                    var amount = LineAmount(source, line, deptIndex);
-                    total += IncomeLineMapper.IsRevenueLine(line) ? amount : -amount;
-                }
+                    Current = Math.Round(current, 2, MidpointRounding.ToEven),
+                    YearToDate = Math.Round(yearToDate, 2, MidpointRounding.ToEven),
+                };
 
-                return total;
-            }
+            IncomeDimensionAmountDto SumAmounts(IReadOnlyList<IncomeDimensionAmountDto> list) =>
+                Round(list.Sum(a => a.Current), list.Sum(a => a.YearToDate));
 
-            var rows = new List<IncomeDepartmentRowDto>();
+            var rows = new List<AssistRow>();
             foreach (var line in detailLines)
             {
-                var amounts = new List<IncomeDepartmentAmountDto>();
-                for (var deptIndex = 0; deptIndex < departmentCount; deptIndex++)
+                var amounts = new List<IncomeDimensionAmountDto>();
+                for (var i = 0; i < itemIds.Count; i++)
                 {
-                    amounts.Add(new IncomeDepartmentAmountDto
-                    {
-                        Current = Math.Round(LineAmount(currentByAssist, line, deptIndex), 2, MidpointRounding.ToEven),
-                        YearToDate = Math.Round(LineAmount(ytdByAssist, line, deptIndex), 2, MidpointRounding.ToEven),
-                    });
+                    amounts.Add(Round(LineAmount(currentByAssist, line, i), LineAmount(ytdByAssist, line, i)));
                 }
 
-                rows.Add(new IncomeDepartmentRowDto
-                {
-                    Item = IncomeLineMapper.LineName(line),
-                    Line = rows.Count + 1,
-                    Amounts = amounts,
-                });
+                rows.Add(new AssistRow(IncomeLineMapper.LineName(line), line, amounts, SumAmounts(amounts)));
             }
 
-            // 营业利润 = 收入行 - 营业成本/税金及附加/期间费用（不含营业外与所得税）；
-            // 利润总额 = 营业利润 + 营业外收支；净利润 = 利润总额 - 所得税费用。
-            void AddComputedRow(string name, Func<int, Dictionary<Guid, Dictionary<int, decimal>>, decimal> compute)
+            void AddComputedRow(string name, int line, Func<int, Dictionary<Guid, Dictionary<int, decimal>>, decimal> compute)
             {
-                var amounts = new List<IncomeDepartmentAmountDto>();
-                for (var deptIndex = 0; deptIndex < departmentCount; deptIndex++)
+                var amounts = new List<IncomeDimensionAmountDto>();
+                for (var i = 0; i < itemIds.Count; i++)
                 {
-                    amounts.Add(new IncomeDepartmentAmountDto
-                    {
-                        Current = Math.Round(compute(deptIndex, currentByAssist), 2, MidpointRounding.ToEven),
-                        YearToDate = Math.Round(compute(deptIndex, ytdByAssist), 2, MidpointRounding.ToEven),
-                    });
+                    amounts.Add(Round(compute(i, currentByAssist), compute(i, ytdByAssist)));
                 }
 
-                rows.Add(new IncomeDepartmentRowDto
-                {
-                    Item = name,
-                    Line = rows.Count + 1,
-                    Amounts = amounts,
-                });
+                rows.Add(new AssistRow(name, line, amounts, SumAmounts(amounts)));
             }
 
-            decimal OperatingProfit(int deptIndex, Dictionary<Guid, Dictionary<int, decimal>> source)
+            decimal OperatingProfit(int index, Dictionary<Guid, Dictionary<int, decimal>> source)
             {
                 decimal revenue = 0m;
                 decimal expense = 0m;
                 foreach (var line in detailLines)
                 {
-                    var amount = LineAmount(source, line, deptIndex);
                     if (line is 12 or 14 or 17)
                     {
                         continue; // 营业外收支与所得税不计入营业利润
                     }
 
+                    var amount = LineAmount(source, line, index);
                     if (IncomeLineMapper.IsRevenueLine(line))
                     {
                         revenue += amount;
@@ -322,22 +282,29 @@ namespace KuaiJi.Modules.Reports.Application
                 return revenue - expense;
             }
 
-            decimal TotalProfit(int deptIndex, Dictionary<Guid, Dictionary<int, decimal>> source)
+            decimal TotalProfit(int index, Dictionary<Guid, Dictionary<int, decimal>> source)
             {
-                var operating = OperatingProfit(deptIndex, source);
-                var nonOperating = LineAmount(source, 12, deptIndex) - LineAmount(source, 14, deptIndex);
+                var operating = OperatingProfit(index, source);
+                var nonOperating = LineAmount(source, 12, index) - LineAmount(source, 14, index);
                 return operating + nonOperating;
             }
 
-            decimal NetProfit(int deptIndex, Dictionary<Guid, Dictionary<int, decimal>> source)
+            decimal NetProfit(int index, Dictionary<Guid, Dictionary<int, decimal>> source)
             {
-                return TotalProfit(deptIndex, source) - LineAmount(source, 17, deptIndex);
+                return TotalProfit(index, source) - LineAmount(source, 17, index);
             }
 
-            AddComputedRow("营业利润", OperatingProfit);
-            AddComputedRow("利润总额", TotalProfit);
-            AddComputedRow("净利润", NetProfit);
-            return rows;
+            AddComputedRow("营业利润", 11, OperatingProfit);
+            AddComputedRow("利润总额", 16, TotalProfit);
+            AddComputedRow("净利润", 18, NetProfit);
+            return rows.OrderBy(r => r.Line).ToList();
         }
+
+        /// <summary>维度利润表中间行：项目名称、行次、各维度金额与合计。</summary>
+        private sealed record AssistRow(
+            string Item,
+            int Line,
+            IReadOnlyList<IncomeDimensionAmountDto> Amounts,
+            IncomeDimensionAmountDto Total);
     }
 }

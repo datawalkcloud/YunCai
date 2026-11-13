@@ -181,7 +181,7 @@ export default function AssistCombinePage() {
                     columns={columns}
                     data={rows}
                     loading={query.loading}
-                    emptyText="该区间内无已过账的分录数据。"
+                    emptyText="该区间内无正常凭证的分录数据。"
                     rowKey={(row) => row.rowKey}
                     footer={
                         <Table.Summary.Row>

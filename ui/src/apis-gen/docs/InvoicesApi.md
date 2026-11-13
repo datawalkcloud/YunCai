@@ -18,6 +18,7 @@ All URIs are relative to *http://localhost:5271*
 | [**accountsetsAccountSetIdInvoicesIdVoucherPost**](InvoicesApi.md#accountsetsaccountsetidinvoicesidvoucherpost) | **POST** /accountsets/{accountSetId}/invoices/{id}/voucher |  |
 | [**accountsetsAccountSetIdInvoicesImportPost**](InvoicesApi.md#accountsetsaccountsetidinvoicesimportpost) | **POST** /accountsets/{accountSetId}/invoices/import |  |
 | [**accountsetsAccountSetIdInvoicesImportTemplateGet**](InvoicesApi.md#accountsetsaccountsetidinvoicesimporttemplateget) | **GET** /accountsets/{accountSetId}/invoices/import-template |  |
+| [**accountsetsAccountSetIdInvoicesPdfGet**](InvoicesApi.md#accountsetsaccountsetidinvoicespdfget) | **GET** /accountsets/{accountSetId}/invoices/pdf |  |
 | [**accountsetsAccountSetIdInvoicesPost**](InvoicesApi.md#accountsetsaccountsetidinvoicespost) | **POST** /accountsets/{accountSetId}/invoices |  |
 | [**accountsetsAccountSetIdInvoicesSummaryGet**](InvoicesApi.md#accountsetsaccountsetidinvoicessummaryget) | **GET** /accountsets/{accountSetId}/invoices/summary |  |
 | [**accountsetsAccountSetIdInvoicesVouchersPost**](InvoicesApi.md#accountsetsaccountsetidinvoicesvoucherspost) | **POST** /accountsets/{accountSetId}/invoices/vouchers |  |
@@ -998,6 +999,86 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **accountSetId** | `string` |  | [Defaults to `undefined`] |
 | **direction** | `number` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | OK |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## accountsetsAccountSetIdInvoicesPdfGet
+
+> accountsetsAccountSetIdInvoicesPdfGet(accountSetId, direction, startDate, endDate, status, period)
+
+
+
+### Example
+
+```ts
+import {
+  Configuration,
+  InvoicesApi,
+} from '';
+import type { AccountsetsAccountSetIdInvoicesPdfGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new InvoicesApi();
+
+  const body = {
+    // string
+    accountSetId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number (optional)
+    direction: 56,
+    // Date (optional)
+    startDate: 2013-10-20,
+    // Date (optional)
+    endDate: 2013-10-20,
+    // number (optional)
+    status: 56,
+    // string (optional)
+    period: period_example,
+  } satisfies AccountsetsAccountSetIdInvoicesPdfGetRequest;
+
+  try {
+    const data = await api.accountsetsAccountSetIdInvoicesPdfGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accountSetId** | `string` |  | [Defaults to `undefined`] |
+| **direction** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **startDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **endDate** | `Date` |  | [Optional] [Defaults to `undefined`] |
+| **status** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **period** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 

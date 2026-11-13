@@ -150,14 +150,17 @@ namespace KuaiJi.Modules.Closing.Application
             var balanceById = ComputeBalanceById(accounts, posted, monthEnd);
 
             var bills = await _salaryRepository.GetBillsAsync(accountSetId, year * 100 + month, cancellationToken);
+            var surtaxRates = SurtaxRatesOf(accountSet);
             var items = new List<PreCloseItemDto>();
+            var (debitById, creditById) = ClosingMath.ComputePeriodSums(posted, MonthStart(year, month), monthEnd);
 
             foreach (var definition in PreClosePlanner.Definitions)
             {
                 items.Add(definition.Source switch
                 {
                     PreCloseSource.Salary => BuildSalaryItem(definition, bills),
-                    PreCloseSource.Ledger => BuildLedgerItem(definition, accounts, balanceById, posted, vouchers, year, month, accountSet.IncomeTaxRate),
+                    PreCloseSource.Check => BuildCheckItem(definition, accounts, balanceById, posted, year, month, accountSet.IncomeTaxRate, surtaxRates),
+                    PreCloseSource.Ledger => BuildLedgerItem(definition, accounts, balanceById, posted, vouchers, year, month, accountSet.IncomeTaxRate, surtaxRates),
                     _ => new PreCloseItemDto
                     {
                         Key = definition.Key,
@@ -169,6 +172,13 @@ namespace KuaiJi.Modules.Closing.Application
                 });
             }
 
+            // 自定义结转模板同样在期末检查出卡片（柠檬云的计提工资、结转制造费用等即模板项）。
+            var templates = await _closingTemplateRepository.GetAllAsync(accountSetId, cancellationToken);
+            foreach (var template in templates.OrderBy(t => t.Name, StringComparer.Ordinal))
+            {
+                items.Add(BuildTemplateItem(template, vouchers, year, month, debitById, creditById, balanceById));
+            }
+
             return new PreCloseListDto
             {
                 Year = year,
@@ -178,7 +188,7 @@ namespace KuaiJi.Modules.Closing.Application
             };
         }
 
-        /// <summary>生成单个预置结转项（账簿类）的凭证并直接过账；工资类与未接入项由调用方走对应模块。</summary>
+        /// <summary>生成单个期末检查项的凭证并直接过账；工资类由调用方走对应模块，已入账检查项不出票。</summary>
         public async Task<GeneratePreCloseResultDto> GeneratePreCloseVoucherAsync(
             Guid accountSetId,
             string operatorName,
@@ -187,12 +197,30 @@ namespace KuaiJi.Modules.Closing.Application
         {
             var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
             ValidatePeriod(request.Year, request.Month);
+            EnsurePeriodOpen(accountSet, request.Year, request.Month);
+
+            if (request.Key.StartsWith(TemplateKeyPrefix, StringComparison.Ordinal))
+            {
+                var idText = request.Key[TemplateKeyPrefix.Length..];
+                if (!Guid.TryParse(idText, out var templateId))
+                {
+                    throw new ClosingException("结转模板标识不合法。");
+                }
+
+                return await GenerateTemplateVoucherAsync(
+                    accountSet, accountSetId, operatorName, templateId, request.Year, request.Month, cancellationToken);
+            }
 
             var definition = PreClosePlanner.Definitions.FirstOrDefault(d => d.Key == request.Key)
                              ?? throw new ClosingException("未知的结转项。");
             if (definition.Source == PreCloseSource.Salary)
             {
                 throw new ClosingException("工资类结转项请在「工资」模块生成凭证。");
+            }
+
+            if (definition.Source == PreCloseSource.Check)
+            {
+                throw new ClosingException($"「{definition.Title}」是已入账检查项，本期不需要生成凭证。");
             }
 
             if (definition.Source != PreCloseSource.Ledger)
@@ -202,17 +230,6 @@ namespace KuaiJi.Modules.Closing.Application
 
             var year = request.Year;
             var month = request.Month;
-            var key = PeriodKey(year, month);
-            if (key <= accountSet.ClosedPeriod)
-            {
-                throw new ClosingException($"该期间已结账（已结账至 {accountSet.ClosedPeriodText()}），不能再生成凭证。");
-            }
-
-            if (key <= accountSet.CarriedPeriod)
-            {
-                throw new ClosingException($"该期间已结转损益，如需补录请先「撤销结转」。");
-            }
-
             var monthEnd = MonthEnd(year, month);
             var accounts = await _accountRepository.GetAllAsync(accountSetId, cancellationToken);
             var vouchers = await LoadLiveVouchers(accountSetId, cancellationToken);
@@ -232,7 +249,7 @@ namespace KuaiJi.Modules.Closing.Application
             }
 
             var plan = PreClosePlanner.Build(
-                definition.Key, summary, accounts, balanceById, accountSet.IncomeTaxRate, posted, year, monthEnd);
+                definition.Key, summary, accounts, balanceById, accountSet.IncomeTaxRate, SurtaxRatesOf(accountSet), posted, year, monthEnd);
             if (!plan.Available)
             {
                 throw new ClosingException(plan.Hint);
@@ -268,6 +285,78 @@ namespace KuaiJi.Modules.Closing.Application
                     Label = $"{voucher.Word}-{voucher.Number}",
                     Summary = summary,
                     Kind = "PreClose",
+                },
+            };
+        }
+
+        /// <summary>期间闸门：已结账或已结转损益的期间不再生成期末检查项凭证。</summary>
+        private static void EnsurePeriodOpen(AccountSet accountSet, int year, int month)
+        {
+            var key = PeriodKey(year, month);
+            if (key <= accountSet.ClosedPeriod)
+            {
+                throw new ClosingException($"该期间已结账（已结账至 {accountSet.ClosedPeriodText()}），不能再生成凭证。");
+            }
+
+            if (key <= accountSet.CarriedPeriod)
+            {
+                throw new ClosingException("该期间已结转损益，如需补录请先「撤销结转」。");
+            }
+        }
+
+        /// <summary>按单个自定义结转模板生成凭证并直接过账（第 1 步期末检查用，不推进结转进度）。</summary>
+        private async Task<GeneratePreCloseResultDto> GenerateTemplateVoucherAsync(
+            AccountSet accountSet,
+            Guid accountSetId,
+            string operatorName,
+            Guid templateId,
+            int year,
+            int month,
+            CancellationToken cancellationToken)
+        {
+            var template = await _closingTemplateRepository.GetByIdAsync(accountSetId, templateId, cancellationToken)
+                           ?? throw new ClosingException("结转模板不存在，请刷新后重试。");
+
+            var monthEnd = MonthEnd(year, month);
+            var accounts = await _accountRepository.GetAllAsync(accountSetId, cancellationToken);
+            var vouchers = await LoadLiveVouchers(accountSetId, cancellationToken);
+            var posted = vouchers.Where(v => v.Status == VoucherStatus.Posted).ToList();
+            var balanceById = ComputeBalanceById(accounts, posted, monthEnd);
+            var (debitById, creditById) = ClosingMath.ComputePeriodSums(posted, MonthStart(year, month), monthEnd);
+
+            var lines = TemplateLines(template, debitById, creditById, balanceById);
+            if (lines.Count == 0)
+            {
+                throw new ClosingException($"本期「{template.Name}」按模板取数全为零，无可结转金额。");
+            }
+
+            var existing = FindTemplateVoucher(vouchers, year, month, lines);
+            if (existing is not null)
+            {
+                throw new ClosingException($"本期已生成过「{template.Name}」凭证（{existing.Word}-{existing.Number}），如需重做请先删除该凭证。");
+            }
+
+            var word = PreferredWord(accountSet);
+            var nextNumber = await _voucherRepository.GetMaxNumberAsync(accountSetId, word, cancellationToken) + 1;
+            var voucher = BuildTemplateVoucher(
+                accountSetId, word, nextNumber, monthEnd, operatorName, template, debitById, creditById, balanceById)
+                ?? throw new ClosingException($"本期「{template.Name}」无可结转金额。");
+
+            await _voucherRepository.AddAsync(voucher, cancellationToken);
+            await _voucherRepository.SaveChangesAsync(cancellationToken);
+
+            var totalDebit = lines.Where(x => x.Line.Direction == BalanceDirection.Debit).Sum(x => x.Amount);
+            return new GeneratePreCloseResultDto
+            {
+                Message = $"已按模板「{template.Name}」生成凭证并自动过账：{voucher.Word}-{voucher.Number}，金额 {totalDebit:0.00} 元。",
+                Voucher = new CarryVoucherRefDto
+                {
+                    Id = voucher.Id,
+                    Word = voucher.Word,
+                    Number = voucher.Number,
+                    Label = $"{voucher.Word}-{voucher.Number}",
+                    Summary = voucher.Entries.Count > 0 ? voucher.Entries[0].Summary : string.Empty,
+                    Kind = "Template",
                 },
             };
         }
@@ -435,13 +524,18 @@ namespace KuaiJi.Modules.Closing.Application
                 items.Add(Check("carry", "结转损益", "warn", "本期尚未结转损益，请先执行「结转损益」。"));
             }
 
-            // 3) 断号检查：同一凭证字内号码是否连续。
+            // 3) 凭证审核：本系统没有审核环节，保存即入账（与柠檬云「未启用」口径一致）。
+            items.Add(Check("review", "凭证审核", "ok", "未启用凭证审核，保存即入账。"));
+
+            // 4) 断号检查：同一凭证字内号码是否连续。
             var gaps = FindNumberingGaps(monthVouchers);
             items.Add(gaps.Count == 0
                 ? Check("numbering", "断号检查", "ok", "本期凭证号码连续，未发现断号。")
-                : Check("numbering", "断号检查", "warn", $"本期存在断号凭证：{string.Join("、", gaps.Take(10))}。"));
+                : Check("numbering", "断号检查", "warn",
+                    $"本期存在断号凭证：{string.Join("、", gaps.Take(10))}。",
+                    actionKey: "numbering", actionText: "查看"));
 
-            // 4) 报表检查：期初余额 + 截至本期末的已过账发生额试算平衡。
+            // 5) 报表检查：期初余额 + 截至本期末的已过账发生额试算平衡。
             var postedNet = posted
                 .Where(v => v.Date <= monthEnd)
                 .Sum(v => v.Entries.Sum(e => e.Debit - e.Credit));
@@ -450,7 +544,7 @@ namespace KuaiJi.Modules.Closing.Application
                 ? Check("report", "报表检查", "ok", "试算平衡，报表数据完整。")
                 : Check("report", "报表检查", "error", $"试算不平衡（差额 {trialNet:0.00}），请检查凭证与期初数据。"));
 
-            // 5) 资金检查（仅提示）：本期资金流水是否都已生成凭证。
+            // 6) 资金检查（仅提示）：本期资金流水是否都已生成凭证。
             var fundEntries = await _journalRepository.GetFundEntriesRangeAsync(accountSetId, null, monthEnd, cancellationToken);
             var unvoucheredFunds = fundEntries.Count(x =>
                 x.Entry.Date.Year == year && x.Entry.Date.Month == month && x.Entry.VoucherId is null);
@@ -458,7 +552,7 @@ namespace KuaiJi.Modules.Closing.Application
                 ? Check("funds", "资金检查", "ok", "本期资金流水均已生成凭证。", "info")
                 : Check("funds", "资金检查", "warn", $"本期有 {unvoucheredFunds} 笔资金流水尚未生成凭证。", "info", "funds", "点击查看"));
 
-            // 6) 资产检查（仅提示）：资产类科目是否出现贷方余额。
+            // 7) 资产检查（仅提示）：资产类科目是否出现贷方余额。
             var negativeAssets = accounts
                 .Where(a => a.IsLeaf && a.Category == AccountCategory.Asset && balanceById.GetValueOrDefault(a.Id) < 0m)
                 .ToList();
@@ -467,7 +561,7 @@ namespace KuaiJi.Modules.Closing.Application
                 : Check("asset", "资产检查", "warn",
                     $"有 {negativeAssets.Count} 个资产类科目为贷方余额（如 {negativeAssets[0].Name}），请核实。", "info"));
 
-            // 7) 资产检查-未折旧（仅提示）：启用资产模块时，本期应完成折旧。
+            // 8) 资产检查-未折旧（仅提示）：启用资产模块时，本期应完成折旧。
             if (!accountSet.AssetsModuleEnabled)
             {
                 items.Add(Check("depreciation", "资产检查-未折旧", "ok", "未启用固定资产模块。", "info"));
@@ -646,6 +740,50 @@ namespace KuaiJi.Modules.Closing.Application
             return gaps;
         }
 
+        /// <summary>同一凭证字内号码是否不连续。</summary>
+        private static bool HasNumberingGap(IEnumerable<int> numbers)
+        {
+            var sorted = numbers.Distinct().OrderBy(n => n).ToList();
+            for (var i = 1; i < sorted.Count; i++)
+            {
+                if (sorted[i] - sorted[i - 1] > 1)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>已入账检查项：金额取本期发生额，命中凭证供「查看凭证」，不生成新凭证。</summary>
+        private static PreCloseItemDto BuildCheckItem(
+            PreCloseDefinition definition,
+            IReadOnlyList<Account> accounts,
+            IReadOnlyDictionary<Guid, decimal> balanceById,
+            IReadOnlyList<Voucher> postedVouchers,
+            int year,
+            int month,
+            decimal incomeTaxRate,
+            SurtaxRates surtaxRates)
+        {
+            var plan = PreClosePlanner.Build(
+                definition.Key, string.Empty, accounts, balanceById, incomeTaxRate, surtaxRates, postedVouchers, year, MonthEnd(year, month));
+            var first = plan.SourceVouchers.FirstOrDefault();
+
+            return new PreCloseItemDto
+            {
+                Key = definition.Key,
+                Title = definition.Title,
+                Amount = plan.Amount,
+                Available = false,
+                Source = "check",
+                Hint = plan.Hint,
+                Generated = first is not null,
+                VoucherLabel = first is null ? null : $"{first.Word}-{first.Number}",
+                VoucherId = first?.Id,
+            };
+        }
+
         /// <summary>账簿类预置结转项：按余额计算金额，并识别本期是否已生成过凭证。</summary>
         private static PreCloseItemDto BuildLedgerItem(
             PreCloseDefinition definition,
@@ -655,7 +793,8 @@ namespace KuaiJi.Modules.Closing.Application
             IReadOnlyList<Voucher> vouchers,
             int year,
             int month,
-            decimal incomeTaxRate)
+            decimal incomeTaxRate,
+            SurtaxRates surtaxRates)
         {
             var summary = ItemSummary(month, definition.Title);
             var existing = vouchers
@@ -665,7 +804,7 @@ namespace KuaiJi.Modules.Closing.Application
                 .OrderBy(v => v.Number)
                 .FirstOrDefault();
             var plan = PreClosePlanner.Build(
-                definition.Key, summary, accounts, balanceById, incomeTaxRate, postedVouchers, year, MonthEnd(year, month));
+                definition.Key, summary, accounts, balanceById, incomeTaxRate, surtaxRates, postedVouchers, year, MonthEnd(year, month));
 
             return new PreCloseItemDto
             {
@@ -713,8 +852,101 @@ namespace KuaiJi.Modules.Closing.Application
             };
         }
 
+        /// <summary>自定义结转模板项：金额按模板行本期取数，可单独生成一张凭证。</summary>
+        private static PreCloseItemDto BuildTemplateItem(
+            ClosingTemplate template,
+            IReadOnlyList<Voucher> vouchers,
+            int year,
+            int month,
+            IReadOnlyDictionary<Guid, decimal> debitById,
+            IReadOnlyDictionary<Guid, decimal> creditById,
+            IReadOnlyDictionary<Guid, decimal> balanceById)
+        {
+            var lines = TemplateLines(template, debitById, creditById, balanceById);
+            var totalDebit = lines.Where(x => x.Line.Direction == BalanceDirection.Debit).Sum(x => x.Amount);
+            var totalCredit = lines.Where(x => x.Line.Direction == BalanceDirection.Credit).Sum(x => x.Amount);
+            var balanced = totalDebit == totalCredit;
+            var existing = FindTemplateVoucher(vouchers, year, month, lines);
+
+            var hint = existing is not null
+                ? $"本期已生成凭证 {existing.Word}-{existing.Number}。"
+                : lines.Count == 0
+                    ? "本期按模板取数全为零，无需生成。"
+                    : balanced
+                        ? $"按模板本期取数计算，借贷各 {totalDebit:0.00}。"
+                        : $"模板试算不平衡（借方 {totalDebit:0.00}，贷方 {totalCredit:0.00}），请检查模板设置。";
+
+            return new PreCloseItemDto
+            {
+                Key = TemplateKey(template.Id),
+                Title = template.Name,
+                Amount = balanced ? totalDebit : 0m,
+                Available = balanced && lines.Count > 0 && existing is null,
+                Source = "template",
+                Hint = hint,
+                Generated = existing is not null,
+                VoucherLabel = existing is null ? null : $"{existing.Word}-{existing.Number}",
+                VoucherId = existing?.Id,
+            };
+        }
+
+        private const string TemplateKeyPrefix = "template:";
+
+        /// <summary>模板类结转项的标识（前端原样回传给生成接口）。</summary>
+        private static string TemplateKey(Guid templateId) => TemplateKeyPrefix + templateId;
+
+        /// <summary>模板行按本期数据取数；零金额行不参与，与生成凭证同一口径。</summary>
+        private static List<(ClosingTemplateLine Line, decimal Amount)> TemplateLines(
+            ClosingTemplate template,
+            IReadOnlyDictionary<Guid, decimal> debitById,
+            IReadOnlyDictionary<Guid, decimal> creditById,
+            IReadOnlyDictionary<Guid, decimal> balanceById)
+        {
+            return template.Lines
+                .OrderBy(l => l.LineNumber)
+                .Select(l => (Line: l, Amount: ClosingMath.ComputeLineAmount(l, debitById, creditById, balanceById)))
+                .Where(x => x.Amount != 0m)
+                .ToList();
+        }
+
+        /// <summary>
+        /// 本期是否已有与该模板试算结果逐行一致的凭证。
+        /// 模板凭证的摘要取自模板行、不带期间标识，只能按「科目 + 方向 + 金额」比对。
+        /// </summary>
+        private static Voucher? FindTemplateVoucher(
+            IReadOnlyList<Voucher> vouchers,
+            int year,
+            int month,
+            IReadOnlyList<(ClosingTemplateLine Line, decimal Amount)> lines)
+        {
+            if (lines.Count == 0)
+            {
+                return null;
+            }
+
+            var expected = lines
+                .Select(x => (x.Line.AccountId,
+                    Debit: x.Line.Direction == BalanceDirection.Debit ? x.Amount : 0m,
+                    Credit: x.Line.Direction == BalanceDirection.Credit ? x.Amount : 0m))
+                .OrderBy(x => x.AccountId).ThenBy(x => x.Debit).ThenBy(x => x.Credit)
+                .ToList();
+
+            return vouchers
+                .Where(v => v.Date.Year == year && v.Date.Month == month && v.Entries.Count == expected.Count)
+                .Where(v => v.Entries
+                    .Select(e => (e.AccountId, e.Debit, e.Credit))
+                    .OrderBy(x => x.AccountId).ThenBy(x => x.Debit).ThenBy(x => x.Credit)
+                    .SequenceEqual(expected))
+                .OrderBy(v => v.Number)
+                .FirstOrDefault();
+        }
+
         /// <summary>预置结转项的分录摘要（同时作为「本期是否已生成」的识别标记）。</summary>
         private static string ItemSummary(int month, string title) => $"{month}月 {title}";
+
+        /// <summary>账套设置的附加税费率。</summary>
+        private static SurtaxRates SurtaxRatesOf(AccountSet accountSet) =>
+            new(accountSet.CityBuildTaxRate, accountSet.EducationSurchargeRate, accountSet.LocalEducationSurchargeRate);
 
         /// <summary>
         /// 结转损益预览：按当前数据计算将要生成的凭证（含选中的结转模板），不落库。
@@ -908,6 +1140,13 @@ namespace KuaiJi.Modules.Closing.Application
                 {
                     var template = await _closingTemplateRepository.GetByIdAsync(accountSetId, templateId, cancellationToken)
                         ?? throw new ClosingException("选中的结转模板不存在，请刷新后重试。");
+
+                    // 第 1 步期末检查已单独出过该模板凭证时不再重复生成。
+                    if (FindTemplateVoucher(posted, year, month, TemplateLines(template, debitById, creditById, balanceById)) is not null)
+                    {
+                        continue;
+                    }
+
                     var templateVoucher = BuildTemplateVoucher(accountSetId, word, nextNumber, monthEnd, operatorName, template, debitById, creditById, balanceById);
                     if (templateVoucher is null)
                     {
@@ -1169,6 +1408,89 @@ namespace KuaiJi.Modules.Closing.Application
                     ? "已撤销结转状态（未找到由系统生成的结转凭证）。"
                     : $"已撤销 {scope}，未找到由系统生成的结转凭证。"
                 : $"已撤销 {scope}，删除 {toRemove.Count} 张结转凭证（{string.Join("、", toRemove.Select(v => $"{v.Word}-{v.Number}"))}）。";
+        }
+
+        /// <summary>
+        /// 整理断号：把本期存在断号的凭证字重新连续编号（仅改凭证号，不动金额与分录）。
+        /// 凭证号在账套内按凭证字连续分配，因此整理时从本期之前的最后一个号码起，
+        /// 把本期及其后各期的同类凭证一并顺延，避免与其他期间重号；已结账期间不可整理。
+        /// </summary>
+        public async Task<RenumberGapsResultDto> RenumberGapsAsync(
+            Guid accountSetId,
+            int year,
+            int month,
+            CancellationToken cancellationToken = default)
+        {
+            var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
+            ValidatePeriod(year, month);
+
+            var key = PeriodKey(year, month);
+            if (key <= accountSet.ClosedPeriod)
+            {
+                throw new ClosingException($"该期间已结账（已结账至 {accountSet.ClosedPeriodText()}），不能整理凭证号。");
+            }
+
+            var vouchers = await LoadLiveVouchers(accountSetId, cancellationToken);
+            var monthStart = MonthStart(year, month);
+            var monthVouchers = vouchers
+                .Where(v => v.Date.Year == year && v.Date.Month == month && v.Number > 0)
+                .ToList();
+            var gapWords = monthVouchers
+                .GroupBy(v => v.Word)
+                .Where(g => HasNumberingGap(g.Select(v => v.Number)))
+                .Select(g => g.Key)
+                .ToList();
+            if (gapWords.Count == 0)
+            {
+                return new RenumberGapsResultDto
+                {
+                    Message = $"{PeriodText(year, month)} 凭证号码连续，无需整理。",
+                };
+            }
+
+            var changed = 0;
+            foreach (var word in gapWords)
+            {
+                var wordVouchers = vouchers.Where(v => v.Word == word).ToList();
+                var before = wordVouchers.Where(v => v.Date < monthStart).ToList();
+                var targets = wordVouchers
+                    .Where(v => v.Date >= monthStart)
+                    .OrderBy(v => v.Date)
+                    .ThenBy(v => v.Number)
+                    .ToList();
+
+                var next = before.Count == 0 ? 1 : before.Max(v => v.Number) + 1;
+                foreach (var item in targets)
+                {
+                    if (item.Number != next)
+                    {
+                        var voucher = await _voucherRepository.GetByIdAsync(accountSetId, item.Id, cancellationToken);
+                        if (voucher is null)
+                        {
+                            next++;
+                            continue;
+                        }
+
+                        voucher.SetNumber(next);
+                        changed++;
+                    }
+
+                    next++;
+                }
+            }
+
+            if (changed > 0)
+            {
+                await _voucherRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            return new RenumberGapsResultDto
+            {
+                Message = changed == 0
+                    ? $"{PeriodText(year, month)} 凭证号码连续，无需整理。"
+                    : $"已整理 {PeriodText(year, month)} 的断号（{string.Join("、", gapWords)}），共调整 {changed} 张凭证的号码。",
+                Changed = changed,
+            };
         }
 
         /// <summary>结账：把下一个待结期间标记为已结账（须先完成结转，且期间内凭证全部已过账）。</summary>
@@ -1661,11 +1983,7 @@ namespace KuaiJi.Modules.Closing.Application
             IReadOnlyDictionary<Guid, decimal> creditById,
             IReadOnlyDictionary<Guid, decimal> balanceById)
         {
-            var entries = template.Lines
-                .OrderBy(l => l.LineNumber)
-                .Select(l => (Line: l, Amount: ClosingMath.ComputeLineAmount(l, debitById, creditById, balanceById)))
-                .Where(x => x.Amount != 0m)
-                .ToList();
+            var entries = TemplateLines(template, debitById, creditById, balanceById);
 
             if (entries.Count == 0)
             {

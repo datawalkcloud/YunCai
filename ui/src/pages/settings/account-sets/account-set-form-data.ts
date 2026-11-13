@@ -5,12 +5,16 @@ import {
     DEFAULT_TAX_LOGIN_TYPE,
 } from "@/lib/tax-regions"
 
-/** 会计准则枚举值（与后端 AccountingStandard 对应）及其显示名。 */
+/** 会计准则枚举值（与后端 AccountingStandard 对应）；目前只支持企业准则与小企业准则。 */
 export const STANDARDS: { value: number; label: string }[] = [
     { value: 1, label: "企业会计准则" },
     { value: 2, label: "小企业会计准则" },
-    { value: 3, label: "民间非营利组织会计制度" },
 ]
+
+/** 历史账套可能仍存有旧枚举值，仅用于显示，不再作为可选项。 */
+const LEGACY_STANDARD_LABELS: Record<number, string> = {
+    3: "民间非营利组织会计制度",
+}
 
 /** 纳税人性质枚举值（与后端 TaxpayerType 对应）及其显示名。 */
 export const TAXPAYERS: { value: number; label: string }[] = [
@@ -45,7 +49,11 @@ export const BALANCE_ASSIST_SCOPES: { value: number; label: string }[] = [
 
 /** 枚举值 → 显示名，列表卡片与表单共用一份。 */
 export function standardLabel(value?: number): string {
-    return STANDARDS.find((s) => s.value === value)?.label ?? "—"
+    return (
+        STANDARDS.find((s) => s.value === value)?.label ??
+        (value != null ? LEGACY_STANDARD_LABELS[value] : undefined) ??
+        "—"
+    )
 }
 
 export function taxpayerLabel(value?: number): string {
@@ -83,6 +91,10 @@ export interface AccountSetForm {
     taxpayerNumber?: string
     vatRate?: number
     incomeTaxRate?: number
+    /** 附加税费率（计提税金结转项的基数比例），留空由后端按法定 7 / 3 / 2 处理。 */
+    cityBuildTaxRate?: number
+    educationSurchargeRate?: number
+    localEducationSurchargeRate?: number
     isExport?: boolean
     // 企税申报登录。密码只在用户主动改写时提交，留空表示保持原值。
     taxRegion?: string
@@ -119,6 +131,10 @@ export function emptyForm(): AccountSetForm {
         balanceAssistScope: BALANCE_ASSIST_SCOPES[1].value,
         unitDecimals: 8,
         isExport: false,
+        // 新建账套按法定附加税费率登记，创建后可改。
+        cityBuildTaxRate: 7,
+        educationSurchargeRate: 3,
+        localEducationSurchargeRate: 2,
     }
 }
 
@@ -141,6 +157,9 @@ export function formFromDto(set: AccountSetDto): AccountSetForm {
         taxpayerNumber: set.taxpayerNumber ?? "",
         vatRate: set.vatRate,
         incomeTaxRate: set.incomeTaxRate,
+        cityBuildTaxRate: set.cityBuildTaxRate,
+        educationSurchargeRate: set.educationSurchargeRate,
+        localEducationSurchargeRate: set.localEducationSurchargeRate,
         isExport: set.isExportEnterprise ?? false,
         taxRegion: set.taxRegion ?? undefined,
         taxLoginType: set.taxLoginType ?? DEFAULT_TAX_LOGIN_TYPE,

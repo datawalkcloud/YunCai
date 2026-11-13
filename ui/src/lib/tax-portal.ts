@@ -390,11 +390,24 @@ export interface TaxInvoiceSyncResult {
     fetched: number;
     imported: number;
     skipped: number;
+    /** 税局取回的发票按销项/进项汇总，两个方向各一行，没取到也是 0 张。 */
+    summary?: TaxInvoiceSyncSummary[] | null;
     needLogin?: boolean;
     message?: string | null;
     diagnostics?: string[] | null;
     warnings?: string[] | null;
     fetchedAt?: string;
+}
+
+/** 取票记录表格的一行：金额是税局票面口径，红冲票为负数。 */
+export interface TaxInvoiceSyncSummary {
+    direction: string;
+    periodStart: string;
+    periodEnd: string;
+    count: number;
+    amount: number;
+    tax: number;
+    total: number;
 }
 
 /** 一键取票的后台任务：running 时税局还在查，success 时发票已经落库。 */

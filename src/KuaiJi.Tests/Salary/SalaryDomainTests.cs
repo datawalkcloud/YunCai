@@ -137,7 +137,8 @@ public sealed class SalaryDomainTests
         // 缴纳比例按百分比存储，须在 0-100 之间。
         var item = new InsuranceItem(Guid.NewGuid(), SetId, "养老保险", 20m, 8m, 1);
 
-        Assert.Throws<ArgumentException>(() => item.Update("养老保险", 120m, 8m));
-        Assert.Throws<ArgumentException>(() => item.Update("养老保险", 20m, -1m));
+        Assert.Throws<ArgumentException>(() => item.Update("养老保险", 120m, 8m, 0m));
+        Assert.Throws<ArgumentException>(() => item.Update("养老保险", 20m, -1m, 0m));
+        Assert.Throws<ArgumentException>(() => item.Update("养老保险", 20m, 8m, -1m));
     }
 }

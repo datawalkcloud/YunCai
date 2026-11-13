@@ -343,7 +343,7 @@ namespace KuaiJi.Modules.Funds.Application
                         : diffCount > 0
                             ? $"共 {rows.Count} 个资金账户，其中 {diffCount} 个与总账不一致。"
                             : $"共 {rows.Count} 个资金账户，出纳账与总账全部一致。",
-                "账面余额取总账已过账凭证，差异 = 出纳余额 − 账面余额。",
+                "账面余额取总账正常凭证，差异 = 出纳余额 − 账面余额。",
             };
 
             return new PrintSheet

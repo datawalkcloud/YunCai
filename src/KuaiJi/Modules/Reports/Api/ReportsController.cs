@@ -114,7 +114,7 @@ namespace KuaiJi.Modules.Reports.Api
         /// <c>kind</c> 与 year/month/quarter 同 <see cref="Export"/>；科目余额表另接受与 trial-balance 同名的显示条件，
         /// 现金流量表月报可用 <c>method</c>=formula / assist 切换取数口径（省略即标准表的直接法 + 补充资料），
         /// <c>showLastYear</c> 对应页面的「显示上年累计金额」。
-        /// 资产负债表走专用接口 <c>balance-sheet/pdf</c>；部门/项目利润表与权益变动表页面没有打印按钮，返回 400。
+        /// 资产负债表走专用接口 <c>balance-sheet/pdf</c>；项目利润表与权益变动表页面没有打印按钮，返回 400。
         /// </summary>
         [HttpGet("pdf")]
         public async Task<IActionResult> Pdf(
@@ -151,7 +151,7 @@ namespace KuaiJi.Modules.Reports.Api
 
                 var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken)
                                  ?? throw new ReportException("指定的账套不存在。");
-                var context = new ReportPdfProjector.PrintContext(accountSet.Name, accountSet.CompanyName);
+                var context = new ReportPdfProjector.PrintContext(accountSet.Name, accountSet.Standard, accountSet.CompanyName);
                 var options = new LedgerQueryOptions
                 {
                     StartDate = startDate,
@@ -169,6 +169,7 @@ namespace KuaiJi.Modules.Reports.Api
                     ReportExportKind.TrialBalance => await _trialBalanceService.GetAsync(accountSetId, options, cancellationToken),
                     ReportExportKind.IncomeStatement => await _incomeStatementService.GetAsync(accountSetId, year, month, cancellationToken),
                     ReportExportKind.IncomeQuarter => await _incomeStatementService.GetQuarterAsync(accountSetId, year, quarter, cancellationToken),
+                    ReportExportKind.DepartmentIncome => await _assistIncomeService.GetByDepartmentAsync(accountSetId, year, month, cancellationToken),
                     ReportExportKind.CashFlow => await LoadCashFlowAsync(accountSetId, method, year, month, cancellationToken),
                     ReportExportKind.CashFlowQuarter => await _cashFlowService.GetQuarterAsync(accountSetId, year, quarter, cancellationToken),
                     ReportExportKind.ExpenseDetail => await _expenseDetailService.GetAsync(accountSetId, year, month, cancellationToken),
@@ -177,9 +178,12 @@ namespace KuaiJi.Modules.Reports.Api
                     _ => throw new ReportException("该报表暂不支持打印。"),
                 };
 
-                // 补充资料只在标准现金流量表随主表一起印（月报页面不展示它，且必定带 method 参数）。
+                // 补充资料只在一般企业标准现金流量表随主表一起印（月报页面不展示它，且必定带 method 参数）；
+                // 小企业会计准则（会小企03表）没有补充资料。
                 CashFlowSupplementDto? supplement = null;
-                if (printKind == ReportExportKind.CashFlow && string.IsNullOrWhiteSpace(method))
+                if (printKind == ReportExportKind.CashFlow
+                    && string.IsNullOrWhiteSpace(method)
+                    && accountSet.Standard != AccountingStandard.SmallBusiness)
                 {
                     supplement = await _cashFlowSupplementService.GetPeriodAsync(accountSetId, year, month, cancellationToken);
                 }
@@ -399,7 +403,7 @@ namespace KuaiJi.Modules.Reports.Api
 
         /// <summary>
         /// 现金流量表（辅助核算法）：按现金分录上挂的「现金流」辅助项目归集到标准行次
-        /// （项目编码前两位即主表行号），未挂项目的现金收付不计入；可选 year/month。
+        /// （预置项目按名称匹配，自定义项目按编码前两位），未挂项目的现金收付不计入；可选 year/month。
         /// </summary>
         [HttpGet("cash-flow-assist")]
         public async Task<ActionResult<CashFlowDto>> GetCashFlowAssist(

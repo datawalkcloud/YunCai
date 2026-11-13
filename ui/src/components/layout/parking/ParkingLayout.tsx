@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { BellOutlined, DownOutlined, LeftOutlined, RightOutlined, UpOutlined, UserOutlined } from "@ant-design/icons";
 
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import "./parking.css";
 
 export type ParkingMenu = { key: string; label: string };
@@ -153,14 +154,7 @@ function TopBar({
 }
 
 function LogoMark() {
-    return (
-        <span className="flex size-[26px] items-center justify-center rounded-md bg-black">
-            <svg viewBox="0 0 16 16" className="size-4" fill="none">
-                <path d="M9.5 2.5 14 7l-4.5 4.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M14 7H2.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-        </span>
-    );
+    return <BrandLogo size={26} radius={6} />;
 }
 
 function SparkIcon() {

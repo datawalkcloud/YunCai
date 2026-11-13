@@ -364,6 +364,57 @@ public sealed class SalaryServiceTests : IDisposable
         Assert.Contains("险种「养老保险」已存在", ex.Message);
     }
 
+    [Fact]
+    public async Task UpdateInsurance_BaseAmount_PersistsAcrossReload()
+    {
+        var pension = (await _service.GetInsuranceAsync(_accountSet.Id)).Single(i => i.Name == "养老保险");
+
+        var updated = await _service.UpdateInsuranceAsync(_accountSet.Id, pension.Id, new SaveInsuranceRequest
+        {
+            Name = pension.Name,
+            CompanyRate = pension.CompanyRate,
+            PersonalRate = pension.PersonalRate,
+            BaseAmount = 8000m,
+        });
+
+        Assert.NotNull(updated);
+        Assert.Equal(8000m, updated!.BaseAmount);
+        var reloaded = await _service.GetInsuranceAsync(_accountSet.Id);
+        Assert.Equal(8000m, reloaded.Single(i => i.Id == pension.Id).BaseAmount);
+    }
+
+    [Fact]
+    public async Task CreateEmployee_IndividualInsuranceRates_PersistWithoutBase()
+    {
+        var pension = (await _service.GetInsuranceAsync(_accountSet.Id)).Single(i => i.Name == "养老保险");
+
+        var created = await _service.CreateEmployeeAsync(_accountSet.Id, new SaveEmployeeRequest
+        {
+            Code = "E001",
+            Name = "张三",
+            Gender = 1,
+            IdType = 1,
+            Status = 1,
+            PaysSocialInsurance = true,
+            Insurances =
+            [
+                new SaveEmployeeInsuranceRequest
+                {
+                    InsuranceItemId = pension.Id,
+                    InsuranceBase = 0m,
+                    CompanyRate = 21m,
+                    PersonalRate = 9m,
+                },
+            ],
+        });
+
+        var reloaded = (await _service.GetEmployeesAsync(_accountSet.Id)).Single(e => e.Id == created.Id);
+        var row = Assert.Single(reloaded.Insurances);
+        Assert.Equal(21m, row.CompanyRate);
+        Assert.Equal(9m, row.PersonalRate);
+        Assert.Equal(0m, row.InsuranceBase);
+    }
+
     // ===================== 按部门/员工汇总 =====================
 
     [Fact]

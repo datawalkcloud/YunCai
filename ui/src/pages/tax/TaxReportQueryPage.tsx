@@ -12,8 +12,10 @@ import { Card, App, Button, DatePicker, Dropdown, Pagination, Table, Tooltip } f
 import type { MenuProps, TableColumnsType } from "antd";
 import {
     DownOutlined,
+    DownloadOutlined,
     ExclamationCircleFilled,
     LoginOutlined,
+    PrinterOutlined,
     ReloadOutlined,
     RightOutlined,
 } from "@ant-design/icons";
@@ -227,8 +229,9 @@ export function TaxReportQueryPage() {
                     <Button loading={loading} onClick={() => void load(range, { promptLogin: true })}>
                         更新报表
                     </Button>
-                    <Button onClick={() => message.info("打印封面需要税局回传申报表版式，暂未接入。")}>打印封面</Button>
+                    <Button icon={<PrinterOutlined />} onClick={() => message.info("打印封面需要税局回传申报表版式，暂未接入。")}>打印封面</Button>
                     <Button
+                        icon={<PrinterOutlined />}
                         onClick={() =>
                             selectedKeys.length === 0
                                 ? message.warning("请先勾选需要打印的申报表。")
@@ -238,7 +241,7 @@ export function TaxReportQueryPage() {
                         批量打印
                     </Button>
                     <Dropdown menu={{ items: exportItems, onClick: ({ key }) => exportCsv(key === "selected") }}>
-                        <Button type="primary">
+                        <Button type="primary" icon={<DownloadOutlined />}>
                             批量导出 <DownOutlined className="text-[9px]" />
                         </Button>
                     </Dropdown>

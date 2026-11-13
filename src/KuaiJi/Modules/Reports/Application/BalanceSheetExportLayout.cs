@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace KuaiJi.Modules.Reports.Application
 {
     public enum BalanceSheetRowKind
@@ -24,6 +26,38 @@ namespace KuaiJi.Modules.Reports.Application
         BalanceSheetRowKind Kind);
 
     /// <summary>
+    /// 导出稿的平衡结论：取两栏最后一组合计行（资产总计 / 负债和所有者权益总计）比较，
+    /// 与报表页页脚同口径——金额按分取整后判断期末、年初是否都相等。
+    /// </summary>
+    public sealed record BalanceSheetExportBalance(
+        string AssetLabel,
+        decimal AssetEnding,
+        decimal AssetOpening,
+        string LiabilityEquityLabel,
+        decimal LiabilityEquityEnding,
+        decimal LiabilityEquityOpening)
+    {
+        private static bool SameCent(decimal left, decimal right)
+            => decimal.Round(left, 2) == decimal.Round(right, 2);
+
+        /// <summary>期末差额（资产总计 - 负债和所有者权益总计）。</summary>
+        public decimal EndingDifference => decimal.Round(AssetEnding - LiabilityEquityEnding, 2);
+
+        /// <summary>年初差额。</summary>
+        public decimal OpeningDifference => decimal.Round(AssetOpening - LiabilityEquityOpening, 2);
+
+        public bool Balanced
+            => SameCent(AssetEnding, LiabilityEquityEnding) && SameCent(AssetOpening, LiabilityEquityOpening);
+
+        /// <summary>打印 / 导出稿底部的结论文案。</summary>
+        public string Conclusion => Balanced
+            ? $"平衡结论：{AssetLabel} = {LiabilityEquityLabel}（期末 {Money(AssetEnding)} 元，年初 {Money(AssetOpening)} 元）。"
+            : $"平衡结论：试算不平衡，请核对数据。期末差额 {Money(EndingDifference)} 元（{AssetLabel} {Money(AssetEnding)}，{LiabilityEquityLabel} {Money(LiabilityEquityEnding)}）；年初差额 {Money(OpeningDifference)} 元（{AssetLabel} {Money(AssetOpening)}，{LiabilityEquityLabel} {Money(LiabilityEquityOpening)}）。";
+
+        private static string Money(decimal value) => value.ToString("#,##0.00", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
     /// 把按行次归集的金额铺成两栏版式：企业会计准则（会企01表）或小企业会计准则（会小企01表）。
     /// 合计行在此计算，与前端页面口径一致。
     /// </summary>
@@ -39,6 +73,22 @@ namespace KuaiJi.Modules.Reports.Application
             }
 
             return template == BalanceSheetTemplate.SmallBusiness ? BuildSmallBusiness(map) : BuildEnterprise(map);
+        }
+
+        /// <summary>按两栏最后一组合计行得出平衡结论，供 PDF / .xls 导出稿标注。</summary>
+        public static BalanceSheetExportBalance Balance(
+            IReadOnlyList<BalanceSheetExportRow> left, IReadOnlyList<BalanceSheetExportRow> right)
+        {
+            var assets = left.LastOrDefault(row => row.Kind == BalanceSheetRowKind.Total);
+            var liabilityEquity = right.LastOrDefault(row => row.Kind == BalanceSheetRowKind.Total);
+
+            return new BalanceSheetExportBalance(
+                assets?.Label ?? "资产总计",
+                assets?.Ending ?? 0m,
+                assets?.Opening ?? 0m,
+                liabilityEquity?.Label ?? "负债和所有者权益总计",
+                liabilityEquity?.Ending ?? 0m,
+                liabilityEquity?.Opening ?? 0m);
         }
 
         // ── 企业会计准则（会企01表）：62 行次，左右各 34 行 ──

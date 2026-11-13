@@ -235,18 +235,19 @@ namespace KuaiJi.Modules.Reports.Application
                                 && (Contains(a, "财务费用") || PrefixIn(a, "6603", "5301")))
                     .ToList();
 
-                Inventories = assets.Where(a => BalanceSheetService.MapLine(a.Code, a.Category) == 7).ToList();
+                Inventories = assets.Where(a => BalanceSheetService.MapLine(a.Code, a.Category) == 9).ToList();
 
-                // 流动资产中除货币资金、短期投资、存货外的项目，均视为经营性应收。
+                // 流动资产中除货币资金、交易性金融资产、存货外的项目，均视为经营性应收（会企01表行 3-8、10、11）。
                 OperatingReceivables = assets
                     .Where(a => a.Category == AccountCategory.Asset)
-                    .Where(a => new[] { 3, 4, 5, 6, 9 }.Contains(BalanceSheetService.MapLine(a.Code, a.Category)))
+                    .Where(a => new[] { 3, 4, 5, 6, 7, 8, 10, 11 }.Contains(BalanceSheetService.MapLine(a.Code, a.Category)))
                     .ToList();
 
-                // 流动负债中除短期借款（带息，属筹资活动）外的项目，均视为经营性应付。
+                // 流动负债中的经营性项目：应付票据/账款、预收、职工薪酬、应交税费、其他应付、其他流动负债；
+                // 短期借款、交易性金融负债、一年内到期的非流动负债（带息）与应付利息/股利属于筹资活动，不计入。
                 OperatingPayables = accounts
                     .Where(a => a.Category == AccountCategory.Liability)
-                    .Where(a => new[] { 32, 33, 34, 35, 36, 37, 39 }.Contains(BalanceSheetService.MapLine(a.Code, a.Category)))
+                    .Where(a => new[] { 34, 35, 36, 37, 38, 41, 43 }.Contains(BalanceSheetService.MapLine(a.Code, a.Category)))
                     .ToList();
 
                 Cash = assets

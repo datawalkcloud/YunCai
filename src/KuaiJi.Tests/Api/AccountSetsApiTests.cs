@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using KuaiJi.Modules.AccountSets.Domain;
 using KuaiJi.Modules.Accounting.Domain;
 using KuaiJi.Modules.Funds.Domain;
 using Xunit;
@@ -74,6 +75,70 @@ public sealed class AccountSetsApiTests : IDisposable
     {
         var response = await _h.Client.DeleteAsync($"/AccountSets/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_UnsupportedStandard_ReturnsChineseBadRequest()
+    {
+        var response = await _h.Client.PostAsJsonAsync("/AccountSets", new
+        {
+            name = "民非账套",
+            companyName = "民非账套有限公司",
+            standard = (int)AccountingStandard.NonProfit,
+            taxpayerType = (int)TaxpayerType.General,
+            baseCurrency = "人民币",
+            startYear = 2026,
+            startMonth = 1,
+            preset = false,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("企业会计准则与小企业会计准则", await response.Content.ReadAsStringAsync());
+
+        // 被拒的账套不得半落库。
+        using var db = _h.NewContext();
+        Assert.False(db.AccountSets.Any(s => s.Name == "民非账套"));
+    }
+
+    [Fact]
+    public async Task Update_EnterpriseToSmallBusiness_ReturnsBadRequestAndKeepsStandard()
+    {
+        var id = await _h.CreateAccountSetAsync("企业准则账套");
+
+        var response = await _h.Client.PutAsJsonAsync($"/AccountSets/{id}", new
+        {
+            name = "企业准则账套",
+            companyName = "企业准则账套有限公司",
+            standard = (int)AccountingStandard.SmallBusiness,
+            taxpayerType = (int)TaxpayerType.General,
+            baseCurrency = "人民币",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("不能切换", await response.Content.ReadAsStringAsync());
+
+        using var db = _h.NewContext();
+        Assert.Equal(AccountingStandard.Enterprise, db.AccountSets.Single(s => s.Id == id).Standard);
+    }
+
+    [Fact]
+    public async Task Update_SmallBusinessToEnterprise_Succeeds()
+    {
+        var id = await _h.CreateAccountSetAsync("小企业准则账套", AccountingStandard.SmallBusiness);
+
+        var response = await _h.Client.PutAsJsonAsync($"/AccountSets/{id}", new
+        {
+            name = "小企业准则账套",
+            companyName = "小企业准则账套有限公司",
+            standard = (int)AccountingStandard.Enterprise,
+            taxpayerType = (int)TaxpayerType.General,
+            baseCurrency = "人民币",
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var db = _h.NewContext();
+        Assert.Equal(AccountingStandard.Enterprise, db.AccountSets.Single(s => s.Id == id).Standard);
     }
 
     private sealed record AccountSetModel(Guid Id, string Name, bool IsCurrent);

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link } from "react-router";
 import {
   CloseOutlined,
   EyeInvisibleOutlined,
@@ -12,31 +12,37 @@ import {
 } from "@ant-design/icons";
 
 import { useAuth } from "@/auth/AuthContext";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 /* ============================================================
  * 登录弹窗
  *
- * 结构与排版对齐统一登录弹窗（实测规格）：
- * - 卡片 480 宽 / 圆角 16 / 上下内边距 48，无副标题
- * - 输入框：h52 / 圆角 12 / 纯填充 #f4f4f4 / 无边框 / 无左图标
- * - 登录按钮：h52 / 圆角 12 / 与输入框同形，禁用 #c4c4c4 白字，激活 #1a1a1a
+ * 结构与排版对齐统一登录弹窗：
+ * - 卡片 480 宽 / 圆角取 rounded-2xl 档 / 上下内边距 48，无副标题
+ * - 输入框：h52 / 圆角 rounded-xl 档 / 填充 --muted / 无边框 / 无左图标
+ * - 登录按钮：h52 / 与输入框同形，激活 --brand-fill 白字，禁用 --muted 灰字
  * - 「其他登录方式」分隔行 + 圆形渠道图标 + 标签
  * - 底部协议行
  *
+ * 配色全部取 index.css 的主题 token，跟「主题设置」的主题色与明暗走。
  * 后端当前只有 Auth/login（用户名 + 密码）一种凭据，因此主入口是账号密码；
  * 其余渠道保留展示，点击时提示未开放，不做假跳转。
  * ============================================================ */
 
+/* 配色取全站 token：跟「主题设置」的主题色与明暗走，不再硬编码第二套绿/黑。 */
 const C = {
-  ink: "#1a1a1a",
-  sub: "#646464",
-  faint: "#b8b8b8",
-  brand: "#079d55",
-  field: "#f4f4f4",
-  disabled: "#c4c4c4",
-  line: "#ececec",
-  danger: "#d4380d",
+  ink: "var(--foreground)",
+  sub: "var(--muted-foreground)",
+  faint: "var(--icon-muted)",
+  brand: "var(--brand)",
+  field: "var(--muted)",
+  disabled: "var(--muted)",
+  line: "var(--border)",
+  danger: "var(--danger)",
 };
+
+const FOCUS_RING = "focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--seed-primary)_22%,transparent)]";
+const FOCUS_WITHIN_RING = "focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--seed-primary)_22%,transparent)]";
 
 type Channel = {
   key: string;
@@ -52,10 +58,17 @@ const CHANNELS: Channel[] = [
   { key: "email", icon: MailOutlined, label: "邮箱" },
 ];
 
-export function LoginModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function LoginModal({
+  open,
+  onClose,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** 登录成功回调：由宿主页面统一关闭弹窗并跳转，避免弹窗与路由守卫同时导航。 */
+  onSuccess?: () => void;
+}) {
   const { login } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -66,9 +79,6 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
 
   const userRef = useRef<HTMLInputElement | null>(null);
   const pwdRef = useRef<HTMLInputElement | null>(null);
-
-  // 登录后回到来源页；从 /login 直接进入时没有来源，落到应用区。
-  const from = (location.state as { from?: string } | null)?.from ?? "/app";
 
   const canSubmit = username.trim().length > 0 && password.length > 0 && !submitting;
 
@@ -106,8 +116,10 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
     setSubmitting(true);
     try {
       await login(username.trim(), password);
-      onClose();
-      navigate(from, { replace: true });
+      // 跳转交给宿主页面：/login 直达由 RedirectIfAuthed 负责，官网就地开窗由 Landing 负责。
+      // 这里绝不调用 onClose（它会把 /login 回落成 /，与登录跳转互相覆盖）。
+      if (onSuccess) onSuccess();
+      else onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败，请重试");
       setSubmitting(false);
@@ -127,7 +139,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
       aria-label="登录云财"
     >
       <div
-        className="relative max-h-[92svh] w-full max-w-[480px] overflow-y-auto rounded-[16px] bg-(--card) px-8 py-12 sm:px-12 sm:py-14"
+        className="relative max-h-[92svh] w-full max-w-[480px] overflow-y-auto rounded-2xl bg-(--card) px-8 py-12 sm:px-12 sm:py-14"
         style={{ boxShadow: "0 24px 60px -20px rgba(10,20,16,.28)" }}
       >
         {/* 关闭 */}
@@ -136,35 +148,21 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
           onClick={onClose}
           aria-label="关闭登录"
           className="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full text-[13px] transition-colors hover:bg-(--muted)"
-          style={{ color: "#b8b8b8" }}
+          style={{ color: C.faint }}
         >
           <CloseOutlined />
         </button>
 
         {/* 品牌 */}
         <div className="flex items-center justify-center gap-2.5">
-          <span
-            className="flex size-9 items-center justify-center rounded-[10px]"
-            style={{ background: C.brand }}
-          >
-            <svg viewBox="0 0 24 24" className="size-[19px]" fill="none">
-              <path
-                d="M5 8.5h11.5a2.5 2.5 0 0 1 2.5 2.5v6.5a2.5 2.5 0 0 1-2.5 2.5H7.5A2.5 2.5 0 0 1 5 17.5v-9Z"
-                stroke="#fff"
-                strokeWidth="1.8"
-                strokeLinejoin="round"
-              />
-              <path d="M5 8.5 7 5h8l2 3.5" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round" />
-              <path d="M9 13.6h6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-          </span>
+          <BrandLogo size={36} />
           <span className="flex items-baseline gap-1.5">
             <span className="text-[16px] font-medium tracking-tight" style={{ color: C.ink }}>
               云财
             </span>
             <span
-              className="text-[9.5px] font-light uppercase tracking-[0.2em]"
-              style={{ color: "#c0c0c0" }}
+              className="text-[9.5px] font-normal uppercase tracking-[0.2em]"
+              style={{ color: "var(--icon-placeholder)" }}
             >
               KuaiJi
             </span>
@@ -189,12 +187,17 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
             placeholder="请输入用户名"
-            className="h-[52px] w-full rounded-[12px] px-4 text-[15px] font-normal outline-none transition-shadow placeholder:font-light placeholder:text-(--muted-foreground) focus:shadow-[0_0_0_2px_rgba(7,157,85,.18)]"
+            className={
+              "h-[52px] w-full rounded-xl px-4 text-[15px] font-normal outline-none transition-shadow placeholder:font-normal placeholder:text-(--muted-foreground) " +
+              FOCUS_RING
+            }
             style={{ background: C.field, color: C.ink }}
           />
 
           <div
-            className="flex h-[52px] items-center rounded-[12px] px-4 transition-shadow focus-within:shadow-[0_0_0_2px_rgba(7,157,85,.18)]"
+            className={
+              "flex h-[52px] items-center rounded-xl px-4 transition-shadow " + FOCUS_WITHIN_RING
+            }
             style={{ background: C.field }}
           >
             <input
@@ -204,7 +207,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
               type={showPwd ? "text" : "password"}
               autoComplete="current-password"
               placeholder="请输入密码"
-              className="h-full w-full bg-transparent text-[15px] font-normal outline-none placeholder:font-light placeholder:text-(--muted-foreground)"
+              className="h-full w-full bg-transparent text-[15px] font-normal outline-none placeholder:font-normal placeholder:text-(--muted-foreground)"
               style={{ color: C.ink }}
             />
             <button
@@ -212,14 +215,14 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
               onClick={() => setShowPwd((v) => !v)}
               aria-label={showPwd ? "隐藏密码" : "显示密码"}
               className="ml-2 flex size-6 shrink-0 items-center justify-center text-[14px] transition-colors hover:text-(--foreground)!"
-              style={{ color: "#b8b8b8" }}
+              style={{ color: C.faint }}
             >
               {showPwd ? <EyeOutlined /> : <EyeInvisibleOutlined />}
             </button>
           </div>
 
           {error && (
-            <p className="px-0.5 text-[12.5px] font-light" style={{ color: C.danger }}>
+            <p className="px-0.5 text-[12.5px] font-normal" style={{ color: C.danger }}>
               {error}
             </p>
           )}
@@ -227,8 +230,8 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
           <button
             type="submit"
             disabled={!canSubmit}
-            className="mt-2 h-[52px] w-full rounded-[12px] text-[16px] font-medium text-white transition-colors"
-            style={canSubmit ? { background: C.ink } : { background: C.disabled, cursor: "not-allowed" }}
+            className="mt-2 h-[52px] w-full rounded-xl text-[16px] font-medium text-white transition-colors"
+            style={canSubmit ? { background: "var(--brand-fill)" } : { background: C.disabled, color: "var(--icon-muted)", cursor: "not-allowed" }}
           >
             {submitting ? "登录中…" : "登录"}
           </button>
@@ -237,7 +240,7 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
         {/* 其他登录方式 */}
         <div className="mt-11 flex items-center gap-3">
           <span className="h-px flex-1" style={{ background: C.line }} />
-          <span className="text-[12px] font-light" style={{ color: "#b8b8b8" }}>
+          <span className="text-[12px] font-normal" style={{ color: C.faint }}>
             其他登录方式
           </span>
           <span className="h-px flex-1" style={{ background: C.line }} />
@@ -255,11 +258,11 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
             >
               <span
                 className="flex size-[52px] items-center justify-center rounded-full"
-                style={{ background: C.field, color: "#8f8f8f" }}
+                style={{ background: C.field, color: "var(--muted-foreground)" }}
               >
                 <ch.icon className="text-[20px]" />
               </span>
-              <span className="text-[11px] font-light" style={{ color: "#b0b0b0" }}>
+              <span className="text-[11px] font-normal" style={{ color: C.faint }}>
                 {ch.label}
               </span>
             </button>
@@ -267,15 +270,15 @@ export function LoginModal({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
 
         {hint && (
-          <p className="mt-3 text-center text-[12px] font-light" style={{ color: C.brand }}>
+          <p className="mt-3 text-center text-[12px] font-normal" style={{ color: C.brand }}>
             {hint}
           </p>
         )}
 
         {/* 协议 */}
         <p
-          className="mt-9 text-center text-[12.5px] font-light leading-[1.7]"
-          style={{ color: "#b0b0b0" }}
+          className="mt-9 text-center text-[12.5px] font-normal leading-[1.7]"
+          style={{ color: C.sub }}
         >
           登录即表示已阅读并同意{" "}
           <Link

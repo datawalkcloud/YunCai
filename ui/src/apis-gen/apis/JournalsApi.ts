@@ -118,6 +118,12 @@ export interface AccountsetsAccountSetIdJournalsIdEntriesPostRequest {
     journalEntryRequest: JournalEntryRequest;
 }
 
+export interface AccountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequest {
+    accountSetId: string;
+    id: string;
+    entryIds?: string;
+}
+
 export interface AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest {
     accountSetId: string;
     id: string;
@@ -138,6 +144,41 @@ export interface AccountsetsAccountSetIdJournalsIdImportPostRequest {
     accountSetId: string;
     id: string;
     file?: Blob;
+}
+
+export interface AccountsetsAccountSetIdJournalsIdPdfGetRequest {
+    accountSetId: string;
+    id: string;
+    startDate?: Date;
+    endDate?: Date;
+    columns?: string;
+    seqPrefix?: string;
+    date?: string;
+    summary?: string;
+    category?: string;
+    counterparty?: string;
+    income?: string;
+    expense?: string;
+    balance?: string;
+    voucher?: string;
+    seq?: string;
+    advVoucherDateFrom?: Date;
+    advVoucherDateTo?: Date;
+    advVoucherWord?: string;
+    advVoucherNoFrom?: number;
+    advVoucherNoTo?: number;
+    advCategory?: string;
+    advSettlementMethod?: string;
+    advCounterparty?: string;
+    advBillNo?: string;
+    advProject?: string;
+    advDepartment?: string;
+    advSummary?: string;
+    advRemark?: string;
+    advSource?: string;
+    advAmountFrom?: number;
+    advAmountTo?: number;
+    advHasVoucher?: string;
 }
 
 export interface AccountsetsAccountSetIdJournalsIdPutRequest {
@@ -426,6 +467,31 @@ export interface JournalsApiInterface {
     accountsetsAccountSetIdJournalsIdEntriesPost(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalDetailDto>;
 
     /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} [entryIds] 
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {string} [entryIds] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRaw(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for accountsetsAccountSetIdJournalsIdEntriesVouchersPost without sending the request
      * @param {string} accountSetId 
      * @param {string} id 
@@ -520,6 +586,89 @@ export interface JournalsApiInterface {
     /**
      */
     accountsetsAccountSetIdJournalsIdImportPost(requestParameters: AccountsetsAccountSetIdJournalsIdImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalImportResult>;
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdPdfGet without sending the request
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [columns] 
+     * @param {string} [seqPrefix] 
+     * @param {string} [date] 
+     * @param {string} [summary] 
+     * @param {string} [category] 
+     * @param {string} [counterparty] 
+     * @param {string} [income] 
+     * @param {string} [expense] 
+     * @param {string} [balance] 
+     * @param {string} [voucher] 
+     * @param {string} [seq] 
+     * @param {Date} [advVoucherDateFrom] 
+     * @param {Date} [advVoucherDateTo] 
+     * @param {string} [advVoucherWord] 
+     * @param {number} [advVoucherNoFrom] 
+     * @param {number} [advVoucherNoTo] 
+     * @param {string} [advCategory] 
+     * @param {string} [advSettlementMethod] 
+     * @param {string} [advCounterparty] 
+     * @param {string} [advBillNo] 
+     * @param {string} [advProject] 
+     * @param {string} [advDepartment] 
+     * @param {string} [advSummary] 
+     * @param {string} [advRemark] 
+     * @param {string} [advSource] 
+     * @param {number} [advAmountFrom] 
+     * @param {number} [advAmountTo] 
+     * @param {string} [advHasVoucher] 
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdPdfGetRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} accountSetId 
+     * @param {string} id 
+     * @param {Date} [startDate] 
+     * @param {Date} [endDate] 
+     * @param {string} [columns] 
+     * @param {string} [seqPrefix] 
+     * @param {string} [date] 
+     * @param {string} [summary] 
+     * @param {string} [category] 
+     * @param {string} [counterparty] 
+     * @param {string} [income] 
+     * @param {string} [expense] 
+     * @param {string} [balance] 
+     * @param {string} [voucher] 
+     * @param {string} [seq] 
+     * @param {Date} [advVoucherDateFrom] 
+     * @param {Date} [advVoucherDateTo] 
+     * @param {string} [advVoucherWord] 
+     * @param {number} [advVoucherNoFrom] 
+     * @param {number} [advVoucherNoTo] 
+     * @param {string} [advCategory] 
+     * @param {string} [advSettlementMethod] 
+     * @param {string} [advCounterparty] 
+     * @param {string} [advBillNo] 
+     * @param {string} [advProject] 
+     * @param {string} [advDepartment] 
+     * @param {string} [advSummary] 
+     * @param {string} [advRemark] 
+     * @param {string} [advSource] 
+     * @param {number} [advAmountFrom] 
+     * @param {number} [advAmountTo] 
+     * @param {string} [advHasVoucher] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof JournalsApiInterface
+     */
+    accountsetsAccountSetIdJournalsIdPdfGetRaw(requestParameters: AccountsetsAccountSetIdJournalsIdPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     */
+    accountsetsAccountSetIdJournalsIdPdfGet(requestParameters: AccountsetsAccountSetIdJournalsIdPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for accountsetsAccountSetIdJournalsIdPut without sending the request
@@ -1223,6 +1372,60 @@ export class JournalsApi extends runtime.BaseAPI implements JournalsApiInterface
     }
 
     /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['entryIds'] != null) {
+            queryParameters['entryIds'] = requestParameters['entryIds'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Journals/{id}/entries/receipt/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRaw(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGet(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdJournalsIdEntriesReceiptPdfGetRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for accountsetsAccountSetIdJournalsIdEntriesVouchersPost without sending the request
      */
     async accountsetsAccountSetIdJournalsIdEntriesVouchersPostRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdEntriesVouchersPostRequest): Promise<runtime.RequestOpts> {
@@ -1454,6 +1657,176 @@ export class JournalsApi extends runtime.BaseAPI implements JournalsApiInterface
     async accountsetsAccountSetIdJournalsIdImportPost(requestParameters: AccountsetsAccountSetIdJournalsIdImportPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JournalImportResult> {
         const response = await this.accountsetsAccountSetIdJournalsIdImportPostRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for accountsetsAccountSetIdJournalsIdPdfGet without sending the request
+     */
+    async accountsetsAccountSetIdJournalsIdPdfGetRequestOpts(requestParameters: AccountsetsAccountSetIdJournalsIdPdfGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['accountSetId'] == null) {
+            throw new runtime.RequiredError(
+                'accountSetId',
+                'Required parameter "accountSetId" was null or undefined when calling accountsetsAccountSetIdJournalsIdPdfGet().'
+            );
+        }
+
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling accountsetsAccountSetIdJournalsIdPdfGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['startDate'] != null) {
+            queryParameters['StartDate'] = (requestParameters['startDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['endDate'] != null) {
+            queryParameters['EndDate'] = (requestParameters['endDate'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['columns'] != null) {
+            queryParameters['Columns'] = requestParameters['columns'];
+        }
+
+        if (requestParameters['seqPrefix'] != null) {
+            queryParameters['SeqPrefix'] = requestParameters['seqPrefix'];
+        }
+
+        if (requestParameters['date'] != null) {
+            queryParameters['Date'] = requestParameters['date'];
+        }
+
+        if (requestParameters['summary'] != null) {
+            queryParameters['Summary'] = requestParameters['summary'];
+        }
+
+        if (requestParameters['category'] != null) {
+            queryParameters['Category'] = requestParameters['category'];
+        }
+
+        if (requestParameters['counterparty'] != null) {
+            queryParameters['Counterparty'] = requestParameters['counterparty'];
+        }
+
+        if (requestParameters['income'] != null) {
+            queryParameters['Income'] = requestParameters['income'];
+        }
+
+        if (requestParameters['expense'] != null) {
+            queryParameters['Expense'] = requestParameters['expense'];
+        }
+
+        if (requestParameters['balance'] != null) {
+            queryParameters['Balance'] = requestParameters['balance'];
+        }
+
+        if (requestParameters['voucher'] != null) {
+            queryParameters['Voucher'] = requestParameters['voucher'];
+        }
+
+        if (requestParameters['seq'] != null) {
+            queryParameters['Seq'] = requestParameters['seq'];
+        }
+
+        if (requestParameters['advVoucherDateFrom'] != null) {
+            queryParameters['AdvVoucherDateFrom'] = (requestParameters['advVoucherDateFrom'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['advVoucherDateTo'] != null) {
+            queryParameters['AdvVoucherDateTo'] = (requestParameters['advVoucherDateTo'] as any).toISOString().substring(0,10);
+        }
+
+        if (requestParameters['advVoucherWord'] != null) {
+            queryParameters['AdvVoucherWord'] = requestParameters['advVoucherWord'];
+        }
+
+        if (requestParameters['advVoucherNoFrom'] != null) {
+            queryParameters['AdvVoucherNoFrom'] = requestParameters['advVoucherNoFrom'];
+        }
+
+        if (requestParameters['advVoucherNoTo'] != null) {
+            queryParameters['AdvVoucherNoTo'] = requestParameters['advVoucherNoTo'];
+        }
+
+        if (requestParameters['advCategory'] != null) {
+            queryParameters['AdvCategory'] = requestParameters['advCategory'];
+        }
+
+        if (requestParameters['advSettlementMethod'] != null) {
+            queryParameters['AdvSettlementMethod'] = requestParameters['advSettlementMethod'];
+        }
+
+        if (requestParameters['advCounterparty'] != null) {
+            queryParameters['AdvCounterparty'] = requestParameters['advCounterparty'];
+        }
+
+        if (requestParameters['advBillNo'] != null) {
+            queryParameters['AdvBillNo'] = requestParameters['advBillNo'];
+        }
+
+        if (requestParameters['advProject'] != null) {
+            queryParameters['AdvProject'] = requestParameters['advProject'];
+        }
+
+        if (requestParameters['advDepartment'] != null) {
+            queryParameters['AdvDepartment'] = requestParameters['advDepartment'];
+        }
+
+        if (requestParameters['advSummary'] != null) {
+            queryParameters['AdvSummary'] = requestParameters['advSummary'];
+        }
+
+        if (requestParameters['advRemark'] != null) {
+            queryParameters['AdvRemark'] = requestParameters['advRemark'];
+        }
+
+        if (requestParameters['advSource'] != null) {
+            queryParameters['AdvSource'] = requestParameters['advSource'];
+        }
+
+        if (requestParameters['advAmountFrom'] != null) {
+            queryParameters['AdvAmountFrom'] = requestParameters['advAmountFrom'];
+        }
+
+        if (requestParameters['advAmountTo'] != null) {
+            queryParameters['AdvAmountTo'] = requestParameters['advAmountTo'];
+        }
+
+        if (requestParameters['advHasVoucher'] != null) {
+            queryParameters['AdvHasVoucher'] = requestParameters['advHasVoucher'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/accountsets/{accountSetId}/Journals/{id}/pdf`;
+        urlPath = urlPath.replace(`{${"accountSetId"}}`, encodeURIComponent(String(requestParameters['accountSetId'])));
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdPdfGetRaw(requestParameters: AccountsetsAccountSetIdJournalsIdPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.accountsetsAccountSetIdJournalsIdPdfGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     */
+    async accountsetsAccountSetIdJournalsIdPdfGet(requestParameters: AccountsetsAccountSetIdJournalsIdPdfGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.accountsetsAccountSetIdJournalsIdPdfGetRaw(requestParameters, initOverrides);
     }
 
     /**

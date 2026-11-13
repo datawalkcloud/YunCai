@@ -16,6 +16,8 @@ import { printPdf } from "@/lib/print-pdf";
 
 import {
     Btn,
+    ExportBtn,
+    PrintBtn,
     CheckBox,
     DateInput,
     Dialog,
@@ -160,8 +162,12 @@ interface EmployeeDraft {
     subjectAccountId: string;
     status: number;
     paysSocialInsurance: boolean;
-    /** 险种标识 → 缴纳基数文本（空串表示未填） */
+    /** 险种标识 → 缴纳基数文本（空串表示未填，沿用默认基数） */
     bases: Record<string, string>;
+    /** 险种标识 → 公司比例文本（空串表示沿用险种默认比例） */
+    companyRates: Record<string, string>;
+    /** 险种标识 → 个人比例文本（空串表示沿用险种默认比例） */
+    personalRates: Record<string, string>;
 }
 
 /** 学历候选（与柠檬云人员档案一致，允许留空）。 */
@@ -178,6 +184,32 @@ const seniorExpertOf = (v: boolean | null | undefined) => (v === true ? "1" : v 
 function toAmount(text: string): number {
     const n = Number(text.replace(/[,，\s]/g, ""));
     return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** 员工险种生效基数：个人已设置（>0）取个人，否则取「五险一金设置」的默认基数。 */
+function effectiveBaseOf(item: InsuranceItemDto, ownText: string | undefined): number {
+    const own = toAmount(ownText ?? "");
+    return own > 0 ? own : toAmount(String(item.baseAmount ?? 0));
+}
+
+/** 员工险种生效比例：个人文本非空取个人（0 也是有效值），否则取险种默认。 */
+function effectiveRateOf(ownText: string | undefined, fallback: number | null | undefined): number | null {
+    const text = (ownText ?? "").trim();
+    if (text !== "") {
+        const n = Number(text.replace(/[,，\s]/g, ""));
+        return Number.isFinite(n) ? n : 0;
+    }
+    return fallback ?? null;
+}
+
+/** 比例文本 → 提交值；空串表示沿用默认，非数字按 0。 */
+function rateForSubmit(text: string | undefined): number | null {
+    const trimmed = (text ?? "").trim();
+    if (trimmed === "") {
+        return null;
+    }
+    const n = Number(trimmed.replace(/[,，\s]/g, ""));
+    return Number.isFinite(n) ? n : 0;
 }
 
 /** 日期字符串 → 提交用 Date（先按 yyyy-MM-dd 构造，避免东八区回退一天）。 */
@@ -212,20 +244,35 @@ function emptyDraft(code: string): EmployeeDraft {
         status: 1,
         paysSocialInsurance: true,
         bases: {},
+        companyRates: {},
+        personalRates: {},
     };
 }
 
-/** 员工档案 → 抽屉草稿；bases 先按账套险种铺空，再用已登记的基数覆盖。 */
+/** 员工档案 → 抽屉草稿；各险种先按账套配置铺空，再用员工已登记的个人值覆盖。 */
 function draftFromEmployee(e: EmployeeDto, insurance: InsuranceItemDto[]): EmployeeDraft {
     const bases: Record<string, string> = {};
+    const companyRates: Record<string, string> = {};
+    const personalRates: Record<string, string> = {};
     for (const item of insurance) {
         if (item.id) {
             bases[item.id] = "";
+            companyRates[item.id] = "";
+            personalRates[item.id] = "";
         }
     }
     for (const row of e.insurances ?? []) {
-        if (row.insuranceItemId) {
-            bases[row.insuranceItemId] = String(row.insuranceBase ?? "");
+        if (!row.insuranceItemId) {
+            continue;
+        }
+        if ((row.insuranceBase ?? 0) > 0) {
+            bases[row.insuranceItemId] = String(row.insuranceBase);
+        }
+        if (row.companyRate != null) {
+            companyRates[row.insuranceItemId] = String(row.companyRate);
+        }
+        if (row.personalRate != null) {
+            personalRates[row.insuranceItemId] = String(row.personalRate);
         }
     }
 
@@ -257,15 +304,25 @@ function draftFromEmployee(e: EmployeeDto, insurance: InsuranceItemDto[]): Emplo
         status: statusOf(e.statusText),
         paysSocialInsurance: e.paysSocialInsurance ?? true,
         bases,
+        companyRates,
+        personalRates,
     };
 }
 
-/** 草稿 → SaveEmployeeRequest；不缴五险一金时不提交任何基数。 */
+/** 草稿 → SaveEmployeeRequest；不缴五险一金时不提交任何个人值，留空项沿用账套默认。 */
 function draftToRequest(d: EmployeeDraft, insurance: InsuranceItemDto[]) {
     const insurances = d.paysSocialInsurance
         ? insurance
-              .filter((i) => i.id && toAmount(d.bases[i.id] ?? "") > 0)
-              .map((i) => ({ insuranceItemId: i.id as string, insuranceBase: toAmount(d.bases[i.id ?? ""] ?? "") }))
+              .map((i) => {
+                  const id = i.id ?? "";
+                  return {
+                      insuranceItemId: id,
+                      insuranceBase: toAmount(d.bases[id] ?? ""),
+                      companyRate: rateForSubmit(d.companyRates[id]),
+                      personalRate: rateForSubmit(d.personalRates[id]),
+                  };
+              })
+              .filter((row) => row.insuranceItemId && (row.insuranceBase > 0 || row.companyRate !== null || row.personalRate !== null))
         : [];
 
     return {
@@ -839,42 +896,73 @@ function EmployeeDrawerForm({
               { value: "3", label: "其他" },
           ];
 
-    /** 金额列按缴纳基数 × 账套比例实时算出，只读。 */
+    /** 金额列按生效缴纳基数 × 生效比例（个人填写优先，留空取账套默认）实时算出，只读。 */
     const insuranceRows: Row[] = insurance.map((item) => {
         const id = item.id ?? "";
-        const base = toAmount(draft.bases[id] ?? "");
-        const companyRate = item.companyRate ?? 0;
-        const personalRate = item.personalRate ?? 0;
+        const base = effectiveBaseOf(item, draft.bases[id]);
+        const companyRate = effectiveRateOf(draft.companyRates[id], item.companyRate) ?? 0;
+        const personalRate = effectiveRateOf(draft.personalRates[id], item.personalRate) ?? 0;
         return {
             __id: id,
             name: item.name,
-            cRate: `${companyRate}%`,
             cAmt: nf((base * companyRate) / 100),
-            pRate: item.personalRate == null ? "—" : `${personalRate}%`,
             pAmt: nf((base * personalRate) / 100),
         };
     });
+    /** 比例输入：留空显示账套默认值占位，填写后按个人比例计算。 */
+    const rateInput = (id: string, field: "companyRates" | "personalRates", fallback: number | null | undefined) => (
+        <TextInput
+            className="w-full"
+            type="number"
+            value={draft[field][id] ?? ""}
+            placeholder={fallback == null ? "默认 —" : `默认 ${fallback}%`}
+            onChange={(v) => set({ [field]: { ...draft[field], [id]: v } } as Partial<EmployeeDraft>)}
+        />
+    );
     const insuranceCols: Col[] = [
         { key: "name", title: "缴纳项目", width: "140px" },
         {
             key: "base",
             title: "缴纳基数",
-            width: "160px",
+            width: "150px",
             render: (row) => {
                 const id = String(row.__id);
+                const item = insurance.find((i) => i.id === id);
+                const defaultBase = toAmount(String(item?.baseAmount ?? 0));
                 return (
                     <TextInput
                         className="w-full"
                         type="number"
                         value={draft.bases[id] ?? ""}
+                        placeholder={defaultBase > 0 ? `默认 ${nf(defaultBase)}` : "未设置"}
                         onChange={(v) => set({ bases: { ...draft.bases, [id]: v } })}
                     />
                 );
             },
         },
-        { key: "cRate", title: "比例", group: "公司承担部分", align: "right", width: "80px" },
+        {
+            key: "cRate",
+            title: "比例",
+            group: "公司承担部分",
+            width: "110px",
+            render: (row) => {
+                const id = String(row.__id);
+                const item = insurance.find((i) => i.id === id);
+                return rateInput(id, "companyRates", item?.companyRate);
+            },
+        },
         { key: "cAmt", title: "金额", group: "公司承担部分", align: "right", width: "120px" },
-        { key: "pRate", title: "比例", group: "个人承担部分", align: "right", width: "80px" },
+        {
+            key: "pRate",
+            title: "比例",
+            group: "个人承担部分",
+            width: "110px",
+            render: (row) => {
+                const id = String(row.__id);
+                const item = insurance.find((i) => i.id === id);
+                return rateInput(id, "personalRates", item?.personalRate);
+            },
+        },
         { key: "pAmt", title: "金额", group: "个人承担部分", align: "right", width: "120px" },
     ];
 
@@ -1059,7 +1147,7 @@ function EmployeeDrawerForm({
                         <div className="mt-3">
                             <Table cols={insuranceCols} rows={insuranceRows} empty={<EmptyTip />} />
                             <div className="mt-2 text-[12.5px] text-(--muted-foreground)">
-                                比例来自「五险一金设置」，缴纳基数留空或为 0 表示不为该员工缴纳此项目。
+                                缴纳基数与比例留空时沿用「五险一金设置」的默认值，填写后按个人值计算。
                             </div>
                         </div>
                     ) : (
@@ -1091,6 +1179,8 @@ export function LemonSalaryManage() {
     const [toast, setToast] = useState<string | null>(null);
     const [importResult, setImportResult] = useState<SalaryBillImportResultDto | null>(null);
     const fileRef = useRef<HTMLInputElement | null>(null);
+    /** 显示所有信息：补出计提凭证与发放凭证两列。 */
+    const [showAll, setShowAll] = useState(false);
 
     const reload = useCallback(async () => {
         if (!accountSetId) {
@@ -1182,7 +1272,6 @@ export function LemonSalaryManage() {
             </Page>
         );
     const cols: Col[] = [
-        { key: "ck", title: <CheckBox label="" />, width: "36px" },
         { key: "no", title: "编号", width: "70px" },
         { key: "name", title: "姓名", width: "100px" },
         { key: "dept", title: "部门", width: "100px" },
@@ -1196,6 +1285,12 @@ export function LemonSalaryManage() {
         { key: "net", title: "实发工资", align: "right" },
         { key: "company", title: "公司承担款项", align: "right" },
         { key: "cost", title: "员工成本", align: "right" },
+        ...(showAll
+            ? ([
+                  { key: "accruedVoucher", title: "计提凭证", width: "160px" },
+                  { key: "paidVoucher", title: "发放凭证", width: "160px" },
+              ] as Col[])
+            : []),
     ];
     const list = bills;
     const sumOf = (pick: (b: SalaryBillDto) => number | null | undefined) =>
@@ -1227,6 +1322,8 @@ export function LemonSalaryManage() {
             net: nf(b.net),
             company: nf(b.companyPart),
             cost: nf(b.cost),
+            accruedVoucher: b.accruedVoucherText ?? "",
+            paidVoucher: b.paidVoucherText ?? "",
         })),
         // 空期间不渲染全 0 的合计行，空态交给 Table 的 empty。
         ...(list.length
@@ -1260,9 +1357,7 @@ export function LemonSalaryManage() {
                 }
                 right={
                     <>
-                        <span title="编辑、显示工资明细开关暂未实现，仅作展示">
-                            <CheckBox label="编辑、显示工资明细" />
-                        </span>
+                        <CheckBox label="显示所有信息" checked={showAll} onChange={setShowAll} />
                         <span title="多次发放工资需拆分工资单，暂未实现，仅作展示">
                             <CheckBox label="多次发放工资" />
                         </span>
@@ -1278,7 +1373,7 @@ export function LemonSalaryManage() {
                         </Btn>
                         <WipBtn title="发送工资条需短信 / 邮件通道，暂未实现">发送工资条</WipBtn>
                         <WipBtn title="个税申报需对接电子税务局，暂未实现">个税申报</WipBtn>
-                        <Btn dropdown title="打印当期工资表（后端生成 PDF）" onClick={() => void printBills()}>打印</Btn>
+                        <PrintBtn title="打印当期工资表（后端生成 PDF）" onClick={() => void printBills()}>打印</PrintBtn>
                         <WipBtn title="工资表附件归档暂未实现">附件</WipBtn>
                         <Dropdown
                             trigger={["click"]}
@@ -1389,6 +1484,11 @@ export function LemonSalaryEmployee() {
     const [syncing, setSyncing] = useState(false);
     const [loginOpen, setLoginOpen] = useState(false);
     const empFileRef = useRef<HTMLInputElement | null>(null);
+    /** 列表筛选：部门为空表示不限，status 为空表示不限，active 在职，disabled 已停用。 */
+    const [deptFilter, setDeptFilter] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"" | "active" | "disabled">("");
+    /** 显示所有信息：展开性别、出生日期、用工类型、开户行与银行账号等档案字段。 */
+    const [showAll, setShowAll] = useState(false);
 
     const empBase = `/api/accountsets/${accountSetId}/salary`;
 
@@ -1504,7 +1604,13 @@ export function LemonSalaryEmployee() {
         }
     };
 
-    const pageIds = data.employees.map((e) => e.id ?? "").filter(Boolean);
+    const depts = [...new Set(data.employees.map((e) => e.dept ?? "").filter(Boolean))];
+    const employees = data.employees.filter(
+        (e) =>
+            (!deptFilter || e.dept === deptFilter) &&
+            (!statusFilter || (statusFilter === "disabled" ? e.isDisabled : !e.isDisabled)),
+    );
+    const pageIds = employees.map((e) => e.id ?? "").filter(Boolean);
     const allChecked = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
     const toggleOne = (id: string, checked: boolean) =>
         setSelected((prev) => {
@@ -1530,11 +1636,22 @@ export function LemonSalaryEmployee() {
         { key: "phone", title: "手机", width: "140px" },
         { key: "email", title: "邮箱", width: "140px" },
         { key: "idNo", title: "证件号码", width: "180px" },
+        ...(showAll
+            ? ([
+                  { key: "gender", title: "性别", width: "70px" },
+                  { key: "birth", title: "出生日期", width: "110px" },
+                  { key: "employment", title: "用工类型", width: "110px" },
+                  { key: "hireDate", title: "入职日期", width: "110px" },
+                  { key: "bank", title: "开户行", width: "160px" },
+                  { key: "bankAccount", title: "银行账号", width: "180px" },
+                  { key: "remark", title: "备注", width: "160px" },
+              ] as Col[])
+            : []),
         { key: "subject", title: "计提工资科目", width: "240px" },
         { key: "status", title: "员工状态", width: "90px" },
         { key: "ops", title: "操作", width: "110px" },
     ];
-    const rows: Row[] = data.employees.map((e) => ({
+    const rows: Row[] = employees.map((e) => ({
         ck: <CheckBox label="" checked={selected.has(e.id ?? "")} onChange={(c) => toggleOne(e.id ?? "", c)} />,
         no: e.code,
         name: e.name,
@@ -1542,6 +1659,13 @@ export function LemonSalaryEmployee() {
         phone: e.phone,
         email: e.email,
         idNo: e.idNo,
+        gender: e.genderText,
+        birth: toDateInput(e.birthDate),
+        employment: e.employmentTypeText,
+        hireDate: toDateInput(e.hireDate),
+        bank: e.bankName ?? "",
+        bankAccount: e.bankAccountNo ?? "",
+        remark: e.remark ?? "",
         subject: e.subjectText,
         status: e.statusText,
         ops: (
@@ -1555,15 +1679,40 @@ export function LemonSalaryEmployee() {
         <Page>
             <ToolRow
                 left={
-                    <WipBtn dropdown title="按部门/状态筛选员工暂未实现">
-                        所有员工
-                    </WipBtn>
+                    <Dropdown
+                        trigger={["click"]}
+                        menu={{
+                            items: [
+                                { key: "all", label: "所有员工" },
+                                ...depts.map((d) => ({ key: `dept:${d}`, label: `部门：${d}` })),
+                                { type: "divider" as const },
+                                { key: "active", label: "在职员工" },
+                                { key: "disabled", label: "已停用员工" },
+                            ],
+                            onClick: ({ key }) => {
+                                if (key === "all") {
+                                    setDeptFilter("");
+                                    setStatusFilter("");
+                                } else if (key === "active" || key === "disabled") {
+                                    setDeptFilter("");
+                                    setStatusFilter(key);
+                                } else if (key.startsWith("dept:")) {
+                                    setDeptFilter(key.slice(5));
+                                    setStatusFilter("");
+                                }
+                            },
+                        }}
+                    >
+                        <span>
+                            <Btn dropdown>
+                                {deptFilter || (statusFilter === "active" ? "在职员工" : statusFilter === "disabled" ? "已停用员工" : "所有员工")}
+                            </Btn>
+                        </span>
+                    </Dropdown>
                 }
                 right={
                     <>
-                        <span title="显示全部字段暂未实现，仅作展示">
-                            <CheckBox label="显示所有信息" />
-                        </span>
+                        <CheckBox label="显示所有信息" checked={showAll} onChange={setShowAll} />
                         <Btn variant="primary" onClick={() => setDrawer("new")}>增加员工</Btn>
                         <Btn
                             onClick={() => void syncFromIit()}
@@ -1575,9 +1724,9 @@ export function LemonSalaryEmployee() {
                         <Btn dropdown onClick={() => empFileRef.current?.click()} title="从 .xlsx 导入员工（按编号匹配，存在则更新）">
                             导入
                         </Btn>
-                        <Btn dropdown onClick={() => void exportEmployees()} title="导出员工名册为 .xlsx">
+                        <ExportBtn onClick={() => void exportEmployees()} title="导出员工名册为 .xlsx">
                             导出
-                        </Btn>
+                        </ExportBtn>
                         <Dropdown
                             trigger={["click"]}
                             menu={{
@@ -1794,8 +1943,8 @@ export function LemonSalarySummary() {
                         <span title="展开员工明细行暂未实现，仅作展示">
                             <CheckBox label="显示员工工资明细" />
                         </span>
-                        <Btn onClick={() => void printSummary()} title="打印当前区间的工资统计表（后端生成 PDF）">打印</Btn>
-                        <Btn onClick={() => void exportSummary()} title="导出当前区间的工资统计表为 .xlsx">导出</Btn>
+                        <PrintBtn onClick={() => void printSummary()} title="打印当前区间的工资统计表（后端生成 PDF）">打印</PrintBtn>
+                        <ExportBtn onClick={() => void exportSummary()} title="导出当前区间的工资统计表为 .xlsx">导出</ExportBtn>
                         <span className="cursor-pointer" onClick={() => void reload()} title="刷新">
                             <RefreshIcon />
                         </span>
@@ -1827,6 +1976,7 @@ function InsuranceEditDialog({
     const { token } = useAuth();
     const accountSetId = useCurrentAccountSetId() ?? "";
     const [name, setName] = useState(item?.name ?? "");
+    const [baseAmount, setBaseAmount] = useState(item?.baseAmount ? String(item.baseAmount) : "");
     const [companyRate, setCompanyRate] = useState(item?.companyRate != null ? String(item.companyRate) : "");
     const [personalRate, setPersonalRate] = useState(item?.personalRate != null ? String(item.personalRate) : "");
     const [toast, setToast] = useState<string | null>(null);
@@ -1842,6 +1992,7 @@ function InsuranceEditDialog({
         }
         const request = {
             name: name.trim(),
+            baseAmount: Number(baseAmount) || 0,
             companyRate: Number(companyRate) || 0,
             personalRate: personalRate.trim() === "" ? null : Number(personalRate) || 0,
         };
@@ -1879,12 +2030,16 @@ function InsuranceEditDialog({
                 <Field label="缴纳项目" required>
                     <TextInput className={FORM_CONTROL_W} value={name} onChange={setName} />
                 </Field>
+                <Field label="缴纳基数">
+                    <TextInput className={FORM_CONTROL_W} type="number" value={baseAmount} onChange={setBaseAmount} placeholder="留空表示不设默认基数" />
+                </Field>
                 <Field label="公司缴纳比例(%)">
                     <TextInput className={FORM_CONTROL_W} type="number" value={companyRate} onChange={setCompanyRate} />
                 </Field>
                 <Field label="个人缴纳比例(%)">
                     <TextInput className={FORM_CONTROL_W} type="number" value={personalRate} onChange={setPersonalRate} />
                 </Field>
+                <p className="text-[12.5px] text-(--muted-foreground)">员工档案未单独填写缴纳基数时，按这里的默认基数计算。</p>
             </div>
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Dialog>
@@ -1920,6 +2075,7 @@ export function LemonSalaryInsurance() {
     const cols: Col[] = [
         { key: "name", title: "缴纳项目", width: "160px" },
         { key: "mode", title: "缴纳方式", width: "140px" },
+        { key: "baseAmount", title: "缴纳基数", width: "140px", align: "right" },
         { key: "companyRate", title: "公司缴纳比例", width: "140px" },
         { key: "personalRate", title: "个人缴纳比例", width: "140px" },
         { key: "companyAmt", title: "公司缴纳金额", width: "140px", render: () => "--" },
@@ -1957,6 +2113,7 @@ export function LemonSalaryInsurance() {
                         __item: i,
                         name: i.name,
                         mode: i.modeText ?? "按比例缴纳",
+                        baseAmount: i.baseAmount && i.baseAmount > 0 ? nf(i.baseAmount) : "未设置",
                         companyRate: `${i.companyRate}%`,
                         personalRate: i.personalRate == null ? "" : `${i.personalRate}%`,
                     }))}
