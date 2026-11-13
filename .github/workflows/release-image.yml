@@ -37,7 +37,8 @@ jobs:
           : "${RAW_REGISTRY:?缺少 ACR_REGISTRY（Repository variables 或 secrets）}"
           : "${RAW_NAMESPACE:?缺少 ACR_NAMESPACE（Repository variables 或 secrets）}"
           registry="${RAW_REGISTRY#https://}"; registry="${registry#http://}"; registry="${registry%/}"
-          namespace="${RAW_NAMESPACE%/}"
+          registry=$(printf '%s' "$registry" | tr 'A-Z' 'a-z' | sed -e 's/[[:space:]]//g' -e 's/\.$//' -e 's/:443$//' -e 's/:80$//')
+          namespace=$(printf '%s' "$RAW_NAMESPACE" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's|/$||')
           case "$registry" in
             */*) echo "::error::ACR_REGISTRY 只填域名，不要带命名空间或路径"; exit 1;;
             registry-vpc.*|*-vpc.*|*-internal.*) echo "::error::这是 VPC/内网地址，GitHub 托管 runner 无法访问，请换成公网域名"; exit 1;;
