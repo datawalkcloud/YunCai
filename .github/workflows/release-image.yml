@@ -64,8 +64,25 @@ jobs:
           echo "token 服务：${realm:-（未取到）} service=${service:-（无）}"
           [ -n "$realm" ] || { echo "::warning::未取到鉴权挑战，跳过诊断"; exit 0; }
           resp=$(curl -sS -u "$user:$pass" -w '\n%{http_code}' "$realm?service=${service}&scope=repository:${namespace}/${{ matrix.image }}:pull,push")
-          echo "取 token → HTTP $(printf '%s' "$resp" | tail -n1)"
-          printf '%s' "$resp" | sed '$d' | head -c 500; echo
+          token_code=$(printf '%s' "$resp" | tail -n1)
+          token_body=$(printf '%s' "$resp" | sed '$d')
+          echo "取 token → HTTP $token_code"
+          case "$registry" in
+            *.cr.aliyuncs.com) echo "注册表类型：企业版实例域名";;
+            registry.*.aliyuncs.com) echo "注册表类型：个人版域名";;
+            *) echo "注册表类型：非阿里云标准域名（自定义域名？）";;
+          esac
+          token=$(printf '%s' "$token_body" | python3 -c "import sys,json;print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || true)
+          if [ -n "$token" ]; then
+            code=$(curl -s -o /tmp/acr_basic -w '%{http_code}' -u "$user:$pass" "https://$registry/v2/")
+            echo "GET /v2/（Basic）→ HTTP $code"; head -c 300 /tmp/acr_basic; echo
+            code=$(curl -s -o /tmp/acr_bearer -w '%{http_code}' -H "Authorization: Bearer $token" "https://$registry/v2/")
+            echo "GET /v2/（Bearer）→ HTTP $code"; head -c 300 /tmp/acr_bearer; echo
+            code=$(curl -s -o /tmp/acr_tags -w '%{http_code}' -H "Authorization: Bearer $token" "https://$registry/v2/${namespace}/${{ matrix.image }}/tags/list")
+            echo "GET 仓库 tags（Bearer）→ HTTP $code"; head -c 300 /tmp/acr_tags; echo
+          else
+            echo "未取到 access_token"; head -c 300 <<<"$token_body"; echo
+          fi
 
       - name: 登录 ACR
         env:
