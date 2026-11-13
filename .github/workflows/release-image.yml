@@ -28,27 +28,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 校验 ACR 配置
+      - name: 校验并规范化 ACR 配置
+        id: acr
         env:
-          REGISTRY: ${{ vars.ACR_REGISTRY || secrets.ACR_REGISTRY }}
-          NAMESPACE: ${{ vars.ACR_NAMESPACE || secrets.ACR_NAMESPACE }}
+          RAW_REGISTRY: ${{ vars.ACR_REGISTRY || secrets.ACR_REGISTRY }}
+          RAW_NAMESPACE: ${{ vars.ACR_NAMESPACE || secrets.ACR_NAMESPACE }}
         run: |
-          : "${REGISTRY:?缺少 ACR_REGISTRY（Repository variables 或 secrets）}"
-          : "${NAMESPACE:?缺少 ACR_NAMESPACE（Repository variables 或 secrets）}"
+          : "${RAW_REGISTRY:?缺少 ACR_REGISTRY（Repository variables 或 secrets）}"
+          : "${RAW_NAMESPACE:?缺少 ACR_NAMESPACE（Repository variables 或 secrets）}"
+          registry="${RAW_REGISTRY#https://}"; registry="${registry#http://}"; registry="${registry%/}"
+          namespace="${RAW_NAMESPACE%/}"
+          case "$registry" in
+            */*) echo "::error::ACR_REGISTRY 只填域名，不要带命名空间或路径"; exit 1;;
+            registry-vpc.*|*-vpc.*|*-internal.*) echo "::error::这是 VPC/内网地址，GitHub 托管 runner 无法访问，请换成公网域名"; exit 1;;
+          esac
+          code=$(curl -s -o /dev/null -w '%{http_code}' "https://$registry/v2/" || true)
+          echo "https://$registry/v2/ → HTTP $code（预期 401 表示域名可达）"
+          echo "registry=$registry" >> "$GITHUB_OUTPUT"
+          echo "namespace=$namespace" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
       - name: 登录 ACR
         uses: docker/login-action@v3
         with:
-          registry: ${{ vars.ACR_REGISTRY || secrets.ACR_REGISTRY }}
+          registry: ${{ steps.acr.outputs.registry }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ vars.ACR_REGISTRY || secrets.ACR_REGISTRY }}/${{ vars.ACR_NAMESPACE || secrets.ACR_NAMESPACE }}/${{ matrix.image }}
+          images: ${{ steps.acr.outputs.registry }}/${{ steps.acr.outputs.namespace }}/${{ matrix.image }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
