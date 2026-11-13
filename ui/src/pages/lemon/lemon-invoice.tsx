@@ -11,12 +11,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Button, Dropdown, Modal } from "antd";
 import dayjs from "dayjs";
-import {
-    QuestionCircleOutlined,
-} from "@ant-design/icons";
 
-import { ICON_STYLE, type PillTone, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
-
+import { HelpTip } from "@/components/page/help-tip";
+import { type PillTone, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
 import {
     Btn,
     ExportBtn,
@@ -2118,6 +2115,8 @@ const BANK_TABS = ["工商银行", "中国银行", "招商银行", "邮储银行
 
 export function LemonBankLink() {
     const [bank, setBank] = useState(1);
+    const [manualOpen, setManualOpen] = useState(false);
+    const [toast, setToast] = useState<string | null>(null);
     return (
         <Page>
             <WipNotice text="银企互联需对接银行直连服务，后端尚未提供端点，本页为签约流程示意（建设中），表单内容不会提交。" />
@@ -2126,9 +2125,15 @@ export function LemonBankLink() {
                 className="mx-auto my-6 w-[1220px] rounded-2xl border border-(--border) bg-(--card) p-8"
                 style={{ maxWidth: "calc(100% - 32px)" }}
             >
-                <div className="flex justify-end gap-1 text-[13px]">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-(--brand-fill) text-[11px] text-white">?</span>
-                    <span className="cursor-pointer text-(--brand)">点此查看操作手册</span>
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        onClick={() => setManualOpen(true)}
+                        className="flex cursor-pointer items-center gap-1 text-[13px] text-(--brand) hover:underline"
+                    >
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-(--brand-fill) text-[11px] text-white">?</span>
+                        点此查看操作手册
+                    </button>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-10">
                     <div className="flex flex-1 flex-col gap-5">
@@ -2152,8 +2157,11 @@ export function LemonBankLink() {
                             <span className="w-[170px] text-right text-[13px] text-(--foreground)">企业客户号：</span>
                             <span className={`${FORM_CONTROL_W} inline-flex h-8 items-center rounded-lg border border-(--border) px-2.5 text-[13px] text-(--muted-foreground)`}>
                                 若集团账号签约，请输入企业客户号
-                                <QuestionCircleOutlined className="ml-auto text-[14px]" style={ICON_STYLE.muted} />
                             </span>
+                            <HelpTip
+                                className="ml-1"
+                                title="集团客户与银行统一签约时，由银行分配的企业客户号；单独签约的企业无需填写。"
+                            />
                         </div>
                     </div>
                     <div className="w-[370px] max-w-full shrink-0 self-start rounded-xl bg-(--table-zebra-bg) p-5 text-[13px] leading-6">
@@ -2168,7 +2176,15 @@ export function LemonBankLink() {
                     <WipBtn title="银企互联建设中，后端未提供授权端点">立即授权</WipBtn>
                 </div>
                 <div className="mt-5 text-center text-[13px] text-(--muted-foreground)">
-                    如有疑问，请 <span className="cursor-pointer text-(--brand)">咨询客服</span> ，咨询时间：周一至周日 8:30-12:00,13:30-20:30
+                    如有疑问，请{" "}
+                    <button
+                        type="button"
+                        onClick={() => setToast("在线客服服务时间：周一至周日 8:30-12:00、13:30-20:30。当前版本暂未接入在线会话，请通过服务商渠道联系客服。")}
+                        className="cursor-pointer text-(--brand) hover:underline"
+                    >
+                        咨询客服
+                    </button>{" "}
+                    ，咨询时间：周一至周日 8:30-12:00,13:30-20:30
                 </div>
             </div>
             <div
@@ -2182,6 +2198,30 @@ export function LemonBankLink() {
                 <span className="text-[13px] text-(--muted-foreground)">实时同步对账单，自动生成凭证，银行级加密，安全可靠</span>
                 <span className="text-[26px]">🏦</span>
             </div>
+            {manualOpen && (
+                <Dialog
+                    title="银企互联操作手册"
+                    width={560}
+                    onClose={() => setManualOpen(false)}
+                    footer={
+                        <Btn variant="primary" onClick={() => setManualOpen(false)}>
+                            我知道了
+                        </Btn>
+                    }
+                >
+                    <ol className="m-0 flex list-decimal flex-col gap-2 pl-5 text-[13px] leading-6 text-(--foreground)">
+                        <li>在上方选择要签约的银行页签，填写公司名称、统一社会信用代码、银行账户与银行账号。</li>
+                        <li>集团客户与银行统一签约时，填写银行分配的企业客户号；单独签约的企业无需填写。</li>
+                        <li>在电脑上插入对应银行的「飞盾」（U 盾）并安装驱动，点击「立即授权」按银行提示完成签约。</li>
+                        <li>授权成功后，系统可按日同步该账户的对账单并批量生成凭证；当前版本尚未接入银行直连，页面仅演示签约流程。</li>
+                    </ol>
+                    <div className="mt-4 rounded-lg bg-(--table-zebra-bg) px-3 py-2 text-[12px] leading-5 text-(--muted-foreground)">
+                        授权前请确认银行账户与账号、账户名称一致；换账户或换银行需要重新授权。客服服务时间：周一至周日
+                        8:30-12:00、13:30-20:30。
+                    </div>
+                </Dialog>
+            )}
+            {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </Page>
     );
 }

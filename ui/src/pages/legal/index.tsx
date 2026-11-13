@@ -39,16 +39,8 @@ function LegalPage({
         <div className="mx-auto flex h-full w-full max-w-[1240px] items-center justify-between px-5 md:px-8">
           <Link to="/" className="flex items-center gap-2">
             <BrandLogo size={26} />
-            <span className="flex items-baseline gap-1.5">
-              <span className="text-[16px] font-medium tracking-tight" style={{ color: C.ink }}>
-                云财
-              </span>
-              <span
-                className="text-[9.5px] font-light uppercase tracking-[0.2em]"
-                style={{ color: "#c0c0c0" }}
-              >
-                KuaiJi
-              </span>
+            <span className="text-[16px] font-medium tracking-tight" style={{ color: C.ink }}>
+              云财
             </span>
           </Link>
           <Link

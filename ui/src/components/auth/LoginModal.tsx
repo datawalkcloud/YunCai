@@ -156,16 +156,8 @@ export function LoginModal({
         {/* 品牌 */}
         <div className="flex items-center justify-center gap-2.5">
           <BrandLogo size={36} />
-          <span className="flex items-baseline gap-1.5">
-            <span className="text-[16px] font-medium tracking-tight" style={{ color: C.ink }}>
-              云财
-            </span>
-            <span
-              className="text-[9.5px] font-normal uppercase tracking-[0.2em]"
-              style={{ color: "var(--icon-placeholder)" }}
-            >
-              KuaiJi
-            </span>
+          <span className="text-[16px] font-medium tracking-tight" style={{ color: C.ink }}>
+            云财
           </span>
         </div>
 

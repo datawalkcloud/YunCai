@@ -5,7 +5,9 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Alert, Drawer, Dropdown, Radio, Segmented } from "antd";
-import { InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, SettingOutlined } from "@ant-design/icons";
+
+import { HelpTip } from "@/components/page/help-tip";
 
 import { ICON_STYLE, PILL, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
 import { useAuth } from "@/auth/AuthContext";
@@ -1366,7 +1368,10 @@ export function LemonSalaryManage() {
                         </Btn>
                         <span className="inline-flex items-center gap-1">
                             <WipBtn title="同步个税申报表需对接电子税务局，暂未实现">同步个税申报表</WipBtn>
-                            <QuestionCircleOutlined className="text-[14px]" style={ICON_STYLE.muted} />
+                            <HelpTip
+                                className="text-[14px]"
+                                title="按当期工资表以累计预扣法计算个税，并推送到电子税务局的个税申报表；需要税局登录态与申报接口，当前尚未接入。"
+                            />
                         </span>
                         <Btn dropdown onClick={() => fileRef.current?.click()} title="从 .xlsx 导入工资表（按员工编号匹配）">
                             导入

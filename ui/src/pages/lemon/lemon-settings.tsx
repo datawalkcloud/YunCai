@@ -1921,11 +1921,20 @@ function StepCard({ title, desc }: { title: string; desc: string }) {
 }
 
 export function LemonEisRelation() {
+    const [helpOpen, setHelpOpen] = useState(false);
     return (
         <Page>
             <WipNotice text="关联云发票界面复刻，尚未接入后端：发票关联与自动凭证能力待建设。" />
             <ToolRow
-                left={<span className="text-[13px] text-(--muted-foreground)">查看帮助（建设中）</span>}
+                left={
+                    <button
+                        type="button"
+                        onClick={() => setHelpOpen(true)}
+                        className="cursor-pointer text-[13px] text-(--brand) hover:underline"
+                    >
+                        查看帮助
+                    </button>
+                }
                 right={<RefreshIcon />}
             />
             <div className="mx-auto max-w-[980px] w-full px-4 pb-8">
@@ -1944,16 +1953,47 @@ export function LemonEisRelation() {
                     <WipBtn>立即使用 <WipTag /></WipBtn>
                 </div>
             </div>
+            {helpOpen && (
+                <Dialog
+                    title="关联云发票 · 使用帮助"
+                    width={560}
+                    onClose={() => setHelpOpen(false)}
+                    footer={
+                        <Btn variant="primary" onClick={() => setHelpOpen(false)}>
+                            我知道了
+                        </Btn>
+                    }
+                >
+                    <ol className="m-0 flex list-decimal flex-col gap-2 pl-5 text-[13px] leading-6 text-(--foreground)">
+                        <li>由云发票的系统管理员发起关联；操作人需要同时拥有财务软件的关联云发票权限。</li>
+                        <li>关联后，云发票开具的销项发票可按开票日期同步到本系统发票池，无需再手工导入。</li>
+                        <li>在「销项发票」中勾选已同步的发票即可生成凭证；凭证科目按发票方向与商品明细匹配。</li>
+                        <li>解除关联后不再同步新发票，已生成的凭证与历史发票不受影响。</li>
+                    </ol>
+                    <div className="mt-4 rounded-lg bg-(--table-zebra-bg) px-3 py-2 text-[12px] leading-5 text-(--muted-foreground)">
+                        当前版本尚未接入云发票关联接口，本页为流程示意；关联状态与「立即使用」暂不可用。
+                    </div>
+                </Dialog>
+            )}
         </Page>
     );
 }
 
 export function LemonScmRelation() {
+    const [helpOpen, setHelpOpen] = useState(false);
     return (
         <Page>
             <WipNotice text="关联进销存界面复刻，尚未接入后端：业财关联与凭证自动生成能力待建设。" />
             <ToolRow
-                left={<span className="text-[13px] text-(--muted-foreground)">进销存+财务管理操作视频（建设中）</span>}
+                left={
+                    <button
+                        type="button"
+                        onClick={() => setHelpOpen(true)}
+                        className="cursor-pointer text-[13px] text-(--brand) hover:underline"
+                    >
+                        查看帮助
+                    </button>
+                }
                 right={<RefreshIcon />}
             />
             <div className="mx-auto max-w-[980px] w-full px-4 pb-8">
@@ -1984,6 +2024,28 @@ export function LemonScmRelation() {
                     <WipBtn>前往业财体验 <WipTag /></WipBtn>
                 </div>
             </div>
+            {helpOpen && (
+                <Dialog
+                    title="关联进销存 · 使用帮助"
+                    width={560}
+                    onClose={() => setHelpOpen(false)}
+                    footer={
+                        <Btn variant="primary" onClick={() => setHelpOpen(false)}>
+                            我知道了
+                        </Btn>
+                    }
+                >
+                    <ol className="m-0 flex list-decimal flex-col gap-2 pl-5 text-[13px] leading-6 text-(--foreground)">
+                        <li>由同时拥有财务软件与进销存权限的账套管理员发起关联。</li>
+                        <li>关联后先在进销存中确认核算参数，再把存货、客户、供应商等基础资料对应到财务账套的会计科目。</li>
+                        <li>采购、销售、库存单据可按期间同步到本系统，勾选后按对应科目自动生成凭证。</li>
+                        <li>解除关联不会删除已生成的凭证和历史单据，只停止后续同步。</li>
+                    </ol>
+                    <div className="mt-4 rounded-lg bg-(--table-zebra-bg) px-3 py-2 text-[12px] leading-5 text-(--muted-foreground)">
+                        当前版本尚未接入进销存关联接口，本页为流程示意；关联状态与「前往业财体验」暂不可用。
+                    </div>
+                </Dialog>
+            )}
         </Page>
     );
 }

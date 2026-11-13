@@ -10,8 +10,8 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$project = Join-Path $repoRoot "src/TaxAssistant/KuaijiTool.csproj"
-$iss = Join-Path $repoRoot "src/TaxAssistant/installer/KuaijiTaxAssistant.iss"
+$project = Join-Path $repoRoot "src/TaxAssistant/YunCaiTool.csproj"
+$iss = Join-Path $repoRoot "src/TaxAssistant/installer/YunCaiTaxAssistant.iss"
 $stage = Join-Path $repoRoot "src/TaxAssistant/obj/installer-stage"
 if (-not $OutputDir) {
     $OutputDir = Join-Path $repoRoot "ui/public/downloads"
@@ -52,7 +52,7 @@ if (-not $iscc) {
     throw "未找到 Inno Setup 的 ISCC.exe，请先安装 Inno Setup 6（winget install JRSoftware.InnoSetup）"
 }
 
-if (Get-Process KuaijiTool -ErrorAction SilentlyContinue) {
+if (Get-Process YunCaiTool -ErrorAction SilentlyContinue) {
     throw "云财税务助手正在运行，请先退出后重新构建"
 }
 
@@ -75,6 +75,6 @@ if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup 编译失败"
 }
 
-$setup = Join-Path $OutputDir "KuaijiTaxAssistantSetup.exe"
+$setup = Join-Path $OutputDir "YunCaiTaxAssistantSetup.exe"
 $size = [math]::Round((Get-Item $setup).Length / 1MB, 1)
 Write-Host "已生成 $setup（$size MB）"

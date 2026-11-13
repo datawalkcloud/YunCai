@@ -36,7 +36,7 @@ const DEFAULT_SNAPSHOT: CompanyInfoSnapshot = {
     branchType: "非总分机构",
 };
 
-const storageKey = (accountSetId: string) => `kuaiji.tax.company-info.${accountSetId}`;
+const storageKey = (accountSetId: string) => `yuncai.tax.company-info.${accountSetId}`;
 
 function loadSnapshot(accountSetId: string): CompanyInfoSnapshot {
     try {
@@ -123,7 +123,7 @@ export function CompanyInfoModal({
             onCancel={onClose}
             width={900}
             centered
-            title="公司信息"
+            title="公司信息"
             footer={
                 <div className="flex items-center justify-center gap-3">
                     <Button  onClick={save}>

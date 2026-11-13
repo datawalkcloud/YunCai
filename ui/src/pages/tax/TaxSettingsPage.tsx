@@ -83,7 +83,7 @@ const DEFAULT_SETTINGS: SettingsState = {
     },
 };
 
-const storageKey = (accountSetId: string) => `kuaiji.tax.settings.${accountSetId}`;
+const storageKey = (accountSetId: string) => `yuncai.tax.settings.${accountSetId}`;
 
 function loadSettings(accountSetId: string): SettingsState {
     try {

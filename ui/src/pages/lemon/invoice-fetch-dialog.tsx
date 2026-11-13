@@ -92,6 +92,7 @@ export function InvoiceFetchDialog({ onClose, onFetched }: { onClose: () => void
     const [range, setRange] = useState(defaultRange);
     const [login, setLogin] = useState<TaxLoginValues>(DEFAULT_TAX_LOGIN_VALUES);
     const [toast, setToast] = useState<string | null>(null);
+    const [helpOpen, setHelpOpen] = useState(false);
 
     const [syncState, setSyncState] = useState<SyncState>("idle");
     const [result, setResult] = useState<TaxInvoiceSyncResult | null>(null);
@@ -371,10 +372,21 @@ export function InvoiceFetchDialog({ onClose, onFetched }: { onClose: () => void
                                 3.
                                 <span className="text-(--danger)">系统获取发票过程中请勿登录电子税务局</span>
                                 ，同一账号在别处登录会把服务器上的税局会话挤掉、导致取票中断；一键取票的开票日期最长不能超过{MAX_RANGE_MONTHS}个月，如您在使用过程中有任何疑问，请查看{" "}
-                                <span className="cursor-pointer text-(--brand)">帮助文档</span> 或联系
-                                <span className="ml-1 inline-flex h-5 items-center rounded bg-(--brand-fill) px-1.5 align-middle text-[12px] text-white">
+                                <button
+                                    type="button"
+                                    onClick={() => setHelpOpen(true)}
+                                    className="cursor-pointer text-(--brand) hover:underline"
+                                >
+                                    帮助文档
+                                </button>{" "}
+                                或联系
+                                <button
+                                    type="button"
+                                    onClick={() => setHelpOpen(true)}
+                                    className="ml-1 inline-flex h-5 items-center rounded bg-(--brand-fill) px-1.5 align-middle text-[12px] text-white"
+                                >
                                     在线客服
-                                </span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -502,6 +514,32 @@ export function InvoiceFetchDialog({ onClose, onFetched }: { onClose: () => void
                     </div>
                 )}
             </Dialog>
+            {helpOpen && (
+                <Dialog
+                    title="一键取票 · 使用说明"
+                    width={560}
+                    onClose={() => setHelpOpen(false)}
+                    footer={
+                        <Btn variant="primary" onClick={() => setHelpOpen(false)}>
+                            我知道了
+                        </Btn>
+                    }
+                >
+                    <ol className="m-0 flex list-decimal flex-col gap-2 pl-5 text-[13px] leading-6 text-(--foreground)">
+                        <li>确认公司名称、统一社会信用代码、增值税种类、报税地区与开票时间区间；资料保存后同时写回账套。</li>
+                        <li>服务器使用账套里保存的税局登录态取票；登录失效时才退回第二步补账号密码或短信验证码。</li>
+                        <li>服务器登录电子税务局查询全量发票，解析后写入发票池，结果按「取回 / 新增 / 跳过」汇总。</li>
+                        <li>取回后到「销项发票」「进项发票」勾选发票生成凭证，已入账的发票不会被重复覆盖。</li>
+                    </ol>
+                    <div className="mt-4 flex flex-col gap-1 rounded-lg bg-(--table-zebra-bg) px-3 py-2 text-[12px] leading-5 text-(--muted-foreground)">
+                        <span>• 取票是单向的：只从税局读取发票，不会向税局写入或回传数据。</span>
+                        <span>• 取票依赖服务器上的税局登录态；登录失效会退回第二步补账号密码。</span>
+                        <span>• 开票日期区间最长 {MAX_RANGE_MONTHS} 个月，重复取票按「账套 + 方向 + 发票号」跳过，不覆盖已入账发票。</span>
+                        <span>• 数电发票原件（PDF / XML）下载尚未接入，当前取回的是发票数据与商品明细。</span>
+                        <span>• 客服服务时间：周一至周日 8:30-12:00、13:30-20:30。</span>
+                    </div>
+                </Dialog>
+            )}
             {toast && <Toast text={toast} onClose={() => setToast(null)} />}
         </>
     );

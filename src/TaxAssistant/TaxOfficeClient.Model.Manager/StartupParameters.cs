@@ -21,7 +21,7 @@ public class StartupParameters
 	public string CompanyName { get; set; } = string.Empty;
 
 	/// <summary>
-	/// 来自云财页面（kuaiji: 协议）的请求没有云端登录态，跳过换取 token 的接口。
+	/// 来自云财页面（yuncai: 协议）的请求没有云端登录态，跳过换取 token 的接口。
 	/// 带了 Ticket + ApiBase 时先用票据向云财后端取回服务器上的税局登录态并注入浏览器，
 	/// 实现免登录；没带票据时直接打开税局页面由用户登录。
 	/// </summary>

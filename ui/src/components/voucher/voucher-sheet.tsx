@@ -385,8 +385,8 @@ export default function VoucherSheet({
     const [assistPanelRow, setAssistPanelRow] = useState<number | null>(null)
     /** 录入选项（本机偏好，存 localStorage）。 */
     const [optionsOpen, setOptionsOpen] = useState(false)
-    const [optFillGap, setOptFillGap] = useState(() => localStorage.getItem("kuaiji.voucher.fillGap") === "1")
-    const [optFollowDirection, setOptFollowDirection] = useState(() => localStorage.getItem("kuaiji.voucher.followDirection") !== "0")
+    const [optFillGap, setOptFillGap] = useState(() => localStorage.getItem("yuncai.voucher.fillGap") === "1")
+    const [optFollowDirection, setOptFollowDirection] = useState(() => localStorage.getItem("yuncai.voucher.followDirection") !== "0")
     /** 损益方向提示：issues 为不规范行号，pending 记下被拦下的保存动作。 */
     const [directionModal, setDirectionModal] = useState<{ issues: number[]; keepEditing: boolean } | null>(null)
 
@@ -1417,8 +1417,8 @@ export default function VoucherSheet({
     const saveOptions = (next: { fillGap: boolean; followDirection: boolean }) => {
         setOptFillGap(next.fillGap)
         setOptFollowDirection(next.followDirection)
-        localStorage.setItem("kuaiji.voucher.fillGap", next.fillGap ? "1" : "0")
-        localStorage.setItem("kuaiji.voucher.followDirection", next.followDirection ? "1" : "0")
+        localStorage.setItem("yuncai.voucher.fillGap", next.fillGap ? "1" : "0")
+        localStorage.setItem("yuncai.voucher.followDirection", next.followDirection ? "1" : "0")
         message.success("选项已保存")
     }
 

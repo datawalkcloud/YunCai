@@ -25,7 +25,7 @@ import { NumberField } from "@/components/fields/number-field"
 /** 科目层级缩进：每级 1rem，等价原来的 paddingLeft: (level - 1) * 16。 */
 const LEVEL_INDENT = ["", "pl-4", "pl-8", "pl-12", "pl-16", "pl-20", "pl-24", "pl-28", "pl-32", "pl-36"]
 
-/** 科目类别页签：与柠檬云「期初」一致（资产/负债/共同/权益/成本/损益）；共同类在快记无对应枚举，暂列空页签。 */
+/** 科目类别页签：与柠檬云「期初」一致（资产/负债/共同/权益/成本/损益）；共同类在云财无对应枚举，暂列空页签。 */
 const CATEGORY_TABS = [
     { value: 1, label: "资产" },
     { value: 2, label: "负债" },

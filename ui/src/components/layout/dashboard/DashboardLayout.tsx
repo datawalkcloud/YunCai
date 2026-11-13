@@ -92,7 +92,7 @@ function WorkspaceShell() {
 /* ------------------------------------------------------------------ */
 
 /** 收起状态是本机偏好，跨账套共用一个开关。 */
-const SIDEBAR_COLLAPSED_KEY = "kuaiji.layout.sidebarCollapsed";
+const SIDEBAR_COLLAPSED_KEY = "yuncai.layout.sidebarCollapsed";
 
 function useSidebarCollapsed() {
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");

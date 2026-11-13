@@ -11,7 +11,7 @@ namespace TaxOfficeClient.Tools;
 
 public sealed class MultiOpenTool : IDisposable
 {
-	private const string PIPE_NAME = "KuaijiTaxAssistantPipe";
+	private const string PIPE_NAME = "YunCaiTaxAssistantPipe";
 
 	private const int CONNECTION_TIMEOUT = 5000;
 

@@ -32,3 +32,6 @@ appsettings.Local.json
 
 # 前端依赖
 node_modules/
+
+# 构建校验产物
+binVerify*/

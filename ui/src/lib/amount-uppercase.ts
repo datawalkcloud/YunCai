@@ -2,7 +2,7 @@
  * 人民币金额大写（公共工具）。
  * 由凭证录入页的合计显示、凭证打印与期末结转共用，避免多份实现漂移。
  *
- * 算法与后端 `ChineseAmount.ToUppercase`（src/KuaiJi/Shared/Infrastructure/ChineseAmount.cs）严格一致，
+ * 算法与后端 `ChineseAmount.ToUppercase`（src/YunCai/Shared/Infrastructure/ChineseAmount.cs）严格一致，
  * 保证浏览器打印预览与服务端 PDF 输出的大写金额完全相同。
  * 规则参照中国人民银行《正确填写票据和结算凭证的基本规定》。
  */

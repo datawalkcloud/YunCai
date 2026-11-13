@@ -54,6 +54,7 @@ export function LemonTaxLogin() {
     const navigate = useNavigate();
 
     const [guideOpen, setGuideOpen] = useState(false);
+    const [helpOpen, setHelpOpen] = useState(false);
     const [agreed, setAgreed] = useState(false);
     const [step, setStep] = useState<1 | 2>(1);
     /** 企业与税务身份：默认取自账套，也能在弹窗里直接改，保存时一并写回账套。 */
@@ -362,11 +363,32 @@ export function LemonTaxLogin() {
                                 <div>1.一键自动跳转登录电子税局，方便且高效</div>
                                 <div>
                                     2.首次使用或<span className="text-(--danger)">税务信息填写不准确</span>，均需要认证税局登录账号后，才能使用一键登录电子税局功能；税务信息填写完成后，可前往
-                                    <span className="cursor-pointer text-(--brand)">【设置-账套】</span>中再次查看和修改
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(`/${accountSetId}/settings/account-sets`)}
+                                        className="cursor-pointer text-(--brand) hover:underline"
+                                    >
+                                        【设置-账套】
+                                    </button>
+                                    中再次查看和修改
                                 </div>
                                 <div>
-                                    3.如您在使用过程中有任何疑问，请查看 <span className="cursor-pointer text-(--brand)">帮助文档</span> 或联系
-                                    <span className="ml-1 inline-flex h-6 items-center rounded-md bg-(--brand-fill) px-2 text-[12px] text-white">在线客服</span>
+                                    3.如您在使用过程中有任何疑问，请查看{" "}
+                                    <button
+                                        type="button"
+                                        onClick={() => setHelpOpen(true)}
+                                        className="cursor-pointer text-(--brand) hover:underline"
+                                    >
+                                        帮助文档
+                                    </button>{" "}
+                                    或联系
+                                    <button
+                                        type="button"
+                                        onClick={() => setHelpOpen(true)}
+                                        className="ml-1 inline-flex h-6 items-center rounded-md bg-(--brand-fill) px-2 text-[12px] text-white"
+                                    >
+                                        在线客服
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -458,6 +480,31 @@ export function LemonTaxLogin() {
                         「一键登录电子税务局」由本机的云财税务助手打开税局页面。助手窗口关掉后会收进系统托盘继续待命，托盘图标双击或右键「打开助手」都能唤回来。
                     </div>
                     <HintBox className="mt-3">装过但一直没响应，多半是助手从托盘退出了——重新打开助手再点一次「重新检测」；从没装过才需要下载安装包。</HintBox>
+                </Dialog>
+            )}
+
+            {helpOpen && (
+                <Dialog
+                    title="一键登录税局 · 使用说明"
+                    width={560}
+                    onClose={() => setHelpOpen(false)}
+                    footer={
+                        <Btn variant="primary" onClick={() => setHelpOpen(false)}>
+                            我知道了
+                        </Btn>
+                    }
+                >
+                    <ol className="m-0 flex list-decimal flex-col gap-2 pl-5 text-[13px] leading-6 text-(--foreground)">
+                        {STEPS.map((step) => (
+                            <li key={step}>{step}</li>
+                        ))}
+                    </ol>
+                    <div className="mt-4 flex flex-col gap-1 rounded-lg bg-(--table-zebra-bg) px-3 py-2 text-[12px] leading-5 text-(--muted-foreground)">
+                        <span>• 税局账号密码加密保存在当前账套，页面不回显；登录态只留在服务器。</span>
+                        <span>• 登录失败先检查「设置-账套」里的公司名称、纳税人识别号与报税地区是否与税局一致。</span>
+                        <span>• 系统办理业务期间请勿在别处登录同一税局账号，否则服务器会话会被挤掉。</span>
+                        <span>• 客服服务时间：周一至周日 8:30-12:00、13:30-20:30。</span>
+                    </div>
                 </Dialog>
             )}
 

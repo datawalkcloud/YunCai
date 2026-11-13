@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
+  AimOutlined,
   ApartmentOutlined,
   ArrowRightOutlined,
   AuditOutlined,
@@ -8,13 +9,18 @@ import {
   BarChartOutlined,
   BookOutlined,
   CheckOutlined,
-  CloudOutlined,
+  CloseOutlined,
   ContainerOutlined,
+  DatabaseOutlined,
   DownOutlined,
   FileTextOutlined,
   FolderOpenOutlined,
   LockOutlined,
+  RobotOutlined,
+  SafetyCertificateOutlined,
+  SyncOutlined,
   TeamOutlined,
+  ThunderboltOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
 
@@ -33,6 +39,7 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
  * ============================================================ */
 
 const NAV = [
+  { label: "为什么是云财", href: "#why" },
   { label: "产品能力", href: "#capabilities" },
   { label: "使用场景", href: "#scenarios" },
   { label: "安全合规", href: "#security" },
@@ -48,6 +55,60 @@ const CAPABILITIES = [
   { icon: TeamOutlined, title: "工资核算", desc: "计提 · 发放 · 代扣" },
   { icon: BankOutlined, title: "固定资产", desc: "卡片 · 折旧 · 清理" },
   { icon: FolderOpenOutlined, title: "电子档案", desc: "影像 · 附件 · 归档" },
+];
+
+const DIFFERENTIATORS: {
+  key: string;
+  icon: typeof RobotOutlined;
+  title: string;
+  desc: string;
+  points?: string[];
+}[] = [
+  {
+    key: "ai",
+    icon: RobotOutlined,
+    title: "拍张发票，凭证自己长出来",
+    desc: "上传发票、回单或收据照片，自动识别金额、税额、开票方，匹配科目后直接生成凭证——你只需要点确认。",
+    points: ["票据识别 · 自动分录用", "摘要、往来、税率自动补全", "上百张票据一次成账"],
+  },
+  {
+    key: "tax",
+    icon: SafetyCertificateOutlined,
+    title: "电子税务局直连",
+    desc: "发票、申报记录、完税证明在系统里直接取回，不用在两个窗口之间来回抄数。",
+  },
+  {
+    key: "filing",
+    icon: ThunderboltOutlined,
+    title: "一键报税",
+    desc: "按已入账数据算好申报口径，增值税、附加税、企业所得税预填核对，一键推送。",
+  },
+  {
+    key: "bank",
+    icon: SyncOutlined,
+    title: "银行流水自动入账",
+    desc: "授权一次，流水每日自动同步，按规则归类、批量生成凭证，银企对账一键对平。",
+  },
+  {
+    key: "drill",
+    icon: AimOutlined,
+    title: "每个数字都能钻到底",
+    desc: "报表任意一行双击即下钻到明细账，再下钻到原始凭证与票据影像，查账不用换系统。",
+  },
+  {
+    key: "open",
+    icon: DatabaseOutlined,
+    title: "数据是你的，随时带走",
+    desc: "全量凭证、账簿与报表一键导出 Excel / PDF，开放 API 对接业务系统，不做数据绑架。",
+  },
+];
+
+const COMPARISON: { old: string; now: string }[] = [
+  { old: "一张一张翻票、敲 Excel", now: "票据拍照识别，凭证自动生成" },
+  { old: "税局、账务两个窗口来回抄数", now: "税局数据直接进系统，取回即入账" },
+  { old: "月底手工对银行流水", now: "流水自动同步、规则归类、一键对账" },
+  { old: "报表出完还要回头翻凭证", now: "报表双击下钻到明细与原始票据" },
+  { old: "数据锁在软件里，换系统从头再来", now: "全量数据一键导出，随时迁走" },
 ];
 
 const SECURITY = [
@@ -81,6 +142,7 @@ const FAQS = [
   { q: "历史凭证怎么迁移？", a: "在「凭证导入」中上传符合模板的 Excel（.xls / .xlsx）文件即可批量导入，系统会自动补建缺失科目，借贷平衡的凭证导入后直接入账。" },
   { q: "报表数据是实时的吗？", a: "是。科目余额表、资产负债表、利润表、现金流量表都从已过账凭证实时归集计算，期初余额一并参与，任意期间可即时切换。" },
   { q: "期末结转和结账怎么处理？", a: "系统提供一键结转损益与批量结账，自动生成本年利润结转凭证并直接过账；资产负债表会把损益并入未分配利润，保证结转前后口径一致。" },
+  { q: "能直连电子税务局和银行吗？", a: "电子税务局已接通数字账户，发票、申报记录与完税证明可以在系统内直接取回，个税走自然人电子税务局扣缴端；银行流水支持按模板导入并自动归类，直连同步正在陆续开通。" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -147,19 +209,11 @@ function Logo({ tone = "dark" }: { tone?: "dark" | "light" }) {
   return (
     <span className="flex items-center gap-2.5">
       <BrandLogo size={32} />
-      <span className="flex items-baseline gap-1.5">
-        <span
-          className="text-[17px] font-semibold tracking-tight"
-          style={{ color: tone === "dark" ? "var(--foreground)" : "#fff" }}
-        >
-          云财
-        </span>
-        <span
-          className="text-[10px] font-medium uppercase tracking-[0.22em]"
-          style={{ color: tone === "dark" ? "var(--icon-muted)" : "rgba(255,255,255,.45)" }}
-        >
-          KuaiJi
-        </span>
+      <span
+        className="text-[17px] font-semibold tracking-tight"
+        style={{ color: tone === "dark" ? "var(--foreground)" : "#fff" }}
+      >
+        云财
       </span>
     </span>
   );
@@ -667,7 +721,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
                 style={{ background: "var(--brand-soft)", color: "var(--brand)" }}
               >
                 <span className="size-1.5 rounded-full" style={{ background: "var(--brand-fill)" }} />
-                在线财务系统 · 浏览器即用
+                AI 记账 · 税局直连 · 浏览器即用
               </span>
             </Reveal>
 
@@ -678,21 +732,18 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
             </Reveal>
 
             <Reveal delay={120}>
-              <p className="mt-5 w-full max-w-[600px] text-[16px] leading-[1.8] text-(--muted-foreground)">
-                云财把凭证、账簿、报表、出纳、发票、工资、资产、档案连成一条线。
+              <p className="mt-5 w-full max-w-[620px] text-[16px] leading-[1.8] text-(--muted-foreground)">
+                拍张发票就出凭证，税局数据直接进账，报表在入账那一秒生成。
                 <br className="hidden md:block" />
-                录入即入账，入账即出表，月末结转结账一键收尾。
+                凭证、账簿、报表、出纳、发票、工资、资产、档案，一条线走完。
               </p>
             </Reveal>
 
             <Reveal delay={180}>
-              <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row">
+              <div className="mt-8 flex flex-col items-center">
                 <Button onClick={goApp}>
                   {primaryLabel}
                   <ArrowRightOutlined className="text-[12px]" />
-                </Button>
-                <Button href="#scenarios" variant="ghost">
-                  看看它怎么工作
                 </Button>
               </div>
             </Reveal>
@@ -700,9 +751,9 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
             <Reveal delay={220}>
               <div className="mt-7 flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[13px] text-(--muted-foreground)">
                 {[
-                  { icon: CloudOutlined, t: "无需安装客户端" },
-                  { icon: ApartmentOutlined, t: "多账套数据隔离" },
-                  { icon: AuditOutlined, t: "准则口径出表" },
+                  { icon: RobotOutlined, t: "AI 自动生成凭证" },
+                  { icon: SafetyCertificateOutlined, t: "电子税务局直连" },
+                  { icon: AimOutlined, t: "报表逐级下钻" },
                 ].map((b) => (
                   <span key={b.t} className="flex items-center gap-1.5">
                     <b.icon className="text-[13px]" style={{ color: "var(--brand)" }} />
@@ -877,6 +928,105 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
           </Container>
         </section>
 
+        {/* ============ 为什么是云财 ============ */}
+        <section id="why" className="scroll-mt-16 pt-16 md:pt-24">
+          <Container>
+            <SectionHead
+              cn="为什么是云财"
+              en="Why YunCai"
+              title={
+                <>
+                  别人给你一本电子账簿，
+                  <br />
+                  我们替你把手上的活干完
+                </>
+              }
+              desc="录凭证、翻票、抄税局数据、对银行流水——系统能代劳的重复动作，就不该再占一个人的时间。"
+            />
+
+            <div className="mt-10 grid gap-3 md:mt-14 md:auto-rows-fr md:grid-cols-3 md:gap-4">
+              {DIFFERENTIATORS.map((d, i) => {
+                const featured = i === 0;
+                return (
+                  <Reveal key={d.key} delay={i * 50} className={featured ? "md:col-span-2 md:row-span-2" : ""}>
+                    <div
+                      className={
+                        "flex h-full flex-col rounded-xl border p-6 transition-all duration-300 hover:-translate-y-0.5 " +
+                        (featured
+                          ? "border-(--brand-border)"
+                          : "border-(--border) bg-(--card) hover:border-(--brand-border)")
+                      }
+                      style={featured ? { background: "var(--brand-soft)" } : undefined}
+                    >
+                      <span
+                        className="flex size-10 items-center justify-center rounded-lg"
+                        style={{
+                          background: featured ? "var(--card)" : "var(--brand-soft)",
+                          color: "var(--brand)",
+                        }}
+                      >
+                        <d.icon className="text-[18px]" />
+                      </span>
+                      <p className={featured ? "mt-5 text-[22px] font-semibold leading-[1.35]" : "mt-4 text-[17px] font-semibold"}>
+                        {d.title}
+                      </p>
+                      <p className={"mt-2 leading-[1.85] text-(--muted-foreground) " + (featured ? "max-w-[460px] text-[14.5px]" : "text-[13.5px]")}>
+                        {d.desc}
+                      </p>
+
+                      {d.points && (
+                        <div className="mt-auto flex flex-col gap-2.5 pt-7">
+                          {d.points.map((p, idx) => (
+                            <div key={p} className="flex items-center gap-3 text-[13.5px]">
+                              <span
+                                className="flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-medium tabular-nums"
+                                style={{ background: "var(--card)", color: "var(--brand)" }}
+                              >
+                                {idx + 1}
+                              </span>
+                              {p}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </div>
+
+            <Reveal delay={80}>
+              <div className="mt-4 overflow-hidden rounded-xl border border-(--border) bg-(--card)">
+                <div className="grid md:grid-cols-2">
+                  <div
+                    className="border-b border-(--border) px-6 py-3.5 md:border-b-0 md:border-r"
+                    style={{ background: "var(--muted)" }}
+                  >
+                    <p className="text-[12px] font-medium tracking-[0.08em] text-(--muted-foreground)">还在这样做账</p>
+                  </div>
+                  <div className="px-6 py-3.5" style={{ background: "var(--brand-soft)" }}>
+                    <p className="text-[12px] font-medium tracking-[0.08em]" style={{ color: "var(--brand)" }}>
+                      交给云财
+                    </p>
+                  </div>
+                </div>
+                {COMPARISON.map((r) => (
+                  <div key={r.old} className="grid border-t border-(--border) md:grid-cols-2">
+                    <div className="flex items-center gap-2.5 px-6 py-3.5 text-[13.5px] text-(--muted-foreground)">
+                      <CloseOutlined className="shrink-0 text-[11px] text-(--icon-placeholder)" />
+                      {r.old}
+                    </div>
+                    <div className="flex items-center gap-2.5 border-t border-(--border) px-6 py-3.5 text-[13.5px] md:border-t-0 md:border-l">
+                      <CheckOutlined className="shrink-0 text-[11px]" style={{ color: "var(--brand)" }} />
+                      {r.now}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+          </Container>
+        </section>
+
         {/* ============ 能力 ============ */}
         <section id="capabilities" className="scroll-mt-16 pt-16 md:pt-24">
           <Container>
@@ -1015,7 +1165,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
             </Reveal>
             <Reveal delay={80} className="relative">
               <p className="mt-4 max-w-[520px] text-[15px] leading-[1.8] text-white/75">
-                登录云财，录入第一张凭证，你会看到报表在同一秒生成。
+                登录云财，拍一张发票，你会看到凭证和报表同时生成。
               </p>
             </Reveal>
             <Reveal delay={140} className="relative">

@@ -469,7 +469,7 @@ export default function LemonERecord() {
             let list = await api.accountsetsAccountSetIdArchivesCategoriesGet({ accountSetId });
             if (!migratedRef.current) {
                 migratedRef.current = true;
-                const key = "kuaiji.erecord.folders." + accountSetId;
+                const key = "yuncai.erecord.folders." + accountSetId;
                 try {
                     const raw = window.localStorage.getItem(key);
                     if (raw) {

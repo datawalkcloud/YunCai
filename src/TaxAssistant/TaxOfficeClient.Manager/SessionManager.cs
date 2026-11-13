@@ -88,7 +88,7 @@ public sealed class SessionManager : IDisposable
 	}
 
 	/// <summary>
-	/// 直接以参数登记会话。本机网页发起的登录没有 kuaiji: URL，
+	/// 直接以参数登记会话。本机网页发起的登录没有 yuncai: URL，
 	/// 由登录执行器构造参数后走这里，标签页仍能按 AreaCode 找到会话。
 	/// </summary>
 	public int AddSession(StartupParameters parameters)
@@ -211,8 +211,8 @@ public sealed class SessionManager : IDisposable
 		Logger.Info("开始解析URL：" + RedactTicket(url));
 		try
 		{
-			// 云财页面用 kuaiji:tax?... 唤起；这类请求没有云端登录态，不走换取 token 的接口。
-			bool fromKuaiji = url.StartsWith("kuaiji:", StringComparison.OrdinalIgnoreCase);
+			// 云财页面用 yuncai:tax?... 唤起；这类请求没有云端登录态，不走换取 token 的接口。
+			bool fromYunCai = url.StartsWith("yuncai:", StringComparison.OrdinalIgnoreCase);
 			url = NormalizeUrl(url);
 			int queryIndex = url.IndexOf('?');
 			NameValueCollection nameValueCollection = HttpUtility.ParseQueryString((queryIndex >= 0) ? url.Substring(queryIndex) : string.Empty);
@@ -221,7 +221,7 @@ public sealed class SessionManager : IDisposable
 				throw new ArgumentException("URL不包含任何查询参数");
 			}
 			StartupParameters startupParameters = ExtractParameters(nameValueCollection);
-			startupParameters.SkipCloudLogin = fromKuaiji;
+			startupParameters.SkipCloudLogin = fromYunCai;
 			ValidateParameters(startupParameters);
 			Logger.Info($"解析URL成功：AreaCode={startupParameters.AreaCode}, USCC={startupParameters.Uscc}, " + $"Region={startupParameters.Region}, Identifier={startupParameters.Identifier}, PersonalAccount={startupParameters.PersonalAccount}, " + $"DestinationUrl={startupParameters.DestinationUrl}, AccountId={startupParameters.AccountId}, SkipCloudLogin={startupParameters.SkipCloudLogin}");
 			return startupParameters;

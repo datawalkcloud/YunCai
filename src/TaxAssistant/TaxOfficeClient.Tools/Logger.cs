@@ -5,14 +5,14 @@ using System.Text;
 namespace TaxOfficeClient.Tools;
 
 /// <summary>
-/// 本地文件日志，写入 %LOCALAPPDATA%\Kuaiji\TaxAssistant\logs，仅保留最近 7 天。
+/// 本地文件日志，写入 %LOCALAPPDATA%\YunCai\TaxAssistant\logs，仅保留最近 7 天。
 /// 助手不再向任何外部服务上传日志。
 /// </summary>
 public static class Logger
 {
 	private static readonly object SyncRoot = new object();
 
-	private static readonly string LogDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kuaiji", "TaxAssistant", "logs");
+	private static readonly string LogDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "YunCai", "TaxAssistant", "logs");
 
 	private static bool _pruned;
 

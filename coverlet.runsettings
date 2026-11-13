@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 覆盖率口径：只统计 KuaiJi 生产程序集，测试自身与被测代码无关。 -->
+<!-- 覆盖率口径：只统计 YunCai 生产程序集，测试自身与被测代码无关。 -->
 <RunSettings>
   <DataCollectionRunSettings>
     <DataCollectors>

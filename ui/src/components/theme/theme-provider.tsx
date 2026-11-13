@@ -33,10 +33,10 @@ interface ThemeContextValue {
   setPrimary: (primary: string) => void
 }
 
-const THEME_KEY = "kuaiji.theme"
-const DENSITY_KEY = "kuaiji.density"
-const RADIUS_KEY = "kuaiji.radius"
-const PRIMARY_KEY = "kuaiji.primary"
+const THEME_KEY = "yuncai.theme"
+const DENSITY_KEY = "yuncai.density"
+const RADIUS_KEY = "yuncai.radius"
+const PRIMARY_KEY = "yuncai.primary"
 const DARK_QUERY = "(prefers-color-scheme: dark)"
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)

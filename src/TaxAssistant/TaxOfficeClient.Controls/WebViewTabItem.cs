@@ -395,7 +395,7 @@ public sealed class WebViewTabItem : TabItem, IDisposable
 		List<string> values = new List<string> { "--ignore-certificate-errors", "--no-sandbox" };
 		CoreWebView2EnvironmentOptions options = new CoreWebView2EnvironmentOptions(string.Join(" ", values));
 		// 会话数据放用户目录，免安装目录可随时删除、换位置而不丢登录态。
-		string userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kuaiji", "TaxAssistant", "WebView2");
+		string userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "YunCai", "TaxAssistant", "WebView2");
 		CoreWebView2Environment result = await CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
 		Logger.Info("创建新的CoreWebView2Environment实例", AreaCode, Uscc);
 		return result;

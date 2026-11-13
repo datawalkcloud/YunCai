@@ -70,7 +70,7 @@ const SECONDARIES: { key: Secondary; label: string }[] = [
 /** 单页条数候选（与柠檬云分页器一致）。 */
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200]
 
-const SUBSCRIPTION_KEY = "kuaiji.fund-report.subscription"
+const SUBSCRIPTION_KEY = "yuncai.fund-report.subscription"
 
 /** 金额：0 显示为 0，其余保留两位小数（与柠檬云金额列口径一致）。 */
 function money(value: number | null | undefined): string {

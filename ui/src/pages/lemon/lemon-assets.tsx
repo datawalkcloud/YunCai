@@ -7,11 +7,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dropdown, Table as AntTable } from "antd";
-import {
-    DownOutlined,
-    QuestionCircleOutlined,
-} from "@ant-design/icons";
+import { DownOutlined } from "@ant-design/icons";
 
+import { HelpTip } from "@/components/page/help-tip";
 import { ICON_STYLE, FORM_CONTROL_W, FORM_LABEL_W } from "@/components/page/styles";
 
 import {
@@ -1238,11 +1236,7 @@ export function LemonAssetManage() {
                                         >
                                             凭证设置
                                         </span>
-                                        <QuestionCircleOutlined
-                                            className="text-[12px]"
-                                            style={ICON_STYLE.muted}
-                                            title="折旧凭证按资产属性汇总：固定资产走折旧费用与累计折旧，无形资产走摊销费用与累计摊销。"
-                                        />
+                                        <HelpTip title="折旧凭证按资产属性汇总：固定资产走折旧费用与累计折旧，无形资产走摊销费用与累计摊销。" />
                                     </span>
                                 ),
                             },

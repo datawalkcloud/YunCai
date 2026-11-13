@@ -794,7 +794,7 @@ export default function AccountsPage() {
     ]
 
     // 科目类别页签：与柠檬云「科目」一致（资产/负债/共同/权益/成本/损益）。
-    // 「共同」类在快记无对应枚举，作为空页签保留位置。
+    // 「共同」类在云财无对应枚举，作为空页签保留位置。
     const filterOptions = [
         { value: "1", label: "资产" },
         { value: "2", label: "负债" },

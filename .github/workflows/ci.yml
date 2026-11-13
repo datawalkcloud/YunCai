@@ -15,7 +15,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - name: 还原并构建
-        run: dotnet build src/KuaiJi/KuaiJi.csproj -c Release --nologo
+        run: dotnet build src/YunCai/YunCai.csproj -c Release --nologo
 
   # 测试与覆盖率棘轮。分母只算手写代码（剔除 EF 生成的 Migrations），口径见 docs/测试规范.md。
   # 覆盖率退化就红；每补完一批测试就调高 --gate 数字，目标 95。
@@ -29,7 +29,7 @@ jobs:
           dotnet-version: '10.0.x'
       - name: 跑测试并采集覆盖率
         run: >-
-          dotnet test src/KuaiJi.Tests/KuaiJi.Tests.csproj --nologo
+          dotnet test src/YunCai.Tests/YunCai.Tests.csproj --nologo
           --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory .coverage
       - uses: actions/setup-node@v4
         with:
@@ -72,13 +72,13 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: kuaiji_ci
-          POSTGRES_USER: kuaiji
-          POSTGRES_PASSWORD: kuaiji
+          POSTGRES_DB: yuncai_ci
+          POSTGRES_USER: yuncai
+          POSTGRES_PASSWORD: yuncai
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U kuaiji"
+          --health-cmd "pg_isready -U yuncai"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -90,8 +90,8 @@ jobs:
       - name: 安装 dotnet-ef
         run: dotnet tool install --global dotnet-ef
       - name: 应用全部迁移
-        run: dotnet ef database update --project src/KuaiJi/KuaiJi.csproj
+        run: dotnet ef database update --project src/YunCai/YunCai.csproj
         env:
           # 应用启动前会校验配置完整性，这里给 CI 专用的一次性值。
           Jwt__Key: ci-only-signing-key-please-never-use-in-production
-          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=kuaiji_ci;Username=kuaiji;Password=kuaiji"
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=yuncai_ci;Username=yuncai;Password=yuncai"

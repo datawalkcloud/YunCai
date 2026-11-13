@@ -19,7 +19,7 @@ interface StoredAuth {
   user: UserInfo | null
 }
 
-const STORAGE_KEY = 'kuaiji.auth'
+const STORAGE_KEY = 'yuncai.auth'
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 

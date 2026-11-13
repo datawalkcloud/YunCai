@@ -11,7 +11,7 @@ ui/dist
 Logs
 .env
 .env.*
-src/KuaiJi/appsettings.Local.json
+src/YunCai/appsettings.Local.json
 docs
 .scratch
 .scratch-*
@@ -19,3 +19,11 @@ docs
 .backup-pre-ddd
 .backend-gen
 *.md
+**/binVerify*/
+.browser
+.qoder
+.workbuddy
+_ref
+.coverage
+src/TaxAssistant
+src/YunCai.Tests

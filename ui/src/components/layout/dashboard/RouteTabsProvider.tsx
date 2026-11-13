@@ -10,7 +10,7 @@ import {
 } from "./route-tabs-context";
 
 /** 页签持久化：只存页签键，刷新浏览器后恢复同一批页签。 */
-const STORAGE_KEY = "kuaiji.route-tabs.v1";
+const STORAGE_KEY = "yuncai.route-tabs.v1";
 /** 页签上限：超出后丢最早的记录（首页不在页签列表里）。 */
 const MAX_TABS = 12;
 

@@ -20,13 +20,13 @@ const PING_URL = `${ASSISTANT_ORIGIN}/ping`;
 const PROBE_TIMEOUT_MS = 1500;
 
 /** 助手注册的自定义协议；唤起时浏览器顶部会弹「打开 云财税务助手」确认框。 */
-export const ASSISTANT_SCHEME = "kuaiji:tax";
+export const ASSISTANT_SCHEME = "yuncai:tax";
 
 /** 电子税务局全国统一入口；助手未配置省份地址时也用它兜底。 */
 export const ASSISTANT_TAX_PORTAL_URL = "https://etax.chinatax.gov.cn/";
 
 /** 助手安装包下载地址：由 SPA 静态资源托管，构建时从 ui/public/downloads 原样拷贝。 */
-export const ASSISTANT_DOWNLOAD_URL = "/downloads/KuaijiTaxAssistantSetup.exe";
+export const ASSISTANT_DOWNLOAD_URL = "/downloads/YunCaiTaxAssistantSetup.exe";
 
 /** 浏览器保存到本机时使用的文件名，服务器上仍用 ASCII 名以免 URL 编码问题。 */
 const ASSISTANT_SETUP_FILENAME = "云财税务助手安装包.exe";

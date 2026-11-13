@@ -16,7 +16,7 @@ namespace TaxOfficeClient;
 [SupportedOSPlatform("windows")]
 public partial class App : Application
 {
-	private const string MUTEX_NAME = "KuaijiTaxAssistant";
+	private const string MUTEX_NAME = "YunCaiTaxAssistant";
 
 	private const int HTTP_SERVER_PORT = 41731;
 

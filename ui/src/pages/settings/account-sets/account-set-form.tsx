@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { Alert, Input, Radio, Select } from "antd"
-import { InfoCircleOutlined } from "@ant-design/icons"
+import { HelpTip } from "@/components/page/help-tip"
 import { PeriodField } from "@/components/fields/date-fields"
 import { NumberField } from "@/components/fields/number-field"
 import { FORM_CONTROL_W } from "@/components/page/styles"
@@ -22,13 +22,9 @@ import {
     type AccountSetForm,
 } from "./account-set-form-data"
 
-/** 右侧说明图标。 */
+/** 右侧说明图标：悬停显示字段口径。 */
 function Tip({ text }: { text: string }) {
-    return (
-        <span title={text}>
-            <InfoCircleOutlined className="text-[12px] text-(--muted-foreground)" />
-        </span>
-    )
+    return <HelpTip kind="info" title={text} />
 }
 
 /** 一行字段：右对齐标签 + 控件，与柠檬云的账套表单同排版。 */

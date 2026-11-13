@@ -6,16 +6,16 @@ using Microsoft.Win32;
 namespace TaxOfficeClient.Tools;
 
 /// <summary>
-/// 把 kuaiji: 自定义协议注册到当前用户（HKCU，无需管理员）。
-/// 注册后浏览器访问 kuaiji:tax?... 会以完整 URL 作为参数唤起本程序。
+/// 把 yuncai: 自定义协议注册到当前用户（HKCU，无需管理员）。
+/// 注册后浏览器访问 yuncai:tax?... 会以完整 URL 作为参数唤起本程序。
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class ProtocolRegistrar
 {
-	public const string Scheme = "kuaiji";
+	public const string Scheme = "yuncai";
 
 	/// <summary>与安装包 [Tasks] autostart 写的值名保持一致，两边互相校正。</summary>
-	private const string RunValueName = "KuaijiTaxAssistant";
+	private const string RunValueName = "YunCaiTaxAssistant";
 
 	/// <summary>安装包默认目录 %LOCALAPPDATA%\云财税务助手，只有落在这里才允许写启动项。</summary>
 	private const string InstallFolderName = "云财税务助手";
@@ -38,12 +38,12 @@ public static class ProtocolRegistrar
 			if (!string.Equals(commandKey.GetValue(null) as string, command, StringComparison.OrdinalIgnoreCase))
 			{
 				commandKey.SetValue(null, command);
-				Logger.Info("已注册协议 kuaiji: -> " + command);
+				Logger.Info("已注册协议 yuncai: -> " + command);
 			}
 		}
 		catch (Exception ex)
 		{
-			Logger.Warn("注册 kuaiji 协议失败: " + ex.Message, ex);
+			Logger.Warn("注册 yuncai 协议失败: " + ex.Message, ex);
 		}
 	}
 
