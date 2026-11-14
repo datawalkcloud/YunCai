@@ -30,10 +30,10 @@ deploy/k8s/
 images:
   - name: yuncai-api
     newName: crpi-gr7j2r1czfy1t1uu.cn-hangzhou.personal.cr.aliyuncs.com/springhgui/yuncai-api
-    newTag: 1.0.0
+    newTag: 1.1.0
 ```
 
-`yuncai-web` 同样处理。发布新版本只改 `newTag`（`1.0.0` / sha-xxxx / latest）。换账号时注意个人实例域名形如 `crpi-<实例ID>.<地域>.personal.cr.aliyuncs.com`，与旧版 `registry.<地域>.aliyuncs.com` 不是同一个端点（用错会报 `Forbidden Host`），命名空间要与仓库变量 `ACR_NAMESPACE` 一致。
+`yuncai-web` 同样处理。发布新版本只改 `newTag`（如 `1.1.0`，与 tag 上的版本号一致）。换账号时注意个人实例域名形如 `crpi-<实例ID>.<地域>.personal.cr.aliyuncs.com`，与旧版 `registry.<地域>.aliyuncs.com` 不是同一个端点（用错会报 `Forbidden Host`），命名空间要与仓库变量 `ACR_NAMESPACE` 一致。
 
 ## 2. 命名空间与拉取凭证
 

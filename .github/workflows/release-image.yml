@@ -2,9 +2,12 @@ name: 发布镜像到阿里云 ACR
 
 on:
   push:
-    branches: [master]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: '要重新构建的版本 tag（如 v1.1.0，须已存在）'
+        required: true
 
 concurrency:
   group: release-image-${{ github.ref }}
@@ -27,6 +30,20 @@ jobs:
             target: web
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: 解析版本号
+        id: version
+        env:
+          REF: ${{ inputs.tag || github.ref_name }}
+        run: |
+          version="${REF#v}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::只发布 v<主版本>.<次版本>.<修订> 形式的 tag，当前是 $REF"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: 校验并规范化 ACR 配置
         id: acr
@@ -66,12 +83,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.acr.outputs.registry }}/${{ steps.acr.outputs.namespace }}/${{ matrix.image }}
+          # 一个版本只推一个 tag：1.1.0。不要 latest / 浮动次版本 / 分支名 / sha-*，
+          # 避免 ACR 里堆一串指向同一镜像的别名，回滚直接按版本号拉。
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.version }}
 
       - name: 构建并推送
         uses: docker/build-push-action@v6
