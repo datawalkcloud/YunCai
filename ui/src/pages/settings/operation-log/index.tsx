@@ -22,6 +22,15 @@ import type { PillTone } from "@/components/page/styles"
 const DEFAULT_RANGE_DAYS = 30
 const PAGE_SIZE_OPTIONS = [20, 50, 100]
 
+/** 实体级审计字段（后端已下发；apis-gen 尚未重新生成，这里用局部扩展类型承接）。 */
+type LogRow = OperationLogDto & {
+    entityType?: string | null
+    entityId?: string | null
+    beforeJson?: string | null
+    afterJson?: string | null
+    ipAddress?: string | null
+}
+
 /** 日志类型 → 标签色调；未登记的类型统一灰色。 */
 const TYPE_TONES: Record<string, PillTone> = {
     新增: "green",
@@ -68,13 +77,35 @@ function csvCell(value: string) {
     return `"${value.replaceAll('"', '""')}"`
 }
 
+/** 审计快照以 JSON 字符串存储；展开时格式化，解析失败按原文展示。 */
+function prettyJson(value?: string | null) {
+    if (!value) return "—"
+    try {
+        return JSON.stringify(JSON.parse(value), null, 2)
+    } catch {
+        return value
+    }
+}
+
+function SnapshotBlock({ label, value }: { label: string; value?: string | null }) {
+    const text = prettyJson(value)
+    return (
+        <div className="min-w-0">
+            <div className="mb-1 text-[12px] font-medium text-(--muted-foreground)">{label}</div>
+            <pre className="max-h-[260px] overflow-auto rounded-lg border border-(--border) bg-(--muted) px-3 py-2 font-mono text-[11.5px] leading-5 text-(--foreground)">
+                {text}
+            </pre>
+        </div>
+    )
+}
+
 export default function OperationLogPage() {
     const { message } = App.useApp()
     const { token } = useAuth()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const accountSet = useCurrentAccountSet()
 
-    const [rows, setRows] = useState<OperationLogDto[]>([])
+    const [rows, setRows] = useState<LogRow[]>([])
     const [loading, setLoading] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -96,12 +127,12 @@ export default function OperationLogPage() {
         setLoadError(null)
         try {
             setRows(
-                await new OperationLogsApi(apiConfig(token)).accountsetsAccountSetIdOperationlogsGet({
+                (await new OperationLogsApi(apiConfig(token)).accountsetsAccountSetIdOperationlogsGet({
                     accountSetId,
                     // 后端按 UTC 时间戳比较：传本地 0 点 / 当日末刻，序列化后即对应同一绝对时刻。
                     start: range[0].startOf("day").toDate(),
                     end: range[1].endOf("day").toDate(),
-                }),
+                })) as LogRow[],
             )
         } catch (err) {
             setRows([])
@@ -150,14 +181,17 @@ export default function OperationLogPage() {
             message.info("当前筛选条件下没有可导出的记录。")
             return
         }
-        const header = ["操作时间", "操作人", "用户ID", "类型", "模块", "操作内容"]
+        const header = ["操作时间", "操作人", "用户ID", "类型", "模块", "对象", "对象ID", "操作内容", "IP"]
         const lines = filtered.map((row) => [
             formatTime(row.time),
             row.userName || "未知用户",
             row.userId ?? "",
             row.type ?? "",
             row.module ?? "",
+            row.entityType ?? "",
+            row.entityId ?? "",
             row.log ?? "",
+            row.ipAddress ?? "",
         ])
         const csv = "\uFEFF" + [header, ...lines].map((cells) => cells.map(csvCell).join(",")).join("\r\n")
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
@@ -171,7 +205,7 @@ export default function OperationLogPage() {
         message.success(`已导出 ${filtered.length} 条日志。`)
     }
 
-    const columns: TableColumnsType<OperationLogDto> = [
+    const columns: TableColumnsType<LogRow> = [
         {
             title: "操作时间",
             dataIndex: "time",
@@ -215,11 +249,44 @@ export default function OperationLogPage() {
                 row.module ? <span className="text-(--foreground)">{row.module}</span> : <span className="text-(--muted-foreground)">—</span>,
         },
         {
+            title: "对象",
+            dataIndex: "entityType",
+            width: 150,
+            render: (_, row) => {
+                if (!row.entityType && !row.entityId) return <span className="text-(--muted-foreground)">—</span>
+                return (
+                    <span className="flex min-w-0 flex-col text-[12.5px]">
+                        <span className="truncate text-(--foreground)">{row.entityType ?? "未知对象"}</span>
+                        {row.entityId && (
+                            <Tooltip title={row.entityId}>
+                                <span className="truncate font-mono text-[11.5px] text-(--muted-foreground)">
+                                    {row.entityId.slice(0, 8)}
+                                </span>
+                            </Tooltip>
+                        )}
+                    </span>
+                )
+            },
+        },
+        {
             title: "操作内容",
             dataIndex: "log",
             render: (_, row) =>
                 row.log ? (
                     <span className="break-words text-(--foreground)">{row.log}</span>
+                ) : (
+                    <span className="text-(--muted-foreground)">—</span>
+                ),
+        },
+        {
+            title: "IP",
+            dataIndex: "ipAddress",
+            width: 128,
+            render: (_, row) =>
+                row.ipAddress ? (
+                    <span className="whitespace-nowrap font-mono text-[12px] text-(--muted-foreground)">
+                        {row.ipAddress}
+                    </span>
                 ) : (
                     <span className="text-(--muted-foreground)">—</span>
                 ),
@@ -354,7 +421,16 @@ export default function OperationLogPage() {
                     rowKey={(row) => row.id ?? `${row.time}-${row.log}`}
                     loading={loading}
                     locale={{ emptyText }}
-                    scroll={{ x: 860 }}
+                    scroll={{ x: 1060 }}
+                    expandable={{
+                        rowExpandable: (row) => Boolean(row.beforeJson || row.afterJson),
+                        expandedRowRender: (row) => (
+                            <div className="grid gap-3 py-1 lg:grid-cols-2">
+                                <SnapshotBlock label="改前" value={row.beforeJson} />
+                                <SnapshotBlock label="改后" value={row.afterJson} />
+                            </div>
+                        ),
+                    }}
                     pagination={{
                         current: page,
                         pageSize,

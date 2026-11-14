@@ -148,37 +148,8 @@ namespace YunCai.Modules.Reports.Application
             DateOnly currentStart,
             DateOnly currentEndExclusive)
         {
-            // 结转损益凭证识别：凭证内出现「本年利润」科目（4103，兼容旧准则 3103）即视为结转凭证。
-            var profitCarryAccountIds = accountsById.Values
-                .Where(a => IncomeLineMapper.Prefix(a.Code) is "4103" or "3103")
-                .Select(a => a.Id)
-                .ToHashSet();
-
-            var currentNet = new Dictionary<Guid, decimal>();
-            var ytdNet = new Dictionary<Guid, decimal>();
-
-            foreach (var voucher in vouchers)
-            {
-                if (voucher.Date < yearStart || voucher.Date >= currentEndExclusive)
-                {
-                    continue;
-                }
-
-                if (voucher.Entries.Any(e => profitCarryAccountIds.Contains(e.AccountId)))
-                {
-                    continue;
-                }
-
-                foreach (var entry in voucher.Entries)
-                {
-                    var delta = entry.Debit - entry.Credit;
-                    ytdNet[entry.AccountId] = ytdNet.GetValueOrDefault(entry.AccountId) + delta;
-                    if (voucher.Date >= currentStart)
-                    {
-                        currentNet[entry.AccountId] = currentNet.GetValueOrDefault(entry.AccountId) + delta;
-                    }
-                }
-            }
+            var (currentNet, ytdNet) = AccumulateAccountNets(
+                vouchers, accountsById, yearStart, currentStart, currentEndExclusive);
 
             var currentByLine = new Dictionary<int, decimal>();
             var ytdByLine = new Dictionary<int, decimal>();
@@ -213,6 +184,117 @@ namespace YunCai.Modules.Reports.Application
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 逐科目的「借-贷」净发生额（报表与下钻共用）。本年窗口为 [yearStart, currentEnd)；
+        /// 本期窗口为 [currentStart, currentEnd)；含「本年利润」科目的结转凭证整张剔除，
+        /// 保留结转前损益发生额，避免结转后各行清零。
+        /// </summary>
+        private static (Dictionary<Guid, decimal> CurrentNet, Dictionary<Guid, decimal> YtdNet) AccumulateAccountNets(
+            IReadOnlyList<Voucher> vouchers,
+            Dictionary<Guid, Account> accountsById,
+            DateOnly yearStart,
+            DateOnly currentStart,
+            DateOnly currentEndExclusive)
+        {
+            // 结转损益凭证识别：凭证内出现「本年利润」科目（4103，兼容旧准则 3103）即视为结转凭证。
+            var profitCarryAccountIds = accountsById.Values
+                .Where(a => IncomeLineMapper.Prefix(a.Code) is "4103" or "3103")
+                .Select(a => a.Id)
+                .ToHashSet();
+
+            var currentNet = new Dictionary<Guid, decimal>();
+            var ytdNet = new Dictionary<Guid, decimal>();
+
+            foreach (var voucher in vouchers)
+            {
+                if (voucher.Date < yearStart || voucher.Date >= currentEndExclusive)
+                {
+                    continue;
+                }
+
+                if (voucher.Entries.Any(e => profitCarryAccountIds.Contains(e.AccountId)))
+                {
+                    continue;
+                }
+
+                foreach (var entry in voucher.Entries)
+                {
+                    var delta = entry.Debit - entry.Credit;
+                    ytdNet[entry.AccountId] = ytdNet.GetValueOrDefault(entry.AccountId) + delta;
+                    if (voucher.Date >= currentStart)
+                    {
+                        currentNet[entry.AccountId] = currentNet.GetValueOrDefault(entry.AccountId) + delta;
+                    }
+                }
+            }
+
+            return (currentNet, ytdNet);
+        }
+
+        /// <summary>
+        /// 利润表行下钻：某行次由哪些损益类科目组成、各科目本期/本年累计发生额多少。
+        /// 与 <see cref="GetAsync"/> 共用逐科目净额与行次归集，合计天然等于报表行金额；
+        /// 「其中」子项行（利息费用 33、政府补助 34）只列真正落到该子项的科目。
+        /// </summary>
+        public async Task<ReportDrilldownDto> GetLineDrilldownAsync(
+            Guid accountSetId, int? year, int? month, int line, CancellationToken cancellationToken = default)
+        {
+            if (line <= 0)
+            {
+                throw new ReportException("报表行次不合法。");
+            }
+
+            var (accountSet, accountsById, vouchers) = await LoadAsync(accountSetId, cancellationToken);
+            var (resolvedYear, resolvedMonth) = ReportPeriodResolver.Resolve(accountSet, vouchers, year, month);
+            var periodStart = new DateOnly(resolvedYear, resolvedMonth, 1);
+            var (currentNet, ytdNet) = AccumulateAccountNets(
+                vouchers, accountsById, new DateOnly(resolvedYear, 1, 1), periodStart, periodStart.AddMonths(1));
+
+            var subItemLine = IncomeLineMapper.IsSubItemLine(line);
+            var signed = IncomeLineMapper.IsRevenueLine(line) ? -1m : 1m;
+            var accountIds = new HashSet<Guid>(currentNet.Keys);
+            accountIds.UnionWith(ytdNet.Keys);
+
+            var rows = new List<ReportDrilldownAccountDto>();
+            foreach (var accountId in accountIds)
+            {
+                if (!accountsById.TryGetValue(accountId, out var account)
+                    || account.Category != AccountCategory.ProfitAndLoss)
+                {
+                    continue;
+                }
+
+                var matches = subItemLine
+                    ? IncomeLineMapper.SubLine(account) == line
+                    : IncomeLineMapper.MapLine(account.Code, account.Direction) == line;
+                if (!matches)
+                {
+                    continue;
+                }
+
+                rows.Add(new ReportDrilldownAccountDto
+                {
+                    AccountId = account.Id,
+                    Code = account.Code,
+                    Name = account.Name,
+                    Current = currentNet.GetValueOrDefault(accountId) * signed,
+                    YearToDate = ytdNet.GetValueOrDefault(accountId) * signed,
+                });
+            }
+
+            var ordered = rows.OrderBy(r => r.Code, StringComparer.Ordinal).ToList();
+            return new ReportDrilldownDto
+            {
+                Line = line,
+                Year = resolvedYear,
+                Month = resolvedMonth,
+                PeriodText = $"{resolvedYear:D4}年{resolvedMonth:D2}月",
+                Accounts = ordered,
+                TotalCurrent = ordered.Sum(r => r.Current),
+                TotalYearToDate = ordered.Sum(r => r.YearToDate),
+            };
         }
 
         /// <summary>解析季度：显式给定 year/quarter 时校验后采用；否则取最近凭证或账套启用期间所在季度。</summary>

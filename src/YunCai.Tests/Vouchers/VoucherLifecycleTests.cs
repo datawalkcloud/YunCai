@@ -76,8 +76,11 @@ public sealed class VoucherLifecycleTests : IDisposable
 
     /// <summary>绕过应用服务直接落一张凭证，用于构造服务层造不出来的形态（不平衡、无分录等）。</summary>
     private Voucher SeedRaw(string word, int number, params (decimal Debit, decimal Credit)[] amounts)
+        => SeedRaw(word, number, new DateOnly(2026, 2, 15), amounts);
+
+    private Voucher SeedRaw(string word, int number, DateOnly date, params (decimal Debit, decimal Credit)[] amounts)
     {
-        var voucher = Voucher.Create(_accountSet.Id, word, number, new DateOnly(2026, 2, 15), "制单人");
+        var voucher = Voucher.Create(_accountSet.Id, word, number, date, "制单人");
         foreach (var (debit, credit) in amounts)
         {
             voucher.AddEntry("种子分录", debit != 0m ? _cash.Id : _counter.Id, debit, credit);
@@ -594,6 +597,26 @@ public sealed class VoucherLifecycleTests : IDisposable
         var changed = await _service.RenumberAsync(_accountSet.Id, "记", null, null, byDate: false);
 
         Assert.Equal(0, changed);
+    }
+
+    [Fact]
+    public async Task Renumber_WithPeriodRange_ContinuesAfterEarlierNumbers()
+    {
+        // 1 月 记-1；3 月 记-7、记-9（跨期整理时只选定 3 月）。
+        SeedRaw("记", 1, new DateOnly(2026, 1, 10), (100m, 0m), (0m, 100m));
+        SeedRaw("记", 7, new DateOnly(2026, 3, 10), (100m, 0m), (0m, 100m));
+        SeedRaw("记", 9, new DateOnly(2026, 3, 20), (100m, 0m), (0m, 100m));
+
+        var changed = await _service.RenumberAsync(
+            _accountSet.Id, "记", new DateOnly(2026, 3, 1), new DateOnly(2026, 3, 31), byDate: false);
+
+        // 区间内从区间前的最大号续编（1 → 2、3），不能从 1 重启与 1 月撞号。
+        Assert.Equal(2, changed);
+        var all = await _vouchers.GetAllAsync(_accountSet.Id);
+        Assert.Equal(1, all.Single(v => v.Date == new DateOnly(2026, 1, 10)).Number);
+        Assert.Equal(2, all.Single(v => v.Date == new DateOnly(2026, 3, 10)).Number);
+        Assert.Equal(3, all.Single(v => v.Date == new DateOnly(2026, 3, 20)).Number);
+        Assert.Equal(all.Select(v => (v.Word, v.Number)).Distinct().Count(), all.Count);
     }
 }
 

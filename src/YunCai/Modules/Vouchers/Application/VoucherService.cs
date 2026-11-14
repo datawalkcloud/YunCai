@@ -565,6 +565,179 @@ namespace YunCai.Modules.Vouchers.Application
         /// 整理凭证 / 凭证号重排：按凭证号或凭证日期重新顺次编号，并重新拼接断号。
         /// 只处理暂存（反过账退回）的凭证（正常凭证号不允许变动）。
         /// </summary>
+        /// <summary>
+        /// 合并暂存凭证：把所选凭证全部分录并入凭证号最小的一张，其余凭证删除。
+        /// 要求同凭证字、同日期、均未过账，且被合并的凭证不带附件；合并结果保持暂存。
+        /// </summary>
+        public async Task<VoucherDetailDto> MergeAsync(Guid accountSetId, MergeVouchersRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureAccountSetExists(accountSetId, cancellationToken);
+            var ids = request.Ids?.Distinct().ToList() ?? [];
+            if (ids.Count < 2)
+            {
+                throw new VoucherException("请至少选择两张凭证进行合并。");
+            }
+
+            var vouchers = new List<Voucher>(ids.Count);
+            foreach (var id in ids)
+            {
+                var voucher = await _voucherRepository.GetByIdAsync(accountSetId, id, cancellationToken);
+                if (voucher is null || voucher.IsDeleted)
+                {
+                    throw new VoucherException("所选凭证不存在或已删除，请刷新后重试。");
+                }
+
+                vouchers.Add(voucher);
+            }
+
+            if (vouchers.Any(v => v.Status != VoucherStatus.Draft))
+            {
+                throw new VoucherException("只能合并暂存凭证，正常凭证请先反过账。");
+            }
+
+            var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
+            if (vouchers.Any(v => accountSet.IsDateClosed(v.Date)))
+            {
+                throw new VoucherException("所选凭证所在期间已结账，不能合并。");
+            }
+
+            var target = vouchers.OrderBy(v => v.Number).First();
+            if (vouchers.Any(v => v.Id != target.Id && v.AttachmentCount > 0))
+            {
+                throw new VoucherException("被合并的凭证带有附件，请先移除附件后再合并。");
+            }
+
+            var sources = vouchers.Where(v => v.Id != target.Id).ToList();
+            try
+            {
+                foreach (var source in sources)
+                {
+                    target.MergeFrom(source);
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new VoucherException(ex.Message);
+            }
+
+            foreach (var source in sources)
+            {
+                _voucherRepository.Remove(source);
+            }
+
+            await _voucherRepository.SaveChangesAsync(cancellationToken);
+
+            var accountsById = await LoadAccountsById(accountSetId, cancellationToken);
+            var assistItemsById = await LoadAssistItemsById(accountSetId, cancellationToken);
+            return VoucherDetailDto.FromDomain(target, accountsById, assistItemsById);
+        }
+
+        /// <summary>
+        /// 批量修改暂存凭证的安全字段：摘要（覆盖全部分录）与指定科目的辅助核算取值。
+        /// 不影响金额、科目与期间，改完仍保持暂存状态，由用户检查后再保存入账。
+        /// </summary>
+        public async Task<int> BatchUpdateAsync(Guid accountSetId, BatchUpdateVouchersRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureAccountSetExists(accountSetId, cancellationToken);
+            var ids = request.Ids?.Distinct().ToList() ?? [];
+            if (ids.Count == 0)
+            {
+                throw new VoucherException("请先选择要修改的凭证。");
+            }
+
+            var summary = request.Summary?.Trim();
+            if (string.IsNullOrEmpty(summary) && request.Assist is null)
+            {
+                throw new VoucherException("请至少选择一项要修改的内容。");
+            }
+
+            var accountSet = await LoadAccountSet(accountSetId, cancellationToken);
+            var accountsById = await LoadAccountsById(accountSetId, cancellationToken);
+            var assistItemsById = await LoadAssistItemsById(accountSetId, cancellationToken);
+
+            Account? assistAccount = null;
+            if (request.Assist is { } assistUpdate)
+            {
+                if (!accountsById.TryGetValue(assistUpdate.AccountId, out assistAccount) || !assistAccount.IsLeaf)
+                {
+                    throw new VoucherException("辅助核算只能设置在末级科目上。");
+                }
+
+                if (assistUpdate.ItemId is Guid itemId
+                    && (!assistItemsById.TryGetValue(itemId, out var item) || item.Type != assistUpdate.Type))
+                {
+                    throw new VoucherException("辅助核算档案不存在或类别不匹配，请刷新后重试。");
+                }
+            }
+
+            var vouchers = new List<Voucher>(ids.Count);
+            foreach (var id in ids)
+            {
+                var voucher = await _voucherRepository.GetByIdAsync(accountSetId, id, cancellationToken);
+                if (voucher is null || voucher.IsDeleted)
+                {
+                    throw new VoucherException("所选凭证不存在或已删除，请刷新后重试。");
+                }
+
+                if (voucher.Status != VoucherStatus.Draft)
+                {
+                    throw new VoucherException("只能批量修改暂存凭证，正常凭证请先反过账。");
+                }
+
+                if (accountSet.IsDateClosed(voucher.Date))
+                {
+                    throw new VoucherException("所选凭证所在期间已结账，不能修改。");
+                }
+
+                vouchers.Add(voucher);
+            }
+
+            var lines = new List<AssistLine>();
+            try
+            {
+                foreach (var voucher in vouchers)
+                {
+                    if (!string.IsNullOrEmpty(summary))
+                    {
+                        voucher.ApplySummary(summary);
+                    }
+
+                    if (request.Assist is { } assistPatch)
+                    {
+                        voucher.ApplyAssist(assistPatch.AccountId, assistPatch.Type, assistPatch.ItemId);
+                        foreach (var entry in voucher.Entries.Where(e => e.AccountId == assistPatch.AccountId))
+                        {
+                            lines.Add(new AssistLine(
+                                assistAccount!,
+                                entry.Assists.Select(a => new AssistRef(a.Type, a.AssistItemId)).ToList()));
+                        }
+                    }
+                }
+
+                if (lines.Count > 0)
+                {
+                    _assistGuard.Validate(accountSet, assistItemsById.Values, lines);
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                throw new VoucherException(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new VoucherException(ex.Message);
+            }
+            catch (AssistanceException ex)
+            {
+                throw new VoucherException(ex.Message);
+            }
+
+            await _voucherRepository.SaveChangesAsync(cancellationToken);
+            return vouchers.Count;
+        }
+
         public async Task<int> RenumberAsync(
             Guid accountSetId,
             string? word,
@@ -594,11 +767,19 @@ namespace YunCai.Modules.Vouchers.Application
             var changed = 0;
             foreach (var group in targets.GroupBy(v => v.Word))
             {
+                // 限定区间重排时不能从 1 重新开始，否则会与区间之前的同字凭证撞号：
+                // 从区间开始前的最大号继续编号，跨期整理也保持全局唯一。
+                var beforeRangeMax = vouchers
+                    .Where(v => !v.IsDeleted && v.Word == group.Key && periodStart is not null && v.Date < periodStart)
+                    .Select(v => v.Number)
+                    .DefaultIfEmpty(0)
+                    .Max();
+
                 var ordered = byDate
                     ? group.OrderBy(v => v.Date).ThenBy(v => v.Number)
                     : group.OrderBy(v => v.Number).ThenBy(v => v.Date);
 
-                var next = 1;
+                var next = beforeRangeMax + 1;
                 foreach (var item in ordered)
                 {
                     var voucher = await _voucherRepository.GetByIdAsync(accountSetId, item.Id, cancellationToken);

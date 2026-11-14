@@ -42,7 +42,18 @@ namespace YunCai.Modules.AccountSets.Domain
             Mod("ledgers", "账簿",
                 Act("view", "查看"), Act("export", "导出"), Act("print", "打印")),
             Mod("reports", "报表",
-                Act("view", "查看"), Act("export", "导出"), Act("print", "打印")),
+                Act("view", "查看"), Act("edit", "编辑"), Act("export", "导出"), Act("print", "打印")),
+            Mod("accounts", "科目与期初",
+                Act("view", "查看"), Act("edit", "编辑"), Act("import", "导入"), Act("export", "导出")),
+            Mod("assist", "辅助核算",
+                Act("view", "查看"), Act("edit", "编辑")),
+            Mod("archives", "电子档案",
+                Act("view", "查看"), Act("edit", "编辑")),
+            Mod("settings", "账套设置",
+                Act("view", "查看"), Act("edit", "编辑")),
+            Mod("operationlog", "操作日志", Act("view", "查看")),
+            Mod("budget", "预算",
+                Act("view", "查看"), Act("edit", "编辑")),
             Mod("accountset-add", "新增账套", Act("execute", "操作")),
             Mod("accountset-delete", "删除账套", Act("execute", "操作")),
             Mod("backup", "备份恢复", Act("view", "查看"), Act("edit", "备份 / 恢复")),
@@ -159,20 +170,24 @@ namespace YunCai.Modules.AccountSets.Domain
                 new RolePreset("账套管理员", true, AllKeys),
                 new RolePreset("主管", false, Keys(m => m.Key is "vouchers" or "funds" or "invoices" or "salary"
                     or "assets" or "tax" or "closing" or "ledgers" or "reports"
+                    or "accounts" or "assist" or "archives" or "settings" or "budget"
                     ? AllOf(m)
-                    : m.Key == "accountset-add" ? AllOf(m) : null)),
+                    : m.Key is "operationlog" or "accountset-add" ? AllOf(m) : null)),
                 new RolePreset("制单人", false, Keys(m => m.Key is "vouchers" or "invoices" or "salary"
-                    or "assets" or "tax" or "closing"
+                    or "assets" or "tax" or "closing" or "archives" or "budget"
                     ? AllOf(m)
                     : m.Key is "funds" or "ledgers" or "reports"
+                        or "accounts" or "assist" or "settings" or "operationlog"
                         ? ViewOf(m)
                         : m.Key == "accountset-add" ? AllOf(m) : null)),
                 new RolePreset("出纳", false, Keys(m => m.Key == "funds"
                     ? AllOf(m)
                     : m.Key is "vouchers" or "assets" or "ledgers" or "reports"
+                        or "accounts" or "assist" or "archives" or "settings" or "operationlog" or "budget"
                         ? ViewOf(m)
                         : m.Key == "accountset-add" ? AllOf(m) : null)),
                 new RolePreset("查看", false, Keys(m => m.Key is "vouchers" or "funds" or "assets" or "ledgers" or "reports"
+                    or "accounts" or "assist" or "archives" or "settings" or "operationlog" or "budget"
                     ? ViewOf(m)
                     : m.Key == "accountset-add" ? AllOf(m) : null)),
             ];

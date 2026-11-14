@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yuncai-api
+  labels:
+    app: yuncai-api
+spec:
+  # 税局登录会话保存在进程内存里（登录态另加密存库），多副本会让同一用户飘到没有会话的 Pod。
+  # 默认单副本；确实要扩容时先解决会话亲和，或把登录会话迁到共享存储。
+  replicas: 1
+  # 先停旧 Pod 再起新 Pod：迁移 initContainer 不会与旧实例的迁移并发。
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: yuncai-api
+  template:
+    metadata:
+      labels:
+        app: yuncai-api
+    spec:
+      imagePullSecrets:
+        - name: acr-pull
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: migrate
+          image: yuncai-api
+          args: ["--migrate-only"]
+          envFrom:
+            - configMapRef:
+                name: yuncai-config
+            - secretRef:
+                name: yuncai-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      containers:
+        - name: api
+          image: yuncai-api
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: yuncai-config
+            - secretRef:
+                name: yuncai-secret
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            # 服务端登录税局要跑无头 Chromium，内存给足；不够会表现为取数时页面随机崩。
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        # Chromium 默认依赖 /dev/shm，容器内默认只有 64MB，容易随机崩溃。
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi

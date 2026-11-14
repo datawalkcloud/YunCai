@@ -9,6 +9,7 @@ export { default as OpeningBalances } from "@/pages/settings/opening-balances";
 export { default as AssistItems } from "@/pages/settings/assist-items";
 export { default as VoucherWord } from "@/pages/settings/voucher-word";
 export { default as OperationLog } from "@/pages/settings/operation-log";
+export { default as Users } from "@/pages/settings/users";
 export {
     LemonCurrency,
     LemonVoucherTemplate,

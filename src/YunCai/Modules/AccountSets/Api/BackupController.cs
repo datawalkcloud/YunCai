@@ -1,5 +1,6 @@
 using YunCai.Modules.AccountSets.Application;
 using YunCai.SharedKernel.Infrastructure.Data;
+using YunCai.SharedKernel.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -38,6 +39,8 @@ namespace YunCai.Modules.AccountSets.Api
 
         /// <summary>从备份数据包恢复（清空账套现有业务数据后写回，高危操作）。</summary>
         [HttpPost("restore")]
+        [RequireAccountSetAdmin]
+        [RequireStepUp]
         [RequestSizeLimit(200 * 1024 * 1024)]
         public async Task<ActionResult<BackupRestoreResultDto>> Restore(Guid accountSetId, IFormFile? file, CancellationToken cancellationToken)
         {
@@ -49,7 +52,8 @@ namespace YunCai.Modules.AccountSets.Api
             try
             {
                 var preparer = User.FindFirst("displayName")?.Value ?? User.FindFirst("unique_name")?.Value ?? "系统";
-                var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+                // MapInboundClaims = false，用户标识在 sub 声明里（NameIdentifier 是空值）。
+                var userId = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value ?? "";
                 await using var stream = file.OpenReadStream();
                 return Ok(await _backupService.RestoreAsync(accountSetId, stream, userId, preparer, cancellationToken));
             }

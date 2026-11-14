@@ -16,8 +16,9 @@ import { useNavigate } from "react-router"
 import { useAuth } from "@/auth/AuthContext"
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { AccountSetsApi, type AccountSetDto } from "@/apis-gen"
-import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { apiConfig, apiConfigWithHeaders, apiErrorMessage } from "@/lib/api-client"
 import { useConfirm } from "@/hooks/useConfirm"
+import { useStepUp } from "@/lib/step-up"
 import { cn } from "@/lib/utils"
 import { SectionCard } from "@/components/page/section"
 import { parseDate } from "@/components/fields/date-fields"
@@ -63,6 +64,7 @@ export default function AccountSetsPage() {
     const { refresh: refreshAccountSets } = useAccountSets()
     const currentAccountSetId = useCurrentAccountSetId()
     const { confirm, confirmDialog } = useConfirm()
+    const { run: withStepUp } = useStepUp()
     const { message } = App.useApp()
     const navigate = useNavigate()
 
@@ -136,6 +138,7 @@ export default function AccountSetsPage() {
     /** 删除账套（连同其下全部数据）；删的是当前账套时跳到剩下的第一套。 */
     async function removeSet(set: AccountSetDto) {
         if (!set.id || busyId) return
+        const id = set.id
         const name = set.name ?? ""
         if (!(await confirm(
             "删除后会一并清除该账套的科目、凭证、账簿、资金、发票、工资、资产、档案等全部数据，且无法恢复。",
@@ -144,7 +147,9 @@ export default function AccountSetsPage() {
         setBusyId(set.id)
         setListError(null)
         try {
-            await new AccountSetsApi(apiConfig(token)).accountSetsIdDelete({ id: set.id })
+            await withStepUp((h) =>
+                new AccountSetsApi(apiConfigWithHeaders(token, h)).accountSetsIdDelete({ id }),
+            )
             message.success(`账套「${name}」已删除`)
             await load()
             refreshAccountSets()

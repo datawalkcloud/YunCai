@@ -61,6 +61,9 @@ npm run gen                   # 重新生成 apis-gen（要求后端已在 5271 
 cp .env.example .env          # 必填 YUNCAI_DB_PASSWORD / YUNCAI_JWT_KEY / YUNCAI_ADMIN_PASSWORD
 docker compose up -d --build  # web(nginx 托管 SPA 并反代 /api) + api + db；migrate 容器先跑 --migrate-only
                               # 也可由 .github/workflows/release-image.yml 推送 ACR，服务器用 docker-compose.acr.yml 拉取
+
+# Kubernetes（Kustomize，清单在 deploy/k8s/，说明见 deploy/k8s/README.md）
+kubectl apply -k deploy/k8s   # api 的 initContainer 先跑 --migrate-only 再启动；镜像取 ACR 的 v* 构建
 ```
 
 - **本机机密**放 `src/YunCai/appsettings.Local.json`（从 `appsettings.Local.example.json` 复制，已被 .gitignore 排除）；`appsettings.json` 里不得出现真实连接串或签名密钥。配置优先级：appsettings.json < appsettings.{环境}.json < Local < 环境变量。

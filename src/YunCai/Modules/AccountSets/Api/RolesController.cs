@@ -8,6 +8,7 @@ namespace YunCai.Modules.AccountSets.Api
     [ApiController]
     [Route("accountsets/{accountSetId:guid}/roles")]
     [Authorize]
+    [RequireAccountSetAdmin]
     public class RolesController : ControllerBase
     {
         private readonly RoleService _roleService;

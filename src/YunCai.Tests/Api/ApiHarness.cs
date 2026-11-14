@@ -15,17 +15,24 @@ namespace YunCai.Tests.Api;
 /// </summary>
 internal sealed class ApiHarness : IDisposable
 {
-    /// <summary>令牌里的显示名，会被凭证等端点当作制单人/审核人落库。</summary>
-    public const string TokenDisplayName = "集成测试";
+    /// <summary>播种管理员的显示名；凭证等端点会把它记为制单人。</summary>
+    public const string TokenDisplayName = "管理员";
 
     private readonly ApiTestFactory _factory = new();
 
-    public ApiHarness(string userId = "integration-test-user")
+    /// <summary>默认以播种管理员身份访问（默认账套的创建者成员）；传 userId 可模拟另一个登录账号。</summary>
+    public ApiHarness(string? userId = null)
     {
-        Client = _factory.CreateAuthenticatedClient(userId);
+        // 管理员的二级确认用播种密码自动换取，写请求不再逐个手工带令牌；否则用裸客户端。
+        Client = userId is null
+            ? _factory.CreateAuthenticatedClient(stepUpPassword: ApiTestFactory.SeededAdminPassword)
+            : _factory.CreateAuthenticatedClient(userId);
     }
 
     public HttpClient Client { get; }
+
+    /// <summary>测试装置本体：安全相关的用例需要另开不同身份 / 不带二次确认的客户端。</summary>
+    public ApiTestFactory Factory => _factory;
 
     /// <summary>另开一个数据库上下文，等于一次新的请求作用域，用于直查库做断言或补种数据。</summary>
     public AppDbContext NewContext() => _factory.NewContext();

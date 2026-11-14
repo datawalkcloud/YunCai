@@ -290,6 +290,28 @@ namespace YunCai.Modules.Reports.Api
         }
 
         /// <summary>
+        /// 资产负债表行下钻：返回该行次下各科目的期末/年初余额。金额口径与报表行一致，
+        /// 前端据此再下钻到科目明细账。
+        /// </summary>
+        [HttpGet("balance-sheet/drilldown")]
+        public async Task<ActionResult<ReportDrilldownDto>> GetBalanceSheetDrilldown(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            [FromQuery] int line,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _balanceSheetService.GetLineDrilldownAsync(accountSetId, year, month, line, cancellationToken));
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// 资产负债表 PDF（A4 纵向两栏版式）。可选 year/month 指定会计期间，省略时取最近有凭证的月份。
         /// 服务端渲染，不含浏览器打印的页眉页脚；版式与 .xls 导出、页面打印稿一致。
         /// </summary>
@@ -349,6 +371,28 @@ namespace YunCai.Modules.Reports.Api
             {
                 var result = await _incomeStatementService.GetAsync(accountSetId, year, month, cancellationToken);
                 return Ok(result);
+            }
+            catch (ReportException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 利润表行下钻：返回该行次下各损益类科目的本期/本年累计发生额。
+        /// 结转损益凭证与报表一样剔除；「其中」子项行只列落到子项的科目。
+        /// </summary>
+        [HttpGet("income-statement/drilldown")]
+        public async Task<ActionResult<ReportDrilldownDto>> GetIncomeStatementDrilldown(
+            Guid accountSetId,
+            [FromQuery] int? year,
+            [FromQuery] int? month,
+            [FromQuery] int line,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _incomeStatementService.GetLineDrilldownAsync(accountSetId, year, month, line, cancellationToken));
             }
             catch (ReportException ex)
             {

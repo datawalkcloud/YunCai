@@ -12,6 +12,13 @@ export function apiConfig(token?: string | null): Configuration {
     })
 }
 
+/** 带附加请求头的配置（高危操作的 X-Step-Up-Token 等）。 */
+export function apiConfigWithHeaders(token?: string | null, extra?: Record<string, string>): Configuration {
+    const headers: Record<string, string> = { ...extra }
+    if (token) headers.Authorization = `Bearer ${token}`
+    return new Configuration({ basePath: "/api", headers })
+}
+
 /** 401（登录态失效）的处理回调，由登录态模块注册。 */
 export type UnauthorizedHandler = () => void
 

@@ -81,7 +81,11 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
                 services.Remove(descriptor);
             }
 
-            services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
+            // 与生产一致：审计拦截器按请求作用域解析，实体级变更自动留痕。
+            services.AddDbContext<AppDbContext>((sp, options) => options
+                .UseSqlite(_connection)
+                .AddInterceptors(
+                    sp.GetRequiredService<YunCai.Modules.Auditing.Infrastructure.AuditSaveChangesInterceptor>()));
         });
     }
 
@@ -95,18 +99,48 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
     /// 签发访问令牌。走生产 <see cref="ITokenService"/>，顺带覆盖令牌签发链路；
     /// 不经 /Auth/login 也就不会消耗该端点的按 IP 限流额度。
     /// </summary>
-    public string CreateToken(string userId = "integration-test-user", string username = "tester", string displayName = "集成测试")
+    public string CreateToken(string userId)
     {
-        var user = new User { Id = userId, Username = username, DisplayName = displayName, PasswordHash = "unused" };
+        // 鉴权时会按 sub 回查账号状态与令牌版本，令牌必须对应真实存在的启用账号。
+        using var db = NewContext();
+        var user = db.Users.AsNoTracking().Single(u => u.Id == userId);
         return Services.GetRequiredService<ITokenService>().CreateToken(user).Token;
     }
 
-    /// <summary>带 Bearer 令牌的客户端，用于访问受 <c>[Authorize]</c> 保护的端点。</summary>
-    public HttpClient CreateAuthenticatedClient(string userId = "integration-test-user")
+    /// <summary>
+    /// 带 Bearer 令牌的客户端，用于访问受 <c>[Authorize]</c> 保护的端点。
+    /// 不指定用户时以播种管理员身份访问——账套访问校验按成员身份放行，
+    /// 播种出的默认账套只有管理员是成员。
+    /// 传 <paramref name="stepUpPassword"/> 时再挂一层自动二次确认（模拟前端 StepUpProvider），
+    /// 写请求会带上 X-Step-Up-Token；验证 428 分支的用例不要传。
+    /// </summary>
+    public HttpClient CreateAuthenticatedClient(string? userId = null, string? stepUpPassword = null)
     {
+        // 先建客户端触发宿主启动与播种，账号才在库里。
         var client = CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(userId));
+        userId ??= GetSeededAdminUserId();
+        var token = CreateToken(userId);
+
+        if (stepUpPassword is not null)
+        {
+            client.Dispose();
+            client = CreateDefaultClient(new StepUpHandler(() =>
+            {
+                var inner = CreateClient();
+                inner.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                return inner;
+            }, stepUpPassword));
+        }
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
+    }
+
+    /// <summary>播种管理员的用户标识；先建客户端触发宿主启动与播种。</summary>
+    public string GetSeededAdminUserId()
+    {
+        using var db = NewContext();
+        return db.Users.Single(u => u.Username == SeededAdminUsername).Id;
     }
 
     protected override void Dispose(bool disposing)

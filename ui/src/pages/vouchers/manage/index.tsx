@@ -55,7 +55,11 @@ import {
     type VoucherImportResult,
     type VoucherListItemDto,
 } from "@/apis-gen"
-import { apiConfig, apiErrorMessage } from "@/lib/api-client"
+import { apiConfig, apiConfigWithHeaders, apiErrorMessage } from "@/lib/api-client"
+import { batchUpdateVouchers, mergeVouchers } from "@/api/voucher-batch"
+import { useAccountAssistConfigs } from "@/components/assist/assist-store"
+import { useAssistItems } from "@/components/ledger/useLedgerOptions"
+import { useStepUp } from "@/lib/step-up"
 import { fmtAmount, toISODate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Tile } from "@/components/page/tile"
@@ -709,6 +713,7 @@ function buildVoucherColumns(x: VoucherColumnActions): TableColumnsType<VoucherR
 
 export default function VoucherManagePage() {
     const { token } = useAuth()
+    const { run: withStepUp } = useStepUp()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const currentSet = accountSets.find((s) => s.id === accountSetId)
@@ -762,10 +767,30 @@ export default function VoucherManagePage() {
     const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
     /** 整理凭证弹窗。 */
     const [tidyOpen, setTidyOpen] = useState(false)
-    const [tidyPeriod, setTidyPeriod] = useState<string | null>(null)
+    const [tidyFrom, setTidyFrom] = useState<string | null>(null)
+    const [tidyTo, setTidyTo] = useState<string | null>(null)
     const [tidyWord, setTidyWord] = useState<string | null>(null)
     const [tidyByDate, setTidyByDate] = useState(false)
     const [tidying, setTidying] = useState(false)
+
+    /** 合并暂存凭证：把所选凭证并入凭证号最小的一张。 */
+    const [mergeOpen, setMergeOpen] = useState(false)
+    const [merging, setMerging] = useState(false)
+
+    /** 批量修改暂存凭证的安全字段（摘要 / 辅助核算）。 */
+    const [batchOpen, setBatchOpen] = useState(false)
+    const [batchSaving, setBatchSaving] = useState(false)
+    const [batchSummary, setBatchSummary] = useState("")
+    const [batchAssistAccountId, setBatchAssistAccountId] = useState<string | undefined>()
+    const [batchAssistType, setBatchAssistType] = useState<number | undefined>()
+    const [batchAssistItemId, setBatchAssistItemId] = useState<string | undefined>()
+    /** 批量修改弹窗里的辅助核算下拉：只列所选科目已配置的维度，档案按类别取。 */
+    const { configs: batchAssistConfigs } = useAccountAssistConfigs(
+        accountSetId,
+        [batchAssistAccountId],
+        token,
+    )
+    const batchAssistItems = useAssistItems(accountSetId, token, batchAssistType)
 
     // 客户端分页：直接对数组切页。
     const [page, setPage] = useState(1)
@@ -909,6 +934,7 @@ export default function VoucherManagePage() {
     /** 回收站：彻底删除一张凭证（不可恢复）。 */
     async function handlePurge(v: VoucherListItemDto) {
         if (!v.id) return
+        const id = v.id
         const ok = await new Promise<boolean>((resolve) =>
             modal.confirm({
                 title: `彻底删除凭证「${v.voucherNo}」？`,
@@ -922,10 +948,12 @@ export default function VoucherManagePage() {
         )
         if (!ok) return
         try {
-            await new VouchersApi(apiConfig(token)).accountsetsAccountSetIdVouchersIdPurgeDelete({
-                accountSetId,
-                id: v.id,
-            })
+            await withStepUp((h) =>
+                new VouchersApi(apiConfigWithHeaders(token, h)).accountsetsAccountSetIdVouchersIdPurgeDelete({
+                    accountSetId,
+                    id,
+                }),
+            )
             setVouchers((prev) => prev.filter((x) => x.id !== v.id))
             message.success("已彻底删除")
         } catch (err) {
@@ -943,7 +971,11 @@ export default function VoucherManagePage() {
             cancelText: "取消",
             onOk: async () => {
                 try {
-                    await new VouchersApi(apiConfig(token)).accountsetsAccountSetIdVouchersRecycleBinDelete({ accountSetId })
+                    await withStepUp((h) =>
+                        new VouchersApi(apiConfigWithHeaders(token, h)).accountsetsAccountSetIdVouchersRecycleBinDelete({
+                            accountSetId,
+                        }),
+                    )
                     message.success("回收站已清空")
                     void load()
                 } catch (err) {
@@ -962,8 +994,8 @@ export default function VoucherManagePage() {
                 accountSetId,
                 renumberVouchersRequest: {
                     word: tidyWord ?? undefined,
-                    periodStart: monthRange(tidyPeriod, "start"),
-                    periodEnd: monthRange(tidyPeriod, "end"),
+                    periodStart: monthRange(tidyFrom, "start"),
+                    periodEnd: monthRange(tidyTo, "end"),
                     byDate: tidyByDate,
                 },
             })
@@ -975,6 +1007,116 @@ export default function VoucherManagePage() {
         } finally {
             setTidying(false)
         }
+    }
+
+    /** 合并暂存凭证：把所选凭证并入凭证号最小的一张，其余删除。 */
+    async function handleMerge() {
+        if (merging) return
+        const ids = selectedKeys.map(String).filter(Boolean)
+        if (ids.length < 2) {
+            message.warning("请至少勾选两张暂存凭证")
+            return
+        }
+        setMerging(true)
+        try {
+            // 合并会删除源凭证，属高危操作：由 StepUpProvider 统一做二次确认。
+            const merged = await withStepUp((h) => mergeVouchers(accountSetId, ids, token, h))
+            message.success(`已合并为 ${merged.voucherNo}`)
+            setMergeOpen(false)
+            setSelectedKeys([])
+            void load()
+        } catch (err) {
+            setError(await apiErrorMessage(err, "合并失败，请重试。"))
+        } finally {
+            setMerging(false)
+        }
+    }
+
+    /** 批量修改暂存凭证：摘要覆盖 + 按科目统一辅助核算。 */
+    async function handleBatchUpdate() {
+        if (batchSaving) return
+        const ids = selectedKeys.map(String).filter(Boolean)
+        if (ids.length === 0) {
+            message.warning("请先勾选要修改的凭证")
+            return
+        }
+        const summary = batchSummary.trim()
+        const hasAssist = Boolean(batchAssistAccountId || batchAssistType)
+        if (!summary && !hasAssist) {
+            message.warning("请至少填写摘要或选择辅助核算")
+            return
+        }
+        if (hasAssist && !(batchAssistAccountId && batchAssistType)) {
+            message.warning("设置辅助核算需要同时选择科目与类别")
+            return
+        }
+
+        setBatchSaving(true)
+        try {
+            const result = await batchUpdateVouchers(
+                accountSetId,
+                {
+                    ids,
+                    summary: summary || undefined,
+                    assist:
+                        batchAssistAccountId && batchAssistType
+                            ? {
+                                  accountId: batchAssistAccountId,
+                                  type: batchAssistType,
+                                  itemId: batchAssistItemId ?? null,
+                              }
+                            : undefined,
+                },
+                token,
+            )
+            message.success(`已修改 ${result.updated} 张凭证`)
+            setBatchOpen(false)
+            setBatchSummary("")
+            setBatchAssistAccountId(undefined)
+            setBatchAssistType(undefined)
+            setBatchAssistItemId(undefined)
+            setSelectedKeys([])
+            void load()
+        } catch (err) {
+            setError(await apiErrorMessage(err, "批量修改失败，请重试。"))
+        } finally {
+            setBatchSaving(false)
+        }
+    }
+
+    /** 批量合并前先做本地预检，把服务端会拒绝的明显组合提前说清楚。 */
+    function openMergeDialog() {
+        const chosen = vouchers.filter((v) => selectedKeys.includes(v.id ?? ""))
+        if (chosen.length < 2) {
+            message.warning("请至少勾选两张暂存凭证")
+            return
+        }
+        const posted = chosen.find((v) => v.status !== 1)
+        if (posted) {
+            message.warning(`${posted.voucherNo} 是正常凭证，请先反过账后再合并`)
+            return
+        }
+        const first = chosen[0]
+        const inconsistent = chosen.find((v) => v.word !== first.word || v.date !== first.date)
+        if (inconsistent) {
+            message.warning("只能合并同一凭证字、同一日期的凭证")
+            return
+        }
+        setMergeOpen(true)
+    }
+
+    /** 批量修改弹窗：只允许暂存凭证（与后端口径一致，避免提交后才被拒绝）。 */
+    function openBatchDialog() {
+        if (selectedKeys.length === 0) {
+            message.warning("请先勾选要修改的凭证")
+            return
+        }
+        const posted = vouchers.find((v) => selectedKeys.includes(v.id ?? "") && v.status !== 1)
+        if (posted) {
+            message.warning(`${posted.voucherNo} 是正常凭证，请先反过账后再批量修改`)
+            return
+        }
+        setBatchOpen(true)
     }
 
     /**
@@ -1074,16 +1216,20 @@ export default function VoucherManagePage() {
             okButtonProps: { danger: true },
             cancelText: "取消",
             onOk: async () => {
-                const api = new VouchersApi(apiConfig(token))
                 let done = 0
                 const failed: string[] = []
                 for (const id of ids) {
                     try {
                         // 正常凭证先反过账再删除。
                         if (vouchers.find((v) => v.id === id)?.status === 3) {
-                            await api.accountsetsAccountSetIdVouchersIdUnpostPost({ accountSetId, id })
+                            await new VouchersApi(apiConfig(token)).accountsetsAccountSetIdVouchersIdUnpostPost({ accountSetId, id })
                         }
-                        await api.accountsetsAccountSetIdVouchersIdDelete({ accountSetId, id })
+                        await withStepUp((h) =>
+                            new VouchersApi(apiConfigWithHeaders(token, h)).accountsetsAccountSetIdVouchersIdDelete({
+                                accountSetId,
+                                id,
+                            }),
+                        )
                         done++
                     } catch (err) {
                         failed.push(await apiErrorMessage(err, "删除失败"))
@@ -1254,6 +1400,38 @@ export default function VoucherManagePage() {
     const allSelected = pageRows.length > 0 && pageRows.every((v) => selectedKeys.includes(v.id ?? ""))
     const someSelected = !allSelected && pageRows.some((v) => selectedKeys.includes(v.id ?? ""))
 
+    /** 合并/批量修改弹窗展示用：当前勾选的凭证与合并目标（凭证号最小的一张）。 */
+    const selectedVouchers = useMemo(
+        () => vouchers.filter((v) => selectedKeys.includes(v.id ?? "")),
+        [vouchers, selectedKeys],
+    )
+    const mergeTarget = useMemo(
+        () => [...selectedVouchers].sort((a, b) => (a.number ?? 0) - (b.number ?? 0))[0],
+        [selectedVouchers],
+    )
+    const batchAssistTypeOptions = useMemo(
+        () =>
+            (batchAssistAccountId ? (batchAssistConfigs[batchAssistAccountId] ?? []) : []).map((c) => ({
+                value: c.type ?? 0,
+                label: c.typeText ?? String(c.type ?? ""),
+            })),
+        [batchAssistAccountId, batchAssistConfigs],
+    )
+    const batchAssistAccountOptions = useMemo(
+        () =>
+            allAccounts
+                .filter((a) => a.isLeaf !== false && a.isEnabled !== false)
+                .map((a) => ({ value: a.id ?? "", label: `${a.code} ${a.name}` })),
+        [allAccounts],
+    )
+    const batchAssistItemOptions = useMemo(
+        () =>
+            batchAssistItems
+                .filter((item) => item.type === batchAssistType && item.isEnabled !== false)
+                .map((item) => ({ value: item.id ?? "", label: `${item.code} ${item.name}` })),
+        [batchAssistItems, batchAssistType],
+    )
+
     const toggleSelect = (id: string, checked: boolean) =>
         setSelectedKeys((prev) => (checked ? [...prev, id] : prev.filter((key) => key !== id)))
 
@@ -1408,7 +1586,8 @@ export default function VoucherManagePage() {
                                 </Button>
                                 <Button
                                     onClick={() => {
-                                        setTidyPeriod(periodOf(filters))
+                                        setTidyFrom(periodOf(filters))
+                                        setTidyTo(periodOf(filters))
                                         setTidyWord(null)
                                         setTidyByDate(false)
                                         setTidyOpen(true)
@@ -1421,16 +1600,19 @@ export default function VoucherManagePage() {
                                     [
                                         { key: "copy", label: "批量复制", disabled: selectedKeys.length === 0 },
                                         { key: "delete", label: "批量删除", icon: <DeleteOutlined />, disabled: selectedKeys.length === 0 },
-                                        { key: "modify", label: "批量修改", disabled: true },
-                                        { key: "sort", label: "凭证号排序" },
+                                        { key: "modify", label: "批量修改", disabled: selectedKeys.length === 0 },
+                                        { key: "sort", label: "凭证号排序（可跨期）" },
                                         { key: "adjust", label: "凭证号调整", disabled: true },
-                                        { key: "merge", label: "凭证合并", disabled: true },
+                                        { key: "merge", label: "凭证合并", disabled: selectedKeys.length < 2 },
                                     ],
                                     ({ key }) => {
                                         if (key === "copy") void batchCopy()
                                         else if (key === "delete") batchSoftDelete()
+                                        else if (key === "modify") openBatchDialog()
+                                        else if (key === "merge") openMergeDialog()
                                         else if (key === "sort") {
-                                            setTidyPeriod(periodOf(filters))
+                                            setTidyFrom(periodOf(filters))
+                                            setTidyTo(periodOf(filters))
                                             setTidyWord(null)
                                             setTidyByDate(false)
                                             setTidyOpen(true)
@@ -1676,14 +1858,20 @@ export default function VoucherManagePage() {
             >
                 <div className="flex flex-col gap-4 py-2">
                     <div className="flex items-center gap-3">
-                        <span className="w-[72px] text-right text-[13px] text-(--muted-foreground)">整理期间：</span>
-                        <DatePicker
+                        <span className="w-[72px] text-right text-[13px] text-(--muted-foreground)">整理区间：</span>
+                        <DatePicker.RangePicker
                             picker="month"
                             allowClear
-                            placeholder="不限"
-                            value={tidyPeriod ? dayjs(`${tidyPeriod}-01`) : null}
-                            onChange={(d) => setTidyPeriod(d ? d.format("YYYY-MM") : null)}
-                            style={{ width: 160 }}
+                            placeholder={["起始期间", "结束期间"]}
+                            value={[
+                                tidyFrom ? dayjs(`${tidyFrom}-01`) : null,
+                                tidyTo ? dayjs(`${tidyTo}-01`) : null,
+                            ]}
+                            onChange={(dates) => {
+                                setTidyFrom(dates?.[0] ? dates[0].format("YYYY-MM") : null)
+                                setTidyTo(dates?.[1] ? dates[1].format("YYYY-MM") : null)
+                            }}
+                            style={{ width: 300 }}
                         />
                     </div>
                     <div className="flex items-center gap-3">
@@ -1702,12 +1890,124 @@ export default function VoucherManagePage() {
                         </div>
                     </Radio.Group>
                     <div className="text-[12px] text-(--muted-foreground)">
-                        编号从 1 开始重新连续编排，已删除（回收站）的凭证不占号；范围内含正常凭证时不允许重排。
+                        编号从 1 开始重新连续编排，已删除（回收站）的凭证不占号；可按月区间跨期整理，范围内含正常凭证时不允许重排。
                     </div>
                 </div>
             </Modal>
 
-            {/* 导入凭证抽屉 */}
+            {/* 凭证合并：把多张暂存凭证并入凭证号最小的一张 */}
+            <Modal
+                open={mergeOpen}
+                title="凭证合并"
+                width={520}
+                confirmLoading={merging}
+                onCancel={() => setMergeOpen(false)}
+                onOk={() => void handleMerge()}
+                okText="合并"
+                cancelText="取消"
+            >
+                <div className="flex flex-col gap-3 py-2 text-[13px]">
+                    <div>
+                        将选中的 <span className="font-medium">{selectedVouchers.length}</span> 张暂存凭证合并为一张，
+                        分录按原顺序追加，合并后其余凭证删除、不可恢复。
+                    </div>
+                    {mergeTarget && (
+                        <div className="rounded-lg border border-(--input) bg-muted px-3 py-2 text-[12.5px] text-(--muted-foreground)">
+                            保留凭证：<span className="font-medium text-(--foreground)">{mergeTarget.voucherNo}</span>
+                            {" · "}
+                            {toISODate(mergeTarget.date)}
+                            {selectedVouchers[0] && (
+                                <>
+                                    {" · "}
+                                    合并后共{" "}
+                                    {selectedVouchers.reduce((sum, v) => sum + (v.entryCount ?? 0), 0)} 条分录
+                                </>
+                            )}
+                        </div>
+                    )}
+                    <div className="text-[12px] text-(--muted-foreground)">
+                        要求所选凭证均为暂存状态、同一凭证字且同一日期；带附件的凭证请先移除附件。
+                    </div>
+                </div>
+            </Modal>
+
+            {/* 批量修改：摘要与辅助核算等安全字段 */}
+            <Modal
+                open={batchOpen}
+                title="批量修改凭证"
+                width={560}
+                confirmLoading={batchSaving}
+                onCancel={() => setBatchOpen(false)}
+                onOk={() => void handleBatchUpdate()}
+                okText="确定修改"
+                cancelText="取消"
+            >
+                <div className="flex flex-col gap-4 py-2">
+                    <div className="text-[12.5px] text-(--muted-foreground)">
+                        将对选中的 <span className="font-medium text-(--foreground)">{selectedKeys.length}</span>{" "}
+                        张暂存凭证生效；金额、科目与日期不会被修改，改完仍保持暂存状态。
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="w-[72px] shrink-0 text-right text-[13px] text-(--muted-foreground)">摘要：</span>
+                        <Input
+                            placeholder="留空表示不修改；填写后替换全部分录摘要"
+                            maxLength={200}
+                            value={batchSummary}
+                            onChange={(e) => setBatchSummary(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex flex-col gap-3 rounded-lg border border-(--input) bg-muted px-3 py-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-[72px] shrink-0 text-right text-[13px] text-(--muted-foreground)">辅助科目：</span>
+                            <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder="选择末级科目（留空表示不改辅助核算）"
+                                style={{ flex: 1 }}
+                                value={batchAssistAccountId}
+                                options={batchAssistAccountOptions}
+                                onChange={(value) => {
+                                    setBatchAssistAccountId(value)
+                                    setBatchAssistType(undefined)
+                                    setBatchAssistItemId(undefined)
+                                }}
+                            />
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="w-[72px] shrink-0 text-right text-[13px] text-(--muted-foreground)">核算类别：</span>
+                            <Select
+                                allowClear
+                                placeholder={batchAssistAccountId ? "选择该科目已配置的维度" : "请先选择科目"}
+                                style={{ flex: 1 }}
+                                disabled={!batchAssistAccountId}
+                                value={batchAssistType}
+                                options={batchAssistTypeOptions}
+                                onChange={(value) => {
+                                    setBatchAssistType(value)
+                                    setBatchAssistItemId(undefined)
+                                }}
+                                notFoundContent={batchAssistAccountId ? "该科目未配置辅助核算" : undefined}
+                            />
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="w-[72px] shrink-0 text-right text-[13px] text-(--muted-foreground)">核算档案：</span>
+                            <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder="留空表示清除该类取值"
+                                style={{ flex: 1 }}
+                                disabled={!batchAssistType}
+                                value={batchAssistItemId}
+                                options={batchAssistItemOptions}
+                                onChange={setBatchAssistItemId}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+
             <Drawer
                 open={importOpen}
                 size={672}

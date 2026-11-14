@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
+import { useNavigate, useParams } from "react-router"
 import { DownloadOutlined, PrinterOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Button, Table, Tooltip } from "antd"
 import type { TableColumnsType } from "antd"
@@ -12,6 +13,7 @@ import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 import { ReportPageShell } from "@/components/report/ReportPageShell"
 import { ReportPeriodToolbar } from "@/components/report/ReportPeriodToolbar"
+import { ReportDrilldownDrawer } from "@/components/report/ReportDrilldownDrawer"
 import { downloadReportExport } from "@/components/report/report-export"
 import { AMOUNT_COL } from "@/components/page/styles"
 
@@ -353,7 +355,12 @@ function buildSmallBusinessLiabilityRows(map: AmountMap, withInventoryDetails: b
  * 半张表共用的 4 列（名称 / 行次 / 期末 / 年初）。
  * 资产负债表是左右对排的打印格式，取数按 kind 决定缩进与加粗，空侧渲染空单元格。
  */
-function halfColumns(nameTitle: string, pick: (row: SheetRow) => SheetLine | undefined): TableColumnsType<SheetRow> {
+function halfColumns(
+    nameTitle: string,
+    pick: (row: SheetRow) => SheetLine | undefined,
+    onDrill: (line: SheetLine) => void,
+    isDrillable: (line: SheetLine) => boolean,
+): TableColumnsType<SheetRow> {
     /** 该侧为空时补一个占位单元格，保持网格完整。 */
     const cell = (render: (line: SheetLine) => ReactNode) =>
         (_: unknown, row: SheetRow) => {
@@ -379,11 +386,24 @@ function halfColumns(nameTitle: string, pick: (row: SheetRow) => SheetLine | und
             title: nameTitle,
             onCell: rowCell,
             render: cell((line) =>
-                line.kind === "section"
-                    ? <span className="font-medium">{line.label}</span>
-                    : <span className={cn(
+                line.kind === "section" ? (
+                    <span className="font-medium">{line.label}</span>
+                ) : isDrillable(line) ? (
+                    <span
+                        className={cn(
+                            "cursor-pointer hover:text-(--brand) hover:underline",
+                            line.kind === "total" ? "font-medium" : line.kind === "detail" ? "ml-8" : "ml-4",
+                        )}
+                        title="查看该行的科目明细"
+                        onClick={() => onDrill(line)}
+                    >
+                        {line.label}
+                    </span>
+                ) : (
+                    <span className={cn(
                         line.kind === "total" ? "font-medium" : line.kind === "detail" ? "ml-8" : "ml-4",
-                    )}>{line.label}</span>,
+                    )}>{line.label}</span>
+                ),
             ),
         },
         {
@@ -418,6 +438,8 @@ export default function BalanceSheetPage() {
     const { token } = useAuth()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
+    const routeAccountSetId = useParams<{ accountSetId: string }>().accountSetId
+    const navigate = useNavigate()
     const currentSet = accountSets.find((s) => s.id === accountSetId)
     const periodBounds = useAccountingPeriodBounds()
 
@@ -429,6 +451,7 @@ export default function BalanceSheetPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [loaded, setLoaded] = useState(false)
+    const [drill, setDrill] = useState<SheetLine | null>(null)
 
     const load = useCallback(async () => {
         if (!accountSetId) return
@@ -499,6 +522,33 @@ export default function BalanceSheetPage() {
             b: liabilityRows[i],
         })),
         [assetRows, liabilityRows],
+    )
+
+    // 只有后端真的给出金额的行次才能下钻（合计行与「固定资产账面价值」等派生行由前端计算）。
+    const drillableLines = useMemo(
+        () => new Set(lines.filter((l) => l.line != null).map((l) => l.line!)),
+        [lines],
+    )
+    const isDrillable = useCallback(
+        (line: SheetLine) => line.kind !== "section" && line.line != null && drillableLines.has(line.line),
+        [drillableLines],
+    )
+
+    /** 从下钻浮层进入科目明细账，沿用报表所选月份的日期区间。 */
+    const openSubsidiary = useCallback(
+        (code: string) => {
+            if (!routeAccountSetId || !period) return
+            const mm = String(period.month).padStart(2, "0")
+            const lastDay = new Date(period.year, period.month, 0).getDate()
+            const params = new URLSearchParams({
+                account: code,
+                startDate: `${period.year}-${mm}-01`,
+                endDate: `${period.year}-${mm}-${String(lastDay).padStart(2, "0")}`,
+            })
+            setDrill(null)
+            navigate(`/${routeAccountSetId}/ledger/subsidiary?${params.toString()}`)
+        },
+        [routeAccountSetId, period, navigate],
     )
 
     /** 打印：后端按账套准则生成 A4 PDF 后在新窗口打开（不含浏览器页眉页脚）。 */
@@ -599,12 +649,32 @@ export default function BalanceSheetPage() {
             }
         >
             <Table<SheetRow>
-                columns={[...halfColumns("资产", (r) => r.a), ...halfColumns("负债和所有者权益", (r) => r.b)]}
+                columns={[
+                    ...halfColumns("资产", (r) => r.a, setDrill, isDrillable),
+                    ...halfColumns("负债和所有者权益", (r) => r.b, setDrill, isDrillable),
+                ]}
                 dataSource={rows}
                 rowKey="id"
                 pagination={false}
                 scroll={{ x: 900 }}
             />
+
+            {period && (
+                <ReportDrilldownDrawer
+                    open={drill != null}
+                    onClose={() => setDrill(null)}
+                    accountSetId={accountSetId}
+                    token={token}
+                    kind="balance-sheet"
+                    year={period.year}
+                    month={period.month}
+                    line={drill?.line ?? null}
+                    title={drill ? `科目明细 · ${drill.label}` : "科目明细"}
+                    currentLabel="期末余额"
+                    yearToDateLabel="年初余额"
+                    onOpenLedger={openSubsidiary}
+                />
+            )}
         </ReportPageShell>
     )
 }

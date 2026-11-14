@@ -42,9 +42,10 @@ function useRedirect(to: string | null, state?: unknown) {
 
 /** 需要登录才能访问；未登录时跳转到登录页并记录来源，期间显示加载占位。 */
 function RequireAuth({ children }: { children: ReactNode }) {
-    const { status } = useAuth();
+    const { status, needsPasswordSetup } = useAuth();
     const location = useLocation();
-    const shouldRedirect = status !== "loading" && status !== "authenticated";
+    // 验证码首次登录自动建的号还没设密码，先回登录页补设，不放进后台。
+    const shouldRedirect = (status !== "loading" && status !== "authenticated") || needsPasswordSetup;
     useRedirect(shouldRedirect ? "/login" : null, shouldRedirect ? { from: location.pathname } : undefined);
 
     if (status === "loading" || shouldRedirect) return <AppLoading />;
@@ -53,10 +54,10 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 /** 已登录用户访问登录页时回到来源页（默认 /app），跳转期间官网保持可见。 */
 function RedirectIfAuthed({ children }: { children: ReactNode }) {
-    const { status } = useAuth();
+    const { status, needsPasswordSetup } = useAuth();
     const location = useLocation();
     const from = (location.state as { from?: string } | null)?.from ?? "/app";
-    useRedirect(status === "authenticated" ? from : null);
+    useRedirect(status === "authenticated" && !needsPasswordSetup ? from : null);
 
     if (status === "loading") return <AppLoading />;
     return <>{children}</>;
@@ -174,6 +175,7 @@ const router = createBrowserRouter([
                     { path: "ledger/assist-combine", ...lazyRoute(() => import("./groups/ledger"), "AssistCombine") },
                     { path: "ledger/ageing", ...lazyRoute(() => import("./groups/ledger"), "AgeingAnalysis") },
                     { path: "vouchers/manage", ...lazyRoute(() => import("./groups/vouchers"), "VoucherManage") },
+                    { path: "budget/manage", ...lazyRoute(() => import("./groups/budget"), "BudgetManage") },
                     { path: "reports/balance-sheet", ...lazyRoute(() => import("./groups/reports"), "BalanceSheet") },
                     { path: "reports/income-statement", ...lazyRoute(() => import("./groups/reports"), "IncomeStatement") },
                     { path: "settings/accounts", ...lazyRoute(() => import("./groups/settings"), "Accounts") },
@@ -240,6 +242,7 @@ const router = createBrowserRouter([
                     { path: "settings/boss", ...lazyRoute(() => import("./groups/settings"), "LemonBoss") },
                     { path: "settings/backup", ...lazyRoute(() => import("./groups/settings"), "LemonBackup") },
                     { path: "settings/log", ...lazyRoute(() => import("./groups/settings"), "OperationLog") },
+                    { path: "settings/users", ...lazyRoute(() => import("./groups/settings"), "Users") },
                     { path: "settings/eis-relation", ...lazyRoute(() => import("./groups/settings"), "LemonEisRelation") },
                     { path: "settings/scm-relation", ...lazyRoute(() => import("./groups/settings"), "LemonScmRelation") },
                     { path: "settings/import-old", ...lazyRoute(() => import("./groups/settings"), "LemonImportOld") },

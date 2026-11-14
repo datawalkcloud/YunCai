@@ -45,6 +45,7 @@ import {
 } from "@/api/closing"
 import { cn } from "@/lib/utils"
 import { useConfirm } from "@/hooks/useConfirm"
+import { useStepUp } from "@/lib/step-up"
 import { SectionCard } from "@/components/page/section"
 import { ICON_STYLE } from "@/components/page/styles"
 import { VoucherPaper } from "@/components/voucher/voucher-paper"
@@ -239,6 +240,7 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
     const navigate = useNavigate()
     const { user } = useAuth()
     const { confirm, confirmDialog } = useConfirm()
+    const { run: withStepUp } = useStepUp()
 
     const [step, setStep] = useState<0 | 1 | 2>(initialStep)
     const [error, setError] = useState<string | null>(null)
@@ -370,16 +372,19 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
         setError(null)
         setNotice(null)
         try {
-            const result = await carryForward(
-                accountSetId,
-                {
-                    year: period.year,
-                    month: period.month,
-                    splitIncomeCost,
-                    transferToRetainedEarnings: false,
-                    templateIds: selectedTemplateIds,
-                },
-                token,
+            const result = await withStepUp((h) =>
+                carryForward(
+                    accountSetId,
+                    {
+                        year: period.year,
+                        month: period.month,
+                        splitIncomeCost,
+                        transferToRetainedEarnings: false,
+                        templateIds: selectedTemplateIds,
+                    },
+                    token,
+                    h["X-Step-Up-Token"],
+                ),
             )
             setNotice(result.message)
             setLastVouchers(result.vouchers)
@@ -410,7 +415,9 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
         setError(null)
         setNotice(null)
         try {
-            const result = await cancelCarry(accountSetId, period.year, period.month, token)
+            const result = await withStepUp((h) =>
+                cancelCarry(accountSetId, period.year, period.month, token, h["X-Step-Up-Token"]),
+            )
             setPeriodState("NotCarried")
             setLastVouchers([])
             setNotice(result.message)
@@ -458,7 +465,9 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
         setBusy("close")
         setError(null)
         try {
-            const status = await closePeriod(accountSetId, period.year, period.month, token)
+            const status = await withStepUp((h) =>
+                closePeriod(accountSetId, period.year, period.month, token, h["X-Step-Up-Token"]),
+            )
             onClosed(`已结账至 ${status.closedPeriod ?? period.periodText}。`)
         } catch (err) {
             setError(err instanceof Error ? err.message : "结账失败，请重试。")
@@ -915,6 +924,7 @@ export default function ClosingPage() {
     const { token } = useAuth()
     const accountSetId = useCurrentAccountSetId() ?? ""
     const { confirm, confirmDialog } = useConfirm()
+    const { run: withStepUp } = useStepUp()
 
     const [status, setStatus] = useState<ClosingStatusDto | null>(null)
     const [loading, setLoading] = useState(false)
@@ -971,7 +981,7 @@ export default function ClosingPage() {
         setError(null)
         setNotice(null)
         try {
-            const result = await closeBatch(accountSetId, token)
+            const result = await withStepUp((h) => closeBatch(accountSetId, token, h["X-Step-Up-Token"]))
             setNotice(result.message)
             setStatus(result.status)
         } catch (err) {
@@ -995,7 +1005,7 @@ export default function ClosingPage() {
         setError(null)
         setNotice(null)
         try {
-            const result = await carryBatch(accountSetId, token)
+            const result = await withStepUp((h) => carryBatch(accountSetId, token, h["X-Step-Up-Token"]))
             setNotice(result.message)
             setStatus(result.status)
         } catch (err) {
@@ -1020,7 +1030,9 @@ export default function ClosingPage() {
         setError(null)
         setNotice(null)
         try {
-            const next = await reopenPeriod(accountSetId, period.year, period.month, token)
+            const next = await withStepUp((h) =>
+                reopenPeriod(accountSetId, period.year, period.month, token, h["X-Step-Up-Token"]),
+            )
             setStatus(next)
             setNotice(`已反结账，当前结账进度：${next.closedPeriod ?? "未结账"}。`)
         } catch (err) {
@@ -1041,7 +1053,9 @@ export default function ClosingPage() {
         setError(null)
         setNotice(null)
         try {
-            const result = await cancelCarry(accountSetId, year, month, token)
+            const result = await withStepUp((h) =>
+                cancelCarry(accountSetId, year, month, token, h["X-Step-Up-Token"]),
+            )
             setNotice(result.message)
             await loadStatus(true)
         } catch (err) {

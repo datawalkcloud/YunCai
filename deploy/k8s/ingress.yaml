@@ -1,0 +1,30 @@
+# 对外入口。域名取自 domain.yaml，TLS 证书 Secret 名在这里改。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yuncai
+  namespace: yuncai
+  annotations:
+    # 证书由集群里的 cert-manager 自动签发（与 qiyun 等其它命名空间的做法一致）。
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # 与 web 镜像里的 nginx 保持一致：导入 Excel 上限 32MB，取数接口最长 120s。
+    nginx.ingress.kubernetes.io/proxy-body-size: 32m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - $(DOMAIN)
+      secretName: yuncai-tls
+  rules:
+    - host: $(DOMAIN)
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80

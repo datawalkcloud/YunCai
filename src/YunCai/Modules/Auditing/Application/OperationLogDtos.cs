@@ -19,6 +19,16 @@ namespace YunCai.Modules.Auditing.Application
 
         public DateTime Time { get; init; }
 
+        public string? EntityType { get; init; }
+
+        public string? EntityId { get; init; }
+
+        public string? BeforeJson { get; init; }
+
+        public string? AfterJson { get; init; }
+
+        public string? IpAddress { get; init; }
+
         public static OperationLogDto FromDomain(OperationLog log) => new()
         {
             Id = log.Id,
@@ -28,6 +38,11 @@ namespace YunCai.Modules.Auditing.Application
             Module = log.Module,
             Log = log.Log,
             Time = log.Time,
+            EntityType = log.EntityType,
+            EntityId = log.EntityId,
+            BeforeJson = log.BeforeJson,
+            AfterJson = log.AfterJson,
+            IpAddress = log.IpAddress,
         };
     }
 

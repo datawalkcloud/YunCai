@@ -75,7 +75,7 @@ public sealed class HttpPipelineTests : IDisposable
             new { username = ApiTestFactory.SeededAdminUsername, password = "wrong-password" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Contains("用户名或密码错误", await response.Content.ReadAsStringAsync());
+        Assert.Contains("手机号或密码错误", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]

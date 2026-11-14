@@ -19,6 +19,30 @@ namespace YunCai.Modules.AccountSets.Application
             _roleService = roleService;
         }
 
+        /// <summary>
+        /// 确保账套有创建者成员并绑定到创建者的登录账号；已有创建者时只补齐空的账号 / 手机号绑定。
+        /// 新建账套、启动时回填存量账套都走这里。
+        /// </summary>
+        public async Task EnsureOwnerAsync(Guid accountSetId, string name, string? userId, string? phone, CancellationToken cancellationToken = default)
+        {
+            var roles = await _roleService.GetListAsync(accountSetId, cancellationToken);
+            var adminRole = roles.FirstOrDefault(r => r.IsAdmin)
+                ?? throw new MemberException("账套缺少管理员角色。");
+
+            var members = await _memberRepository.GetMembersAsync(accountSetId, cancellationToken);
+            var owner = members.FirstOrDefault(m => m.IsOwner);
+            if (owner is not null)
+            {
+                owner.LinkUser(userId, phone);
+                await _memberRepository.SaveChangesAsync(cancellationToken);
+                return;
+            }
+
+            var created = AccountSetMember.CreateOwner(accountSetId, name, adminRole.Id, userId, phone);
+            await _memberRepository.AddAsync(created, cancellationToken);
+            await _memberRepository.SaveChangesAsync(cancellationToken);
+        }
+
         /// <summary>获取成员列表；首次访问时补种账套创建者（管理员角色）。</summary>
         public async Task<IReadOnlyList<AccountSetMemberDto>> GetAsync(Guid accountSetId, CancellationToken cancellationToken = default)
         {

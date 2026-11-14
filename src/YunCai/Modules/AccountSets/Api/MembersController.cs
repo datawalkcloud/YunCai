@@ -8,6 +8,7 @@ namespace YunCai.Modules.AccountSets.Api
     [ApiController]
     [Route("accountsets/{accountSetId:guid}/members")]
     [Authorize]
+    [RequireAccountSetAdmin]
     public class MembersController : ControllerBase
     {
         private readonly MemberService _memberService;

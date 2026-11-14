@@ -1,0 +1,78 @@
+# 可选：集群内 PostgreSQL。用云数据库（RDS 等）时不要应用本文件，
+# 直接让 yuncai-secret 里的连接串指向云数据库即可。
+# 依赖同名 Secret yuncai-db（见 secret.example.yaml），请先创建。
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: yuncai
+  labels:
+    app: yuncai-db
+spec:
+  selector:
+    app: yuncai-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: yuncai-db
+  namespace: yuncai
+  labels:
+    app: yuncai-db
+spec:
+  serviceName: db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yuncai-db
+  template:
+    metadata:
+      labels:
+        app: yuncai-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: yuncai
+            - name: POSTGRES_USER
+              value: yuncai
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: yuncai-db
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U yuncai -d yuncai"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+              # postgres 镜像要求数据目录里不能有 lost+found 等文件
+              subPath: pgdata
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi

@@ -1,11 +1,13 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useNavigation, useParams } from "react-router";
 import {
     CheckOutlined,
     DownOutlined,
+    KeyOutlined,
     LogoutOutlined,
     MenuOutlined,
     QuestionCircleOutlined,
+    TeamOutlined,
 } from "@ant-design/icons";
 import {
     BuildingOfficeIcon,
@@ -16,15 +18,17 @@ import dayjs from "dayjs";
 
 import { useAuth } from "@/auth/AuthContext";
 import { useAccountSets } from "@/accountSets/AccountSetsContext";
+import { usePermissions } from "@/accountSets/PermissionsContext";
 import { makePeriod, useDefaultAccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { AccountSetsApi } from "@/apis-gen";
 import { apiConfig } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { ChangePasswordModal } from "@/components/auth/ChangePasswordModal";
 import { ThemeMenu } from "@/components/theme/theme-menu";
 import { CompanyInfoModal } from "@/pages/tax/CompanyInfoModal";
 import { setTaxPeriod, useTaxPeriod } from "@/pages/tax/tax-period";
-import { menuCategories, findCategoryOf } from "./menu-model";
+import { filterGroupsByPermission, menuCategories, findCategoryOf } from "./menu-model";
 import { tabKeyOf } from "./route-tabs-context";
 
 /* ------------------------------------------------------------------ */
@@ -45,6 +49,17 @@ export function WorkspaceTopBar({
     const location = useLocation();
     const tabKey = tabKeyOf(location.pathname, accountSetId);
     const category = findCategoryOf(tabKey);
+    const { has, loading: permissionsLoading } = usePermissions();
+    // 没有可用菜单的分类（如未开通税务权限的「报税」）不显示；加载中先按全集渲染，避免闪一下。
+    const categories = useMemo(
+        () =>
+            permissionsLoading
+                ? menuCategories
+                : menuCategories.filter(
+                      (item) => item.home === true || filterGroupsByPermission(item.groups, has).length > 0,
+                  ),
+        [permissionsLoading, has],
+    );
 
     // 选中指示条是菜单容器里的一个共享元素，随选中项左右滑动（方案 B）。
     const itemRefs = useRef(new Map<string, HTMLButtonElement | null>());
@@ -81,7 +96,7 @@ export function WorkspaceTopBar({
                     className="absolute inset-y-0 hidden items-stretch gap-1 transition-[left] duration-200 lg:flex"
                     style={{ left: `max(${(sidebarCollapsed ? 56 : 150) + 10}px, 108px)` }}
                 >
-                    {menuCategories.map((item) => {
+                    {categories.map((item) => {
                         const active = item.label === category.label;
                         return (
                             <button
@@ -204,6 +219,8 @@ function TaxPeriodPicker() {
 function UserMenu() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const { accountSetId = "" } = useParams();
+    const [pwdOpen, setPwdOpen] = useState(false);
     const name = user?.displayName || user?.username || "";
 
     function handleLogout() {
@@ -211,21 +228,43 @@ function UserMenu() {
         navigate("/login", { replace: true });
     }
 
+    const items = [
+        {
+            key: "password",
+            icon: <KeyOutlined />,
+            label: "修改密码",
+            onClick: () => setPwdOpen(true),
+        },
+        ...(user?.isSystemAdmin
+            ? [
+                  {
+                      key: "users",
+                      icon: <TeamOutlined />,
+                      label: "用户管理",
+                      onClick: () => navigate(`/${accountSetId}/settings/users`),
+                  },
+              ]
+            : []),
+        { type: "divider" as const },
+        { key: "logout", icon: <LogoutOutlined />, label: "退出登录", onClick: handleLogout },
+    ];
+
     return (
-        <Dropdown
-            trigger={["click"]}
-            placement="bottomRight"
-            menu={{
-                items: [{ key: "logout", icon: <LogoutOutlined />, label: "退出登录", onClick: handleLogout }],
-            }}
-        >
-            <button type="button" className="flex shrink-0 cursor-pointer items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-full bg-(--pk-brand) text-[12px] font-medium text-white">
-                    {name.slice(0, 1)}
-                </span>
-                <span className="hidden text-[13px] text-(--pk-text) md:inline">{name}</span>
-            </button>
-        </Dropdown>
+        <>
+            <Dropdown
+                trigger={["click"]}
+                placement="bottomRight"
+                menu={{ items }}
+            >
+                <button type="button" className="flex shrink-0 cursor-pointer items-center gap-2">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-(--pk-brand) text-[12px] font-medium text-white">
+                        {name.slice(0, 1)}
+                    </span>
+                    <span className="hidden text-[13px] text-(--pk-text) md:inline">{name}</span>
+                </button>
+            </Dropdown>
+            <ChangePasswordModal open={pwdOpen} onClose={() => setPwdOpen(false)} />
+        </>
     );
 }
 

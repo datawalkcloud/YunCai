@@ -1,4 +1,5 @@
 using YunCai.Modules.AccountSets.Application;
+using YunCai.SharedKernel.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,6 +9,7 @@ namespace YunCai.Modules.AccountSets.Api
     [ApiController]
     [Route("accountsets/{accountSetId:guid}/reinit")]
     [Authorize]
+    [RequireAccountSetAdmin]
     public class ReinitController : ControllerBase
     {
         private readonly ReinitService _reinitService;
@@ -19,6 +21,7 @@ namespace YunCai.Modules.AccountSets.Api
 
         /// <summary>执行重新初始化。须显式提交账套名称作为确认口令。</summary>
         [HttpPost]
+        [RequireStepUp]
         public async Task<ActionResult<ReinitResultDto>> Wipe(Guid accountSetId, [FromBody] WipeRequest request, CancellationToken cancellationToken)
         {
             try

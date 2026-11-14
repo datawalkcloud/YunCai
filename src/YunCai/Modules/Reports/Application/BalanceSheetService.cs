@@ -32,6 +32,116 @@ namespace YunCai.Modules.Reports.Application
         /// </summary>
         public async Task<BalanceSheetDto> GetAsync(Guid accountSetId, int? year, int? month, CancellationToken cancellationToken = default)
         {
+            var core = await LoadCoreAsync(accountSetId, year, month, cancellationToken);
+            var periodEnd = new DateOnly(core.Year, core.Month, 1).AddMonths(1);
+
+            // 按报表行次累计金额（值已换算为该行的正常方向：资产借方为正，负债/权益贷方为正）。
+            var endingByLine = new Dictionary<int, decimal>();
+            var openingByLine = new Dictionary<int, decimal>();
+
+            foreach (var accountId in core.AccountIds)
+            {
+                var account = core.AccountsById[accountId];
+                var endingDelta = core.EndingNet.GetValueOrDefault(accountId); // 借-贷
+                var openingDelta = core.OpeningNet.GetValueOrDefault(accountId);
+
+                foreach (var (line, sign) in AccountLines(account, core.Template))
+                {
+                    endingByLine[line] = endingByLine.GetValueOrDefault(line) + endingDelta * sign;
+                    openingByLine[line] = openingByLine.GetValueOrDefault(line) + openingDelta * sign;
+                }
+            }
+
+            var lines = new List<BalanceSheetLineDto>();
+            var allLines = new HashSet<int>(endingByLine.Keys);
+            allLines.UnionWith(openingByLine.Keys);
+            foreach (var line in allLines.OrderBy(l => l))
+            {
+                lines.Add(new BalanceSheetLineDto
+                {
+                    Line = line,
+                    Ending = endingByLine.GetValueOrDefault(line),
+                    Opening = openingByLine.GetValueOrDefault(line),
+                });
+            }
+
+            var endingDay = periodEnd.AddDays(-1);
+            return new BalanceSheetDto
+            {
+                Standard = (int)core.AccountSet.Standard,
+                TemplateTitle = BalanceSheetTemplates.Title(core.Template),
+                Year = core.Year,
+                Month = core.Month,
+                EndingDate = $"{endingDay.Year:D4}年{endingDay.Month:D2}月{endingDay.Day:D2}日",
+                OpeningDate = $"{core.Year:D4}年01月01日",
+                Lines = lines,
+            };
+        }
+
+        /// <summary>
+        /// 报表行下钻：某行次由哪些科目组成、各科目期末/年初余额多少。
+        /// 与 <see cref="GetAsync"/> 共用逐科目净额与行次归集，合计天然等于报表行金额。
+        /// </summary>
+        public async Task<ReportDrilldownDto> GetLineDrilldownAsync(
+            Guid accountSetId, int? year, int? month, int line, CancellationToken cancellationToken = default)
+        {
+            if (line <= 0)
+            {
+                throw new ReportException("报表行次不合法。");
+            }
+
+            var core = await LoadCoreAsync(accountSetId, year, month, cancellationToken);
+            var rows = new List<ReportDrilldownAccountDto>();
+            foreach (var accountId in core.AccountIds)
+            {
+                var account = core.AccountsById[accountId];
+                // 同一科目可能落多行（小企业存货主行与明细行），只取被下钻的那一行。
+                var sign = AccountLines(account, core.Template)
+                    .Where(mapped => mapped.Line == line)
+                    .Select(mapped => (decimal?)mapped.Sign)
+                    .FirstOrDefault();
+                if (sign is null)
+                {
+                    continue;
+                }
+
+                rows.Add(new ReportDrilldownAccountDto
+                {
+                    AccountId = account.Id,
+                    Code = account.Code,
+                    Name = account.Name,
+                    Current = core.EndingNet.GetValueOrDefault(accountId) * sign.Value,
+                    YearToDate = core.OpeningNet.GetValueOrDefault(accountId) * sign.Value,
+                });
+            }
+
+            var ordered = rows.OrderBy(r => r.Code, StringComparer.Ordinal).ToList();
+            return new ReportDrilldownDto
+            {
+                Line = line,
+                Year = core.Year,
+                Month = core.Month,
+                PeriodText = $"{core.Year:D4}年{core.Month:D2}月",
+                Accounts = ordered,
+                TotalCurrent = ordered.Sum(r => r.Current),
+                TotalYearToDate = ordered.Sum(r => r.YearToDate),
+            };
+        }
+
+        /// <summary>账套、科目、期间与逐科目「借-贷」净额（报表与下钻共用）。</summary>
+        private sealed record BalanceSheetCore(
+            AccountSet AccountSet,
+            BalanceSheetTemplate Template,
+            Dictionary<Guid, Account> AccountsById,
+            Dictionary<Guid, decimal> EndingNet,
+            Dictionary<Guid, decimal> OpeningNet,
+            IReadOnlyCollection<Guid> AccountIds,
+            int Year,
+            int Month);
+
+        private async Task<BalanceSheetCore> LoadCoreAsync(
+            Guid accountSetId, int? year, int? month, CancellationToken cancellationToken)
+        {
             var accountSet = await _accountSetRepository.GetByIdAsync(accountSetId, cancellationToken)
                              ?? throw new ReportException("指定的账套不存在。");
 
@@ -79,67 +189,34 @@ namespace YunCai.Modules.Reports.Application
                 }
             }
 
-            // 按报表行次累计金额（值已换算为该行的正常方向：资产借方为正，负债/权益贷方为正）。
-            var endingByLine = new Dictionary<int, decimal>();
-            var openingByLine = new Dictionary<int, decimal>();
-
             var accountIds = new HashSet<Guid>(endingNet.Keys);
             accountIds.UnionWith(openingNet.Keys);
 
-            foreach (var accountId in accountIds)
+            return new BalanceSheetCore(
+                accountSet,
+                template,
+                accountsById,
+                endingNet,
+                openingNet,
+                accountIds.Where(id => accountsById.ContainsKey(id)).ToList(),
+                resolvedYear,
+                resolvedMonth);
+        }
+
+        /// <summary>
+        /// 科目归集到报表行次及其方向符号：企业准则一科一行；小企业准则存货类同时进主行与明细行、
+        /// 固定资产原价与累计折旧分行列示。
+        /// </summary>
+        private static IEnumerable<(int Line, decimal Sign)> AccountLines(Account account, BalanceSheetTemplate template)
+        {
+            if (template == BalanceSheetTemplate.SmallBusiness)
             {
-                if (!accountsById.TryGetValue(accountId, out var account))
-                {
-                    continue;
-                }
-
-                var endingDelta = endingNet.GetValueOrDefault(accountId); // 借-贷
-                var openingDelta = openingNet.GetValueOrDefault(accountId);
-
-                if (template == BalanceSheetTemplate.SmallBusiness)
-                {
-                    // 小企业版式：存货总计与明细行、固定资产原价/累计折旧分行归集。
-                    foreach (var (targetLine, sign) in MapSmallBusinessLines(account.Code, account.Category))
-                    {
-                        endingByLine[targetLine] = endingByLine.GetValueOrDefault(targetLine) + endingDelta * sign;
-                        openingByLine[targetLine] = openingByLine.GetValueOrDefault(targetLine) + openingDelta * sign;
-                    }
-
-                    continue;
-                }
-
-                var line = MapLine(account.Code, account.Category);
-
-                // 资产/成本类以借方为正方向；负债/权益/损益类以贷方为正方向。
-                var signed = account.Category is AccountCategory.Asset or AccountCategory.Cost ? 1m : -1m;
-                endingByLine[line] = endingByLine.GetValueOrDefault(line) + endingDelta * signed;
-                openingByLine[line] = openingByLine.GetValueOrDefault(line) + openingDelta * signed;
+                return MapSmallBusinessLines(account.Code, account.Category);
             }
 
-            var lines = new List<BalanceSheetLineDto>();
-            var allLines = new HashSet<int>(endingByLine.Keys);
-            allLines.UnionWith(openingByLine.Keys);
-            foreach (var line in allLines.OrderBy(l => l))
-            {
-                lines.Add(new BalanceSheetLineDto
-                {
-                    Line = line,
-                    Ending = endingByLine.GetValueOrDefault(line),
-                    Opening = openingByLine.GetValueOrDefault(line),
-                });
-            }
-
-            var endingDay = periodEnd.AddDays(-1);
-            return new BalanceSheetDto
-            {
-                Standard = (int)accountSet.Standard,
-                TemplateTitle = BalanceSheetTemplates.Title(template),
-                Year = resolvedYear,
-                Month = resolvedMonth,
-                EndingDate = $"{endingDay.Year:D4}年{endingDay.Month:D2}月{endingDay.Day:D2}日",
-                OpeningDate = $"{resolvedYear:D4}年01月01日",
-                Lines = lines,
-            };
+            // 资产/成本类以借方为正方向；负债/权益/损益类以贷方为正方向。
+            var signed = account.Category is AccountCategory.Asset or AccountCategory.Cost ? 1m : -1m;
+            return [(MapLine(account.Code, account.Category), signed)];
         }
 
         /// <summary>

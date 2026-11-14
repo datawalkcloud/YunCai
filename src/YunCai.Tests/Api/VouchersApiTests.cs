@@ -228,6 +228,85 @@ public sealed class VouchersApiTests : IDisposable
         Assert.Contains("凭证不存在或已删除", await missing.Content.ReadAsStringAsync());
     }
 
+    // —— 合并 / 批量修改（P1 批量能力）——
+
+    [Fact]
+    public async Task Merge_TwoDrafts_AppendsEntriesIntoSmallestNumberAndRemovesSources()
+    {
+        var (id, cash, counter) = await NewSeededAccountSetAsync("凭证合并");
+        var first = await _h.CreateDraftVoucherAsync(id, "2026-03-01", (cash, 100m, 0m), (counter, 0m, 100m));
+        var second = await _h.CreateDraftVoucherAsync(id, "2026-03-01", (cash, 50m, 0m), (counter, 0m, 50m));
+
+        var response = await _client.PostAsync(
+            $"{VouchersPath(id)}/merge",
+            JsonContent(System.Text.Json.JsonSerializer.Serialize(new { ids = new[] { second.Id, first.Id } })));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var merged = await response.Content.ReadFromJsonAsync<VoucherDetailModel>();
+        // 目标恒为凭证号最小的一张，与勾选顺序无关。
+        Assert.Equal(first.Id, merged!.Id);
+        Assert.Equal(4, merged.Entries.Count);
+        Assert.Equal(150m, merged.Entries.Sum(e => e.Debit));
+
+        // 源凭证被真正删除，列表里只剩合并结果（不带 deleted=true）。
+        var list = await _client.GetFromJsonAsync<List<VoucherModel>>(VouchersPath(id));
+        Assert.Equal([first.Id], list!.Select(v => v.Id).ToList());
+    }
+
+    [Fact]
+    public async Task Merge_WithoutStepUp_Returns428AndKeepsBothDrafts()
+    {
+        var (id, cash, counter) = await NewSeededAccountSetAsync("凭证合并二次确认");
+        var first = await _h.CreateDraftVoucherAsync(id, "2026-03-02", (cash, 100m, 0m), (counter, 0m, 100m));
+        var second = await _h.CreateDraftVoucherAsync(id, "2026-03-02", (cash, 50m, 0m), (counter, 0m, 50m));
+
+        // 合并会删除源凭证，等同删除：未做二次确认必须 428，且不能有半合并状态。
+        using var plain = _h.Factory.CreateAuthenticatedClient();
+        var response = await plain.PostAsync(
+            $"{VouchersPath(id)}/merge",
+            JsonContent(System.Text.Json.JsonSerializer.Serialize(new { ids = new[] { first.Id, second.Id } })));
+
+        Assert.Equal(HttpStatusCode.PreconditionRequired, response.StatusCode);
+        Assert.Equal(2, (await _client.GetFromJsonAsync<List<VoucherModel>>(VouchersPath(id)))!.Count);
+    }
+
+    [Fact]
+    public async Task BatchUpdate_Summary_UpdatesDraftsAndRejectsPosted()
+    {
+        var (id, cash, counter) = await NewSeededAccountSetAsync("凭证批量修改");
+        var first = await _h.CreateDraftVoucherAsync(id, "2026-03-03", (cash, 100m, 0m), (counter, 0m, 100m));
+        var second = await _h.CreateDraftVoucherAsync(id, "2026-03-03", (cash, 50m, 0m), (counter, 0m, 50m));
+
+        var response = await _client.PostAsync(
+            $"{VouchersPath(id)}/batch-update",
+            JsonContent(System.Text.Json.JsonSerializer.Serialize(new
+            {
+                ids = new[] { first.Id, second.Id },
+                summary = "批量统一摘要",
+            })));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, (await response.Content.ReadFromJsonAsync<UpdatedModel>())!.Updated);
+        foreach (var voucherId in new[] { first.Id, second.Id })
+        {
+            var detail = await _client.GetFromJsonAsync<VoucherDetailModel>($"{VouchersPath(id)}/{voucherId}");
+            Assert.All(detail!.Entries, e => Assert.Equal("批量统一摘要", e.Summary));
+            // 只动安全字段：仍是暂存，等待用户核对后保存。
+            Assert.Equal("暂存", detail.StatusText);
+        }
+
+        // 混入一张正常凭证时必须整单拒绝，不能只改掉其中一部分。
+        var posted = await _h.CreatePostedVoucherAsync(id, "2026-03-03", (cash, 10m, 0m), (counter, 0m, 10m));
+        var rejected = await _client.PostAsync(
+            $"{VouchersPath(id)}/batch-update",
+            JsonContent(System.Text.Json.JsonSerializer.Serialize(new
+            {
+                ids = new[] { first.Id, posted.Id },
+                summary = "不该生效",
+            })));
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        Assert.Contains("只能批量修改暂存凭证", await rejected.Content.ReadAsStringAsync());
+    }
 
     /// <summary>凭证端点的响应模型（字段名与生产 DTO 一致，camelCase 由 Web 默认选项匹配）。</summary>
     private sealed record VoucherModel(
@@ -243,4 +322,10 @@ public sealed class VouchersApiTests : IDisposable
         decimal TotalDebit,
         decimal TotalCredit,
         bool IsBalanced);
+
+    private sealed record VoucherDetailModel(Guid Id, string VoucherNo, string StatusText, List<EntryModel> Entries);
+
+    private sealed record EntryModel(string Summary, Guid AccountId, decimal Debit, decimal Credit);
+
+    private sealed record UpdatedModel(int Updated);
 }

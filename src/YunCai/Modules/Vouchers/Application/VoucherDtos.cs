@@ -305,6 +305,37 @@ namespace YunCai.Modules.Vouchers.Application
         public bool ByDate { get; init; }
     }
 
+    /// <summary>合并凭证请求：把多张暂存凭证合并到凭证号最小的一张。</summary>
+    public sealed class MergeVouchersRequest
+    {
+        /// <summary>待合并的凭证标识（至少两张）。</summary>
+        public IReadOnlyList<Guid> Ids { get; init; } = [];
+    }
+
+    /// <summary>批量修改凭证请求：只允许改摘要与辅助核算等不影响金额、科目、期间的字段。</summary>
+    public sealed class BatchUpdateVouchersRequest
+    {
+        /// <summary>待修改的凭证标识（仅暂存凭证可改）。</summary>
+        public IReadOnlyList<Guid> Ids { get; init; } = [];
+
+        /// <summary>新的摘要；为空表示不改摘要。</summary>
+        public string? Summary { get; init; }
+
+        /// <summary>按科目设置辅助核算；为空表示不改辅助核算。</summary>
+        public BatchAssistUpdateRequest? Assist { get; init; }
+    }
+
+    /// <summary>批量辅助核算修改：把指定科目分录上的该类取值统一设为 itemId（为空即清除）。</summary>
+    public sealed class BatchAssistUpdateRequest
+    {
+        public Guid AccountId { get; init; }
+
+        public AssistType Type { get; init; }
+
+        /// <summary>辅助核算档案标识；为空表示清除该类别取值。</summary>
+        public Guid? ItemId { get; init; }
+    }
+
     /// <summary>编辑凭证请求。凭证字与号不可更改，仅可修改日期、附单据数与全部分录（整体替换）。</summary>
     public sealed class UpdateVoucherRequest
     {

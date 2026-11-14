@@ -47,7 +47,8 @@ import {
     type VoucherWordDto,
 } from "@/apis-gen";
 import { StatusPill } from "@/components/page/status-pill";
-import { apiConfig, apiErrorMessage } from "@/lib/api-client";
+import { apiConfig, apiConfigWithHeaders, apiErrorMessage } from "@/lib/api-client";
+import { useStepUp } from "@/lib/step-up";
 
 import {
     Btn,
@@ -1501,6 +1502,7 @@ async function settingsUpload<T>(url: string, token: string, file: File): Promis
 
 export function LemonBackup() {
     const { accountSetId, token } = useAccountContext();
+    const { run: withStepUp } = useStepUp();
     const [tab, setTab] = useState(0);
     const period = useDefaultAccountingPeriod();
     const [busy, setBusy] = useState(false);
@@ -1585,22 +1587,30 @@ export function LemonBackup() {
         }
         setBusy(true);
         try {
-            const form = new FormData();
-            form.append("file", restoreFile);
-            const res = await fetch(`/api/accountsets/${accountSetId}/backup/restore`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-                body: form,
+            const body = await withStepUp(async (extra) => {
+                const form = new FormData();
+                form.append("file", restoreFile);
+                const res = await fetch(`/api/accountsets/${accountSetId}/backup/restore`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}`, ...extra },
+                    body: form,
+                });
+                const parsed = await res.json().catch(() => null);
+                if (!res.ok) {
+                    const message = parsed && typeof parsed === "object" && "message" in parsed
+                        ? String((parsed as { message?: unknown }).message ?? "")
+                        : "";
+                    const error = new Error(message || `恢复失败（HTTP ${res.status}）`) as Error & { status?: number };
+                    error.status = res.status;
+                    throw error;
+                }
+                return parsed as BackupRestoreResultDto;
             });
-            const body = await res.json().catch(() => null);
-            if (!res.ok) {
-                const message = body && typeof body === "object" && "message" in body ? String((body as { message?: unknown }).message ?? "") : "";
-                setToast(message || `恢复失败（HTTP ${res.status}）`);
-            } else {
-                setRestoreResult(body as BackupRestoreResultDto);
-                setRestoreFile(null);
-                setRestoreChecked(false);
-            }
+            setRestoreResult(body);
+            setRestoreFile(null);
+            setRestoreChecked(false);
+        } catch (err) {
+            setToast(err instanceof Error ? err.message : "恢复失败，请重试。");
         } finally {
             setBusy(false);
         }
@@ -2186,6 +2196,7 @@ export function LemonImportOld() {
 export function LemonReinit() {
     const { accountSetId, token } = useAccountContext();
     const { user } = useAuth();
+    const { run: withStepUp } = useStepUp();
     const accountSet = useCurrentAccountSet();
     const [checked, setChecked] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -2205,15 +2216,17 @@ export function LemonReinit() {
         if (!window.confirm("重新初始化将清空账套全部业务数据且不可恢复，确定继续吗？")) return;
         setBusy(true);
         try {
-            const res = await new ReinitApi(apiConfig(token)).accountsetsAccountSetIdReinitPost({
-                accountSetId,
-                wipeRequest: {
-                    // 确认口令 = 账套名称（后端要求与账套名完全一致）
-                    confirmName: accountSet.name,
-                    operatorUserId: user?.id ?? "",
-                    operatorUserName: user?.displayName ?? user?.username ?? "",
-                },
-            });
+            const res = await withStepUp((h) =>
+                new ReinitApi(apiConfigWithHeaders(token, h)).accountsetsAccountSetIdReinitPost({
+                    accountSetId,
+                    wipeRequest: {
+                        // 确认口令 = 账套名称（后端要求与账套名完全一致）
+                        confirmName: accountSet.name,
+                        operatorUserId: user?.id ?? "",
+                        operatorUserName: user?.displayName ?? user?.username ?? "",
+                    },
+                }),
+            );
             const summary = Object.entries(res.wiped ?? {})
                 .filter(([, n]) => n > 0)
                 .map(([k, n]) => `${k} ${n} 条`)

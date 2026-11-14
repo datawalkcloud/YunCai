@@ -33,6 +33,9 @@ public sealed class SeedOptions
 
     public string AdminUsername { get; init; } = "admin";
 
+    /// <summary>初始管理员的手机号，登录界面按手机号识别账号；留空则仅能用用户名登录。</summary>
+    public string? AdminPhone { get; init; }
+
     /// <summary>
     /// 初始管理员口令。为空时只有开发环境回退到默认口令，生产环境直接启动失败。
     /// </summary>

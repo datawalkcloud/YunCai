@@ -6,6 +6,7 @@ using YunCai.Modules.Assist.Domain;
 using YunCai.Modules.Funds.Domain;
 using YunCai.Modules.Vouchers.Domain;
 using YunCai.SharedKernel.Infrastructure.Data;
+using YunCai.SharedKernel.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,8 @@ namespace YunCai.Modules.AccountSets.Api
         private readonly AssistItemService _assistItemService;
         private readonly ITaxCredentialProtector _taxCredentials;
         private readonly TaxLoginTicketStore _taxLoginTickets;
+        private readonly MemberService _memberService;
+        private readonly IAccountSetMemberRepository _memberRepository;
         private readonly AppDbContext _context;
 
         public AccountSetsController(
@@ -42,6 +45,8 @@ namespace YunCai.Modules.AccountSets.Api
             AssistItemService assistItemService,
             ITaxCredentialProtector taxCredentials,
             TaxLoginTicketStore taxLoginTickets,
+            MemberService memberService,
+            IAccountSetMemberRepository memberRepository,
             AppDbContext context)
         {
             _accountSetRepository = accountSetRepository;
@@ -53,14 +58,26 @@ namespace YunCai.Modules.AccountSets.Api
             _assistItemService = assistItemService;
             _taxCredentials = taxCredentials;
             _taxLoginTickets = taxLoginTickets;
+            _memberService = memberService;
+            _memberRepository = memberRepository;
             _context = context;
         }
+
+        /// <summary>当前登录用户标识；令牌由 [Authorize] 保护，缺失时视为不可用。</summary>
+        private string? CurrentUserId =>
+            User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+
+        private string? CurrentPhone => User.FindFirst("phone")?.Value;
+
+        private string CurrentDisplayName =>
+            User.FindFirst("displayName")?.Value ?? "账套管理员";
 
         /// <summary>
         /// 把当前账套已保存的税局密码换成 2 分钟内有效的一次性票据。
         /// 网页把票据交给本机助手，助手兑换后在自己的窗口里自动登录税局；密码不进入前端响应。
         /// </summary>
         [HttpPost("{id:guid}/tax-login-ticket")]
+        [RequireAccountSetAdmin]
         public async Task<ActionResult<TaxLoginTicketDto>> CreateTaxLoginTicket(Guid id, CancellationToken cancellationToken)
         {
             var accountSet = await _accountSetRepository.GetByIdAsync(id, cancellationToken);
@@ -87,12 +104,18 @@ namespace YunCai.Modules.AccountSets.Api
             });
         }
 
-        /// <summary>获取全部账套。</summary>
+        /// <summary>获取当前登录用户可访问的账套（仅其作为启用成员加入的账套）。</summary>
         [HttpGet]
         public async Task<ActionResult<IReadOnlyList<AccountSetDto>>> GetAll(CancellationToken cancellationToken)
         {
+            if (CurrentUserId is not { } userId)
+            {
+                return Unauthorized();
+            }
+
+            var allowed = await _memberRepository.GetAccountSetIdsAsync(userId, CurrentPhone, cancellationToken);
             var sets = await _accountSetRepository.GetAllAsync(cancellationToken);
-            return Ok(sets.Select(AccountSetDto.FromDomain).ToList());
+            return Ok(sets.Where(s => allowed.Contains(s.Id)).Select(AccountSetDto.FromDomain).ToList());
         }
 
         /// <summary>按标识获取账套。</summary>
@@ -107,6 +130,11 @@ namespace YunCai.Modules.AccountSets.Api
         [HttpPost]
         public async Task<ActionResult<AccountSetDto>> Create([FromBody] CreateAccountSetRequest request, CancellationToken cancellationToken)
         {
+            if (CurrentUserId is not { } userId)
+            {
+                return Unauthorized();
+            }
+
             if (await _accountSetRepository.ExistsByNameAsync(request.Name?.Trim() ?? string.Empty, cancellationToken))
             {
                 return BadRequest(new { message = "同名账套已存在。" });
@@ -141,6 +169,20 @@ namespace YunCai.Modules.AccountSets.Api
             await _accountSetRepository.AddAsync(accountSet, cancellationToken);
             await _accountSetRepository.SaveChangesAsync(cancellationToken);
 
+            // 创建者自动成为账套管理员成员，后续按账套路由的接口据此放行。
+            try
+            {
+                await _memberService.EnsureOwnerAsync(
+                    accountSet.Id, CurrentDisplayName, userId, CurrentPhone, cancellationToken);
+            }
+            catch (MemberException ex)
+            {
+                // 没有成员就该账套谁都进不去，创建失败时撤掉刚落的账套，避免留下孤儿数据。
+                _accountSetRepository.Remove(accountSet);
+                await _accountSetRepository.SaveChangesAsync(cancellationToken);
+                return BadRequest(new { message = ex.Message });
+            }
+
             // 建账预置：企业会计准则账套按 2007 版科目表生成科目（与柠檬云一致，建完即有整套科目）。
             if (request.Preset && accountSet.Standard == AccountingStandard.Enterprise)
             {
@@ -157,6 +199,7 @@ namespace YunCai.Modules.AccountSets.Api
 
         /// <summary>更新账套：改名并更新单位、准则、纳税人性质、本位币等基础信息。更改编码方案时自动重建所有科目编码。</summary>
         [HttpPut("{id:guid}")]
+        [RequireAccountSetAdmin]
         public async Task<ActionResult<AccountSetDto>> Update(Guid id, [FromBody] UpdateAccountSetRequest request, CancellationToken cancellationToken)
         {
             var accountSet = await _accountSetRepository.GetByIdAsync(id, cancellationToken);
@@ -321,6 +364,7 @@ namespace YunCai.Modules.AccountSets.Api
         /// 已建档案的类别不允许关闭，否则历史分录会失去维度。
         /// </summary>
         [HttpPut("{id:guid}/assist-types")]
+        [RequireAccountSetAdmin]
         public async Task<ActionResult<AccountSetDto>> SetAssistTypes(Guid id, [FromBody] IReadOnlyList<AssistType> types, CancellationToken cancellationToken)
         {
             try
@@ -339,6 +383,7 @@ namespace YunCai.Modules.AccountSets.Api
         /// 已结期间内禁止新增、修改、删除与反过账凭证。
         /// </summary>
         [HttpPost("{id:guid}/close-period")]
+        [RequireStepUp]
         public async Task<ActionResult<AccountSetDto>> ClosePeriod(Guid id, [FromBody] ClosePeriodRequest request, CancellationToken cancellationToken)
         {
             var accountSet = await _accountSetRepository.GetByIdAsync(id, cancellationToken);
@@ -371,6 +416,7 @@ namespace YunCai.Modules.AccountSets.Api
 
         /// <summary>反结账：撤销最近一次结账，已结期间退回一个月。</summary>
         [HttpPost("{id:guid}/reopen-period")]
+        [RequireStepUp]
         public async Task<ActionResult<AccountSetDto>> ReopenPeriod(Guid id, CancellationToken cancellationToken)
         {
             var accountSet = await _accountSetRepository.GetByIdAsync(id, cancellationToken);
@@ -397,6 +443,8 @@ namespace YunCai.Modules.AccountSets.Api
         /// 删除的是当前账套时，自动把剩余账套中按名称排序的第一套设为当前。
         /// </summary>
         [HttpDelete("{id:guid}")]
+        [RequireStepUp]
+        [RequireAccountSetAdmin]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
             var accountSet = await _accountSetRepository.GetByIdAsync(id, cancellationToken);

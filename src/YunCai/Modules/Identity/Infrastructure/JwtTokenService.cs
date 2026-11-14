@@ -38,13 +38,20 @@ namespace YunCai.Modules.Identity.Infrastructure
         {
             var expiresAt = DateTime.UtcNow.AddMinutes(_options.ExpireMinutes);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-                new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
-                new Claim("displayName", user.DisplayName),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new(JwtRegisteredClaimNames.Sub, user.Id),
+                new(JwtRegisteredClaimNames.UniqueName, user.Username),
+                new("displayName", user.DisplayName),
+                new("phone", user.Phone ?? string.Empty),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                // 令牌版本随改密 / 停用自增，鉴权时与用户当前版本比对即可立即吊销旧令牌。
+                new("ver", user.TokenVersion.ToString()),
             };
+            if (user.IsSystemAdmin)
+            {
+                claims.Add(new Claim("sysadmin", "true"));
+            }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

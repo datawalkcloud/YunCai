@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using YunCai.Modules.Accounting.Domain;
 using Xunit;
@@ -61,6 +62,7 @@ public sealed class ReportPdfApiTests : IDisposable
     [InlineData("cash-flow&year=2026&month=3&method=formula")]
     [InlineData("cash-flow-quarter&year=2026&quarter=1")]
     [InlineData("expense-detail&year=2026&month=3")]
+    [InlineData("department-income&year=2026&month=3")]
     [InlineData("tax&year=2026&month=3")]
     [InlineData("financial-summary&year=2026&month=3")]
     public async Task Pdf_KnownKinds_ReturnPdf(string query)
@@ -81,7 +83,6 @@ public sealed class ReportPdfApiTests : IDisposable
     /// <summary>只有 xlsx 导出、页面无打印按钮的报表，打印时给中文提示。</summary>
     [Theory]
     [InlineData("equity-change")]
-    [InlineData("department-income")]
     [InlineData("project-income")]
     public async Task Pdf_UnprintedKind_BadRequestWithChineseMessage(string kind)
     {
@@ -105,6 +106,65 @@ public sealed class ReportPdfApiTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("不支持打印的报表类型", await response.Content.ReadAsStringAsync());
     }
+
+    // —— 报表下钻（行 → 科目 → 明细账）——
+
+    [Fact]
+    public async Task BalanceSheetDrilldown_ReturnsAccountsSummingToReportLine()
+    {
+        var (accountSetId, cash, _) = await SeedVouchersAsync("资产负债表下钻");
+        var reports = ApiHarness.ResourcePath(accountSetId, "Reports");
+
+        var drill = await _h.Client.GetFromJsonAsync<DrilldownModel>(
+            $"{reports}/balance-sheet/drilldown?year=2026&month=3&line=1");
+        var sheet = await _h.Client.GetFromJsonAsync<BalanceSheetModel>(
+            $"{reports}/balance-sheet?year=2026&month=3");
+
+        // 货币资金 = 300 - 200 + 100 = 200；下钻合计必须等于报表行金额（同源同口径）。
+        var row = Assert.Single(drill!.Accounts);
+        Assert.Equal(cash, row.AccountId);
+        Assert.Equal(200m, row.Current);
+        Assert.Equal(200m, drill.TotalCurrent);
+        Assert.Equal(sheet!.Lines.Single(l => l.Line == 1).Ending, drill.TotalCurrent);
+        Assert.Equal("2026年03月", drill.PeriodText);
+    }
+
+    [Fact]
+    public async Task IncomeStatementDrilldown_ReturnsAccountsAndRejectsInvalidLine()
+    {
+        var (accountSetId, _, revenue) = await SeedVouchersAsync("利润表下钻");
+        var reports = ApiHarness.ResourcePath(accountSetId, "Reports");
+
+        var drill = await _h.Client.GetFromJsonAsync<DrilldownModel>(
+            $"{reports}/income-statement/drilldown?year=2026&month=3&line=1");
+        var statement = await _h.Client.GetFromJsonAsync<IncomeStatementModel>(
+            $"{reports}/income-statement?year=2026&month=3");
+
+        // 3 月收入 100，本年累计 400（1 月 300 + 3 月 100）。
+        var row = Assert.Single(drill!.Accounts);
+        Assert.Equal(revenue, row.AccountId);
+        Assert.Equal(100m, row.Current);
+        Assert.Equal(400m, row.YearToDate);
+        Assert.Equal(statement!.Lines.Single(l => l.Line == 1).Current, drill.TotalCurrent);
+        Assert.Equal(statement.Lines.Single(l => l.Line == 1).YearToDate, drill.TotalYearToDate);
+
+        var invalid = await _h.Client.GetAsync($"{reports}/income-statement/drilldown?year=2026&month=3&line=0");
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Contains("报表行次不合法", await invalid.Content.ReadAsStringAsync());
+    }
+
+    private sealed record DrilldownModel(int Line, string PeriodText, List<DrilldownAccountModel> Accounts,
+        decimal TotalCurrent, decimal TotalYearToDate);
+
+    private sealed record DrilldownAccountModel(Guid AccountId, string Code, string Name, decimal Current, decimal YearToDate);
+
+    private sealed record BalanceSheetModel(List<SheetLineModel> Lines);
+
+    private sealed record IncomeStatementModel(List<StatementLineModel> Lines);
+
+    private sealed record SheetLineModel(int Line, decimal Ending, decimal Opening);
+
+    private sealed record StatementLineModel(int Line, decimal Current, decimal YearToDate);
 
     /// <summary>播 1-3 月各一张已过账凭证（现金 ↔ 主营业务收入），另挂一个费用与税费科目供费用/纳税报表取数。</summary>
     private async Task<(Guid AccountSetId, Guid Cash, Guid Revenue)> SeedVouchersAsync(string name)

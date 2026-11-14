@@ -1,5 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { fetchMe, login as loginApi, type UserInfo } from '../api/auth'
+import {
+  changePassword as changePasswordApi,
+  fetchMe,
+  login as loginApi,
+  loginByPhone as loginByPhoneApi,
+  setPassword as setPasswordApi,
+  type LoginResponse,
+  type UserInfo,
+} from '../api/auth'
 import { setUnauthorizedHandler } from '../lib/api-client'
 
 /** loading：正在校验本地令牌；authenticated：已登录；unauthenticated：未登录。 */
@@ -10,7 +18,12 @@ interface AuthContextValue {
   user: UserInfo | null
   status: AuthStatus
   isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<void>
+  /** 已登录但还没设置密码（手机号首次验证码登录）：需要先补设密码才能进后台。 */
+  needsPasswordSetup: boolean
+  login: (username: string, password: string) => Promise<UserInfo>
+  loginByPhone: (phone: string, code: string) => Promise<UserInfo>
+  setPassword: (password: string) => Promise<UserInfo>
+  changePassword: (currentPassword: string | null, newPassword: string) => Promise<UserInfo>
   logout: () => void
 }
 
@@ -90,14 +103,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null)
   }, [status, logout])
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await loginApi(username, password)
+  const applyLogin = useCallback((res: LoginResponse) => {
     const next: StoredAuth = { token: res.token, user: res.user }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
     setToken(res.token)
     setUser(res.user)
     setStatus('authenticated')
+    return res.user
   }, [])
+
+  const login = useCallback(
+    async (username: string, password: string) => applyLogin(await loginApi(username, password)),
+    [applyLogin],
+  )
+
+  const loginByPhone = useCallback(
+    async (phone: string, code: string) => applyLogin(await loginByPhoneApi(phone, code)),
+    [applyLogin],
+  )
+
+  const setPassword = useCallback(
+    async (password: string) => {
+      if (!token) throw new Error('登录状态已失效，请重新登录')
+      // 后端换发新令牌并让旧令牌失效，这里必须整体替换本地登录态。
+      return applyLogin(await setPasswordApi(token, password))
+    },
+    [token, applyLogin],
+  )
+
+  const changePassword = useCallback(
+    async (currentPassword: string | null, newPassword: string) => {
+      if (!token) throw new Error('登录状态已失效，请重新登录')
+      return applyLogin(await changePasswordApi(token, currentPassword, newPassword))
+    },
+    [token, applyLogin],
+  )
+
+  const needsPasswordSetup = status === 'authenticated' && user?.hasPassword === false
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -105,10 +147,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       status,
       isAuthenticated: status === 'authenticated',
+      needsPasswordSetup,
       login,
+      loginByPhone,
+      setPassword,
+      changePassword,
       logout,
     }),
-    [token, user, status, login, logout],
+    [token, user, status, needsPasswordSetup, login, loginByPhone, setPassword, changePassword, logout],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

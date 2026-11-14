@@ -177,19 +177,38 @@ function headers(token?: string | null): Headers {
   return result;
 }
 
-async function request<T>(path: string, token: string | null | undefined, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers: headers(token) });
+async function request<T>(
+  path: string,
+  token: string | null | undefined,
+  init?: RequestInit,
+  stepUpToken?: string,
+): Promise<T> {
+  const merged = headers(token);
+  if (stepUpToken) {
+    merged.set("X-Step-Up-Token", stepUpToken);
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers: merged });
   if (!res.ok) {
     let message = `请求失败（${res.status}）`;
+    let code: string | undefined;
     try {
       const body = await res.json();
-      if (body && typeof body === "object" && typeof body.message === "string" && body.message) {
-        message = body.message;
+      if (body && typeof body === "object") {
+        if (typeof body.message === "string" && body.message) {
+          message = body.message;
+        }
+        if (typeof body.code === "string") {
+          code = body.code;
+        }
       }
     } catch {
       // 非 JSON 响应体，保留状态码提示。
     }
-    throw new Error(message);
+    const error = new Error(message) as Error & { status?: number; code?: string };
+    error.status = res.status;
+    error.code = code;
+    throw error;
   }
   if (res.status === 204) {
     return undefined as T;
@@ -249,11 +268,12 @@ export function carryForward(
   accountSetId: string,
   body: CarryForwardOptions,
   token?: string | null,
+  stepUpToken?: string,
 ): Promise<CarryForwardResultDto> {
   return request(closingPath(accountSetId, "/carry-forward"), token, {
     method: "POST",
     body: JSON.stringify(body),
-  });
+  }, stepUpToken);
 }
 
 export function transferRetainedEarnings(
@@ -273,20 +293,29 @@ export function closePeriod(
   year: number,
   month: number,
   token?: string | null,
+  stepUpToken?: string,
 ): Promise<ClosingStatusDto> {
   return request(closingPath(accountSetId, "/close"), token, {
     method: "POST",
     body: JSON.stringify({ year, month }),
-  });
+  }, stepUpToken);
 }
 
-export function closeBatch(accountSetId: string, token?: string | null): Promise<CloseBatchResultDto> {
-  return request(closingPath(accountSetId, "/close-batch"), token, { method: "POST" });
+export function closeBatch(
+  accountSetId: string,
+  token?: string | null,
+  stepUpToken?: string,
+): Promise<CloseBatchResultDto> {
+  return request(closingPath(accountSetId, "/close-batch"), token, { method: "POST" }, stepUpToken);
 }
 
 /** 批量标记结转：把损益余额已为 0 的连续期间批量标记为已结转，不生成凭证。 */
-export function carryBatch(accountSetId: string, token?: string | null): Promise<CarryBatchResultDto> {
-  return request(closingPath(accountSetId, "/carry-batch"), token, { method: "POST" });
+export function carryBatch(
+  accountSetId: string,
+  token?: string | null,
+  stepUpToken?: string,
+): Promise<CarryBatchResultDto> {
+  return request(closingPath(accountSetId, "/carry-batch"), token, { method: "POST" }, stepUpToken);
 }
 
 export function reopenPeriod(
@@ -294,8 +323,11 @@ export function reopenPeriod(
   year: number,
   month: number,
   token?: string | null,
+  stepUpToken?: string,
 ): Promise<ClosingStatusDto> {
-  return request(closingPath(accountSetId, `/reopen?year=${year}&month=${month}`), token, { method: "POST" });
+  return request(closingPath(accountSetId, `/reopen?year=${year}&month=${month}`), token, {
+    method: "POST",
+  }, stepUpToken);
 }
 
 export function cancelCarry(
@@ -303,11 +335,12 @@ export function cancelCarry(
   year: number,
   month: number,
   token?: string | null,
+  stepUpToken?: string,
 ): Promise<{ message: string }> {
   return request(closingPath(accountSetId, "/cancel-carry"), token, {
     method: "POST",
     body: JSON.stringify({ year, month }),
-  });
+  }, stepUpToken);
 }
 
 export interface RenumberGapsResultDto {

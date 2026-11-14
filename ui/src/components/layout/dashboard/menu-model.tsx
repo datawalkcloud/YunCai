@@ -160,6 +160,7 @@ const accountingGroups: MenuGroup[] = [
         label: "报表",
         icon: <ChartBarIcon className="size-[17px]" />,
         children: [
+            { label: "预算管理", to: "budget/manage", icon: <ChartBarSquareIcon className={leafIcon} /> },
             { label: "资产负债表", to: "reports/balance-sheet", icon: <ScaleIcon className={leafIcon} /> },
             { label: "利润表", to: "reports/income-statement", icon: <ChartPieIcon className={leafIcon} /> },
             { label: "利润表季报", to: "reports/income-quarter", icon: <ChartPieIcon className={leafIcon} /> },
@@ -187,6 +188,8 @@ const accountingGroups: MenuGroup[] = [
             { label: "辅助核算", to: "settings/assist-items", icon: <AdjustmentsHorizontalIcon className={leafIcon} /> },
             { label: "凭证模板", to: "settings/voucher-template", icon: <DocumentDuplicateIcon className={leafIcon} /> },
             { label: "权限设置", to: "settings/permission", icon: <ShieldCheckIcon className={leafIcon} /> },
+            // 仅系统管理员可见：登录账号的开户 / 停用 / 重置密码（与账套成员权限无关）。
+            { label: "用户管理", to: "settings/users", icon: <UsersIcon className={leafIcon} /> },
             { label: "老板看账", to: "settings/boss", icon: <EyeIcon className={leafIcon} /> },
             { label: "备份恢复", to: "settings/backup", icon: <CircleStackIcon className={leafIcon} /> },
             { label: "旧账导入", to: "settings/import-old", icon: <ArrowUpTrayIcon className={leafIcon} /> },
@@ -266,4 +269,65 @@ export function findCategoryOf(tabKey: string): MenuCategory {
             category.groups.some((group) => group.to === tabKey || group.children?.some((leaf) => leaf.to === tabKey)),
         ) ?? menuCategories[0]
     );
+}
+
+/* ------------------------------------------------------------------ */
+/*  菜单可见性：路径 → 权限键，与后端 AccountSetAccessFilter 的模块映射一致。 */
+/* ------------------------------------------------------------------ */
+
+/** 精确覆盖项优先于按一级目录的兜底映射。 */
+const ROUTE_PERMISSION_OVERRIDES: Record<string, string> = {
+    "settings/accounts": "accounts.view",
+    "settings/opening-balances": "accounts.view",
+    "settings/assist-items": "assist.view",
+    "settings/import-old": "accounts.import",
+    "settings/permission": "settings.edit",
+    "settings/users": "__sysadmin",
+    "settings/log": "operationlog.view",
+    "settings/backup": "backup.view",
+    "settings/reinit": "reinit.execute",
+    "settings/boss": "reports.view",
+    "vouchers/erecord": "archives.view",
+};
+
+/** 一级目录 → 查看权限键。 */
+const MODULE_VIEW_PERMISSIONS: Record<string, string> = {
+    vouchers: "vouchers.view",
+    funds: "funds.view",
+    invoices: "invoices.view",
+    salary: "salary.view",
+    assets: "assets.view",
+    closing: "closing.view",
+    ledger: "ledgers.view",
+    reports: "reports.view",
+    settings: "settings.view",
+    tax: "tax.view",
+    budget: "budget.view",
+};
+
+/** 菜单路径需要的权限键；首页返回 null 表示所有成员可见。 */
+export function permissionOfRoute(to?: string): string | null {
+    if (!to) return null;
+    if (ROUTE_PERMISSION_OVERRIDES[to]) return ROUTE_PERMISSION_OVERRIDES[to];
+    const segment = to.split("/")[0];
+    return MODULE_VIEW_PERMISSIONS[segment] ?? null;
+}
+
+/** 按权限过滤分组：子项全被隐藏的分组整组隐藏。 */
+export function filterGroupsByPermission(
+    groups: MenuGroup[],
+    has: (key: string) => boolean,
+): MenuGroup[] {
+    const allowed = (to?: string) => {
+        const key = permissionOfRoute(to);
+        return key === null || has(key);
+    };
+
+    return groups
+        .map((group) => {
+            if (!group.children) return allowed(group.to) ? group : null;
+            const children = group.children.filter((leaf) => allowed(leaf.to));
+            return children.length > 0 ? { ...group, children } : null;
+        })
+        .filter((group): group is MenuGroup => group !== null);
 }

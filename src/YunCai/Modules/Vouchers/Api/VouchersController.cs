@@ -2,6 +2,7 @@ using YunCai.Modules.Auditing.Application;
 using YunCai.Modules.Vouchers.Application;
 using YunCai.Modules.AccountSets.Domain;
 using YunCai.Modules.Vouchers.Infrastructure;
+using YunCai.SharedKernel.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -151,6 +152,7 @@ namespace YunCai.Modules.Vouchers.Api
 
         /// <summary>删除凭证（含其全部分录）。正常凭证不允许删除。</summary>
         [HttpDelete("{id:guid}")]
+        [RequireStepUp]
         public async Task<IActionResult> Delete(Guid accountSetId, Guid id, CancellationToken cancellationToken)
         {
             try
@@ -485,6 +487,7 @@ namespace YunCai.Modules.Vouchers.Api
 
         /// <summary>从回收站彻底删除一张凭证（不可恢复）。</summary>
         [HttpDelete("{id:guid}/purge")]
+        [RequireStepUp]
         public async Task<IActionResult> Purge(Guid accountSetId, Guid id, CancellationToken cancellationToken)
         {
             try
@@ -506,6 +509,7 @@ namespace YunCai.Modules.Vouchers.Api
 
         /// <summary>清空回收站。</summary>
         [HttpDelete("recycle-bin")]
+        [RequireStepUp]
         public async Task<ActionResult<object>> ClearRecycleBin(Guid accountSetId, CancellationToken cancellationToken)
         {
             try
@@ -540,6 +544,52 @@ namespace YunCai.Modules.Vouchers.Api
                 }
 
                 return Ok(new { changed });
+            }
+            catch (VoucherException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>合并暂存凭证：把所选凭证并入凭证号最小的一张，其余删除。</summary>
+        [HttpPost("merge")]
+        [RequireStepUp]
+        public async Task<ActionResult<VoucherDetailDto>> Merge(
+            Guid accountSetId, [FromBody] MergeVouchersRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var merged = await _voucherService.MergeAsync(accountSetId, request, cancellationToken);
+                await LogAsync(
+                    accountSetId,
+                    "合并",
+                    $"合并 {request.Ids.Distinct().Count()} 张暂存凭证为 {merged.VoucherNo}",
+                    cancellationToken);
+                return Ok(merged);
+            }
+            catch (VoucherException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>批量修改暂存凭证：摘要与指定科目的辅助核算。</summary>
+        [HttpPost("batch-update")]
+        public async Task<ActionResult<object>> BatchUpdate(
+            Guid accountSetId, [FromBody] BatchUpdateVouchersRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var updated = await _voucherService.BatchUpdateAsync(accountSetId, request, cancellationToken);
+                var fields = new List<string>();
+                if (!string.IsNullOrWhiteSpace(request.Summary)) fields.Add("摘要");
+                if (request.Assist is not null) fields.Add("辅助核算");
+                await LogAsync(
+                    accountSetId,
+                    "修改",
+                    $"批量修改 {updated} 张暂存凭证的{string.Join("、", fields)}",
+                    cancellationToken);
+                return Ok(new { updated });
             }
             catch (VoucherException ex)
             {

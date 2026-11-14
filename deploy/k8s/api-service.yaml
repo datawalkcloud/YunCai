@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  labels:
+    app: yuncai-api
+spec:
+  # 名字必须是 api：web 镜像里的 nginx 按 http://api:8080/ 反代。
+  selector:
+    app: yuncai-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

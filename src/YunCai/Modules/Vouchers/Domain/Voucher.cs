@@ -299,6 +299,81 @@ namespace YunCai.Modules.Vouchers.Domain
             return copy;
         }
 
+        /// <summary>
+        /// 合并另一张暂存凭证：要求同一凭证字、同一凭证日期，分录按来源顺序追加并保留辅助核算。
+        /// 调用方负责移除来源凭证；合并结果仍为暂存，编辑完成后再保存入账。
+        /// </summary>
+        public void MergeFrom(Voucher source)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            EnsureDraft();
+            if (source.Id == Id)
+            {
+                throw new InvalidOperationException("不能与自身合并。");
+            }
+
+            source.EnsureDraft();
+            if (!string.Equals(Word, source.Word, StringComparison.Ordinal) || Date != source.Date)
+            {
+                throw new InvalidOperationException("只能合并同一凭证字、同一日期的暂存凭证。");
+            }
+
+            foreach (var entry in source._entries.OrderBy(e => e.LineNumber))
+            {
+                var appended = new VoucherEntry(Guid.NewGuid(), Id, entry.Summary, entry.AccountId, entry.Debit, entry.Credit);
+                _entries.Add(appended);
+                if (entry.Assists.Count > 0)
+                {
+                    appended.SetAssists(entry.Assists.Select(a => new AssistRef(a.Type, a.AssistItemId)).ToList());
+                }
+            }
+
+            Reindex();
+        }
+
+        /// <summary>批量修改摘要：用同一摘要覆盖全部分录（仅暂存状态可用）。</summary>
+        public void ApplySummary(string summary)
+        {
+            EnsureDraft();
+            var text = summary?.Trim() ?? string.Empty;
+            if (text.Length == 0)
+            {
+                throw new ArgumentException("摘要不能为空。");
+            }
+
+            foreach (var entry in _entries)
+            {
+                entry.Update(text, entry.AccountId, entry.Debit, entry.Credit);
+            }
+        }
+
+        /// <summary>
+        /// 按科目统一设置或清除某类辅助核算（仅暂存状态可用）。
+        /// 只影响指定科目的分录，其余类别取值原样保留；itemId 为空表示清除该类取值。
+        /// </summary>
+        public void ApplyAssist(Guid accountId, AssistType type, Guid? itemId)
+        {
+            EnsureDraft();
+            if (accountId == Guid.Empty)
+            {
+                throw new ArgumentException("必须指定会计科目。");
+            }
+
+            foreach (var entry in _entries.Where(e => e.AccountId == accountId))
+            {
+                var references = entry.Assists
+                    .Where(a => a.Type != type)
+                    .Select(a => new AssistRef(a.Type, a.AssistItemId))
+                    .ToList();
+                if (itemId is Guid item)
+                {
+                    references.Add(new AssistRef(type, item));
+                }
+
+                entry.SetAssists(references);
+            }
+        }
+
         /// <summary>调整凭证号（整理凭证 / 凭证号重排时使用）。</summary>
         public void SetNumber(int number)
         {

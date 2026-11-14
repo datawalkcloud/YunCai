@@ -38,6 +38,61 @@ namespace YunCai.Modules.AccountSets.Infrastructure
                 .AnyAsync(m => m.AccountSetId == accountSetId && m.RoleId == roleId, cancellationToken);
         }
 
+        public Task<bool> IsEnabledMemberAsync(Guid accountSetId, string userId, string? phone, CancellationToken cancellationToken = default)
+        {
+            return VisibleMembers(accountSetId, userId, phone).AnyAsync(cancellationToken);
+        }
+
+        public async Task<IReadOnlySet<Guid>> GetAccountSetIdsAsync(string userId, string? phone, CancellationToken cancellationToken = default)
+        {
+            var ids = await _context.AccountSetMembers
+                .AsNoTracking()
+                .Where(m => m.Enabled
+                            && (m.UserId == userId || (phone != null && phone != "" && m.Phone == phone)))
+                .Select(m => m.AccountSetId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+            return ids.ToHashSet();
+        }
+
+        public Task<bool> IsAdminAsync(Guid accountSetId, string userId, string? phone, CancellationToken cancellationToken = default)
+        {
+            return VisibleMembers(accountSetId, userId, phone)
+                .Join(_context.AccountSetRoles.Where(r => r.IsAdmin),
+                    m => m.RoleId,
+                    r => r.Id,
+                    (_, _) => true)
+                .AnyAsync(cancellationToken);
+        }
+
+        public async Task<AccountSetAccess?> GetAccessAsync(Guid accountSetId, string userId, string? phone, CancellationToken cancellationToken = default)
+        {
+            var access = await VisibleMembers(accountSetId, userId, phone)
+                .Join(_context.AccountSetRoles.AsNoTracking(),
+                    m => m.RoleId,
+                    r => r.Id,
+                    (m, r) => new { r.Id, r.Name, r.IsAdmin, r.Permissions })
+                .FirstOrDefaultAsync(cancellationToken);
+            if (access is null)
+            {
+                return null;
+            }
+
+            var permissions = access.IsAdmin
+                ? RolePermissionCatalog.AllKeys
+                : AccountSetRole.Parse(access.Permissions);
+            return new AccountSetAccess(access.Id, access.Name, access.IsAdmin, permissions);
+        }
+
+        private IQueryable<AccountSetMember> VisibleMembers(Guid accountSetId, string userId, string? phone)
+        {
+            return _context.AccountSetMembers
+                .AsNoTracking()
+                .Where(m => m.AccountSetId == accountSetId
+                            && m.Enabled
+                            && (m.UserId == userId || (phone != null && phone != "" && m.Phone == phone)));
+        }
+
         public async Task AddAsync(AccountSetMember member, CancellationToken cancellationToken = default)
         {
             await _context.AccountSetMembers.AddAsync(member, cancellationToken);

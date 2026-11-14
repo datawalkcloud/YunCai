@@ -100,6 +100,11 @@ namespace YunCai.SharedKernel.Infrastructure.Data
 
         public DbSet<OperationLog> OperationLogs { get; set; } = null!;
 
+        /// <summary>年度预算单与预算行（科目 × 12 个月金额）。</summary>
+        public DbSet<YunCai.Modules.Budgets.Domain.Budget> Budgets { get; set; } = null!;
+
+        public DbSet<YunCai.Modules.Budgets.Domain.BudgetLine> BudgetLines { get; set; } = null!;
+
         public DbSet<CustomReport> CustomReports { get; set; } = null!;
 
         /// <summary>现金流量表行取数公式（按账套 + 行次保存，未保存的行回落默认公式）。</summary>
@@ -122,10 +127,19 @@ namespace YunCai.SharedKernel.Infrastructure.Data
 
                 entity.Property(e => e.Id).HasColumnName("id");
                 entity.Property(e => e.Username).HasColumnName("username").IsRequired().HasMaxLength(50);
-                entity.Property(e => e.PasswordHash).HasColumnName("password_hash").IsRequired();
+                entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
                 entity.Property(e => e.DisplayName).HasColumnName("display_name").HasMaxLength(100);
+                entity.Property(e => e.Phone).HasColumnName("phone").HasMaxLength(20);
+                entity.Property(e => e.IsActive).HasColumnName("is_active").IsRequired();
+                entity.Property(e => e.IsSystemAdmin).HasColumnName("is_system_admin").IsRequired();
+                entity.Property(e => e.TokenVersion).HasColumnName("token_version").IsRequired();
+                entity.Property(e => e.LastLoginAt).HasColumnName("last_login_at");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
 
                 entity.HasIndex(e => e.Username).IsUnique();
+                // 手机号唯一；PostgreSQL 的唯一索引允许多个 NULL，历史账号不受影响。
+                entity.HasIndex(e => e.Phone).IsUnique();
             });
 
             modelBuilder.Entity<AccountSet>(entity =>
@@ -854,6 +868,7 @@ namespace YunCai.SharedKernel.Infrastructure.Data
 
                 entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
                 entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.UserId).HasColumnName("user_id").HasMaxLength(32);
                 entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(20);
                 entity.Property(e => e.Phone).HasColumnName("phone").IsRequired().HasMaxLength(20);
                 entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(100);
@@ -864,6 +879,8 @@ namespace YunCai.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
 
                 entity.HasIndex(e => new { e.AccountSetId, e.Phone });
+                // 访问校验按「登录用户 → 所在账套」查，成员表是唯一的权限来源。
+                entity.HasIndex(e => e.UserId);
 
                 entity.HasOne<AccountSet>()
                       .WithMany()
@@ -886,7 +903,7 @@ namespace YunCai.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(AccountSetRole.MaxNameLength);
                 entity.Property(e => e.IsSystem).HasColumnName("is_system").IsRequired();
                 entity.Property(e => e.IsAdmin).HasColumnName("is_admin").IsRequired();
-                entity.Property(e => e.Permissions).HasColumnName("permissions").IsRequired().HasMaxLength(1000);
+                entity.Property(e => e.Permissions).HasColumnName("permissions").IsRequired().HasMaxLength(2000);
                 entity.Property(e => e.SortOrder).HasColumnName("sort_order").IsRequired();
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
@@ -1165,8 +1182,58 @@ namespace YunCai.SharedKernel.Infrastructure.Data
                 entity.Property(e => e.Module).HasColumnName("module").IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Log).HasColumnName("log").IsRequired().HasMaxLength(OperationLog.MaxLogLength);
                 entity.Property(e => e.Time).HasColumnName("time").IsRequired();
+                entity.Property(e => e.EntityType).HasColumnName("entity_type").HasMaxLength(50);
+                entity.Property(e => e.EntityId).HasColumnName("entity_id").HasMaxLength(64);
+                entity.Property(e => e.BeforeJson).HasColumnName("before_json").HasMaxLength(OperationLog.MaxSnapshotLength);
+                entity.Property(e => e.AfterJson).HasColumnName("after_json").HasMaxLength(OperationLog.MaxSnapshotLength);
+                entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
 
                 entity.HasIndex(e => new { e.AccountSetId, e.Time });
+            });
+
+            modelBuilder.Entity<YunCai.Modules.Budgets.Domain.Budget>(entity =>
+            {
+                entity.ToTable("budgets");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.Year).HasColumnName("year").IsRequired();
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired()
+                    .HasMaxLength(YunCai.Modules.Budgets.Domain.Budget.MaxNameLength);
+                entity.Property(e => e.Note).HasColumnName("note")
+                    .HasMaxLength(YunCai.Modules.Budgets.Domain.Budget.MaxNoteLength);
+                entity.Property(e => e.CreatedBy).HasColumnName("created_by").IsRequired().HasMaxLength(50);
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired();
+
+                entity.HasMany(e => e.Lines)
+                    .WithOne()
+                    .HasForeignKey(l => l.BudgetId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.AccountSetId, e.Year, e.Name }).IsUnique();
+            });
+
+            modelBuilder.Entity<YunCai.Modules.Budgets.Domain.BudgetLine>(entity =>
+            {
+                entity.ToTable("budget_lines");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.BudgetId).HasColumnName("budget_id").IsRequired();
+                entity.Property(e => e.AccountSetId).HasColumnName("account_set_id").IsRequired();
+                entity.Property(e => e.AccountId).HasColumnName("account_id").IsRequired();
+                for (var month = 1; month <= YunCai.Modules.Budgets.Domain.BudgetLine.MonthCount; month++)
+                {
+                    entity.Property<decimal>($"M{month:00}")
+                        .HasColumnName($"m{month:00}")
+                        .HasPrecision(18, 2)
+                        .IsRequired();
+                }
+
+                entity.HasIndex(e => new { e.BudgetId, e.AccountId }).IsUnique();
+                entity.HasIndex(e => e.AccountSetId);
             });
 
             modelBuilder.Entity<Transfer>(entity =>

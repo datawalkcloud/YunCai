@@ -280,9 +280,16 @@ namespace YunCai.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<string>("UserId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("user_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("AccountSetId", "Phone");
 
@@ -319,8 +326,8 @@ namespace YunCai.Migrations
 
                     b.Property<string>("Permissions")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
                         .HasColumnName("permissions");
 
                     b.Property<int>("SortOrder")
@@ -738,6 +745,31 @@ namespace YunCai.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("account_set_id");
 
+                    b.Property<string>("AfterJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("after_json");
+
+                    b.Property<string>("BeforeJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("before_json");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("ip_address");
+
                     b.Property<string>("Log")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -777,6 +809,141 @@ namespace YunCai.Migrations
                     b.HasIndex("AccountSetId", "Time");
 
                     b.ToTable("operation_logs", (string)null);
+                });
+
+            modelBuilder.Entity("YunCai.Modules.Budgets.Domain.Budget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId", "Year", "Name")
+                        .IsUnique();
+
+                    b.ToTable("budgets", (string)null);
+                });
+
+            modelBuilder.Entity("YunCai.Modules.Budgets.Domain.BudgetLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<Guid>("AccountSetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_set_id");
+
+                    b.Property<Guid>("BudgetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("budget_id");
+
+                    b.Property<decimal>("M01")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m01");
+
+                    b.Property<decimal>("M02")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m02");
+
+                    b.Property<decimal>("M03")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m03");
+
+                    b.Property<decimal>("M04")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m04");
+
+                    b.Property<decimal>("M05")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m05");
+
+                    b.Property<decimal>("M06")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m06");
+
+                    b.Property<decimal>("M07")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m07");
+
+                    b.Property<decimal>("M08")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m08");
+
+                    b.Property<decimal>("M09")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m09");
+
+                    b.Property<decimal>("M10")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m10");
+
+                    b.Property<decimal>("M11")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m11");
+
+                    b.Property<decimal>("M12")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("m12");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountSetId");
+
+                    b.HasIndex("BudgetId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("budget_lines", (string)null);
                 });
 
             modelBuilder.Entity("YunCai.Modules.Closing.Domain.ClosingTemplate", b =>
@@ -1573,16 +1740,44 @@ namespace YunCai.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("display_name");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsSystemAdmin")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system_admin");
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_login_at");
+
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
+
+                    b.Property<int>("TokenVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("token_version");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -1591,6 +1786,9 @@ namespace YunCai.Migrations
                         .HasColumnName("username");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Phone")
+                        .IsUnique();
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -2559,6 +2757,15 @@ namespace YunCai.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("YunCai.Modules.Budgets.Domain.BudgetLine", b =>
+                {
+                    b.HasOne("YunCai.Modules.Budgets.Domain.Budget", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("BudgetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("YunCai.Modules.Closing.Domain.ClosingTemplate", b =>
                 {
                     b.HasOne("YunCai.Modules.AccountSets.Domain.AccountSet", null)
@@ -2842,6 +3049,11 @@ namespace YunCai.Migrations
             modelBuilder.Entity("YunCai.Modules.Assist.Domain.AssistItem", b =>
                 {
                     b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("YunCai.Modules.Budgets.Domain.Budget", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("YunCai.Modules.Closing.Domain.ClosingTemplate", b =>

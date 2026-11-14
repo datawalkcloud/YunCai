@@ -1,0 +1,7 @@
+# 域名只在这里改：同时决定 Ingress 主机名与 TLS 主机名。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yuncai-domain
+data:
+  domain: yuncai.datawalk.cn

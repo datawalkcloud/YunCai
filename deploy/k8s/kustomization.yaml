@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: yuncai
+resources:
+  - namespace.yaml
+  - domain.yaml
+  - configmap.yaml
+  - api-service.yaml
+  - api-deployment.yaml
+  - web-service.yaml
+  - web-deployment.yaml
+  - ingress.yaml
+# 域名只改 domain.yaml：Ingress 的 host 与 TLS hosts 都由它注入。
+# 用 vars 而非 replacements：TLS 的 hosts 是纯字符串列表，replacements 定位不到元素。
+# 构建时会打印一条 deprecated 警告，属已知噪音。
+vars:
+  - name: DOMAIN
+    objref:
+      apiVersion: v1
+      kind: ConfigMap
+      name: yuncai-domain
+    fieldref:
+      fieldpath: data.domain
+# 镜像由 GitHub Actions 的 v* 标签构建后推到这个 ACR 个人实例；命名空间见 release-image.yml 的 ACR_NAMESPACE。
+images:
+  - name: yuncai-api
+    newName: crpi-gr7j2r1czfy1t1uu.cn-hangzhou.personal.cr.aliyuncs.com/springhgui/yuncai-api
+    newTag: 1.0.0
+  - name: yuncai-web
+    newName: crpi-gr7j2r1czfy1t1uu.cn-hangzhou.personal.cr.aliyuncs.com/springhgui/yuncai-web
+    newTag: 1.0.0

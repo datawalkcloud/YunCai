@@ -604,13 +604,15 @@ const SCENES: {
 /* ------------------------------------------------------------------ */
 
 export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?: boolean } = {}) {
-  const { status } = useAuth();
+  const { status, needsPasswordSetup } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const navigatedRef = useRef(false);
   const authed = status === "authenticated";
-  const primaryHref = authed ? "/app" : "/login";
-  const primaryLabel = authed ? "进入控制台" : "免费开始使用";
+  // 验证码首次登录的账号还没设密码，弹窗要继续开着走完设置流程，且在设完前不算可进入后台。
+  const canEnterApp = authed && !needsPasswordSetup;
+  const primaryHref = canEnterApp ? "/app" : "/login";
+  const primaryLabel = canEnterApp ? "进入控制台" : "免费开始使用";
   const [activeTab, setActiveTab] = useState(SCENES[0].key);
   const active = SCENES.find((s) => s.key === activeTab) ?? SCENES[0];
   const [scrolled, setScrolled] = useState(false);
@@ -618,7 +620,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
   // autoOpenLogin 用于 /login 直达（含保护区回跳带上的 from），保持深链可用。
   const [loginOpen, setLoginOpen] = useState(autoOpenLogin);
 
-  const goApp = () => (authed ? navigate(primaryHref) : setLoginOpen(true));
+  const goApp = () => (canEnterApp ? navigate(primaryHref) : setLoginOpen(true));
 
   // 关闭弹窗时若停在 /login 上，回落到官网根路径，避免 URL 停在登录态。
   // 仅在用户主动关闭（× / Esc / 点遮罩）时调用，登录成功不走这里。
@@ -1249,7 +1251,11 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
         </Container>
       </footer>
 
-      <LoginModal open={loginOpen && !authed} onClose={closeLogin} onSuccess={handleLoginSuccess} />
+      <LoginModal
+        open={loginOpen && (!authed || needsPasswordSetup)}
+        onClose={closeLogin}
+        onSuccess={handleLoginSuccess}
+      />
     </div>
   );
 }

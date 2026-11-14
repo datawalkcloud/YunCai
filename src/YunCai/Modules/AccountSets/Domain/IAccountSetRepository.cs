@@ -20,6 +20,9 @@ namespace YunCai.Modules.AccountSets.Domain
         /// <summary>判断指定名称的账套是否已存在。</summary>
         Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken = default);
 
+        /// <summary>判断指定标识的账套是否存在（访问校验用，不做实体物化）。</summary>
+        Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
+
         /// <summary>新增账套。</summary>
         Task AddAsync(AccountSet accountSet, CancellationToken cancellationToken = default);
 

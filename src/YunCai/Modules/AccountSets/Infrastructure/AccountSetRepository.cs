@@ -42,6 +42,11 @@ namespace YunCai.Modules.AccountSets.Infrastructure
             return _context.AccountSets.AnyAsync(a => a.Name == name, cancellationToken);
         }
 
+        public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return _context.AccountSets.AnyAsync(a => a.Id == id, cancellationToken);
+        }
+
         public async Task AddAsync(AccountSet accountSet, CancellationToken cancellationToken = default)
         {
             await _context.AccountSets.AddAsync(accountSet, cancellationToken);

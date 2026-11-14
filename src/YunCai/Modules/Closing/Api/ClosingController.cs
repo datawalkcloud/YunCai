@@ -1,5 +1,6 @@
 using YunCai.Modules.Auditing.Application;
 using YunCai.Modules.Closing.Application;
+using YunCai.SharedKernel.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -179,6 +180,7 @@ namespace YunCai.Modules.Closing.Api
 
         /// <summary>结账：把下一个待结期间标记为已结账（须先完成结转，且期间内凭证全部已过账）。</summary>
         [HttpPost("close")]
+        [RequireStepUp]
         public async Task<ActionResult<ClosingStatusDto>> Close(
             Guid accountSetId,
             [FromBody] ClosingPeriodRequest request,
@@ -198,6 +200,7 @@ namespace YunCai.Modules.Closing.Api
 
         /// <summary>反结账：从指定已结期间起撤销结账（该期间及其后全部退回，可指定任意已结期间）；不传期间时退回最近一次结账。结转进度保持不变。</summary>
         [HttpPost("reopen")]
+        [RequireStepUp]
         public async Task<ActionResult<ClosingStatusDto>> Reopen(
             Guid accountSetId,
             [FromQuery] int? year,
@@ -221,6 +224,7 @@ namespace YunCai.Modules.Closing.Api
 
         /// <summary>撤销结转：删除指定期间及其后已结转期间的系统结转凭证并退回结转进度（已结账的期间须先反结账）。</summary>
         [HttpPost("cancel-carry")]
+        [RequireStepUp]
         public async Task<ActionResult<CancelCarryResultDto>> CancelCarry(
             Guid accountSetId,
             [FromBody] ClosingPeriodRequest request,
@@ -352,6 +356,7 @@ namespace YunCai.Modules.Closing.Api
 
         /// <summary>批量结账：连续结账至最新已结转期间（中途受阻时保留已结部分并说明原因）。</summary>
         [HttpPost("close-batch")]
+        [RequireStepUp]
         public async Task<ActionResult<CloseBatchResultDto>> CloseBatch(Guid accountSetId, CancellationToken cancellationToken)
         {
             try
@@ -373,6 +378,7 @@ namespace YunCai.Modules.Closing.Api
 
         /// <summary>批量标记结转：把损益余额已为 0 的连续期间批量标记为已结转（不生成凭证）。</summary>
         [HttpPost("carry-batch")]
+        [RequireStepUp]
         public async Task<ActionResult<CarryBatchResultDto>> CarryBatch(Guid accountSetId, CancellationToken cancellationToken)
         {
             try

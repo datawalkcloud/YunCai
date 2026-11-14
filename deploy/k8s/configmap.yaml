@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yuncai-config
+data:
+  ASPNETCORE_ENVIRONMENT: Production
+  # 迁移由 api 的 initContainer 以 --migrate-only 执行，进程内不再自动迁移。
+  YunCai__Database__AutoMigrate: "false"
+  # 首次部署时置 true 生成初始管理员与默认账套，之后保持 false。
+  YunCai__Seed__Enabled: "false"
+  YunCai__Seed__AdminUsername: admin
+  # api 只允许经 web 的 nginx 访问，因此信任代理带来的 X-Forwarded-For/Proto。
+  YunCai__Networking__TrustForwardedHeaders: "true"
+  # TLS 在 Ingress 终止，后端保持 HTTP。
+  YunCai__Networking__HttpsRedirection: "false"
+  YunCai__Networking__UseHsts: "false"
+  # 容器默认 UTC，会让 PDF 打印时间、导出文件名里的 DateTime.Now 差 8 小时。
+  TZ: Asia/Shanghai
+  # 前后端同源（都走 Ingress 的 /），不需要 CORS；若把 api 单独暴露成另一个域名，
+  # 在这里补 Cors__AllowedOrigins__0: https://<api 域名>。

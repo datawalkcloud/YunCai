@@ -40,12 +40,40 @@ public static class DatabaseBootstrap
 
     private static async Task SeedUsersAsync(AppDbContext context, RuntimeOptions options, bool isDevelopment, ILogger logger, CancellationToken cancellationToken)
     {
+        var adminUsername = string.IsNullOrWhiteSpace(options.Seed.AdminUsername) ? "admin" : options.Seed.AdminUsername;
+        var adminPhone = string.IsNullOrWhiteSpace(options.Seed.AdminPhone) ? null : options.Seed.AdminPhone.Trim();
+
         if (await context.Users.AnyAsync(cancellationToken))
         {
+            // 存量库：补录管理员手机号（让手机号 + 密码入口可用），并确保初始账号拥有系统管理员身份。
+            var existingAdmin = await context.Users.SingleOrDefaultAsync(u => u.Username == adminUsername, cancellationToken);
+            if (existingAdmin is not null)
+            {
+                var changed = false;
+                if (adminPhone is not null
+                    && string.IsNullOrWhiteSpace(existingAdmin.Phone)
+                    && !await context.Users.AnyAsync(u => u.Phone == adminPhone, cancellationToken))
+                {
+                    existingAdmin.Phone = adminPhone;
+                    changed = true;
+                }
+
+                if (!existingAdmin.IsSystemAdmin)
+                {
+                    existingAdmin.PromoteToSystemAdmin();
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    await context.SaveChangesAsync(cancellationToken);
+                    logger.LogInformation("已更新初始账号 {Username} 的手机号 / 系统管理员身份。", adminUsername);
+                }
+            }
+
             return;
         }
 
-        var adminUsername = string.IsNullOrWhiteSpace(options.Seed.AdminUsername) ? "admin" : options.Seed.AdminUsername;
         var adminPassword = options.Seed.AdminPassword;
 
         if (string.IsNullOrWhiteSpace(adminPassword))
@@ -60,20 +88,23 @@ public static class DatabaseBootstrap
             logger.LogWarning("未配置初始管理员口令，开发环境回退为 {Username}/{Password}，请勿用于生产。", adminUsername, adminPassword);
         }
 
-        context.Users.Add(new User
+        var admin = new User
         {
-            Id = "1",
+            Id = Guid.CreateVersion7().ToString("N"),
             Username = adminUsername,
             DisplayName = "管理员",
-            PasswordHash = PasswordHasher.Hash(adminPassword)
-        });
+            PasswordHash = PasswordHasher.Hash(adminPassword),
+            Phone = adminPhone
+        };
+        admin.PromoteToSystemAdmin();
+        context.Users.Add(admin);
 
         // 演示用的第二账号只在开发环境创建，生产环境不留下可猜测的口令。
         if (isDevelopment)
         {
             context.Users.Add(new User
             {
-                Id = "2",
+                Id = Guid.CreateVersion7().ToString("N"),
                 Username = "user",
                 DisplayName = "普通用户",
                 PasswordHash = PasswordHasher.Hash("user123")

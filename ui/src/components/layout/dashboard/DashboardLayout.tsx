@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ChevronDownIcon, ChevronRightIcon, HomeIcon } from "@heroicons/react/24/solid";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
@@ -6,10 +6,12 @@ import { Drawer, Popover, Tooltip } from "antd";
 
 import { WipTag } from "@/pages/lemon/components/ui";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { PermissionsProvider, usePermissions } from "@/accountSets/PermissionsContext";
+import { StepUpProvider } from "@/lib/step-up";
 import { cn } from "@/lib/utils";
 import "../parking/parking.css";
 import { KeepAliveOutlet } from "./KeepAliveOutlet";
-import { findCategoryOf, menuCategories, type MenuLeaf } from "./menu-model";
+import { filterGroupsByPermission, findCategoryOf, menuCategories, type MenuLeaf } from "./menu-model";
 import { isKeepAliveLocation, tabKeyOf } from "./route-tabs-context";
 import { RouteTabsProvider } from "./RouteTabsProvider";
 import { RouteTabs } from "./RouteTabs";
@@ -21,9 +23,13 @@ import { AccountSetSwitcher, WorkspaceTopBar } from "./WorkspaceHeader";
 
 export default function DashboardLayout() {
     return (
-        <RouteTabsProvider>
-            <WorkspaceShell />
-        </RouteTabsProvider>
+        <StepUpProvider>
+            <PermissionsProvider>
+                <RouteTabsProvider>
+                    <WorkspaceShell />
+                </RouteTabsProvider>
+            </PermissionsProvider>
+        </StepUpProvider>
     );
 }
 
@@ -110,7 +116,10 @@ function Sidebar({ className, collapsed }: { className?: string; collapsed: bool
     const { accountSetId = "" } = useParams();
     const base = `/${accountSetId}`;
     const tabKey = tabKeyOf(location.pathname, accountSetId);
-    const { groups, home } = findCategoryOf(tabKey);
+    const { groups: categoryGroups, home } = findCategoryOf(tabKey);
+    const { has } = usePermissions();
+    // 角色没有某模块的查看权限时不显示对应菜单；子项全隐藏的分组整组收起。
+    const groups = useMemo(() => filterGroupsByPermission(categoryGroups, has), [categoryGroups, has]);
 
     return (
         <aside
@@ -174,14 +183,20 @@ function MobileSidebar({ onNavigate }: { onNavigate: () => void }) {
     const base = `/${accountSetId}`;
     const tabKey = tabKeyOf(location.pathname, accountSetId);
     const category = findCategoryOf(tabKey);
+    const { has } = usePermissions();
+    const groups = useMemo(() => filterGroupsByPermission(category.groups, has), [category.groups, has]);
+    const categories = useMemo(
+        () => menuCategories.filter((item) => item.home === true || filterGroupsByPermission(item.groups, has).length > 0),
+        [has],
+    );
     const [openGroups, setOpenGroups] = useState<string[]>([]);
 
     // 当前页所属分组默认展开，其余保持收起，避免一屏塞几十条。
     useEffect(() => {
-        const active = category.groups.find((group) => group.children?.some((leaf) => leaf.to === tabKey));
+        const active = groups.find((group) => group.children?.some((leaf) => leaf.to === tabKey));
         if (!active) return;
         setOpenGroups((prev) => (prev.includes(active.label) ? prev : [...prev, active.label]));
-    }, [category, tabKey]);
+    }, [groups, tabKey]);
 
     const go = (to: string) => {
         navigate(to ? `${base}/${to}` : base);
@@ -191,7 +206,7 @@ function MobileSidebar({ onNavigate }: { onNavigate: () => void }) {
     return (
         <div className="flex h-full min-h-0 flex-col bg-(--pk-surface)">
             <div className="flex shrink-0 gap-1 border-b border-(--pk-border) p-2">
-                {menuCategories.map((item) => {
+                {categories.map((item) => {
                     const active = item.label === category.label;
                     return (
                         <button
@@ -219,7 +234,7 @@ function MobileSidebar({ onNavigate }: { onNavigate: () => void }) {
                         onClick={() => go("")}
                     />
                 )}
-                {category.groups.map((group) => {
+                {groups.map((group) => {
                     if (!group.children) {
                         return (
                             <MobileNavLink

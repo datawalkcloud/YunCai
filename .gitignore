@@ -29,6 +29,9 @@ _openapi.json
 .env.*
 !.env.example
 appsettings.Local.json
+deploy/k8s/secret.yaml
+deploy/k8s/acr-pull-secret.yaml
+deploy/k8s/postgres/secret.yaml
 
 # 前端依赖
 node_modules/

@@ -12,7 +12,7 @@ namespace YunCai.Modules.AccountSets.Domain
         }
 
         private AccountSetMember(Guid id, Guid accountSetId, string name, string phone, string? email,
-            Guid roleId, bool isOwner)
+            Guid roleId, bool isOwner, string? userId)
         {
             Id = id;
             AccountSetId = accountSetId;
@@ -21,6 +21,7 @@ namespace YunCai.Modules.AccountSets.Domain
             Email = email;
             RoleId = roleId;
             IsOwner = isOwner;
+            UserId = userId;
             Enabled = true;
             CreatedAt = DateTime.UtcNow;
             UpdatedAt = CreatedAt;
@@ -31,6 +32,12 @@ namespace YunCai.Modules.AccountSets.Domain
 
         /// <summary>所属账套标识。</summary>
         public Guid AccountSetId { get; private set; }
+
+        /// <summary>
+        /// 关联的登录用户标识；为空表示尚未绑定登录账号（历史成员或仅登记手机号的成员）。
+        /// 未绑定手机号的成员必须靠它才能访问账套。
+        /// </summary>
+        public string? UserId { get; private set; }
 
         /// <summary>成员姓名（显示名）。</summary>
         public string Name { get; private set; } = null!;
@@ -56,13 +63,40 @@ namespace YunCai.Modules.AccountSets.Domain
         /// <summary>最后修改时间（UTC）。</summary>
         public DateTime UpdatedAt { get; private set; }
 
-        /// <summary>新建普通成员。</summary>
-        public static AccountSetMember Create(Guid accountSetId, string name, string phone, string? email, Guid roleId)
-            => new(Guid.NewGuid(), accountSetId, name.Trim(), phone.Trim(), string.IsNullOrWhiteSpace(email) ? null : email.Trim(), roleId, false);
+        /// <summary>新建普通成员；传 userId 表示该成员已绑定到某个登录账号。</summary>
+        public static AccountSetMember Create(Guid accountSetId, string name, string phone, string? email, Guid roleId, string? userId = null)
+            => new(Guid.NewGuid(), accountSetId, name.Trim(), phone.Trim(), string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
+                roleId, false, string.IsNullOrWhiteSpace(userId) ? null : userId);
 
-        /// <summary>新建账套创建者成员（管理员角色）。</summary>
-        public static AccountSetMember CreateOwner(Guid accountSetId, string name, Guid adminRoleId)
-            => new(Guid.NewGuid(), accountSetId, name.Trim(), string.Empty, null, adminRoleId, true);
+        /// <summary>新建账套创建者成员（管理员角色），绑定创建者的登录账号与手机号。</summary>
+        public static AccountSetMember CreateOwner(Guid accountSetId, string name, Guid adminRoleId, string? userId = null, string? phone = null)
+            => new(Guid.NewGuid(), accountSetId, name.Trim(), phone?.Trim() ?? string.Empty, null,
+                adminRoleId, true, string.IsNullOrWhiteSpace(userId) ? null : userId);
+
+        /// <summary>
+        /// 补齐登录账号绑定：只填空值，不覆盖已有绑定；手机号同理。
+        /// 用于账套创建者补种与存量账套的归属回填。
+        /// </summary>
+        public void LinkUser(string? userId, string? phone)
+        {
+            var changed = false;
+            if (!string.IsNullOrWhiteSpace(userId) && UserId is null)
+            {
+                UserId = userId;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(Phone) && !string.IsNullOrWhiteSpace(phone))
+            {
+                Phone = phone.Trim();
+                changed = true;
+            }
+
+            if (changed)
+            {
+                UpdatedAt = DateTime.UtcNow;
+            }
+        }
 
         /// <summary>修改成员资料与角色；创建者角色固定为管理员。</summary>
         public void Update(string name, string phone, string? email, Guid roleId)

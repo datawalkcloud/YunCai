@@ -47,6 +47,8 @@ builder.Services.AddControllers(options =>
 {
     // 前端生成的客户端会把日期参数序列化成 ISO 8601 带时间缀，DateOnly 默认绑定会 400。
     options.ModelBinderProviders.Insert(0, new LenientDateOnlyModelBinderProvider());
+    // 全局账套访问控制：路由带账套标识的接口只放行该账套的启用成员。
+    options.Filters.AddService<YunCai.Modules.AccountSets.Api.AccountSetAccessFilter>();
 });
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi(options =>
@@ -83,14 +85,42 @@ if (string.IsNullOrWhiteSpace(connectionString))
         "缺少数据库连接串。请复制 src/YunCai/appsettings.Local.example.json 为 appsettings.Local.json 并填写，或设置环境变量 ConnectionStrings__DefaultConnection。");
 }
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<YunCai.Modules.Auditing.Infrastructure.AuditSaveChangesInterceptor>();
+builder.Services.AddDbContext<AppDbContext>((sp, options) =>
+    options.UseNpgsql(connectionString)
+        .AddInterceptors(sp.GetRequiredService<YunCai.Modules.Auditing.Infrastructure.AuditSaveChangesInterceptor>()));
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
 // 认证相关服务
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddScoped<YunCai.Modules.Identity.Domain.IUserRepository, YunCai.Modules.Identity.Infrastructure.UserRepository>();
+builder.Services.AddScoped<YunCai.Modules.Identity.Application.UserAdminService>();
+
+// 手机验证码登录：验证码存进程内存缓存；本地开发走模拟通道（验证码写日志并在响应里回显），
+// 其他环境在没有接入真实短信通道前一律拒绝发送，避免误以为短信已发出。
+builder.Services.AddMemoryCache();
+// 高危操作二次确认令牌用 Data Protection 签名，短时有效、无需落库。
+builder.Services.AddDataProtection();
+builder.Services.AddScoped<YunCai.Modules.Identity.Application.StepUpService>();
+builder.Services.AddScoped<YunCai.SharedKernel.Infrastructure.Security.IStepUpValidator>(
+    sp => sp.GetRequiredService<YunCai.Modules.Identity.Application.StepUpService>());
+builder.Services.Configure<YunCai.Modules.Identity.Application.SmsOptions>(
+    builder.Configuration.GetSection("YunCai:Sms"));
+builder.Services.AddSingleton<YunCai.Modules.Identity.Application.SmsCodeService>();
+if (builder.Environment.IsDevelopment()
+    && string.Equals(builder.Configuration["YunCai:Sms:Provider"], "Mock", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<YunCai.Modules.Identity.Application.ISmsSender,
+        YunCai.Modules.Identity.Infrastructure.Sms.MockSmsSender>();
+}
+else
+{
+    builder.Services.AddSingleton<YunCai.Modules.Identity.Application.ISmsSender,
+        YunCai.Modules.Identity.Infrastructure.Sms.UnconfiguredSmsSender>();
+}
+
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Domain.IAccountSetRepository, YunCai.Modules.AccountSets.Infrastructure.AccountSetRepository>();
 builder.Services.AddScoped<YunCai.Modules.Accounting.Domain.IAccountRepository, YunCai.Modules.Accounting.Infrastructure.AccountRepository>();
 builder.Services.AddScoped<YunCai.Modules.Assist.Domain.IAssistItemRepository, YunCai.Modules.Assist.Infrastructure.AssistItemRepository>();
@@ -117,6 +147,7 @@ builder.Services.AddScoped<YunCai.Modules.Salary.Domain.ISalaryRepository, YunCa
 builder.Services.AddScoped<YunCai.Modules.Archives.Domain.IArchiveRepository, YunCai.Modules.Archives.Infrastructure.ArchiveRepository>();
 builder.Services.AddScoped<YunCai.Modules.Archives.Domain.IArchiveCategoryRepository, YunCai.Modules.Archives.Infrastructure.ArchiveCategoryRepository>();
 builder.Services.AddScoped<YunCai.Modules.Auditing.Domain.IOperationLogRepository, YunCai.Modules.Auditing.Infrastructure.OperationLogRepository>();
+builder.Services.AddScoped<YunCai.Modules.Budgets.Domain.IBudgetRepository, YunCai.Modules.Budgets.Infrastructure.BudgetRepository>();
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Domain.IReinitRepository, YunCai.Modules.AccountSets.Infrastructure.ReinitRepository>();
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Application.CurrencyService>();
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Application.VoucherWordService>();
@@ -129,11 +160,13 @@ builder.Services.AddScoped<YunCai.Modules.Salary.Application.SalaryService>();
 builder.Services.AddScoped<YunCai.Modules.Archives.Application.ArchiveService>();
 builder.Services.AddScoped<YunCai.Modules.Archives.Application.ArchiveCategoryService>();
 builder.Services.AddScoped<YunCai.Modules.Auditing.Application.OperationLogService>();
+builder.Services.AddScoped<YunCai.Modules.Budgets.Application.BudgetService>();
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Application.ReinitService>();
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Application.IAccountSetMemberRepository, YunCai.Modules.AccountSets.Infrastructure.AccountSetMemberRepository>();
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Domain.IAccountSetRoleRepository, YunCai.Modules.AccountSets.Infrastructure.AccountSetRoleRepository>();
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Application.RoleService>();
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Application.MemberService>();
+builder.Services.AddScoped<YunCai.Modules.AccountSets.Api.AccountSetAccessFilter>();
 // 税局密码加解密只依赖配置，无状态，做成单例避免每次请求重派密钥。
 builder.Services.AddSingleton<YunCai.Modules.AccountSets.Application.ITaxCredentialProtector, YunCai.Modules.AccountSets.Infrastructure.AesTaxCredentialProtector>();
 // 一次性票据放在进程内存里：助手兑换通常在点击后的几秒内完成，重启后未兑换的票据自然作废。
@@ -225,9 +258,43 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
             ClockSkew = TimeSpan.FromSeconds(30)
         };
+        options.Events = new JwtBearerEvents
+        {
+            // 每次请求核对账号状态与令牌版本：停用账号、改密后旧令牌立即失效。
+            OnTokenValidated = context =>
+            {
+                var repo = context.HttpContext.RequestServices
+                    .GetRequiredService<YunCai.Modules.Identity.Domain.IUserRepository>();
+                var userId = context.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+                var user = string.IsNullOrEmpty(userId) ? null : repo.FindById(userId);
+                if (user is null)
+                {
+                    context.Fail("账号不存在。");
+                    return Task.CompletedTask;
+                }
+
+                if (!user.IsActive)
+                {
+                    context.Fail("账号已停用。");
+                    return Task.CompletedTask;
+                }
+
+                var version = context.Principal?.FindFirst("ver")?.Value;
+                if (!int.TryParse(version, out var tokenVersion) || tokenVersion != user.TokenVersion)
+                {
+                    context.Fail("登录状态已失效，请重新登录。");
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // 登录账号管理只对系统管理员开放；与账套内的「账套管理员」互不替代。
+    options.AddPolicy("SystemAdmin", policy => policy.RequireClaim("sysadmin", "true"));
+});
 
 // 未被控制器捕获的异常统一走 Problem Details（见 GlobalExceptionHandler）。
 builder.Services.AddProblemDetails();
@@ -244,6 +311,16 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
+    // 验证码发送另设更严的窗口，配合业务层「同一手机号 60 秒一次」防止短信轰炸。
+    options.AddPolicy("sms", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0
             }));
 });
@@ -293,6 +370,17 @@ try
         }
 
         await DatabaseBootstrap.SeedAsync(db, runtime, isDevelopment, startupLogger);
+
+        // 存量账套没有成员记录（或创建者未绑定账号）时，访问校验会把整本账套挡在所有人之外；
+        // 初始化开启的环境统一回填到初始管理员名下，生产环境由建账时写入的创建者成员负责。
+        if (runtime.Seed.Enabled)
+        {
+            await YunCai.Modules.AccountSets.Infrastructure.AccountSetOwnerBootstrap.EnsureOwnersAsync(
+                db,
+                scope.ServiceProvider.GetRequiredService<YunCai.Modules.AccountSets.Application.MemberService>(),
+                runtime.Seed.AdminUsername,
+                startupLogger);
+        }
 
         if (DatabaseBootstrap.IsMigrateOnly(args))
         {

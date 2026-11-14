@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useNavigate, useParams } from "react-router"
 import { DownloadOutlined, PrinterOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Button, Table, Tooltip } from "antd"
 import type { TableColumnsType } from "antd"
@@ -11,6 +12,7 @@ import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { printPdf } from "@/lib/print-pdf"
 import { ReportPageShell } from "@/components/report/ReportPageShell"
 import { ReportPeriodToolbar } from "@/components/report/ReportPeriodToolbar"
+import { ReportDrilldownDrawer } from "@/components/report/ReportDrilldownDrawer"
 import { downloadReportExport } from "@/components/report/report-export"
 import { AMOUNT_COL } from "@/components/page/styles"
 
@@ -230,40 +232,57 @@ function cellCls(row: StatementLine): string {
 }
 
 /** 会企02表四列：项目、行次、本年累计金额、本期金额（列序与柠檬云一致）。 */
-const COLUMNS: TableColumnsType<StatementLine> = [
-    {
-        title: "项目",
-        onCell: (row) => ({ className: cellCls(row) }),
-        render: (_, row) =>
-            row.indent ? <span className={indentCls(row.indent)}>{row.label}</span> : row.label,
-    },
-    {
-        title: "行次",
-        dataIndex: "line",
-        align: "center",
-        width: 64,
-        onCell: () => ({ className: "tabular-nums text-muted-foreground" }),
-    },
-    {
-        title: "本年累计金额",
-        width: 160,
-        ...AMOUNT_COL,
-        render: (_, row) => fmt(row.yearToDate, row.kind === "total"),
-        onCell: (row) => ({ className: cellCls(row) }),
-    },
-    {
-        title: "本期金额",
-        width: 160,
-        ...AMOUNT_COL,
-        render: (_, row) => fmt(row.current, row.kind === "total"),
-        onCell: (row) => ({ className: cellCls(row) }),
-    },
-]
+function buildColumns(isDrillable: (row: StatementLine) => boolean): TableColumnsType<StatementLine> {
+    return [
+        {
+            title: "项目",
+            onCell: (row) => ({ className: cellCls(row) }),
+            render: (_, row) =>
+                row.indent ? (
+                    <span
+                        className={[
+                            indentCls(row.indent),
+                            isDrillable(row) ? "cursor-pointer hover:text-(--brand) hover:underline" : "",
+                        ].join(" ")}
+                    >
+                        {row.label}
+                    </span>
+                ) : isDrillable(row) ? (
+                    <span className="cursor-pointer hover:text-(--brand) hover:underline">{row.label}</span>
+                ) : (
+                    row.label
+                ),
+        },
+        {
+            title: "行次",
+            dataIndex: "line",
+            align: "center",
+            width: 64,
+            onCell: () => ({ className: "tabular-nums text-muted-foreground" }),
+        },
+        {
+            title: "本年累计金额",
+            width: 160,
+            ...AMOUNT_COL,
+            render: (_, row) => fmt(row.yearToDate, row.kind === "total"),
+            onCell: (row) => ({ className: cellCls(row) }),
+        },
+        {
+            title: "本期金额",
+            width: 160,
+            ...AMOUNT_COL,
+            render: (_, row) => fmt(row.current, row.kind === "total"),
+            onCell: (row) => ({ className: cellCls(row) }),
+        },
+    ]
+}
 
 export default function IncomeStatementPage() {
     const { token } = useAuth()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
+    const routeAccountSetId = useParams<{ accountSetId: string }>().accountSetId
+    const navigate = useNavigate()
     const currentSet = accountSets.find((s) => s.id === accountSetId)
     const periodBounds = useAccountingPeriodBounds()
 
@@ -274,6 +293,7 @@ export default function IncomeStatementPage() {
     const [error, setError] = useState<string | null>(null)
     const [loaded, setLoaded] = useState(false)
     const [printing, setPrinting] = useState(false)
+    const [drill, setDrill] = useState<StatementLine | null>(null)
 
     const load = useCallback(async () => {
         if (!accountSetId) return
@@ -314,6 +334,34 @@ export default function IncomeStatementPage() {
         }
         return buildRows(map, currentSet?.standard)
     }, [lines, currentSet?.standard])
+
+    // 只有后端真的给出发生额的行次才能下钻（合计行由前端汇总，「其中」子项无数据时不可点）。
+    const drillableLines = useMemo(
+        () => new Set(lines.filter((l) => l.line != null).map((l) => l.line!)),
+        [lines],
+    )
+    const isDrillable = useCallback(
+        (row: StatementLine) => row.kind === "item" && row.line != null && drillableLines.has(row.line),
+        [drillableLines],
+    )
+    const columns = useMemo(() => buildColumns(isDrillable), [isDrillable])
+
+    /** 从下钻浮层进入科目明细账（明细账行再点开即凭证详情），沿用报表所选月份。 */
+    const openSubsidiary = useCallback(
+        (code: string) => {
+            if (!routeAccountSetId || !period) return
+            const mm = String(period.month).padStart(2, "0")
+            const lastDay = new Date(period.year, period.month, 0).getDate()
+            const params = new URLSearchParams({
+                account: code,
+                startDate: `${period.year}-${mm}-01`,
+                endDate: `${period.year}-${mm}-${String(lastDay).padStart(2, "0")}`,
+            })
+            setDrill(null)
+            navigate(`/${routeAccountSetId}/ledger/subsidiary?${params.toString()}`)
+        },
+        [routeAccountSetId, period, navigate],
+    )
 
     /** 导出当前期间的利润表（后端生成 .xlsx）。 */
     const exportSheet = useCallback(async () => {
@@ -395,12 +443,34 @@ export default function IncomeStatementPage() {
             placeholder={!accountSetId ? "请先选择账套。" : undefined}
         >
             <Table<StatementLine>
-                columns={COLUMNS}
+                columns={columns}
                 dataSource={rows}
                 rowKey={(_, i) => String(i)}
                 pagination={false}
                 scroll={{ x: 560 }}
+                onRow={(row) =>
+                    isDrillable(row)
+                        ? { onClick: () => setDrill(row), className: "cursor-pointer" }
+                        : {}
+                }
             />
+
+            {period && (
+                <ReportDrilldownDrawer
+                    open={drill != null}
+                    onClose={() => setDrill(null)}
+                    accountSetId={accountSetId}
+                    token={token}
+                    kind="income-statement"
+                    year={period.year}
+                    month={period.month}
+                    line={drill?.line ?? null}
+                    title={drill ? `科目明细 · ${drill.label}` : "科目明细"}
+                    currentLabel="本期金额"
+                    yearToDateLabel="本年累计"
+                    onOpenLedger={openSubsidiary}
+                />
+            )}
         </ReportPageShell>
     )
 }
