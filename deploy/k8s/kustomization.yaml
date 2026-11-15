@@ -25,7 +25,7 @@ vars:
 images:
   - name: yuncai-api
     newName: crpi-gr7j2r1czfy1t1uu.cn-hangzhou.personal.cr.aliyuncs.com/springhgui/yuncai-api
-    newTag: 1.2.0
+    newTag: 1.2.1
   - name: yuncai-web
     newName: crpi-gr7j2r1czfy1t1uu.cn-hangzhou.personal.cr.aliyuncs.com/springhgui/yuncai-web
-    newTag: 1.2.0
+    newTag: 1.2.1
