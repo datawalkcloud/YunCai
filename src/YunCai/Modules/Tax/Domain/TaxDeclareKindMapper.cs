@@ -79,7 +79,8 @@ namespace YunCai.Modules.Tax.Domain
         {
             return standard switch
             {
-                AccountingStandard.Enterprise => "企业会计准则",
+                // 税局备案口径里 2006 年颁的新会计准则就叫「企业会计准则」，两者同一张财务报表。
+                AccountingStandard.Enterprise or AccountingStandard.NewEnterprise2006 => "企业会计准则",
                 AccountingStandard.NonProfit => "民间非营利组织会计制度",
                 _ => "小企业会计准则",
             };

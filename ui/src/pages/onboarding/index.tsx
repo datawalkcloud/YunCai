@@ -5,6 +5,7 @@ import { useNavigate } from "react-router"
 
 import { useAuth } from "@/auth/AuthContext"
 import { useAccountSets } from "@/accountSets/AccountSetsContext"
+import { setPath } from "@/accountSets/url-id"
 import { AccountSetsApi } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { SectionCard } from "@/components/page/section"
@@ -50,7 +51,7 @@ export default function NoAccountSetGuide() {
                 createAccountSetRequest: toCreateRequest(values),
             })
             refresh()
-            if (created.id) navigate(`/${created.id}`, { replace: true })
+            if (created.id) navigate(setPath(created.id), { replace: true })
         } catch (err) {
             setError(await apiErrorMessage(err, "创建账套失败，请重试。"))
         } finally {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useNavigate, useParams } from "react-router"
+import { useNavigate } from "react-router"
 import { PrinterOutlined } from "@ant-design/icons"
 import { Button, Alert, Table } from "antd";
 import type { TableColumnsType, TableColumnType } from "antd"
@@ -16,6 +16,7 @@ import { SectionCard } from "@/components/page/section"
 import { TrialBalanceFilter } from "@/components/ledger/TrialBalanceFilter"
 import { useAccounts } from "@/components/ledger/useLedgerOptions"
 import { currentMonthPeriod, type LedgerConditions } from "@/components/ledger/types"
+import { setPath } from "@/accountSets/url-id"
 
 /** 科目余额表进入页面时的默认查询条件：查当月，其余不做任何裁剪。 */
 function defaultConditions(): LedgerConditions {
@@ -77,7 +78,7 @@ const columns: TableColumnsType<TreeRow> = [
 export default function TrialBalancePage() {
     const { token } = useAuth()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const { accountSetId: routeId } = useParams<{ accountSetId: string }>()
+    const routeId = useCurrentAccountSetId()
     const navigate = useNavigate()
 
     const allAccounts = useAccounts(accountSetId, token)
@@ -214,7 +215,7 @@ export default function TrialBalancePage() {
         const params = new URLSearchParams({ account: code })
         if (committed.startDate) params.set("startDate", committed.startDate)
         if (committed.endDate) params.set("endDate", committed.endDate)
-        navigate(`/${routeId}/ledger/subsidiary?${params.toString()}`)
+        navigate(setPath(routeId, `/ledger/subsidiary?${params.toString()}`))
     }
 
     // 打印：条件与页面取数同一口径，交给后端渲染 PDF 并在新窗口预览（不再有浏览器打印与设置面板）。

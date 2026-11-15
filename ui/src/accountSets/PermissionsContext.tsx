@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { useParams } from "react-router"
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 
 import { useAuth } from "@/auth/AuthContext"
 import { fetchMyPermissions } from "@/api/security"
@@ -40,7 +40,7 @@ const PermissionsContext = createContext<PermissionsValue>({
 })
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
-    const { accountSetId } = useParams()
+    const accountSetId = useCurrentAccountSetId()
     const { token, user } = useAuth()
     const [keys, setKeys] = useState<Set<string>>(EMPTY)
     const [roleName, setRoleName] = useState("")

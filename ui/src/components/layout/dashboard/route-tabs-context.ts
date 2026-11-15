@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import { setPath } from "@/accountSets/url-id";
 
 /** 多页签状态（由 RouteTabsProvider 提供，页签条与 KeepAliveOutlet 共享）。 */
 export interface RouteTabsValue {
@@ -15,7 +16,7 @@ export const RouteTabsContext = createContext<RouteTabsValue | null>(null);
 
 /** 路由第一段（账套）之后的页签键；首页为空串。 */
 export function tabKeyOf(pathname: string, accountSetId: string): string {
-    const base = `/${accountSetId}`;
+    const base = setPath(accountSetId);
     if (!pathname.startsWith(base)) return "";
     return pathname.slice(base.length).replace(/^\//, "");
 }

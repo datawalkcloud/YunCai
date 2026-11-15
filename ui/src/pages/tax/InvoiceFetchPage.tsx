@@ -10,10 +10,11 @@
  * 未登录时点击会先弹登录提示。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Alert, App, Button, Card, Modal, Table, Tooltip, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import { QuestionCircleOutlined, ReloadOutlined } from "@ant-design/icons";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import type { InvoiceDto } from "@/apis-gen";
 import { InvoicesApi } from "@/apis-gen";
@@ -25,6 +26,7 @@ import { AMOUNT_COL } from "@/components/page/styles";
 import { cn } from "@/lib/utils";
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
 import { useTaxPeriod } from "./tax-period";
+import { setPath } from "@/accountSets/url-id";
 
 type TabKey = "sales" | "purchase" | "purchase-stats";
 
@@ -261,7 +263,7 @@ const belongsToPeriod = (invoice: InvoiceDto, period: AccountingPeriod) => {
 
 export function InvoiceFetchPage() {
     const period = useTaxPeriod();
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { token } = useAuth();
     const { message } = App.useApp();
@@ -637,7 +639,7 @@ export function InvoiceFetchPage() {
                     <PortalState state={portalState} onVerify={() => setLoginOpen(true)} />
                     <div className="ml-auto flex flex-wrap items-center gap-2">
                         <Button
-                            onClick={() => navigate(`/${accountSetId}/invoices/${tab === "sales" ? "sales" : "purchase"}`)}
+                            onClick={() => navigate(setPath(accountSetId, `/invoices/${tab === "sales" ? "sales" : "purchase"}`))}
                         >
                             {tab === "sales" ? "记账销项" : "记账进项"}
                         </Button>
@@ -699,7 +701,7 @@ export function InvoiceFetchPage() {
                         </>
                     )}
                     快捷入口：
-                    <Typography.Link onClick={() => navigate(`/${accountSetId}/tax/login`)}>
+                    <Typography.Link onClick={() => navigate(setPath(accountSetId, "/tax/login"))}>
                         税务数字账户
                     </Typography.Link>
                 </p>

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
+import { useLocation, useNavigate } from "react-router";
 import { ChevronDownIcon, ChevronRightIcon, HomeIcon } from "@heroicons/react/24/solid";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { Drawer, Popover, Tooltip } from "antd";
@@ -16,6 +17,7 @@ import { isKeepAliveLocation, tabKeyOf } from "./route-tabs-context";
 import { RouteTabsProvider } from "./RouteTabsProvider";
 import { RouteTabs } from "./RouteTabs";
 import { AccountSetSwitcher, WorkspaceTopBar } from "./WorkspaceHeader";
+import { setPath } from "@/accountSets/url-id";
 
 /* ------------------------------------------------------------------ */
 /*  布局（停车平台风格）：顶栏 + 分组侧栏 + 页签条 + 内容区。              */
@@ -113,8 +115,8 @@ function useSidebarCollapsed() {
 function Sidebar({ className, collapsed }: { className?: string; collapsed: boolean }) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { accountSetId = "" } = useParams();
-    const base = `/${accountSetId}`;
+    const accountSetId = useCurrentAccountSetId() ?? "";
+    const base = setPath(accountSetId);
     const tabKey = tabKeyOf(location.pathname, accountSetId);
     const { groups: categoryGroups, home } = findCategoryOf(tabKey);
     const { has } = usePermissions();
@@ -179,8 +181,8 @@ function Sidebar({ className, collapsed }: { className?: string; collapsed: bool
 function MobileSidebar({ onNavigate }: { onNavigate: () => void }) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { accountSetId = "" } = useParams();
-    const base = `/${accountSetId}`;
+    const accountSetId = useCurrentAccountSetId() ?? "";
+    const base = setPath(accountSetId);
     const tabKey = tabKeyOf(location.pathname, accountSetId);
     const category = findCategoryOf(tabKey);
     const { has } = usePermissions();

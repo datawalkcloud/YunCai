@@ -5,16 +5,16 @@ import {
     DEFAULT_TAX_LOGIN_TYPE,
 } from "@/lib/tax-regions"
 
-/** 会计准则枚举值（与后端 AccountingStandard 对应）；目前只支持企业准则与小企业准则。 */
+/**
+ * 会计准则枚举值（与后端 AccountingStandard 对应）。每种准则在 preset_accounts 里各有一套默认科目表，
+ * 建账时按所选准则预置；报表版式目前只有「小企业会计准则 / 其余按企业口径」两套分支。
+ */
 export const STANDARDS: { value: number; label: string }[] = [
     { value: 1, label: "企业会计准则" },
+    { value: 4, label: "新会计准则（2006年颁）" },
     { value: 2, label: "小企业会计准则" },
+    { value: 3, label: "民间非营利组织会计制度" },
 ]
-
-/** 历史账套可能仍存有旧枚举值，仅用于显示，不再作为可选项。 */
-const LEGACY_STANDARD_LABELS: Record<number, string> = {
-    3: "民间非营利组织会计制度",
-}
 
 /** 纳税人性质枚举值（与后端 TaxpayerType 对应）及其显示名。 */
 export const TAXPAYERS: { value: number; label: string }[] = [
@@ -47,13 +47,9 @@ export const BALANCE_ASSIST_SCOPES: { value: number; label: string }[] = [
     { value: 2, label: "所有辅助核算余额参与计算" },
 ]
 
-/** 枚举值 → 显示名，列表卡片与表单共用一份。 */
+/** 枚举值 → 显示名，列表卡片与表单共用一份。历史账套的准则已全部下架，读不到就显示占位。 */
 export function standardLabel(value?: number): string {
-    return (
-        STANDARDS.find((s) => s.value === value)?.label ??
-        (value != null ? LEGACY_STANDARD_LABELS[value] : undefined) ??
-        "—"
-    )
+    return STANDARDS.find((s) => s.value === value)?.label ?? "—"
 }
 
 export function taxpayerLabel(value?: number): string {
@@ -71,6 +67,23 @@ export const DEFAULT_IIT_LOGIN_TYPE = IIT_LOGIN_TYPES[0]
 
 /** 科目编码方案格式：每级 1-2 位数字、以 "-" 分隔，最多 10 级。 */
 export const CODING_SCHEME_PATTERN = /^\d{1,2}(-\d{1,2}){0,9}$/
+
+/**
+ * 各准则预置科目表的编码位数：企业沿用 2001 版体系到 9 位（4-3-2），其余三套到 8 位（4-2-2）。
+ * 编码方案的级位数决定后续手工增设下级科目的位数，必须和默认科目表对齐，
+ * 否则二级科目会要求 7 位编码（如 1001000），与预置的 6 位（100101）冲突。
+ */
+const CODING_SCHEME_BY_STANDARD: Record<number, string> = {
+    1: "4-3-2-2",
+    2: "4-2-2-2",
+    3: "4-2-2-2",
+    4: "4-2-2-2",
+}
+
+/** 准则对应的默认编码方案；没有预置科目表的准则按 4-2-2-2 兜底。 */
+export function defaultCodingScheme(standard: number): string {
+    return CODING_SCHEME_BY_STANDARD[standard] ?? "4-2-2-2"
+}
 
 /** 账套表单字段，覆盖「基本信息 / 功能参数 / 税务信息」三页。 */
 export interface AccountSetForm {
@@ -125,7 +138,7 @@ export function emptyForm(): AccountSetForm {
         standard: STANDARDS[0].value,
         currency: "人民币",
         taxpayer: TAXPAYERS[1].value,
-        codingScheme: "4-3-2-2",
+        codingScheme: defaultCodingScheme(STANDARDS[0].value),
         assetsEnabled: true,
         fundsEnabled: true,
         balanceAssistScope: BALANCE_ASSIST_SCOPES[1].value,
@@ -148,7 +161,7 @@ export function formFromDto(set: AccountSetDto): AccountSetForm {
         currency: set.baseCurrency ?? "人民币",
         taxpayer: set.taxpayerType ?? TAXPAYERS[1].value,
         startPeriod: set.startPeriod ? parseDate(set.startPeriod) : undefined,
-        codingScheme: set.accountCodingScheme ?? "4-3-2-2",
+        codingScheme: set.accountCodingScheme ?? defaultCodingScheme(set.standard ?? STANDARDS[0].value),
         industry: set.industry ?? undefined,
         assetsEnabled: set.assetsModuleEnabled ?? true,
         fundsEnabled: set.fundsModuleEnabled ?? true,

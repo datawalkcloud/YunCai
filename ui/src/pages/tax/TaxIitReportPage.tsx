@@ -7,16 +7,18 @@
  * 因此这些列保留税局表头、内容留空；正式申报同样引导到「一键登录税局」。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, App, Button, Dropdown, Input, Modal, Radio, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { DownOutlined, FilterFilled, QuestionCircleOutlined } from "@ant-design/icons";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
 import { downloadCsv } from "@/lib/tax-csv";
 import { formatAmount } from "@/lib/tax-format";
 import { fetchIitReport, type TaxIitReportRow } from "@/lib/tax-portal";
+import { setPath } from "@/accountSets/url-id";
 
 /** 金额列宽度；未接入的列只占位，等税局取数后填充。 */
 const LEAF_WIDTH = 112;
@@ -112,7 +114,6 @@ const LEAVES: Leaf[] = AMOUNT_COLUMNS.flatMap((spec) => (isGroup(spec) ? spec.ch
 /** 横向滚动宽度：左侧固定三列 + 全部金额列。 */
 const TABLE_WIDTH = 372 + LEAVES.reduce((sum, leaf) => sum + (leaf.width ?? LEAF_WIDTH), 0);
 
-
 const cellText = (row: TaxIitReportRow, leaf: Leaf): string => {
     if (!leaf.field) return "";
     const value = row[leaf.field];
@@ -132,7 +133,7 @@ const SUMMARY_NOTES = [
 
 export function TaxIitReportPage() {
     const period = useTaxPeriod();
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { token } = useAuth();
     const { message, modal } = App.useApp();
@@ -151,8 +152,8 @@ export function TaxIitReportPage() {
     const [source, setSource] = useState("salary");
     const [notesOpen, setNotesOpen] = useState(false);
 
-    const toTaxLogin = () => navigate(`/${accountSetId}/tax/login`);
-    const toSalaryBills = () => navigate(`/${accountSetId}/salary/manage`);
+    const toTaxLogin = () => navigate(setPath(accountSetId, "/tax/login"));
+    const toSalaryBills = () => navigate(setPath(accountSetId, "/salary/manage"));
 
     const reload = useCallback(async () => {
         if (!accountSetId) {

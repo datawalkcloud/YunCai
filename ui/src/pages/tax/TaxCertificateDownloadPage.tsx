@@ -6,6 +6,7 @@
  * 成功后自动重取。证明原文的下载仍在电子税务局办理，「下载」只做勾选校验。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import type { Key } from "react";
 import { Card, App, Button, DatePicker, InputNumber, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
@@ -18,12 +19,13 @@ import {
     StepForwardOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxCertificates, type TaxCertificateRow } from "@/lib/tax-portal";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
+import { setPath } from "@/accountSets/url-id";
 
 type CertificateRow = TaxCertificateRow;
 
@@ -47,7 +49,7 @@ const columns: TableColumnsType<CertificateRow> = [
 ];
 
 export function TaxCertificateDownloadPage() {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { message } = App.useApp();
     const { token } = useAuth();
@@ -181,7 +183,7 @@ export function TaxCertificateDownloadPage() {
                                 <div>{hint ?? "您所选的期间内查无数据。"}</div>
                                 <div>
                                     如需开具完税证明，请前往{" "}
-                                    <Button type="link" onClick={() => navigate(`/${accountSetId}/tax/certificate`)}>
+                                    <Button type="link" onClick={() => navigate(setPath(accountSetId, "/tax/certificate"))}>
                                         开具完税证明
                                     </Button>{" "}
                                     。

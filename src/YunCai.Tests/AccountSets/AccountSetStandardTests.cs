@@ -4,7 +4,8 @@ using Xunit;
 namespace YunCai.Tests.AccountSets;
 
 /// <summary>
-/// 会计准则只支持企业准则与小企业准则；已建账套只能从小企业准则单向升级为企业准则。
+/// 可建账的会计准则：企业、小企业、民非、新会计准则（2006年颁）各有一套预置科目表；
+/// 已建账套只能从小企业准则单向升级为企业准则，其余切换要重新建账。
 /// </summary>
 public static class AccountSetStandardTests
 {
@@ -18,12 +19,23 @@ public static class AccountSetStandardTests
             2026,
             1);
 
+    [Theory]
+    [InlineData(AccountingStandard.Enterprise)]
+    [InlineData(AccountingStandard.SmallBusiness)]
+    [InlineData(AccountingStandard.NonProfit)]
+    [InlineData(AccountingStandard.NewEnterprise2006)]
+    public static void Create_accepts_standard_with_preset_chart(AccountingStandard standard)
+    {
+        Assert.Equal(standard, Create(standard).Standard);
+    }
+
     [Fact]
     public static void Create_rejects_unsupported_standard()
     {
-        var ex = Assert.Throws<ArgumentException>(() => Create(AccountingStandard.NonProfit));
+        // 没有预置科目表的准则取值（脏数据或将来新增却忘了配表）不得建账。
+        var ex = Assert.Throws<ArgumentException>(() => Create((AccountingStandard)99));
 
-        Assert.Contains("企业会计准则与小企业会计准则", ex.Message);
+        Assert.Contains("会计准则取值无效", ex.Message);
     }
 
     [Fact]
@@ -46,5 +58,20 @@ public static class AccountSetStandardTests
 
         Assert.Contains("不能切换", ex.Message);
         Assert.Equal(AccountingStandard.Enterprise, set.Standard);
+    }
+
+    [Theory]
+    [InlineData(AccountingStandard.NonProfit, AccountingStandard.Enterprise)]
+    [InlineData(AccountingStandard.NewEnterprise2006, AccountingStandard.Enterprise)]
+    [InlineData(AccountingStandard.Enterprise, AccountingStandard.NewEnterprise2006)]
+    public static void Only_small_business_upgrade_is_allowed(AccountingStandard from, AccountingStandard to)
+    {
+        var set = Create(from);
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            set.UpdateProfile("测试账套有限公司", to, TaxpayerType.General, "人民币"));
+
+        Assert.Contains("重新建账", ex.Message);
+        Assert.Equal(from, set.Standard);
     }
 }

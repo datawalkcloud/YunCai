@@ -9,6 +9,7 @@ import DashboardLayout from "@/components/layout/dashboard/DashboardLayout";
 import { ContentErrorElement, ErrorBoundary, RouteErrorElement } from "@/components/error/ErrorBoundary";
 import { useAuth } from "@/auth/AuthContext";
 import { AccountSetsProvider, useAccountSets } from "@/accountSets/AccountSetsContext";
+import { setPath } from "@/accountSets/url-id";
 
 // 首屏关键路径保持静态引入：官网首页、登录页、账套外壳布局。
 // 账套下的业务页面按功能域拆成动态 chunk（见 ./groups/*），同域页面落进同一个 chunk，
@@ -70,7 +71,7 @@ function RedirectIfAuthed({ children }: { children: ReactNode }) {
  */
 function DefaultAccountSetRedirect() {
     const { loading, defaultId, error } = useAccountSets();
-    useRedirect(!loading && !error && defaultId ? `/${defaultId}` : null);
+    useRedirect(!loading && !error && defaultId ? setPath(defaultId) : null);
 
     if (loading) return <AppLoading />;
     if (error) {

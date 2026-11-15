@@ -7,10 +7,11 @@
  * （查询统计 → 申报记录查询），本地只负责推算有没有填过；正式报送仍在税局侧。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, App, Button, Modal, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { BookOutlined } from "@ant-design/icons";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
@@ -20,6 +21,7 @@ import { fetchIitFilings, type TaxIitFilingRow } from "@/lib/tax-iit";
 import { fetchIitReport } from "@/lib/tax-portal";
 
 import { IitLoginModal } from "./IitLoginModal";
+import { setPath } from "@/accountSets/url-id";
 
 /** 个税扣缴端在电子税务局里的申报表名称。 */
 const FORM_NAME = "综合所得预扣预缴申报表-正常工资薪金所得";
@@ -109,7 +111,7 @@ function parseCount(value: string): number | null {
 
 export function TaxIitDeclarePage() {
     const period = useTaxPeriod();
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { token } = useAuth();
     const { message, modal } = App.useApp();
@@ -209,7 +211,7 @@ export function TaxIitDeclarePage() {
         void refreshFilings();
     }, [refreshFilings]);
 
-    const toTaxLogin = () => navigate(`/${accountSetId}/tax/login`);
+    const toTaxLogin = () => navigate(setPath(accountSetId, "/tax/login"));
 
     const row = useMemo<DeclareRow>(() => {
         const declared = filing !== null;
@@ -299,7 +301,7 @@ export function TaxIitDeclarePage() {
             key: "action",
             width: 90,
             render: () => (
-                <Button type="link" size="small" onClick={() => navigate(`/${accountSetId}/tax/iit/report`)}>
+                <Button type="link" size="small" onClick={() => navigate(setPath(accountSetId, "/tax/iit/report"))}>
                     填写
                 </Button>
             ),

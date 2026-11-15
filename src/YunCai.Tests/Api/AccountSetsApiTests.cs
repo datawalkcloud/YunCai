@@ -82,9 +82,9 @@ public sealed class AccountSetsApiTests : IDisposable
     {
         var response = await _h.Client.PostAsJsonAsync("/AccountSets", new
         {
-            name = "民非账套",
-            companyName = "民非账套有限公司",
-            standard = (int)AccountingStandard.NonProfit,
+            name = "无清单准则账套",
+            companyName = "无清单准则账套有限公司",
+            standard = 99,
             taxpayerType = (int)TaxpayerType.General,
             baseCurrency = "人民币",
             startYear = 2026,
@@ -93,11 +93,35 @@ public sealed class AccountSetsApiTests : IDisposable
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("企业会计准则与小企业会计准则", await response.Content.ReadAsStringAsync());
+        Assert.Contains("会计准则取值无效", await response.Content.ReadAsStringAsync());
 
         // 被拒的账套不得半落库。
         using var db = _h.NewContext();
-        Assert.False(db.AccountSets.Any(s => s.Name == "民非账套"));
+        Assert.False(db.AccountSets.Any(s => s.Name == "无清单准则账套"));
+    }
+
+    [Theory]
+    [InlineData(AccountingStandard.NewEnterprise2006, 273)]
+    [InlineData(AccountingStandard.NonProfit, 84)]
+    public async Task Create_WithPreset_SeedsChartOfThatStandard(AccountingStandard standard, int expected)
+    {
+        // 建账预置只认请求里的 preset，不再按准则设卡：每种准则各灌各自的默认科目表。
+        var response = await _h.Client.PostAsJsonAsync("/AccountSets", new
+        {
+            name = $"{standard}账套",
+            companyName = $"{standard}账套有限公司",
+            standard = (int)standard,
+            taxpayerType = (int)TaxpayerType.General,
+            baseCurrency = "人民币",
+            startYear = 2026,
+            startMonth = 1,
+            preset = true,
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var created = await response.Content.ReadFromJsonAsync<AccountSetModel>();
+        using var db = _h.NewContext();
+        Assert.Equal(expected, db.Accounts.Count(a => a.AccountSetId == created!.Id));
     }
 
     [Fact]

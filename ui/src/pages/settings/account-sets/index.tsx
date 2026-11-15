@@ -15,6 +15,7 @@ import { useNavigate } from "react-router"
 
 import { useAuth } from "@/auth/AuthContext"
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { setPath } from "@/accountSets/url-id"
 import { AccountSetsApi, type AccountSetDto } from "@/apis-gen"
 import { apiConfig, apiConfigWithHeaders, apiErrorMessage } from "@/lib/api-client"
 import { useConfirm } from "@/hooks/useConfirm"
@@ -32,6 +33,7 @@ import {
 } from "./account-set-form"
 import {
     FORM_TABS,
+    defaultCodingScheme,
     emptyForm,
     formFromDto,
     standardLabel,
@@ -108,6 +110,10 @@ export default function AccountSetsPage() {
     /** 改单个字段，对应原控件的 onChange；已有错误时即时重算。 */
     function setFormValue<K extends keyof AccountSetForm>(key: K, value: AccountSetForm[K]) {
         const next: AccountSetForm = { ...formValues, [key]: value }
+        // 新建态换准则时，没手动改过的编码方案跟着默认科目表的位数走（企业九位、其余八位）。
+        if (key === "standard" && !editing && formValues.codingScheme === defaultCodingScheme(formValues.standard)) {
+            next.codingScheme = defaultCodingScheme(value as number)
+        }
         setFormValues(next)
         if (Object.keys(formErrors).length > 0) setFormErrors(validateAccountSet(next, !!editing))
     }
@@ -156,7 +162,7 @@ export default function AccountSetsPage() {
             refreshAccountSets()
             if (currentAccountSetId === set.id) {
                 const next = sets.find((s) => s.id !== set.id)
-                navigate(next?.id ? `/${next.id}/settings/account-sets` : "/app", { replace: true })
+                navigate(next?.id ? setPath(next.id, "/settings/account-sets") : "/app", { replace: true })
             }
         } catch (err) {
             message.error(await apiErrorMessage(err, "删除账套失败，请重试。"))

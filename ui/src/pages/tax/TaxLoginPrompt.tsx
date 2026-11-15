@@ -12,6 +12,7 @@ import { Alert, App, Button, Input, Modal, Space, Spin } from "antd";
 import { useNavigate } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
+import { setPath } from "@/accountSets/url-id";
 import {
     getTaxPortalLoginStatus,
     startTaxPortalLogin,
@@ -315,7 +316,7 @@ export function TaxLoginPrompt({ open, accountSetId, reason, onClose, onSuccess 
                     </span>
                     <Space>
                         {phase === "failed" && (
-                            <Button onClick={() => navigate(`/${accountSetId}/tax/login`)}>维护税局资料</Button>
+                            <Button onClick={() => navigate(setPath(accountSetId, "/tax/login"))}>维护税局资料</Button>
                         )}
                         {phase === "idle" ? (
                             <Button

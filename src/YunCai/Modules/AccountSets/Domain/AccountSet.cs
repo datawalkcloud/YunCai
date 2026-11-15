@@ -197,9 +197,11 @@ namespace YunCai.Modules.AccountSets.Domain
             string? industry = null)
         {
             Guard(name, companyName, baseCurrency, startYear, startMonth);
-            if (standard is not (AccountingStandard.Enterprise or AccountingStandard.SmallBusiness))
+            // 四种准则都可建账，各自的默认科目表在 preset_accounts 里按准则预置。
+            if (standard is not (AccountingStandard.Enterprise or AccountingStandard.SmallBusiness
+                    or AccountingStandard.NonProfit or AccountingStandard.NewEnterprise2006))
             {
-                throw new ArgumentException("目前仅支持企业会计准则与小企业会计准则。");
+                throw new ArgumentException("会计准则取值无效，请重新选择。");
             }
 
             GuardCodingScheme(accountCodingScheme);
@@ -260,7 +262,8 @@ namespace YunCai.Modules.AccountSets.Domain
         }
 
         /// <summary>
-        /// 会计准则只支持企业会计准则与小企业会计准则；已建账套只允许从小企业升级为企业，不能反向切换。
+        /// 已建账套只允许从小企业会计准则升级为企业会计准则；换准则等于换整套科目编码与报表版式，
+        /// 其余切换（含新会计准则 2006、民非制度）需要重新建账，不做原地改写。
         /// </summary>
         private void ValidateStandardChange(AccountingStandard standard)
         {
@@ -269,19 +272,14 @@ namespace YunCai.Modules.AccountSets.Domain
                 return;
             }
 
-            if (standard is not (AccountingStandard.Enterprise or AccountingStandard.SmallBusiness))
-            {
-                throw new ArgumentException("目前仅支持企业会计准则与小企业会计准则。");
-            }
-
-            if (Standard == AccountingStandard.Enterprise)
+            if (Standard == AccountingStandard.Enterprise && standard == AccountingStandard.SmallBusiness)
             {
                 throw new ArgumentException("企业会计准则账套不能切换为小企业会计准则。");
             }
 
             if (Standard != AccountingStandard.SmallBusiness || standard != AccountingStandard.Enterprise)
             {
-                throw new ArgumentException("目前只支持从小企业会计准则升级为企业会计准则。");
+                throw new ArgumentException("更换会计准则请重新建账，目前只支持从小企业会计准则升级为企业会计准则。");
             }
         }
 

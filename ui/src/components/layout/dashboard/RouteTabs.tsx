@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
+import { useNavigate } from "react-router";
 import { CheckOutlined, DownOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Dropdown } from "antd";
 
@@ -7,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ICON_STYLE } from "@/components/page/styles";
 import { findCategoryOf, ROUTE_TITLES } from "./menu-model";
 import { KEEP_ALIVE_STATE, useRouteTabs } from "./route-tabs-context";
+import { setPath } from "@/accountSets/url-id";
 
 /**
  * 顶部页签条（Route Tabs）：记账分类的首页常驻，进过的页面自动登记，可逐个关闭，溢出时可横向滚动或用「全部页签」下拉。
@@ -15,7 +17,7 @@ import { KEEP_ALIVE_STATE, useRouteTabs } from "./route-tabs-context";
  * leading 是页签左侧的工具位（如侧栏收起按钮），不参与横向滚动。
  */
 export function RouteTabs({ leading }: { leading?: ReactNode }) {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { tabs, activeKey, closeTab } = useRouteTabs();
     const category = findCategoryOf(activeKey);
@@ -39,7 +41,7 @@ export function RouteTabs({ leading }: { leading?: ReactNode }) {
     }, [activeKey, tabs.length]);
 
     const go = (key: string) =>
-        navigate(key ? `/${accountSetId}/${key}` : `/${accountSetId}`, { state: KEEP_ALIVE_STATE });
+        navigate(key ? setPath(accountSetId, `/${key}`) : setPath(accountSetId), { state: KEEP_ALIVE_STATE });
 
     function scrollBy(delta: number) {
         listRef.current?.scrollBy({ left: delta, behavior: "smooth" });

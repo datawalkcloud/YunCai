@@ -7,6 +7,7 @@
  * 成功后自动重新取数。真实申报仍需到电子税务局办理。
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, App, Button, Select, Table, Tag } from "antd";
 import type { TableColumnsType } from "antd";
 import {
@@ -17,7 +18,7 @@ import {
     LoginOutlined,
     ProfileOutlined,
 } from "@ant-design/icons";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
@@ -25,6 +26,7 @@ import { fetchTaxDeclarations, type TaxDeclarationRow } from "@/lib/tax-portal";
 import { deadlineFor, filingDeadline, formatDate, formatAmount, pad } from "@/lib/tax-format";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
+import { setPath } from "@/accountSets/url-id";
 
 interface DeclareRow extends TaxDeclarationRow {
     /** 申报期限：所属期止次月 15 日，遇周末顺延到下一个工作日 */
@@ -107,7 +109,7 @@ const columns: TableColumnsType<DeclareRow> = [
 
 export function TaxDeclarePage() {
     const period = useTaxPeriod();
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { message } = App.useApp();
     const { token } = useAuth();
@@ -161,7 +163,7 @@ export function TaxDeclarePage() {
         void refresh({ silent: true });
     }, [refresh]);
 
-    const toTaxLogin = () => navigate(`/${accountSetId}/tax/login`);
+    const toTaxLogin = () => navigate(setPath(accountSetId, "/tax/login"));
 
     const deadline = filingDeadline(period.year, period.month);
     const deadlineText = formatDate(deadline);
@@ -202,7 +204,7 @@ export function TaxDeclarePage() {
                             2、如需增加或删除【税种申报】下的税种信息，可在{" "}
                             <Button
                                 type="link"
-                                onClick={() => navigate(`/${accountSetId}/tax/kinds`)}
+                                onClick={() => navigate(setPath(accountSetId, "/tax/kinds"))}
                             >
                                 【税费种管理】
                             </Button>{" "}

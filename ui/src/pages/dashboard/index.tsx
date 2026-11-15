@@ -38,6 +38,7 @@ import {
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import type { FinancialSummaryDto, VoucherListItemDto } from "@/apis-gen"
+import { setPath } from "@/accountSets/url-id"
 import {
     buildCashTrend,
     countByStatus,
@@ -125,7 +126,7 @@ function HeroBanner({
     const accountSet = useCurrentAccountSet()
     const { user } = useAuth()
     const companyName = accountSet?.companyName || accountSet?.name || "当前账套"
-    const base = `/${accountSetId}`
+    const base = setPath(accountSetId)
 
     const carriedDone = !!closing?.carriedPeriod && closing.carriedPeriod >= period.label
     const closedDone = !!closing?.closedPeriod && closing.closedPeriod >= period.label
@@ -487,7 +488,7 @@ function TodoCard({
 }) {
     const navigate = useNavigate()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const base = `/${accountSetId}`
+    const base = setPath(accountSetId)
     const carried = closing?.carriedPeriod
     const closed = closing?.closedPeriod
     const carriedDone = !!carried && carried >= period.label
@@ -605,7 +606,7 @@ function RecentVouchersCard({
 }) {
     const navigate = useNavigate()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const base = `/${accountSetId}`
+    const base = setPath(accountSetId)
     const rows = useMemo(() => latestVouchers(vouchers, 8), [vouchers])
 
     return (
@@ -688,7 +689,7 @@ const QUICK_LINKS = [
 function QuickLinksCard({ className }: { className?: string }) {
     const navigate = useNavigate()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const base = `/${accountSetId}`
+    const base = setPath(accountSetId)
 
     return (
         <section className={CARD + " p-4 " + (className ?? "")}>
@@ -718,7 +719,7 @@ function QuickLinksCard({ className }: { className?: string }) {
 function BalanceCard({ summary, className }: { summary: FinancialSummaryDto | null; className?: string }) {
     const navigate = useNavigate()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const base = `/${accountSetId}`
+    const base = setPath(accountSetId)
 
     const rows = [
         { label: "应收款", value: findRow(summary, "应收款")?.currentAmount ?? null, unit: "万元", to: "ledger/ageing" },
@@ -773,7 +774,7 @@ function BalanceCard({ summary, className }: { summary: FinancialSummaryDto | nu
 function OnboardingStrip() {
     const navigate = useNavigate()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const base = `/${accountSetId}`
+    const base = setPath(accountSetId)
 
     return (
         <section className="flex flex-wrap items-center gap-3 rounded-md border border-(--pk-brand-border) bg-(--pk-brand-soft) px-4 py-3 text-[12.5px] text-(--pk-text)">
@@ -890,7 +891,7 @@ export default function DashboardHome() {
 
             {!hasData && <OnboardingStrip />}
 
-            <KpiRow summary={data.summary} onOpen={(to) => navigate(`/${accountSetId}/${to}`)} />
+            <KpiRow summary={data.summary} onOpen={(to) => navigate(setPath(accountSetId, `/${to}`))} />
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
                 <CashTrendCard points={trend} summary={data.summary} className="xl:col-span-8" />

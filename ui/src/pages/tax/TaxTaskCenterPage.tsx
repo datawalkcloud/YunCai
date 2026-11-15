@@ -7,6 +7,7 @@
  * 排查取数问题先看这一列。
  */
 import { useCallback, useEffect, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, Button, DatePicker, Table } from "antd";
 import {
     CheckCircleFilled,
@@ -17,7 +18,6 @@ import {
 } from "@ant-design/icons";
 import type { TableColumnsType } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
-import { useParams } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { EMPTY_CELL } from "@/lib/tax-format";
@@ -82,7 +82,7 @@ const columns: TableColumnsType<TaxTaskRow> = [
 ];
 
 export function TaxTaskCenterPage() {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const { token } = useAuth();
     const [range, setRange] = useState<[Dayjs, Dayjs]>(() => [dayjs().subtract(DEFAULT_DAYS - 1, "day"), dayjs()]);
     const [rows, setRows] = useState<TaxTaskRow[]>([]);

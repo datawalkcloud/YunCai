@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useNavigation, useParams } from "react-router";
+import { useLocation, useNavigate, useNavigation } from "react-router";
 import {
     CheckOutlined,
     DownOutlined,
@@ -17,7 +17,7 @@ import { App, DatePicker, Dropdown, Tooltip } from "antd";
 import dayjs from "dayjs";
 
 import { useAuth } from "@/auth/AuthContext";
-import { useAccountSets } from "@/accountSets/AccountSetsContext";
+import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { usePermissions } from "@/accountSets/PermissionsContext";
 import { makePeriod, useDefaultAccountingPeriod } from "@/accountSets/useCurrentAccountSet";
 import { AccountSetsApi } from "@/apis-gen";
@@ -30,6 +30,7 @@ import { CompanyInfoModal } from "@/pages/tax/CompanyInfoModal";
 import { setTaxPeriod, useTaxPeriod } from "@/pages/tax/tax-period";
 import { filterGroupsByPermission, menuCategories, findCategoryOf } from "./menu-model";
 import { tabKeyOf } from "./route-tabs-context";
+import { setPath } from "@/accountSets/url-id";
 
 /* ------------------------------------------------------------------ */
 /*  工作区顶栏（停车平台风格）：品牌 + 记账/报税分类 + 期间 + 主题 + 用户。 */
@@ -44,7 +45,7 @@ export function WorkspaceTopBar({
 }) {
     // 路由模块还在加载时导航不会提交，旧页面继续留在屏上；这一条细光带就是加载反馈。
     const loading = useNavigation().state === "loading";
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const location = useLocation();
     const tabKey = tabKeyOf(location.pathname, accountSetId);
@@ -82,7 +83,7 @@ export function WorkspaceTopBar({
                 </button>
                 <button
                     type="button"
-                    onClick={() => navigate(`/${accountSetId}`)}
+                    onClick={() => navigate(setPath(accountSetId))}
                     className="flex shrink-0 cursor-pointer items-center gap-2.5"
                 >
                     <Logo />
@@ -103,7 +104,7 @@ export function WorkspaceTopBar({
                                 key={item.label}
                                 type="button"
                                 ref={(el) => void itemRefs.current.set(item.label, el)}
-                                onClick={() => navigate(item.to ? `/${accountSetId}/${item.to}` : `/${accountSetId}`)}
+                                onClick={() => navigate(item.to ? setPath(accountSetId, `/${item.to}`) : setPath(accountSetId))}
                                 className={
                                     "flex cursor-pointer items-center gap-1.5 px-4 text-[14px] whitespace-nowrap transition-colors " +
                                     (active
@@ -170,7 +171,7 @@ function PeriodLabel() {
  */
 function TaxPeriodPicker() {
     const period = useTaxPeriod();
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const { accountSets } = useAccountSets();
     const [detailOpen, setDetailOpen] = useState(false);
 
@@ -219,7 +220,7 @@ function TaxPeriodPicker() {
 function UserMenu() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const [pwdOpen, setPwdOpen] = useState(false);
     const name = user?.displayName || user?.username || "";
 
@@ -241,7 +242,7 @@ function UserMenu() {
                       key: "users",
                       icon: <TeamOutlined />,
                       label: "用户管理",
-                      onClick: () => navigate(`/${accountSetId}/settings/users`),
+                      onClick: () => navigate(setPath(accountSetId, "/settings/users")),
                   },
               ]
             : []),
@@ -278,7 +279,7 @@ function UserMenu() {
  * collapsed 为侧栏图标栏形态，只留一个账套图标。
  */
 export function AccountSetSwitcher({ collapsed = false }: { collapsed?: boolean }) {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const location = useLocation();
     const navigate = useNavigate();
     const { token } = useAuth();
@@ -301,9 +302,9 @@ export function AccountSetSwitcher({ collapsed = false }: { collapsed?: boolean 
         } finally {
             setBusy(false);
         }
-        const base = `/${accountSetId}`;
+        const base = setPath(accountSetId);
         const rest = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : "";
-        navigate(`/${id}${rest}`);
+        navigate(setPath(id, rest));
     }
 
     const switcher = (

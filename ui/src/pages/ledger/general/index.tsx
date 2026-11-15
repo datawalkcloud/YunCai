@@ -2,7 +2,7 @@ import { DownOutlined, RightOutlined } from "@ant-design/icons"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "antd"
 import type { TableColumnsType } from "antd"
-import { useNavigate, useParams } from "react-router"
+import { useNavigate } from "react-router"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
@@ -17,6 +17,7 @@ import { LedgerPrintButton, LedgerExportButton } from "@/components/ledger/Ledge
 import { useAccounts } from "@/components/ledger/useLedgerOptions"
 import { asDate, type LedgerConditions } from "@/components/ledger/types"
 import { useLedgerQuery } from "@/components/ledger/useLedgerQuery"
+import { setPath } from "@/accountSets/url-id"
 
 /** 总账表格的一行：科目分组头，或组内的期初 / 本期合计 / 本年累计。 */
 type Line =
@@ -124,7 +125,7 @@ function fetchGeneral(token: string | null | undefined, id: string, conditions: 
 export default function GeneralLedgerPage() {
     const { token } = useAuth()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const { accountSetId: routeId } = useParams<{ accountSetId: string }>()
+    const routeId = useCurrentAccountSetId() ?? ""
     const navigate = useNavigate()
     const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
 
@@ -227,7 +228,7 @@ export default function GeneralLedgerPage() {
         params.set("account", code)
         if (query.meta?.startDate) params.set("startDate", query.meta.startDate)
         if (query.meta?.endDate) params.set("endDate", query.meta.endDate)
-        navigate(`/${routeId}/ledger/subsidiary?${params.toString()}`)
+        navigate(setPath(routeId, `/ledger/subsidiary?${params.toString()}`))
     }
 
     function toggleGroup(code: string) {

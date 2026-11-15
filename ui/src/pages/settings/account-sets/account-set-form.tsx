@@ -12,6 +12,7 @@ import {
 } from "@/lib/tax-regions"
 import {
     BALANCE_ASSIST_SCOPES,
+    defaultCodingScheme,
     INDUSTRIES,
     IIT_CHANNELS,
     IIT_LOGIN_TYPES,
@@ -109,7 +110,7 @@ export interface AccountSetFieldsProps {
     errors: AccountSetErrors
     /** 编辑态：启用年月锁定，凭证字可改。 */
     editing: boolean
-    /** 企业会计准则账套不可再切回小企业准则；小企业准则可单向升级。 */
+    /** 准则只在账套还是小企业会计准则时可改：其余准则改准则等于重新建账。 */
     standardLocked?: boolean
     onChange: <K extends keyof AccountSetForm>(key: K, value: AccountSetForm[K]) => void
 }
@@ -168,7 +169,7 @@ export function BasicInfoFields({ values, errors, editing, standardLocked, onCha
                         ? "会计准则已锁定：企业会计准则不能退回小企业会计准则。"
                         : editing
                           ? "小企业会计准则可升级为企业会计准则，升级后不可退回；切换后需重新核对科目与报表。"
-                          : "决定科目体系与报表格式。"
+                          : "决定建账预置的默认科目表与报表版式；企业会计准则沿用 2001 版九位编码，其余为八位。"
                 }
             >
                 <Select
@@ -227,7 +228,7 @@ export function BasicInfoFields({ values, errors, editing, standardLocked, onCha
                     className={FORM_CONTROL_W}
                     value={values.codingScheme}
                     onChange={(e) => onChange("codingScheme", e.target.value)}
-                    placeholder="4-3-2-2"
+                    placeholder={defaultCodingScheme(values.standard)}
                 />
             </Row>
 

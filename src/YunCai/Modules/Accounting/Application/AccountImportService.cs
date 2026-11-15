@@ -161,15 +161,26 @@ namespace YunCai.Modules.Accounting.Application
             return cum;
         }
 
+        /// <summary>
+        /// 解析类别原文。除本系统模板的五类写法（资产/负债/权益/成本/损益）外，
+        /// 还要认金蝶等软件的细分口径：流动资产、非流动资产、流动负债、非流动负债、
+        /// 所有者权益、成本、营业收入、营业成本及税金、期间费用、其他收益、其他损失、
+        /// 所得税、以前年度损益调整。利润表类词条一律先判，否则「营业成本及税金」会被当成成本类。
+        /// </summary>
+        private static readonly string[] ProfitAndLossKeywords =
+        [
+            "损益", "收入", "收益", "费用", "支出", "税金", "所得税", "损失", "利得",
+        ];
+
         private static AccountCategory? ParseCategory(string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return null;
             var t = text.Trim();
-            if (t.StartsWith("资产", StringComparison.Ordinal)) return AccountCategory.Asset;
-            if (t.StartsWith("负债", StringComparison.Ordinal)) return AccountCategory.Liability;
-            if (t.StartsWith("权益", StringComparison.Ordinal) || t.StartsWith("所有者权益", StringComparison.Ordinal)) return AccountCategory.Equity;
-            if (t.StartsWith("成本", StringComparison.Ordinal)) return AccountCategory.Cost;
-            if (t.StartsWith("损益", StringComparison.Ordinal) || t.StartsWith("损益类", StringComparison.Ordinal)) return AccountCategory.ProfitAndLoss;
+            if (ProfitAndLossKeywords.Any(keyword => t.Contains(keyword, StringComparison.Ordinal))) return AccountCategory.ProfitAndLoss;
+            if (t.Contains("资产", StringComparison.Ordinal)) return AccountCategory.Asset;
+            if (t.Contains("负债", StringComparison.Ordinal)) return AccountCategory.Liability;
+            if (t.Contains("权益", StringComparison.Ordinal)) return AccountCategory.Equity;
+            if (t.Contains("成本", StringComparison.Ordinal)) return AccountCategory.Cost;
             return null;
         }
 

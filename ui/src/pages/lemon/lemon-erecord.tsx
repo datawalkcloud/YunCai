@@ -43,6 +43,7 @@ import {
     ToolRow,
 } from "./components/ui";
 import { AccountsApi, ArchivesApi, VouchersApi, type AccountDto, type ArchiveCategoryDto, type ArchiveItemDto, type VoucherListItemDto } from "@/apis-gen";
+import { setPath } from "@/accountSets/url-id";
 
 /** 前端上传大小上限（8 MB）：整文件 Base64 会再膨胀约 1/3，后端单文件/额度均为 10 MB，留出余量。 */
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
@@ -1291,7 +1292,7 @@ export default function LemonERecord() {
             left={
                 <>
                     {filterPopover}
-                    <Btn variant="primary" onClick={() => navigate(`/${accountSetId}/vouchers/spb`)}>
+                    <Btn variant="primary" onClick={() => navigate(setPath(accountSetId, "/vouchers/spb"))}>
                         收票宝上传
                     </Btn>
                     <Btn dropdown disabled={busy} onClick={() => setUploadOpen(true)}>

@@ -7,10 +7,11 @@
  * 与「税费缴纳 › 缴款信息查询」（企业端数字账户 DescribeJkxxcx）不是同一份数据，不能互相替代。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, App, Button, DatePicker, Select, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
@@ -25,6 +26,7 @@ import {
 } from "@/lib/tax-iit";
 
 import { IitLoginModal } from "./IitLoginModal";
+import { setPath } from "@/accountSets/url-id";
 
 type TabKey = "declarations" | "payments";
 
@@ -42,7 +44,7 @@ const numberCell = (value: string) =>
 
 export function TaxIitStatsPage() {
     const period = useTaxPeriod();
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { token } = useAuth();
     const { message } = App.useApp();
@@ -74,7 +76,7 @@ export function TaxIitStatsPage() {
     const inFlight = useRef(false);
     const payInFlight = useRef(false);
 
-    const toTaxLogin = () => navigate(`/${accountSetId}/tax/login`);
+    const toTaxLogin = () => navigate(setPath(accountSetId, "/tax/login"));
 
     /**
      * 按所属期区间向个税系统取一次申报记录。

@@ -7,11 +7,13 @@ namespace YunCai.Modules.Accounting.Infrastructure
     /// <summary>
     /// 基于 NPOI 的科目导入读取器，解析「科目导入模板」首个工作表。
     /// NPOI 的 <see cref="WorkbookFactory"/> 可自动识别 .xls 与 .xlsx，兼容两种格式。
-    /// 通过表头名称定位列，对列顺序变化具备一定容错能力。
+    /// 通过表头名称定位列，对列顺序变化具备一定容错能力；外部账套软件（金蝶等）的表头用词
+    /// 与本系统模板不同，按 <see cref="ColumnAliases"/> 的别名对上即可，多余的列（辅助核算类别、
+    /// 是否现金科目、是否平行科目）忽略。
     /// </summary>
     public sealed class XlsxAccountImportReader : IAccountImportReader
     {
-        // 表头名称，与导出的模板列保持一致。
+        // 规范列名，与导出的模板列保持一致。
         private const string ColCode = "科目编码";
         private const string ColName = "科目名称";
         private const string ColCategory = "类别";
@@ -19,6 +21,18 @@ namespace YunCai.Modules.Accounting.Infrastructure
         private const string ColParentCode = "上级科目编码";
         private const string ColMnemonic = "助记码";
         private const string ColEnabled = "是否启用";
+
+        /// <summary>规范列名 → 可接受的表头写法，第一个即本系统模板的列名。</summary>
+        private static readonly (string Column, string[] Names)[] ColumnAliases =
+        [
+            (ColCode, [ColCode, "编码", "科目代码", "科目编号"]),
+            (ColName, [ColName, "名称", "科目全名"]),
+            (ColCategory, [ColCategory, "科目类别"]),
+            (ColDirection, [ColDirection, "方向", "借贷方向"]),
+            (ColParentCode, [ColParentCode, "上级编码", "父级科目编码"]),
+            (ColMnemonic, [ColMnemonic, "科目简码"]),
+            (ColEnabled, [ColEnabled, "状态"]),
+        ];
 
         public IReadOnlyList<ImportedAccountRow> Read(Stream stream)
         {
@@ -41,18 +55,35 @@ namespace YunCai.Modules.Accounting.Infrastructure
                 throw new AccountImportException("文件缺少表头行，请使用系统导出的科目导入模板。");
 
             // 以表头名称建立「列名 → 列索引」映射。
-            var columnIndex = new Dictionary<string, int>(StringComparer.Ordinal);
+            var headerNames = new Dictionary<string, int>(StringComparer.Ordinal);
             for (var c = headerRow.FirstCellNum; c < headerRow.LastCellNum; c++)
             {
                 var name = GetCellString(headerRow.GetCell(c));
-                if (!string.IsNullOrEmpty(name) && !columnIndex.ContainsKey(name))
-                    columnIndex[name] = c;
+                if (!string.IsNullOrEmpty(name) && !headerNames.ContainsKey(name))
+                    headerNames[name] = c;
+            }
+
+            // 规范列名解析成实际列位：本系统模板的列名优先，其次按别名匹配外部导出的写法。
+            var columnIndex = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var (column, names) in ColumnAliases)
+            {
+                foreach (var alias in names)
+                {
+                    if (headerNames.TryGetValue(alias, out var index))
+                    {
+                        columnIndex[column] = index;
+                        break;
+                    }
+                }
             }
 
             foreach (var required in new[] { ColCode, ColName })
             {
-                if (!columnIndex.ContainsKey(required))
-                    throw new AccountImportException($"表头缺少必要列「{required}」，请使用系统导出的科目导入模板。");
+                if (columnIndex.ContainsKey(required)) continue;
+
+                var aliases = ColumnAliases.First(c => c.Column == required).Names;
+                throw new AccountImportException(
+                    $"表头缺少「{required}」列（也接受 {string.Join("、", aliases.Skip(1))}），请使用本系统模板或金蝶等软件导出的科目表。");
             }
 
             var rows = new List<ImportedAccountRow>();

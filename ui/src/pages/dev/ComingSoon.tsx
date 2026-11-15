@@ -1,9 +1,11 @@
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { LeftOutlined, ToolOutlined } from "@ant-design/icons";
+import { setPath } from "@/accountSets/url-id";
 
 /** 未实现菜单的统一占位页：展示「开发中」。 */
 export default function ComingSoon() {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const [searchParams] = useSearchParams();
     const menu = searchParams.get("menu") || "该功能";
 
@@ -18,7 +20,7 @@ export default function ComingSoon() {
                     该模块正在紧锣密鼓地建设中，敬请期待后续版本更新。
                 </p>
                 <Link
-                    to={`/${accountSetId}`}
+                    to={setPath(accountSetId)}
                     className="mt-6 flex items-center gap-1.5 rounded-lg bg-(--brand-fill) px-4 py-2 text-[13px] font-medium text-white shadow-[0_1px_2px_rgba(39,60,243,0.25)] transition-colors hover:bg-(--brand-fill-hover)"
                 >
                     <LeftOutlined className="text-[16px]" />

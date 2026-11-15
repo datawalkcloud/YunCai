@@ -31,6 +31,9 @@ namespace YunCai.SharedKernel.Infrastructure.Data
 
         public DbSet<Account> Accounts { get; set; } = null!;
 
+        /// <summary>各会计准则的建账预置科目清单（参考数据，不挂账套）。</summary>
+        public DbSet<PresetAccount> PresetAccounts { get; set; } = null!;
+
         public DbSet<Journal> Journals { get; set; } = null!;
 
         public DbSet<EntryCategory> EntryCategories { get; set; } = null!;
@@ -293,6 +296,28 @@ namespace YunCai.SharedKernel.Infrastructure.Data
                 entity.Metadata
                       .FindNavigation(nameof(Account.AssistTypes))!
                       .SetPropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<PresetAccount>(entity =>
+            {
+                entity.ToTable("preset_accounts");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.Standard).HasColumnName("standard").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(32);
+                entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Category).HasColumnName("category").HasConversion<int>().IsRequired();
+                entity.Property(e => e.Direction).HasColumnName("direction").HasConversion<int>().IsRequired();
+                entity.Property(e => e.ParentCode).HasColumnName("parent_code").HasMaxLength(32);
+                entity.Property(e => e.OrderNo).HasColumnName("order_no").IsRequired();
+
+                // 同一准则内科目编码唯一；建树按 (standard, order_no) 顺序读，保证父级先于子级。
+                entity.HasIndex(e => new { e.Standard, e.Code }).IsUnique();
+                entity.HasIndex(e => new { e.Standard, e.OrderNo });
+
+                // 清单来源是 PresetChart（两套准则共 467 行），改清单要另生成一个迁移。
+                entity.HasData(PresetChart.SeedRows());
             });
 
             modelBuilder.Entity<Voucher>(entity =>

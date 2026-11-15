@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
-import { useNavigate, useParams } from "react-router"
+import { useNavigate } from "react-router"
 import { DownloadOutlined, PrinterOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Button, Table, Tooltip } from "antd"
 import type { TableColumnsType } from "antd"
@@ -16,6 +16,7 @@ import { ReportPeriodToolbar } from "@/components/report/ReportPeriodToolbar"
 import { ReportDrilldownDrawer } from "@/components/report/ReportDrilldownDrawer"
 import { downloadReportExport } from "@/components/report/report-export"
 import { AMOUNT_COL } from "@/components/page/styles"
+import { setPath } from "@/accountSets/url-id"
 
 type RowKind = "section" | "item" | "detail" | "total"
 
@@ -438,7 +439,7 @@ export default function BalanceSheetPage() {
     const { token } = useAuth()
     const { accountSets } = useAccountSets()
     const accountSetId = useCurrentAccountSetId() ?? ""
-    const routeAccountSetId = useParams<{ accountSetId: string }>().accountSetId
+    const routeAccountSetId = useCurrentAccountSetId()
     const navigate = useNavigate()
     const currentSet = accountSets.find((s) => s.id === accountSetId)
     const periodBounds = useAccountingPeriodBounds()
@@ -546,7 +547,7 @@ export default function BalanceSheetPage() {
                 endDate: `${period.year}-${mm}-${String(lastDay).padStart(2, "0")}`,
             })
             setDrill(null)
-            navigate(`/${routeAccountSetId}/ledger/subsidiary?${params.toString()}`)
+            navigate(setPath(routeAccountSetId, `/ledger/subsidiary?${params.toString()}`))
         },
         [routeAccountSetId, period, navigate],
     )

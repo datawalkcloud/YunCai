@@ -6,6 +6,7 @@
  * 税局取数尚未接入，配置先按账套保存在本地 localStorage，接入税务助手后改由后端账套设置持久化。
  */
 import { useEffect, useState, type ReactNode } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import {
     Card,
     App,
@@ -19,7 +20,6 @@ import {
 } from "antd";
 import type { TableColumnsType } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
-import { useParams } from "react-router";
 
 import { cn } from "@/lib/utils";
 import { FORM_CONTROL_W } from "@/components/page/styles";
@@ -124,7 +124,7 @@ function HintIcon({ title }: { title: string }) {
 }
 
 export function TaxSettingsPage() {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const { message } = App.useApp();
 
     const [settings, setSettings] = useState<SettingsState>(() => loadSettings(accountSetId));

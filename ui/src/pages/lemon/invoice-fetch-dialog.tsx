@@ -36,6 +36,7 @@ import { TAXPAYERS } from "@/pages/settings/account-sets/account-set-form-data";
 import { Btn, DateInput, Dialog, HintBox, Select, Table, TextInput, Toast } from "./components/ui";
 import type { Col } from "./components/ui";
 import { AgreementRow, FieldRow, StepBar, TaxLoginStepFields } from "./components/TaxLoginStep";
+import { setPath } from "@/accountSets/url-id";
 import {
     DEFAULT_TAX_LOGIN_VALUES,
     useTaxPortalLogin,
@@ -328,7 +329,7 @@ export function InvoiceFetchDialog({ onClose, onFetched }: { onClose: () => void
                                             </Btn>
                                         )}
                                         {syncState === "done" && (
-                                            <Btn variant="primary" onClick={() => { close(); navigate(`/${accountSetId}/invoices/fetch`); }}>
+                                            <Btn variant="primary" onClick={() => { close(); navigate(setPath(accountSetId, "/invoices/fetch")); }}>
                                                 去看看
                                             </Btn>
                                         )}
@@ -361,7 +362,7 @@ export function InvoiceFetchDialog({ onClose, onFetched }: { onClose: () => void
                                     className="cursor-pointer text-(--brand)"
                                     onClick={() => {
                                         close();
-                                        navigate(`/${accountSetId}/settings/account-sets`);
+                                        navigate(setPath(accountSetId, "/settings/account-sets"));
                                     }}
                                 >
                                     【设置-账套-税务信息】

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useLocation, useNavigate, useParams } from "react-router";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
+import { useLocation, useNavigate } from "react-router";
 
 import { findCategoryOf, ROUTE_TITLES } from "./menu-model";
+import { setPath } from "@/accountSets/url-id";
 import {
     KEEP_ALIVE_STATE,
     RouteTabsContext,
@@ -30,8 +32,8 @@ function loadTabs(): string[] {
  * 只存页签键（相对子路径），切换账套后同一批页面跟着落到新账套（旧账套的面板由 cachedPaths 汰换）。
  */
 export function RouteTabsProvider({ children }: { children: ReactNode }) {
-    const { accountSetId = "" } = useParams();
-    const base = `/${accountSetId}`;
+    const accountSetId = useCurrentAccountSetId() ?? "";
+    const base = setPath(accountSetId);
     const location = useLocation();
     const navigate = useNavigate();
     const [tabs, setTabs] = useState<string[]>(loadTabs);

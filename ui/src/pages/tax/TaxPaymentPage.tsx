@@ -5,6 +5,7 @@
  * 直连数字账户接口取回，登录态过期时弹窗补一次短信验证码，成功后自动重取。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, App, Button, DatePicker, InputNumber, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
@@ -18,12 +19,13 @@ import {
     VerticalRightOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxPayments, type TaxPaymentRow } from "@/lib/tax-portal";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
+import { setPath } from "@/accountSets/url-id";
 
 type PaymentRow = TaxPaymentRow;
 
@@ -33,7 +35,7 @@ const fmtMoney = (value: number) =>
 const PAGE_SIZES = [20, 50, 100];
 
 export function TaxPaymentPage() {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { message } = App.useApp();
     const { token } = useAuth();
@@ -299,7 +301,7 @@ export function TaxPaymentPage() {
                 快捷入口：
                 <Button
                     type="link"
-                    onClick={() => navigate(`/${accountSetId}/tax/login`)}
+                    onClick={() => navigate(setPath(accountSetId, "/tax/login"))}
                 >
                     缴款信息查询
                 </Button>

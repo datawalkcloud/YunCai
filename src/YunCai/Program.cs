@@ -123,6 +123,7 @@ else
 
 builder.Services.AddScoped<YunCai.Modules.AccountSets.Domain.IAccountSetRepository, YunCai.Modules.AccountSets.Infrastructure.AccountSetRepository>();
 builder.Services.AddScoped<YunCai.Modules.Accounting.Domain.IAccountRepository, YunCai.Modules.Accounting.Infrastructure.AccountRepository>();
+builder.Services.AddScoped<YunCai.Modules.Accounting.Domain.IPresetAccountRepository, YunCai.Modules.Accounting.Infrastructure.PresetAccountRepository>();
 builder.Services.AddScoped<YunCai.Modules.Assist.Domain.IAssistItemRepository, YunCai.Modules.Assist.Infrastructure.AssistItemRepository>();
 builder.Services.AddScoped<YunCai.Modules.Funds.Domain.IJournalRepository, YunCai.Modules.Funds.Infrastructure.JournalRepository>();
 builder.Services.AddScoped<YunCai.Modules.Funds.Domain.IEntryCategoryRepository, YunCai.Modules.Funds.Infrastructure.EntryCategoryRepository>();

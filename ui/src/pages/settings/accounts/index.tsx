@@ -1100,7 +1100,7 @@ export default function AccountsPage() {
                 styles={{ body: { display: "flex", flexDirection: "column", gap: 16 } }}
             >
                 <p className="text-[12.5px] text-(--muted-foreground)">
-                    支持从 Excel 文件批量导入会计科目。系统按编码查重，已存在的科目自动跳过并告警；未填写的助记码按科目名称自动生成拼音首字母。导入只新增科目，不会删除账套中已有的其他科目。
+                    支持从 Excel 文件批量导入会计科目，本系统模板与金蝶等软件导出的科目表都能直接上传（表头按「编码 / 名称 / 类别 / 余额方向 / 状态」等常见写法识别）。系统按编码查重，已存在的科目自动跳过并告警；未填写的助记码按科目名称自动生成拼音首字母。导入只新增科目，不会删除账套中已有的其他科目。
                 </p>
 
                 <div className="flex flex-col gap-1">

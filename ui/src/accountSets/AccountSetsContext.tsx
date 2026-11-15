@@ -3,6 +3,7 @@ import { useParams } from "react-router"
 
 import { fetchAccountSets, type AccountSetDto } from "@/api/accountSets"
 import { useAuth } from "@/auth/AuthContext"
+import { fromUrlId } from "@/accountSets/url-id"
 
 interface AccountSetsContextValue {
     /** 全部账套。 */
@@ -81,5 +82,5 @@ export function useAccountSets(): AccountSetsContextValue {
 
 /** 从路由第一段读取当前账套 id（可能为 undefined，例如尚未进入具体账套时）。 */
 export function useCurrentAccountSetId(): string | undefined {
-    return useParams().accountSetId
+    return fromUrlId(useParams().accountSetId)
 }

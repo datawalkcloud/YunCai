@@ -6,17 +6,19 @@
  * 登录态过期时弹窗补一次短信验证码，成功后自动重取。真正的开具动作仍在电子税务局办理。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import type { Key } from "react";
 import { Card, App, Button, DatePicker, Pagination, Select, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { DownOutlined, LoginOutlined, QuestionCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxPayments, type TaxPaymentRow } from "@/lib/tax-portal";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
+import { setPath } from "@/accountSets/url-id";
 
 type CertificateRow = TaxPaymentRow;
 
@@ -40,7 +42,7 @@ const columns: TableColumnsType<CertificateRow> = [
 ];
 
 export function TaxCertificatePage() {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { message } = App.useApp();
     const { token } = useAuth();
@@ -182,7 +184,7 @@ export function TaxCertificatePage() {
                     快捷入口：
                     <Button
                         type="link"
-                        onClick={() => navigate(`/${accountSetId}/tax/login`)}
+                        onClick={() => navigate(setPath(accountSetId, "/tax/login"))}
                     >
                         开具税收完税证明
                     </Button>

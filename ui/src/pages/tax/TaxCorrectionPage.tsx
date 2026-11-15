@@ -6,16 +6,18 @@
  * 未登录或登录态过期时弹出补一次短信验证码，登录成功后自动重取。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, App, Button, DatePicker, Pagination, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import { DownOutlined, ExclamationCircleFilled, LoginOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxReports, type TaxDeclarationRow } from "@/lib/tax-portal";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
+import { setPath } from "@/accountSets/url-id";
 
 type CorrectionAction = "作废" | "更正";
 
@@ -29,7 +31,7 @@ const fmtMoney = (value: number) =>
     value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function TaxCorrectionPage() {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { modal } = App.useApp();
     const { token } = useAuth();
@@ -113,7 +115,7 @@ export function TaxCorrectionPage() {
             ),
             okText: "前往电子税务局",
             cancelText: "取消",
-            onOk: () => navigate(`/${accountSetId}/tax/login`),
+            onOk: () => navigate(setPath(accountSetId, "/tax/login")),
         });
     }
 

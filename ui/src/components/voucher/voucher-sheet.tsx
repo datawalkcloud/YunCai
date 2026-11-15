@@ -43,6 +43,7 @@ import {
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { amountToChineseUppercase } from "@/lib/amount-uppercase"
 import { toISODate, fmtAmount } from "@/lib/format"
+import { setPath } from "@/accountSets/url-id"
 import { cn } from "@/lib/utils"
 import { PrintVoucherSheet } from "@/pages/closing/print-sheet"
 import { AmountCells, AmountHeaderCell } from "@/components/voucher/amount-grid"
@@ -296,7 +297,7 @@ function AccountSelect({
                     <div className="border-t border-(--border) py-1 text-center" onMouseDown={(e) => e.preventDefault()}>
                         <Button
                             type="link"
-                            onClick={() => navigate(`/${accountSetId}/settings/accounts`)}
+                            onClick={() => navigate(setPath(accountSetId, "/settings/accounts"))}
                         >
                             + 点击添加
                         </Button>

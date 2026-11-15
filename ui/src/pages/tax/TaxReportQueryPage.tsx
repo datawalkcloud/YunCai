@@ -8,6 +8,7 @@
  * 税局的申报查询接口不给缴款日期，该列固定显示「-」，缴款情况到税费缴纳侧核对。
  */
 import { useCallback, useEffect, useRef, useState, type Key } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, App, Button, DatePicker, Dropdown, Pagination, Table, Tooltip } from "antd";
 import type { MenuProps, TableColumnsType } from "antd";
 import {
@@ -20,19 +21,20 @@ import {
     RightOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxReports, type TaxDeclarationRow } from "@/lib/tax-portal";
 import { cn } from "@/lib/utils";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
+import { setPath } from "@/accountSets/url-id";
 
 const fmtMoney = (value: number) =>
     value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function TaxReportQueryPage() {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { message } = App.useApp();
     const { token } = useAuth();
@@ -317,13 +319,13 @@ export function TaxReportQueryPage() {
                 <span>快捷入口：</span>
                 <Button
                     type="link"
-                    onClick={() => navigate(`/${accountSetId}/tax/login`)}
+                    onClick={() => navigate(setPath(accountSetId, "/tax/login"))}
                 >
                     申报信息查询
                 </Button>
                 <Button
                     type="link"
-                    onClick={() => navigate(`/${accountSetId}/tax/login`)}
+                    onClick={() => navigate(setPath(accountSetId, "/tax/login"))}
                 >
                     财务报表申报信息查询
                 </Button>

@@ -34,6 +34,7 @@ import {
 } from "./components/useTaxPortalLogin";
 import { Btn, Dialog, HintBox, Page, Select, TextInput, Toast, WipNotice } from "./components/ui";
 import { FORM_CONTROL_W } from "@/components/page/styles";
+import { setPath } from "@/accountSets/url-id";
 
 /** 页面顶部的说明步骤，与本页真实行为一致。 */
 const STEPS = [
@@ -290,7 +291,7 @@ export function LemonTaxLogin() {
                     </Btn>
                 )}
                 {sessionState === "valid" && accountSetId && (
-                    <Btn onClick={() => navigate(`/${accountSetId}/tax/fetch`)}>进入智能报税</Btn>
+                    <Btn onClick={() => navigate(setPath(accountSetId, "/tax/fetch"))}>进入智能报税</Btn>
                 )}
                 {sessionState === "checking" ? (
                     <span className="flex items-center gap-2 text-[13px] text-(--muted-foreground)">
@@ -365,7 +366,7 @@ export function LemonTaxLogin() {
                                     2.首次使用或<span className="text-(--danger)">税务信息填写不准确</span>，均需要认证税局登录账号后，才能使用一键登录电子税局功能；税务信息填写完成后，可前往
                                     <button
                                         type="button"
-                                        onClick={() => navigate(`/${accountSetId}/settings/account-sets`)}
+                                        onClick={() => accountSetId && navigate(setPath(accountSetId, "/settings/account-sets"))}
                                         className="cursor-pointer text-(--brand) hover:underline"
                                     >
                                         【设置-账套】

@@ -24,6 +24,7 @@ namespace YunCai.Modules.AccountSets.Api
     {
         private readonly IAccountSetRepository _accountSetRepository;
         private readonly IAccountRepository _accountRepository;
+        private readonly IPresetAccountRepository _presetAccountRepository;
         private readonly IVoucherRepository _voucherRepository;
         private readonly IJournalRepository _journalRepository;
         private readonly IEntryCategoryRepository _entryCategoryRepository;
@@ -38,6 +39,7 @@ namespace YunCai.Modules.AccountSets.Api
         public AccountSetsController(
             IAccountSetRepository accountSetRepository,
             IAccountRepository accountRepository,
+            IPresetAccountRepository presetAccountRepository,
             IVoucherRepository voucherRepository,
             IJournalRepository journalRepository,
             IEntryCategoryRepository entryCategoryRepository,
@@ -51,6 +53,7 @@ namespace YunCai.Modules.AccountSets.Api
         {
             _accountSetRepository = accountSetRepository;
             _accountRepository = accountRepository;
+            _presetAccountRepository = presetAccountRepository;
             _voucherRepository = voucherRepository;
             _journalRepository = journalRepository;
             _entryCategoryRepository = entryCategoryRepository;
@@ -183,11 +186,11 @@ namespace YunCai.Modules.AccountSets.Api
                 return BadRequest(new { message = ex.Message });
             }
 
-            // 建账预置：企业会计准则账套按 2007 版科目表生成科目（与柠檬云一致，建完即有整套科目）。
-            if (request.Preset && accountSet.Standard == AccountingStandard.Enterprise)
+            // 建账预置：按账套准则从预置科目清单（preset_accounts）生成科目，与柠檬云一致——建完即有整套科目。
+            if (request.Preset)
             {
                 await Accounting.Application.AccountPresetSeeder.SeedAsync(
-                    accountSet.Id, _accountRepository, cancellationToken);
+                    accountSet.Id, accountSet.Standard, _presetAccountRepository, _accountRepository, cancellationToken);
 
                 // 建账预置（资金）：19 条收支类别 + 001 现金账户
                 await Funds.Application.FundPresetSeeder.SeedAsync(

@@ -7,6 +7,7 @@
  * 在线扣款仍需三方协议，批量缴款只做校验提示，不产生真实扣款。
  */
 import { useCallback, useEffect, useMemo, useState, type Key } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, App, Button, DatePicker, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import {
@@ -17,13 +18,14 @@ import {
     LoginOutlined,
 } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useTaxPeriod } from "./tax-period";
 import { useAuth } from "@/auth/AuthContext";
 import { fetchTaxPayables, type TaxPayableRow } from "@/lib/tax-portal";
 
 import { TaxLoginPrompt } from "./TaxLoginPrompt";
+import { setPath } from "@/accountSets/url-id";
 
 type PayRow = TaxPayableRow;
 
@@ -38,7 +40,7 @@ const fmtMoney = (value: number) =>
 
 export function TaxPaymentPayPage() {
     const period = useTaxPeriod();
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { message } = App.useApp();
     const { token } = useAuth();
@@ -99,7 +101,7 @@ export function TaxPaymentPayPage() {
         [rows, status],
     );
 
-    const toTaxLogin = () => navigate(`/${accountSetId}/tax/login`);
+    const toTaxLogin = () => navigate(setPath(accountSetId, "/tax/login"));
 
     function search() {
         setSelectedKeys([]);

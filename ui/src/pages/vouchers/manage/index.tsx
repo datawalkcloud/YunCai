@@ -43,6 +43,7 @@ import {
 import dayjs from "dayjs"
 
 import { FilterTriggerButton } from "@/components/page/filter-trigger-button"
+import { setPath } from "@/accountSets/url-id"
 import { useAccountSets, useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
 import {
@@ -258,7 +259,6 @@ function activeFilterCount(filters: VoucherFilters): number {
     if (filters.numberFrom != null || filters.numberTo != null) count++
     return count
 }
-
 
 const ACCEPT = ".xls,.xlsx"
 
@@ -1569,7 +1569,7 @@ export default function VoucherManagePage() {
                                     打印
                                 </Button>
                                 <Tooltip title="跳到明细账，按当前期间查看电子账簿">
-                                    <Button onClick={() => navigate(`/${accountSetId}/ledger/subsidiary`)}>电子账簿</Button>
+                                    <Button onClick={() => navigate(setPath(accountSetId, "/ledger/subsidiary"))}>电子账簿</Button>
                                 </Tooltip>
                                 {toolbarDropdown(
                                     "导出",

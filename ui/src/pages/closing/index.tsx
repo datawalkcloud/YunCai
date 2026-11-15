@@ -16,6 +16,7 @@ import { useNavigate } from "react-router"
 
 import { useAuth } from "@/auth/AuthContext"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
+import { setPath } from "@/accountSets/url-id"
 import {
     cancelCarry,
     carryBatch,
@@ -498,12 +499,12 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
     }
 
     function goAction(actionKey: string) {
-        if (actionKey === "funds") navigate(`/${accountSetId}/funds/cash-journal`)
-        else if (actionKey === "depreciation") navigate(`/${accountSetId}/assets/depreciation`)
+        if (actionKey === "funds") navigate(setPath(accountSetId, "/funds/cash-journal"))
+        else if (actionKey === "depreciation") navigate(setPath(accountSetId, "/assets/depreciation"))
         else if (actionKey === "numbering") {
             const prefix = `${period.year}-${String(period.month).padStart(2, "0")}`
             const lastDay = new Date(period.year, period.month, 0).getDate()
-            navigate(`/${accountSetId}/vouchers/manage?periodFrom=${prefix}-01&periodTo=${prefix}-${lastDay}`)
+            navigate(setPath(accountSetId, `/vouchers/manage?periodFrom=${prefix}-01&periodTo=${prefix}-${lastDay}`))
         }
     }
 
@@ -669,7 +670,7 @@ function ClosingWizard({ accountSetId, token, period, initialStep, carriedThroug
                                     </div>
                                     <div className="w-28 text-right">
                                         {item.source === "salary" ? (
-                                            <Button size="small" onClick={() => navigate(`/${accountSetId}/salary/manage`)}>
+                                            <Button size="small" onClick={() => navigate(setPath(accountSetId, "/salary/manage"))}>
                                                 去工资模块
                                             </Button>
                                         ) : item.generated ? (

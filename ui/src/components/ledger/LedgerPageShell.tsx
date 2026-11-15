@@ -5,6 +5,7 @@ import { Link } from "react-router"
 import type { LedgerMetaDto } from "@/apis-gen"
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { SectionCard } from "@/components/page/section"
+import { setPath } from "@/accountSets/url-id"
 
 export interface LedgerPageShellProps {
     /** 查询面板。 */
@@ -37,11 +38,14 @@ export function LedgerPageShell({ panel, meta, error, side, children }: LedgerPa
                             action={
                                 accountSetId ? (
                                     <Link
-                                        to={`/${accountSetId}/vouchers/manage?status=draft${
-                                            meta?.startDate && meta.endDate
-                                                ? `&periodFrom=${meta.startDate.slice(0, 7)}&periodTo=${meta.endDate.slice(0, 7)}`
-                                                : ""
-                                        }`}
+                                        to={setPath(
+                                            accountSetId,
+                                            `/vouchers/manage?status=draft${
+                                                meta?.startDate && meta.endDate
+                                                    ? `&periodFrom=${meta.startDate.slice(0, 7)}&periodTo=${meta.endDate.slice(0, 7)}`
+                                                    : ""
+                                            }`,
+                                        )}
                                         className="whitespace-nowrap text-[12.5px] font-medium text-(--brand) hover:underline"
                                     >
                                         去凭证页处理

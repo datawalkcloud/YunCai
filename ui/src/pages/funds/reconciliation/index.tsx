@@ -23,6 +23,7 @@ import {
 } from "@/apis-gen"
 import { apiConfig, apiErrorMessage } from "@/lib/api-client"
 import { printPdf } from "@/lib/print-pdf"
+import { setPath } from "@/accountSets/url-id"
 
 /** 金额：0 显示为 0，其余两位小数。 */
 function money(value: number | null | undefined): string {
@@ -224,7 +225,7 @@ export default function ReconciliationPage() {
                                 现金和银行账户没有关联科目，无法展示核对总账数据
                                 <Typography.Link
                                     className="ml-1 text-[12.5px]"
-                                    onClick={() => navigate(`/${accountSetId}/funds/account`)}
+                                    onClick={() => navigate(setPath(accountSetId, "/funds/account"))}
                                 >
                                     去关联科目 &gt;&gt;
                                 </Typography.Link>

@@ -36,6 +36,7 @@ import dayjs from "dayjs"
 
 import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext"
 import { useAuth } from "@/auth/AuthContext"
+import { setPath } from "@/accountSets/url-id"
 import {
     AccountsApi,
     EntryCategoriesApi,
@@ -1088,7 +1089,6 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
         }
     }
 
-
     /* ---------- 导入 / 导出 ---------- */
 
     async function downloadFile(path: string, fallbackName: string) {
@@ -1433,7 +1433,7 @@ export function JournalLedgerPage({ journalType, seqPrefix }: { journalType: 1 |
                 row.kind === "entry" && row.entry?.voucherNo ? (
                     <Typography.Link
                         className="whitespace-nowrap"
-                        onClick={() => navigate(`/${accountSetId}/vouchers/manage`)}
+                        onClick={() => navigate(setPath(accountSetId, "/vouchers/manage"))}
                         title="前往凭证管理查看"
                     >
                         {row.entry.voucherNo}

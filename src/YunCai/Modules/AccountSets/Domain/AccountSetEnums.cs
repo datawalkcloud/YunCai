@@ -5,14 +5,17 @@ namespace YunCai.Modules.AccountSets.Domain
     /// </summary>
     public enum AccountingStandard
     {
-        /// <summary>企业会计准则。</summary>
+        /// <summary>企业会计准则（本系统预置沿用 2001 版《企业会计制度》编码体系：权益 3xxx、成本 4xxx、损益 5xxx/6xxx）。</summary>
         Enterprise = 1,
 
         /// <summary>小企业会计准则。</summary>
         SmallBusiness = 2,
 
-        /// <summary>民间非营利组织会计制度。</summary>
+        /// <summary>民间非营利组织会计制度：净资产 3xxx、收入 4xxx、费用 5xxx。</summary>
         NonProfit = 3,
+
+        /// <summary>新会计准则（2006 年颁）：权益 4xxx、成本 5xxx、损益 6xxx，即财会〔2006〕18 号附录 A 的编码体系。</summary>
+        NewEnterprise2006 = 4,
     }
 
     /// <summary>

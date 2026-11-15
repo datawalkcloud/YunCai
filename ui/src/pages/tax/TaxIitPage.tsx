@@ -11,6 +11,7 @@
  * 行内给「登记到工资模块」入口。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCurrentAccountSetId } from "@/accountSets/AccountSetsContext";
 import { Card, Alert, App, Button, Checkbox, Dropdown, Input, Table, Tooltip } from "antd";
 import type { TableColumnsType } from "antd";
 import {
@@ -20,7 +21,7 @@ import {
     QuestionCircleOutlined,
     ReloadOutlined,
 } from "@ant-design/icons";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { SalariesApi, type EmployeeDto } from "@/apis-gen";
 import { useAuth } from "@/auth/AuthContext";
@@ -34,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { IitLoginModal } from "./IitLoginModal";
+import { setPath } from "@/accountSets/url-id";
 
 type TabKey = "people" | "deduction";
 
@@ -153,7 +155,7 @@ const TABLE_PAGINATION = {
 };
 
 export function TaxIitPage() {
-    const { accountSetId = "" } = useParams();
+    const accountSetId = useCurrentAccountSetId() ?? "";
     const navigate = useNavigate();
     const { token } = useAuth();
     const { message, modal } = App.useApp();
@@ -181,7 +183,7 @@ export function TaxIitPage() {
     const [deductionError, setDeductionError] = useState<string | null>(null);
     const deductionsInFlight = useRef(false);
 
-    const toSalaryEmployees = () => navigate(`/${accountSetId}/salary/employee`);
+    const toSalaryEmployees = () => navigate(setPath(accountSetId, "/salary/employee"));
 
     const reload = useCallback(async () => {
         if (!accountSetId) {
