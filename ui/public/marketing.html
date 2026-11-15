@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>云财 · 在线智能记账系统 | 凭证、账簿、报表、报税一体化</title>
+
+  <!-- 基础 SEO -->
+  <meta name="description" content="云财是一款面向中小企业的在线智能财务系统，支持拍照识别发票自动生成凭证、电子税务局直连取数、一键报税、银行流水自动入账、报表实时出表。凭证、账簿、报表、出纳、发票、工资、资产、档案一体化，永久免费，浏览器即用。" />
+  <meta name="keywords" content="在线记账,智能财务软件,云会计,代理记账,电子发票,一键报税,财务报表,现金流量表,资产负债表,凭证管理,中小企业财务系统,云财" />
+  <meta name="author" content="云财" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#273cf3" />
+  <link rel="canonical" href="https://www.yuncai.cn/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="云财" />
+  <meta property="og:title" content="云财 · 在线智能记账系统" />
+  <meta property="og:description" content="拍张发票就出凭证，税局数据直接进账，报表在入账那一秒生成。凭证、账簿、报表、出纳、发票、工资、资产、档案，一条线走完。" />
+  <meta property="og:url" content="https://www.yuncai.cn/" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:image" content="https://www.yuncai.cn/og-cover.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="云财 · 在线智能记账系统" />
+  <meta name="twitter:description" content="拍张发票就出凭证，税局数据直接进账，报表在入账那一秒生成。" />
+  <meta name="twitter:image" content="https://www.yuncai.cn/og-cover.png" />
+
+  <!-- 在 CSS/JS 前应用主题，避免首屏闪烁 -->
+  <script>
+    (function () {
+      try {
+        var root = document.documentElement;
+        var stored = localStorage.getItem("yuncai.theme");
+        var isDark = stored === "dark" ||
+          ((!stored || stored === "system") &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        root.classList.toggle("dark", isDark);
+        var radius = localStorage.getItem("yuncai.radius");
+        if (radius === "4" || radius === "8" || radius === "12") {
+          root.style.setProperty("--radius", radius + "px");
+        }
+        var primary = localStorage.getItem("yuncai.primary");
+        if (primary && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(primary)) {
+          root.style.setProperty("--seed-primary", primary);
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <style>
+    :root {
+      --seed-primary: #273cf3;
+      --brand: #273cf3;
+      --brand-fill: #273cf3;
+      --brand-fill-hover: #1e2fc4;
+      --brand-soft: #eef4ff;
+      --brand-tint: #e7f0ff;
+      --brand-border: #dbeafe;
+      --bg: #f4f6fb;
+      --fg: #1e293b;
+      --card: #ffffff;
+      --muted: #f1f5f9;
+      --muted-fg: #64748b;
+      --border: #eceff4;
+      --success: #16a34a;
+      --radius: 8px;
+      --shadow: 0 16px 36px -24px color-mix(in srgb, var(--seed-primary) 40%, transparent);
+      --maxw: 1200px;
+    }
+    .dark {
+      --brand: color-mix(in srgb, var(--seed-primary) 62%, #fff);
+      --brand-fill: color-mix(in srgb, var(--seed-primary) 90%, #000);
+      --brand-fill-hover: color-mix(in srgb, var(--seed-primary) 72%, #fff);
+      --brand-soft: color-mix(in srgb, var(--brand) 14%, transparent);
+      --brand-tint: color-mix(in srgb, var(--brand) 22%, transparent);
+      --brand-border: color-mix(in srgb, var(--brand) 40%, transparent);
+      --bg: #0e0e11;
+      --fg: #f3f4f6;
+      --card: #16161a;
+      --muted: #1c1c20;
+      --muted-fg: #9aa1ad;
+      --border: rgba(255, 255, 255, 0.1);
+      --shadow: 0 16px 40px -20px rgba(0, 0, 0, 0.6);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    h1, h2, h3, p { margin: 0; }
+    img, svg { display: block; }
+
+    .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
+    section { padding: 64px 0; }
+    @media (min-width: 768px) { section { padding: 96px 0; } }
+
+    /* 标签徽章 */
+    .tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 999px;
+      background: var(--brand-soft); color: var(--brand);
+      font-size: 12.5px; font-weight: 500;
+    }
+    .tag .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--brand-fill); }
+
+    h2.title { font-size: 30px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
+    @media (min-width: 768px) { h2.title { font-size: 40px; } }
+    .lead { font-size: 15px; color: var(--muted-fg); line-height: 1.8; max-width: 600px; }
+
+    /* 按钮 */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      height: 48px; padding: 0 28px; border-radius: var(--radius);
+      font-size: 15px; font-weight: 500; border: 1px solid transparent;
+      transition: filter .2s, background .2s, color .2s; cursor: pointer;
+    }
+    .btn.primary { background: var(--brand-fill); color: #fff; }
+    .btn.primary:hover { background: var(--brand-fill-hover); }
+    .btn.ghost { background: transparent; color: var(--fg); border-color: var(--border); }
+    .btn.ghost:hover { background: var(--muted); }
+    .btn.inverse { background: #fff; color: var(--brand-fill); }
+    .btn.inverse:hover { background: rgba(255, 255, 255, 0.9); }
+    .btn.sm { height: 36px; padding: 0 16px; font-size: 13px; }
+
+    /* 导航 */
+    header.nav {
+      position: sticky; top: 0; z-index: 50; height: 64px;
+      background: color-mix(in srgb, var(--card) 86%, transparent);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 100%; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600; }
+    .brand .mark {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--brand-fill); display: flex; align-items: center; justify-content: center;
+    }
+    .brand .mark svg { width: 20px; height: 20px; color: #fff; }
+    .nav-links { display: none; gap: 4px; }
+    .nav-links a {
+      padding: 8px 16px; border-radius: 8px; font-size: 14px; color: var(--muted-fg);
+    }
+    .nav-links a:hover { background: var(--muted); color: var(--fg); }
+    .nav-actions { display: flex; align-items: center; gap: 8px; }
+    @media (min-width: 1024px) { .nav-links { display: flex; } }
+
+    /* Hero */
+    .hero { position: relative; overflow: hidden; text-align: center; }
+    .hero .glow {
+      position: absolute; inset: 0 0 auto 0; height: 720px; pointer-events: none;
+      background: radial-gradient(60% 52% at 50% 0%, color-mix(in srgb, var(--seed-primary) 10%, transparent) 0%, transparent 100%);
+    }
+    .hero-inner { position: relative; padding-top: 120px; }
+    @media (min-width: 768px) { .hero-inner { padding-top: 144px; } }
+    .hero h1 {
+      margin: 24px auto 0; max-width: 880px;
+      font-size: clamp(32px, 6vw, 64px); font-weight: 600; line-height: 1.15; letter-spacing: -0.02em;
+    }
+    .hero p.sub { margin: 20px auto 0; max-width: 620px; font-size: 16px; color: var(--muted-fg); }
+    .hero-badges {
+      margin-top: 28px; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 28px;
+      font-size: 13px; color: var(--muted-fg);
+    }
+    .hero-badges span { display: inline-flex; align-items: center; gap: 6px; }
+    .hero-badges svg { color: var(--brand); width: 15px; height: 15px; }
+
+    /* 应用示意窗口 */
+    .appwin {
+      margin-top: 56px; border-radius: 12px; overflow: hidden; background: var(--card);
+      border: 1px solid var(--border); box-shadow: 0 40px 90px -48px color-mix(in srgb, var(--seed-primary) 45%, transparent);
+    }
+    .appwin .chrome { display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+    .appwin .chrome .dots { display: flex; gap: 6px; }
+    .appwin .chrome .dots i { width: 8px; height: 8px; border-radius: 999px; background: var(--muted-fg); opacity: .5; }
+    .appwin .chrome .addr { margin: 0 auto; font-size: 11px; color: var(--muted-fg); background: var(--muted); padding: 2px 12px; border-radius: 6px; }
+    .appwin .body { display: grid; grid-template-columns: 1fr; }
+    @media (min-width: 1024px) { .appwin .body { grid-template-columns: 168px 1fr; } }
+    .appwin .side { display: none; border-right: 1px solid var(--border); padding: 12px; background: var(--muted); }
+    @media (min-width: 1024px) { .appwin .side { display: block; } }
+    .appwin .side .co { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; font-weight: 500; }
+    .appwin .side .co b { width: 20px; height: 20px; border-radius: 6px; background: var(--brand-fill); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+    .appwin .side ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+    .appwin .side li { padding: 6px 10px; border-radius: 6px; font-size: 12.5px; color: var(--muted-fg); }
+    .appwin .side li.on { background: var(--brand-soft); color: var(--fg); font-weight: 500; }
+    .appwin .main { padding: 16px; }
+    .appwin .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 16px; }
+    @media (min-width: 768px) { .appwin .kpis { grid-template-columns: repeat(4, 1fr); } }
+    .appwin .kpi { border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .appwin .kpi .k { font-size: 12px; color: var(--muted-fg); }
+    .appwin .kpi .v { font-size: 19px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .appwin .kpi .d { font-size: 12px; font-weight: 500; color: var(--success); margin-top: 2px; }
+    .appwin .sheet { margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .appwin .sheet .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 6px 12px; font-size: 12.5px; border-bottom: 1px solid var(--border); }
+    .appwin .sheet .row:last-child { border-bottom: 0; }
+    .appwin .sheet .row .l, .appwin .sheet .row .r { display: flex; justify-content: space-between; gap: 8px; }
+    .appwin .sheet .row .r { border-left: 1px solid var(--border); padding-left: 12px; }
+    .appwin .sheet .row.tot { background: var(--muted); }
+    .appwin .sheet .row.tot .l span:first-child { font-weight: 500; }
+    .appwin .sheet .row.tot .l span:last-child, .appwin .sheet .row.tot .r span:last-child { color: var(--brand); font-weight: 600; }
+    .appwin .sheet .row .mut { color: var(--muted-fg); }
+
+    /* 通用网格卡片 */
+    .grid { display: grid; gap: 16px; }
+    .cards-2 { grid-template-columns: 1fr; }
+    .cards-3 { grid-template-columns: 1fr; }
+    .cards-4 { grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 768px) {
+      .cards-2 { grid-template-columns: repeat(2, 1fr); }
+      .cards-3 { grid-template-columns: repeat(3, 1fr); }
+      .cards-4 { grid-template-columns: repeat(4, 1fr); }
+    }
+    .card {
+      border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 24px;
+      transition: transform .3s, border-color .3s, box-shadow .3s;
+    }
+    .card:hover { transform: translateY(-2px); border-color: var(--brand-border); box-shadow: var(--shadow); }
+    .ico {
+      width: 40px; height: 40px; border-radius: 10px; background: var(--brand-soft); color: var(--brand);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+    }
+    .ico svg { width: 20px; height: 20px; }
+    .card h3 { font-size: 17px; font-weight: 600; }
+    .card p { margin-top: 6px; font-size: 14px; color: var(--muted-fg); line-height: 1.8; }
+    .card ul { margin: 16px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .card ul li { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    .card ul li svg { width: 16px; height: 16px; color: var(--brand); flex-shrink: 0; }
+
+    /* 对比表 */
+    .compare { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .compare .head { display: grid; grid-template-columns: 1fr 1fr; }
+    .compare .head div { padding: 14px 24px; font-size: 12px; font-weight: 500; letter-spacing: .08em; }
+    .compare .head .old { background: var(--muted); color: var(--muted-fg); }
+    .compare .head .new { background: var(--brand-soft); color: var(--brand); }
+    .compare .line { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border); }
+    .compare .line > div { padding: 14px 24px; font-size: 13.5px; display: flex; align-items: center; gap: 10px; }
+    .compare .line .new { border-left: 1px solid var(--border); }
+    .compare .line .old svg { color: var(--muted-fg); width: 14px; height: 14px; flex-shrink: 0; }
+    .compare .line .new svg { color: var(--brand); width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* 安全面板 */
+    .panel { background: var(--brand-soft); border-radius: 16px; padding: 32px; }
+
+    /* 步骤 */
+    .steps { display: grid; gap: 32px; }
+    @media (min-width: 768px) { .steps { grid-template-columns: repeat(4, 1fr); gap: 0; } }
+    .step { border-top: 1px solid var(--border); padding-top: 24px; }
+    @media (min-width: 768px) {
+      .step { border-top: 0; border-left: 1px solid var(--border); padding: 0 28px; }
+      .step:first-child { border-left: 0; padding-left: 0; }
+    }
+    .step .n { font-size: 26px; font-weight: 600; color: var(--brand); font-variant-numeric: tabular-nums; }
+    .step h3 { font-size: 17px; font-weight: 600; margin-top: 12px; }
+    .step p { font-size: 14px; color: var(--muted-fg); margin-top: 8px; line-height: 1.85; }
+
+    /* FAQ */
+    .faq { display: grid; gap: 32px; }
+    @media (min-width: 768px) { .faq { grid-template-columns: 360px 1fr; gap: 64px; } }
+    details.q { border-bottom: 1px solid var(--border); }
+    details.q summary {
+      list-style: none; cursor: pointer; padding: 20px 0; font-size: 15px; font-weight: 500;
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    }
+    details.q summary::-webkit-details-marker { display: none; }
+    details.q summary .chev { width: 16px; height: 16px; transition: transform .2s; color: var(--muted-fg); flex-shrink: 0; }
+    details.q[open] summary .chev { transform: rotate(180deg); }
+    details.q p { padding-bottom: 20px; font-size: 14px; color: var(--muted-fg); line-height: 1.9; max-width: 640px; }
+
+    /* CTA */
+    .cta { background: var(--brand-fill); color: #fff; text-align: center; }
+    .cta h2 { font-size: 32px; font-weight: 600; line-height: 1.25; }
+    @media (min-width: 768px) { .cta h2 { font-size: 44px; } }
+    .cta p { margin: 16px auto 0; max-width: 520px; font-size: 15px; color: rgba(255, 255, 255, 0.75); }
+    .cta .note { margin-top: 16px; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
+
+    /* 页脚 */
+    footer { background: #0c1424; color: #fff; }
+    .dark footer { background: #0a0a0a; }
+    .foot-top { display: flex; flex-direction: column; gap: 40px; padding: 56px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+    @media (min-width: 768px) { .foot-top { flex-direction: row; justify-content: space-between; } }
+    .foot-brand { max-width: 320px; display: flex; flex-direction: column; gap: 20px; }
+    .foot-brand .brand { color: #fff; }
+    .foot-brand p { font-size: 13px; line-height: 1.9; color: rgba(255, 255, 255, 0.55); }
+    .foot-cols { display: flex; flex-wrap: wrap; gap: 56px; }
+    .foot-cols h3 { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 16px; }
+    .foot-cols ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+    .foot-cols a { font-size: 13px; line-height: 30px; color: rgba(255, 255, 255, 0.6); }
+    .foot-cols a:hover { color: #fff; }
+    .foot-bottom { display: flex; flex-direction: column; gap: 16px; padding: 24px 0; font-size: 12px; color: rgba(255, 255, 255, 0.45); }
+    @media (min-width: 768px) { .foot-bottom { flex-direction: row; align-items: center; justify-content: space-between; } }
+    .foot-bottom a { color: rgba(255, 255, 255, 0.45); }
+    .foot-bottom a:hover { color: #fff; }
+
+    .center { text-align: center; }
+    .center .lead { margin-left: auto; margin-right: auto; }
+    .mt-8 { margin-top: 32px; } @media (min-width:768px){ .mt-8{ margin-top:56px; } }
+    .mt-6 { margin-top: 24px; }
+    .head-row { display: flex; flex-direction: column; gap: 16px; }
+    @media (min-width: 768px) {
+      .head-row.split { display: grid; grid-template-columns: minmax(0,460px) minmax(0,1fr); align-items: end; gap: 48px; }
+      .head-row.split .lead { justify-self: end; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 图标 sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+    <symbol id="i-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-bank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a1 1 0 0 1 1 1v1h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V3a1 1 0 0 1 1-1z"/><polyline points="9 14 11 16 15 12"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01M8 14h.01M16 14h.01M12 14h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></symbol>
+  </svg>
+
+  <!-- ============ 导航 ============ -->
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/" aria-label="云财首页">
+        <span class="mark"><svg><use href="#i-star"></use></svg></span>
+        云财
+      </a>
+      <nav class="nav-links" aria-label="主导航">
+        <a href="#why">为什么是云财</a>
+        <a href="#capabilities">产品能力</a>
+        <a href="#scenarios">使用场景</a>
+        <a href="#security">安全合规</a>
+        <a href="#faq">常见问题</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="btn primary sm" href="/login">永久免费使用 <svg style="width:12px;height:12px"><use href="#i-arrow"></use></svg></a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ Hero ============ -->
+    <section class="hero" id="top">
+      <div class="glow"></div>
+      <div class="wrap hero-inner">
+        <span class="tag"><span class="dot"></span>永久免费 · AI 记账 · 税局直连 · 浏览器即用</span>
+        <h1>做账，本该如此简单</h1>
+        <p class="sub">拍张发票就出凭证，税局数据直接进账，报表在入账那一秒生成。<br />凭证、账簿、报表、出纳、发票、工资、资产、档案，一条线走完。</p>
+        <div class="mt-8">
+          <a class="btn primary" href="/login">永久免费使用 <svg style="width:14px;height:14px"><use href="#i-arrow"></use></svg></a>
+        </div>
+        <div class="hero-badges">
+          <span><svg><use href="#i-star"></use></svg>AI 自动生成凭证</span>
+          <span><svg><use href="#i-shield"></use></svg>电子税务局直连</span>
+          <span><svg><use href="#i-target"></use></svg>报表逐级下钻</span>
+        </div>
+
+        <!-- 应用示意窗口（示意数据） -->
+        <div class="appwin" role="img" aria-label="云财总览界面示意：含资产总额、本月收入、本月费用、净利润四项指标与资产负债表简表">
+          <div class="chrome">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr">app.yuncai.cn / 总览</div>
+          </div>
+          <div class="body">
+            <aside class="side">
+              <div class="co"><b>云</b>杭州数从科技</div>
+              <ul>
+                <li class="on">总览</li><li>凭证</li><li>账簿</li><li>报表</li>
+                <li>资金</li><li>发票</li><li>工资</li><li>资产</li>
+              </ul>
+            </aside>
+            <div class="main">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div><div style="font-size:14px;font-weight:600">2026 年 10 月</div><div style="font-size:12px;color:var(--muted-fg)">数据来自已过账凭证</div></div>
+                <span class="btn primary sm" style="height:30px;padding:0 12px;font-size:12px">+ 新增凭证</span>
+              </div>
+              <div class="kpis">
+                <div class="kpi"><div class="k">资产总额</div><div class="v">3,071.20</div><div class="d">+2.6%</div></div>
+                <div class="kpi"><div class="k">本月收入</div><div class="v">339.10</div><div class="d">+18.7%</div></div>
+                <div class="kpi"><div class="k">本月费用</div><div class="v">32.40</div><div class="d">-4.1%</div></div>
+                <div class="kpi"><div class="k">净利润</div><div class="v">306.70</div><div class="d">+21.3%</div></div>
+              </div>
+              <div class="sheet">
+                <div class="row tot"><span class="l"><span>资产总计</span><span>3,071.20</span></span><span class="r"><span>负债和所有者权益总计</span><span>3,071.20</span></span></div>
+                <div class="row"><span class="l"><span class="mut">货币资金</span><span>1,842.60</span></span><span class="r"><span class="mut">短期借款</span><span>300.00</span></span></div>
+                <div class="row"><span class="l"><span class="mut">应收账款</span><span>226.30</span></span><span class="r"><span class="mut">应付账款</span><span>186.40</span></span></div>
+                <div class="row"><span class="l"><span class="mut">存货</span><span>612.10</span></span><span class="r"><span class="mut">实收资本</span><span>2,000.00</span></span></div>
+                <div class="row"><span class="l"><span class="mut">固定资产</span><span>390.20</span></span><span class="r"><span class="mut">未分配利润</span><span>306.70</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 为什么是云财 ============ -->
+    <section id="why">
+      <div class="wrap">
+        <div class="head-row split">
+          <div>
+            <span class="tag"><span class="dot"></span>为什么是云财</span>
+            <h2 class="title" style="margin-top:16px">把重复劳动，<br />交给系统</h2>
+          </div>
+          <p class="lead">做账里最耗人的活——录票、抄税、对银行流水、翻凭证——云财用识别、直连与自动归集替你跑完，你只做确认。</p>
+        </div>
+
+        <div class="grid cards-3 mt-8">
+          <div class="card">
+            <div class="ico"><svg><use href="#i-star"></use></svg></div>
+            <h3>拍张发票，凭证自己长出来</h3>
+            <p>上传发票、回单或收据照片，自动识别金额、税额、开票方，匹配科目后直接生成凭证——你只需要点确认。</p>
+            <ul>
+              <li><svg><use href="#i-check"></use></svg>票据识别 · 自动分录用</li>
+              <li><svg><use href="#i-check"></use></svg>摘要、往来、税率自动补全</li>
+              <li><svg><use href="#i-check"></use></svg>上百张票据一次成账</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="ico"><svg><use href="#i-shield"></use></svg></div>
+            <h3>电子税务局直连</h3>
+            <p>发票、申报记录、完税证明在系统里直接取回，不用在两个窗口之间来回抄数。</p>
+          </div>
+          <div class="card">
+            <div class="ico"><svg><use href="#i-zap"></use></svg></div>
+            <h3>一键报税</h3>
+            <p>按已入账数据算好申报口径，增值税、附加税、企业所得税预填核对，一键推送。</p>
+          </div>
+          <div class="card">
+            <div class="ico"><svg><use href="#i-sync"></use></svg></div>
+            <h3>银行流水自动入账</h3>
+            <p>授权一次，流水每日自动同步，按规则归类、批量生成凭证，银企对账一键对平。</p>
+          </div>
+          <div class="card">
+            <div class="ico"><svg><use href="#i-target"></use></svg></div>
+            <h3>每个数字都能钻到底</h3>
+            <p>报表任意一行双击即下钻到明细账，再下钻到原始凭证与票据影像，查账不用换系统。</p>
+          </div>
+          <div class="card">
+            <div class="ico"><svg><use href="#i-db"></use></svg></div>
+            <h3>数据是你的，随时带走</h3>
+            <p>全量凭证、账簿与报表一键导出 Excel / PDF，开放 API 对接业务系统，不做数据绑架。</p>
+          </div>
+        </div>
+
+        <div class="compare mt-8">
+          <div class="head"><div class="old">还在这样做账</div><div class="new">交给云财</div></div>
+          <div class="line"><div class="old"><svg><use href="#i-x"></use></svg>一张一张翻票、敲 Excel</div><div class="new"><svg><use href="#i-check"></use></svg>票据拍照识别，凭证自动生成</div></div>
+          <div class="line"><div class="old"><svg><use href="#i-x"></use></svg>税局、账务两个窗口来回抄数</div><div class="new"><svg><use href="#i-check"></use></svg>税局数据直接进系统，取回即入账</div></div>
+          <div class="line"><div class="old"><svg><use href="#i-x"></use></svg>月底手工对银行流水</div><div class="new"><svg><use href="#i-check"></use></svg>流水自动同步、规则归类、一键对账</div></div>
+          <div class="line"><div class="old"><svg><use href="#i-x"></use></svg>报表出完还要回头翻凭证</div><div class="new"><svg><use href="#i-check"></use></svg>报表双击下钻到明细与原始票据</div></div>
+          <div class="line"><div class="old"><svg><use href="#i-x"></use></svg>数据锁在软件里，换系统从头再来</div><div class="new"><svg><use href="#i-check"></use></svg>全量数据一键导出，随时迁走</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 使用场景 ============ -->
+    <section id="scenarios">
+      <div class="wrap">
+        <div class="center">
+          <span class="tag"><span class="dot"></span>使用场景</span>
+          <h2 class="title" style="margin-top:16px">一天的账，<br />一套系统走完</h2>
+          <p class="lead">从早上录入第一张凭证，到月底结转结账，云财把财务的每一个动作串成一条不断线的流程——你不用在几个系统之间搬运数据。</p>
+        </div>
+
+        <div class="grid cards-2 mt-8">
+          <div class="card">
+            <div class="ico"><svg><use href="#i-file"></use></svg></div>
+            <h3>凭证录入 · 一步完成</h3>
+            <p>结构化的分录录入，借贷平衡与金额大写实时校验；保存即入账，账簿与报表立即取到数。历史凭证可从 Excel 批量导入，借贷平衡的直接入账。</p>
+            <ul>
+              <li><svg><use href="#i-check"></use></svg>借贷自动平衡校验</li>
+              <li><svg><use href="#i-check"></use></svg>金额大写自动生成</li>
+              <li><svg><use href="#i-check"></use></svg>Excel 批量导入历史凭证</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="ico"><svg><use href="#i-bar"></use></svg></div>
+            <h3>报表出表 · 不用再等月底</h3>
+            <p>科目余额表、资产负债表、利润表、现金流量表全部从已过账凭证实时归集，期初余额一并参与，任意期间即时切换。</p>
+            <ul>
+              <li><svg><use href="#i-check"></use></svg>会企 01 表标准行次</li>
+              <li><svg><use href="#i-check"></use></svg>任意期间即时切换</li>
+              <li><svg><use href="#i-check"></use></svg>资产 = 负债 + 所有者权益自动平衡</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="ico"><svg><use href="#i-wallet"></use></svg></div>
+            <h3>资金出纳 · 不再两头对</h3>
+            <p>日记账逐笔登记余额，内部转账两端自动落账；流水可按日期、类别、方向合并批量生成凭证，出纳台账与总账自动对得上。</p>
+            <ul>
+              <li><svg><use href="#i-check"></use></svg>账户启停用与开户行信息</li>
+              <li><svg><use href="#i-check"></use></svg>内部转账自动双边登记</li>
+              <li><svg><use href="#i-check"></use></svg>批量出票支持合并方式</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="ico"><svg><use href="#i-zap"></use></svg></div>
+            <h3>期末结转 · 一次点完</h3>
+            <p>一键结转损益，系统自动生成本年利润结转凭证并直接过账；随后批量结账，报表口径在结转前后保持完全一致。</p>
+            <ul>
+              <li><svg><use href="#i-check"></use></svg>结转损益自动生成凭证</li>
+              <li><svg><use href="#i-check"></use></svg>支持自定义结转模板</li>
+              <li><svg><use href="#i-check"></use></svg>批量结账、可撤销重做</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 产品能力 ============ -->
+    <section id="capabilities">
+      <div class="wrap">
+        <div class="center">
+          <span class="tag"><span class="dot"></span>产品能力</span>
+          <h2 class="title" style="margin-top:16px">一套系统，覆盖全链路账务</h2>
+          <p class="lead">凭证、账簿、报表、资金、发票、工资、资产、档案，八个模块共用一套科目与数据底座，不再各算各的。</p>
+        </div>
+        <div class="grid cards-4 mt-8">
+          <div class="card"><div class="ico"><svg><use href="#i-file"></use></svg></div><h3>凭证管理</h3><p>录入 · 入账 · 出表</p></div>
+          <div class="card"><div class="ico"><svg><use href="#i-book"></use></svg></div><h3>账簿查询</h3><p>总账 · 明细 · 日记账</p></div>
+          <div class="card"><div class="ico"><svg><use href="#i-bar"></use></svg></div><h3>财务报表</h3><p>资产负债 · 利润 · 现金流</p></div>
+          <div class="card"><div class="ico"><svg><use href="#i-wallet"></use></svg></div><h3>资金出纳</h3><p>日记账 · 转账 · 出票</p></div>
+          <div class="card"><div class="ico"><svg><use href="#i-inbox"></use></svg></div><h3>发票管理</h3><p>销项 · 进项 · 查验</p></div>
+          <div class="card"><div class="ico"><svg><use href="#i-users"></use></svg></div><h3>工资核算</h3><p>计提 · 发放 · 代扣</p></div>
+          <div class="card"><div class="ico"><svg><use href="#i-bank"></use></svg></div><h3>固定资产</h3><p>卡片 · 折旧 · 清理</p></div>
+          <div class="card"><div class="ico"><svg><use href="#i-folder"></use></svg></div><h3>电子档案</h3><p>影像 · 附件 · 归档</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 安全合规 ============ -->
+    <section id="security">
+      <div class="wrap">
+        <div class="panel">
+          <div class="center">
+            <span class="tag"><span class="dot"></span>安全合规</span>
+            <h2 class="title" style="margin-top:16px">数据与合规</h2>
+            <p class="lead">财务数据的底线是准确与安全。云财从账套隔离、访问控制到准则口径，把这三件事做在系统里，而不是靠人盯。</p>
+          </div>
+          <div class="grid cards-3 mt-8">
+            <div class="card">
+              <div class="ico"><svg><use href="#i-building"></use></svg></div>
+              <h3>账套级数据隔离</h3>
+              <p>每家公司的凭证、账簿、报表相互独立，跨账套不可见，从数据结构上杜绝串账。</p>
+            </div>
+            <div class="card">
+              <div class="ico"><svg><use href="#i-lock"></use></svg></div>
+              <h3>登录鉴权与留痕</h3>
+              <p>令牌校验保护每次访问，关键操作写入日志，谁在什么时候改了什么一目了然。</p>
+            </div>
+            <div class="card">
+              <div class="ico"><svg><use href="#i-clip"></use></svg></div>
+              <h3>准则口径出表</h3>
+              <p>科目编码与报表行次遵循企业会计准则，结转前后口径一致，可直接对外报送。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 四步开始 ============ -->
+    <section>
+      <div class="wrap">
+        <div class="head-row split">
+          <div>
+            <span class="tag"><span class="dot"></span>四步开始</span>
+            <h2 class="title" style="margin-top:16px">从建账到出表，一个下午</h2>
+          </div>
+          <p class="lead">不需要实施顾问，也不需要导数据模板。建好账套、选好科目，当天就能把第一张凭证录进去。</p>
+        </div>
+        <div class="steps mt-8">
+          <div class="step"><div class="n">01</div><h3>创建账套</h3><p>填写企业信息与启用期间，账套即刻可用。</p></div>
+          <div class="step"><div class="n">02</div><h3>初始化科目</h3><p>套用预置科目模板，按需增删、调整层级。</p></div>
+          <div class="step"><div class="n">03</div><h3>录入凭证</h3><p>手工录入或 Excel 批量导入，借贷自动校验。</p></div>
+          <div class="step"><div class="n">04</div><h3>保存入账出表</h3><p>保存凭证即入账，账簿与报表实时归集，随点随出。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section id="faq">
+      <div class="wrap">
+        <div class="faq">
+          <div>
+            <span class="tag"><span class="dot"></span>常见问题</span>
+            <h2 class="title" style="margin-top:16px">你可能<br />想了解这些</h2>
+            <p class="lead" style="margin-top:16px">还有别的问题？登录后可在系统内查看完整帮助文档。</p>
+          </div>
+          <div>
+            <details class="q" open>
+              <summary>需要安装客户端吗？<svg class="chev"><use href="#i-chev"></use></svg></summary>
+              <p>不需要。云财是纯在线的财务系统，打开浏览器登录即可使用，换台设备也能接着做账。</p>
+            </details>
+            <details class="q">
+              <summary>一个账号可以管理多家公司吗？<svg class="chev"><use href="#i-chev"></use></svg></summary>
+              <p>可以。一个账号支持创建多个账套，账套之间数据完全隔离，在顶部随时切换，互不干扰。</p>
+            </details>
+            <details class="q">
+              <summary>历史凭证怎么迁移？<svg class="chev"><use href="#i-chev"></use></svg></summary>
+              <p>在「凭证导入」中上传符合模板的 Excel（.xls / .xlsx）文件即可批量导入，系统会自动补建缺失科目，借贷平衡的凭证导入后直接入账。</p>
+            </details>
+            <details class="q">
+              <summary>报表数据是实时的吗？<svg class="chev"><use href="#i-chev"></use></svg></summary>
+              <p>是。科目余额表、资产负债表、利润表、现金流量表都从已过账凭证实时归集计算，期初余额一并参与，任意期间可即时切换。</p>
+            </details>
+            <details class="q">
+              <summary>期末结转和结账怎么处理？<svg class="chev"><use href="#i-chev"></use></svg></summary>
+              <p>系统提供一键结转损益与批量结账，自动生成本年利润结转凭证并直接过账；资产负债表会把损益并入未分配利润，保证结转前后口径一致。</p>
+            </details>
+            <details class="q">
+              <summary>能直连电子税务局和银行吗？<svg class="chev"><use href="#i-chev"></use></svg></summary>
+              <p>电子税务局已接通数字账户，发票、申报记录与完税证明可以在系统内直接取回，个税走自然人电子税务局扣缴端；银行流水支持按模板导入并自动归类，直连同步正在陆续开通。</p>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 CTA ============ -->
+    <section class="cta">
+      <div class="wrap">
+        <h2>今天就把账理清</h2>
+        <p>登录云财，拍一张发票，你会看到凭证和报表同时生成。</p>
+        <div class="mt-8">
+          <a class="btn inverse" href="/login">永久免费使用 <svg style="width:14px;height:14px"><use href="#i-arrow"></use></svg></a>
+        </div>
+        <p class="note">永久免费，无需付费，注册即用</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ 页脚 ============ -->
+  <footer>
+    <div class="wrap foot-top">
+      <div class="foot-brand">
+        <a class="brand" href="/"><span class="mark"><svg><use href="#i-star"></use></svg></span>云财</a>
+        <p>面向中小企业的在线财务系统。凭证、账簿、报表、出纳、发票、工资、资产、档案一体化，让每一笔账都清楚。</p>
+      </div>
+      <nav class="foot-cols" aria-label="页脚导航">
+        <div>
+          <h3>产品</h3>
+          <ul>
+            <li><a href="#why">为什么是云财</a></li>
+            <li><a href="#capabilities">产品能力</a></li>
+            <li><a href="#scenarios">使用场景</a></li>
+            <li><a href="#security">安全合规</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>模块</h3>
+          <ul>
+            <li><a href="#capabilities">凭证管理</a></li>
+            <li><a href="#capabilities">账簿查询</a></li>
+            <li><a href="#capabilities">财务报表</a></li>
+            <li><a href="#capabilities">资金出纳</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>支持</h3>
+          <ul>
+            <li><a href="/login">登录系统</a></li>
+            <li><a href="#faq">帮助文档</a></li>
+            <li><a href="/terms">服务条款</a></li>
+            <li><a href="/privacy">隐私政策</a></li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+    <div class="wrap foot-bottom">
+      <span>© 2026 云财 · 保留所有权利</span>
+      <a href="#top">回到顶部</a>
+    </div>
+  </footer>
+
+  <!-- 结构化数据：帮助搜索引擎理解站点与内容 -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "name": "云财",
+        "url": "https://www.yuncai.cn/",
+        "logo": "https://www.yuncai.cn/favicon.svg",
+        "description": "面向中小企业的在线智能财务系统，支持发票识别自动生成凭证、电子税务局直连、一键报税与报表实时出表。"
+      },
+      {
+        "@type": "WebSite",
+        "name": "云财",
+        "url": "https://www.yuncai.cn/",
+        "inLanguage": "zh-CN"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "云财",
+        "applicationCategory": "BusinessApplication",
+        "applicationSubCategory": "会计记账 / 财务管理",
+        "operatingSystem": "Web, iOS, Android",
+        "url": "https://www.yuncai.cn/",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "CNY",
+          "description": "永久免费"
+        },
+        "featureList": [
+          "发票拍照识别自动生成凭证",
+          "电子税务局直连取数",
+          "一键报税",
+          "银行流水自动入账",
+          "资产负债表 / 利润表 / 现金流量表实时出表",
+          "多账套数据隔离"
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "需要安装客户端吗？", "acceptedAnswer": { "@type": "Answer", "text": "不需要。云财是纯在线的财务系统，打开浏览器登录即可使用，换台设备也能接着做账。" } },
+          { "@type": "Question", "name": "一个账号可以管理多家公司吗？", "acceptedAnswer": { "@type": "Answer", "text": "可以。一个账号支持创建多个账套，账套之间数据完全隔离，在顶部随时切换，互不干扰。" } },
+          { "@type": "Question", "name": "历史凭证怎么迁移？", "acceptedAnswer": { "@type": "Answer", "text": "在凭证导入中上传符合模板的 Excel（.xls / .xlsx）文件即可批量导入，系统会自动补建缺失科目，借贷平衡的凭证导入后直接入账。" } },
+          { "@type": "Question", "name": "报表数据是实时的吗？", "acceptedAnswer": { "@type": "Answer", "text": "是。科目余额表、资产负债表、利润表、现金流量表都从已过账凭证实时归集计算，期初余额一并参与，任意期间可即时切换。" } },
+          { "@type": "Question", "name": "期末结转和结账怎么处理？", "acceptedAnswer": { "@type": "Answer", "text": "系统提供一键结转损益与批量结账，自动生成本年利润结转凭证并直接过账；资产负债表会把损益并入未分配利润，保证结转前后口径一致。" } },
+          { "@type": "Question", "name": "能直连电子税务局和银行吗？", "acceptedAnswer": { "@type": "Answer", "text": "电子税务局已接通数字账户，发票、申报记录与完税证明可以在系统内直接取回，个税走自然人电子税务局扣缴端；银行流水支持按模板导入并自动归类，直连同步正在陆续开通。" } }
+        ]
+      }
+    ]
+  }
+  </script>
+</body>
+</html>

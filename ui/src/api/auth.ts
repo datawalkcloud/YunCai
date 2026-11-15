@@ -75,6 +75,14 @@ export function loginByPhone(phone: string, code: string): Promise<LoginResponse
   })
 }
 
+/** 手机号 + 密码注册；成功即返回登录令牌，前端可直接进入系统。 */
+export function register(phone: string, password: string): Promise<LoginResponse> {
+  return request<LoginResponse>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ phone, password }),
+  })
+}
+
 export function fetchMe(token: string): Promise<UserInfo> {
   return request<UserInfo>('/auth/me', { method: 'GET' }, token)
 }

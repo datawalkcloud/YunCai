@@ -84,6 +84,28 @@ namespace YunCai.Modules.Identity.Api
             }
         }
 
+        /// <summary>
+        /// 手机号 + 密码自助注册，成功后直接返回 JWT 令牌并完成登录。
+        /// </summary>
+        [HttpPost("register")]
+        [AllowAnonymous]
+        [EnableRateLimiting("login")]
+        public async Task<ActionResult<LoginResult>> Register(
+            [FromBody] RegisterRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Ok(await _mediator.Send(
+                    new RegisterCommand { Phone = request.Phone, Password = request.Password },
+                    cancellationToken));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>已登录用户修改密码；成功后旧令牌全部失效，响应里带回新令牌。</summary>
         [HttpPost("change-password")]
         [Authorize]

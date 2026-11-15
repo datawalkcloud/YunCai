@@ -612,7 +612,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
   // 验证码首次登录的账号还没设密码，弹窗要继续开着走完设置流程，且在设完前不算可进入后台。
   const canEnterApp = authed && !needsPasswordSetup;
   const primaryHref = canEnterApp ? "/app" : "/login";
-  const primaryLabel = canEnterApp ? "进入控制台" : "免费开始使用";
+  const primaryLabel = canEnterApp ? "进入控制台" : "永久免费使用";
   const [activeTab, setActiveTab] = useState(SCENES[0].key);
   const active = SCENES.find((s) => s.key === activeTab) ?? SCENES[0];
   const [scrolled, setScrolled] = useState(false);
@@ -697,7 +697,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
               </button>
             )}
             <Button onClick={goApp} size="sm">
-              {authed ? "进入控制台" : "开始使用"}
+              {authed ? "进入控制台" : "永久免费使用"}
               <ArrowRightOutlined className="text-[11px]" />
             </Button>
           </div>
@@ -723,7 +723,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
                 style={{ background: "var(--brand-soft)", color: "var(--brand)" }}
               >
                 <span className="size-1.5 rounded-full" style={{ background: "var(--brand-fill)" }} />
-                AI 记账 · 税局直连 · 浏览器即用
+                永久免费 · AI 记账 · 税局直连 · 浏览器即用
               </span>
             </Reveal>
 
@@ -1176,6 +1176,7 @@ export default function LandingPage({ autoOpenLogin = false }: { autoOpenLogin?:
                   {primaryLabel}
                   <ArrowRightOutlined className="text-[12px]" />
                 </Button>
+                <p className="mt-4 text-[13px] text-white/60">永久免费，无需付费，注册即用</p>
               </div>
             </Reveal>
           </Container>

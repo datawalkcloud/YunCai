@@ -1,4 +1,4 @@
-import type { AccountSetDto } from "@/apis-gen"
+import type { AccountSetDto, CreateAccountSetRequest } from "@/apis-gen"
 import { parseDate } from "@/components/fields/date-fields"
 import {
     DEFAULT_TAX_IDENTITY_TYPE,
@@ -179,10 +179,11 @@ export function formFromDto(set: AccountSetDto): AccountSetForm {
 /**
  * 表单校验：只有决定账套结构、填错就得重建的字段才拦提交，
  * 税务与登录资料允许留空（一键登录税局时另有提示）。
+ * 新建态的账套名称由「公司名称 + 启用年份」自动生成，没有输入口，自然不能因为它拦提交。
  */
-export function validateAccountSet(values: AccountSetForm): AccountSetErrors {
+export function validateAccountSet(values: AccountSetForm, editing = true): AccountSetErrors {
     const errors: AccountSetErrors = {}
-    if (!values.name) errors.name = "请填写账套名称"
+    if (editing && !values.name) errors.name = "请填写账套名称"
     if (!values.company) errors.company = "请填写公司名称"
     if (!values.startPeriod) errors.startPeriod = "请选择启用年月"
     if (!values.codingScheme) {
@@ -191,6 +192,36 @@ export function validateAccountSet(values: AccountSetForm): AccountSetErrors {
         errors.codingScheme = "格式须如 4-2-2-2，每级 1-2 位数字，最多 10 级"
     }
     return errors
+}
+
+/**
+ * 建账时的账套名称：新建态只填公司名称，名称按「公司名称 + 启用年份」自动生成，
+ * 同一家公司跨年度各一套也不会撞名；复制账套预填的「（副本）」这类显式名称原样保留。
+ */
+function accountSetName(values: AccountSetForm): string {
+    const explicit = values.name.trim()
+    if (explicit) return explicit
+    const company = values.company.trim()
+    const year = values.startPeriod?.getFullYear()
+    return year ? `${company} ${year}` : company
+}
+
+/**
+ * 表单字段 → 新建账套请求。启用年月拆成后端要的 startYear / startMonth，
+ * 本位币固定人民币（外币在「设置 → 币别」维护），附加税费率与税务登录资料创建后再补（后端按法定 7 / 3 / 2 预置）。
+ */
+export function toCreateRequest(values: AccountSetForm): CreateAccountSetRequest {
+    return {
+        name: accountSetName(values),
+        companyName: values.company.trim(),
+        standard: values.standard,
+        taxpayerType: values.taxpayer,
+        baseCurrency: "人民币",
+        startYear: values.startPeriod?.getFullYear(),
+        startMonth: values.startPeriod ? values.startPeriod.getMonth() + 1 : undefined,
+        accountCodingScheme: values.codingScheme?.trim() || undefined,
+        industry: values.industry || undefined,
+    }
 }
 
 /** 三个 Tab 的 key。 */

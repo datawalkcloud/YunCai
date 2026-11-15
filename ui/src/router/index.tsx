@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import type { ComponentType, ReactNode } from "react";
 
 import Landing from "@/pages/landing";
+import NoAccountSetGuide from "@/pages/onboarding";
 import { PrivacyPage, TermsPage } from "@/pages/legal";
 import DashboardLayout from "@/components/layout/dashboard/DashboardLayout";
 import { ContentErrorElement, ErrorBoundary, RouteErrorElement } from "@/components/error/ErrorBoundary";
@@ -65,7 +66,7 @@ function RedirectIfAuthed({ children }: { children: ReactNode }) {
 
 /**
  * 根路径落地：解析默认账套后跳转到「/{accountSetId}」。
- * 无任何账套时提示先创建账套。
+ * 没有任何账套时（如刚注册的账号）直接进入建账引导。
  */
 function DefaultAccountSetRedirect() {
     const { loading, defaultId, error } = useAccountSets();
@@ -79,14 +80,7 @@ function DefaultAccountSetRedirect() {
             </div>
         );
     }
-    if (!defaultId) {
-        return (
-            <div className="flex min-h-svh flex-col items-center justify-center gap-2 text-muted-foreground">
-                <span>尚未创建任何账套。</span>
-                <span className="text-sm">请联系管理员在后台创建账套后再使用。</span>
-            </div>
-        );
-    }
+    if (!defaultId) return <NoAccountSetGuide />;
     // 跳转待提交期间保留加载占位，不要渲染 null 造成空白帧。
     return <AppLoading />;
 }

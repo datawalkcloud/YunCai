@@ -37,6 +37,7 @@ import {
     standardLabel,
     tabOfField,
     taxpayerLabel,
+    toCreateRequest,
     validateAccountSet,
     type AccountSetErrors,
     type AccountSetForm,
@@ -108,12 +109,12 @@ export default function AccountSetsPage() {
     function setFormValue<K extends keyof AccountSetForm>(key: K, value: AccountSetForm[K]) {
         const next: AccountSetForm = { ...formValues, [key]: value }
         setFormValues(next)
-        if (Object.keys(formErrors).length > 0) setFormErrors(validateAccountSet(next))
+        if (Object.keys(formErrors).length > 0) setFormErrors(validateAccountSet(next, !!editing))
     }
 
     /** 提交前校验：有错时把抽屉切到出错字段所在的页签，避免改了 A 页看不见 B 页的红字。 */
     function checkForm() {
-        const next = validateAccountSet(formValues)
+        const next = validateAccountSet(formValues, !!editing)
         setFormErrors(next)
         const first = Object.keys(next)[0] as keyof AccountSetForm | undefined
         if (first) setActiveTab(tabOfField(first))
@@ -232,19 +233,7 @@ export default function AccountSetsPage() {
                 })
             } else {
                 // 新增（含复制）
-                await api.accountSetsPost({
-                    createAccountSetRequest: {
-                        name: values.name.trim(),
-                        companyName: values.company.trim(),
-                        standard: values.standard,
-                        taxpayerType: values.taxpayer,
-                        baseCurrency: values.currency.trim() || "人民币",
-                        startYear: dayjs(period).year(),
-                        startMonth: dayjs(period).month() + 1,
-                        accountCodingScheme: values.codingScheme?.trim() || undefined,
-                        industry: values.industry || undefined,
-                    },
-                })
+                await api.accountSetsPost({ createAccountSetRequest: toCreateRequest(values) })
             }
             setOpen(false)
             await load()

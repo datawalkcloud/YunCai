@@ -53,6 +53,16 @@ namespace YunCai.Modules.Identity.Application
         };
     }
 
+    /// <summary>手机号 + 密码自助注册；确认密码由前端校验，后端只收手机号与密码。</summary>
+    public class RegisterRequest
+    {
+        [Required]
+        public string Phone { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+    }
+
     /// <summary>已登录用户修改密码（需要校验当前密码）。</summary>
     public class ChangePasswordRequest
     {

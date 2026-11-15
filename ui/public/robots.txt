@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# 静态官网与公开页面允许抓取
+Allow: /marketing.html
+Allow: /terms
+Allow: /privacy
+
+# SPA 应用区（需登录）无需抓取
+Disallow: /app
+Disallow: /login
+
+Sitemap: https://www.yuncai.cn/sitemap.xml

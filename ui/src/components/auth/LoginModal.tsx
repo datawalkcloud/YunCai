@@ -28,6 +28,8 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
  * 两种凭据：手机验证码（默认入口，未注册手机号验证通过后自动建号）、手机号 + 密码。
  * 本地开发短信为模拟发送，接口会回显验证码，直接显示在提示行里；
  * 其余渠道保留展示，点击时提示未开放，不做假跳转。
+ * 注：「短信验证码登录」目前由 ENABLE_SMS_LOGIN（文件内常量，当前 false）临时隐藏，
+ * 仅保留「密码登录」；恢复只需把该常量改回 true。
  * ============================================================ */
 
 /* 配色取全站 token：跟「主题设置」的主题色与明暗走，不再硬编码第二套绿/黑。 */
@@ -46,8 +48,16 @@ const FOCUS_RING = "focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--seed-primary
 const FOCUS_WITHIN_RING = "focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--seed-primary)_22%,transparent)]";
 const PHONE_RE = /^1\d{10}$/;
 
+/* 是否开放「短信验证码登录」。临时隐藏改 false 即可，恢复只改回 true。 */
+const ENABLE_SMS_LOGIN = false;
+
+const LOGIN_TABS = [
+  { key: "phone", label: "验证码登录" },
+  { key: "password", label: "密码登录" },
+] as const;
+
 type LoginMode = "password" | "phone";
-type LoginStep = "login" | "set-password" | "reset-password";
+type LoginStep = "login" | "register" | "set-password" | "reset-password";
 
 type Channel = {
   key: string;
@@ -73,9 +83,9 @@ export function LoginModal({
   /** 登录成功回调：由宿主页面统一关闭弹窗并跳转，避免弹窗与路由守卫同时导航。 */
   onSuccess?: () => void;
 }) {
-  const { login, loginByPhone, setPassword: setAccountPassword, needsPasswordSetup } = useAuth();
+  const { login, loginByPhone, register, setPassword: setAccountPassword, needsPasswordSetup } = useAuth();
 
-  const [mode, setMode] = useState<LoginMode>("phone");
+  const [mode, setMode] = useState<LoginMode>(ENABLE_SMS_LOGIN ? "phone" : "password");
   const [step, setStep] = useState<LoginStep>("login");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
@@ -99,7 +109,7 @@ export function LoginModal({
     phoneValid && code.trim().length === 6 && newPassword.length >= 8 && confirmPassword.length > 0;
   const canSubmit =
     !submitting &&
-    (step === "set-password"
+    (step === "set-password" || step === "register"
       ? newPassword.length >= 8 && confirmPassword.length > 0
       : step === "reset-password"
         ? resetReady
@@ -111,7 +121,7 @@ export function LoginModal({
   // needsPasswordSetup 变化时也要重跑：验证码首次登录成功后立刻切到设置密码步骤。
   useEffect(() => {
     if (!open) return;
-    setMode("phone");
+    setMode(ENABLE_SMS_LOGIN ? "phone" : "password");
     setStep(needsPasswordSetup ? "set-password" : "login");
     setPhone("");
     setCode("");
@@ -147,7 +157,7 @@ export function LoginModal({
     if (!open || step === "set-password") return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (step === "reset-password") enterStep("login");
+        if (step === "reset-password" || step === "register") enterStep("login");
         else onClose();
       }
     };
@@ -164,7 +174,10 @@ export function LoginModal({
     setNewPassword("");
     setConfirmPassword("");
     setCode("");
-    window.setTimeout(() => (next === "reset-password" ? phoneRef : newPwdRef).current?.focus(), 0);
+    window.setTimeout(
+      () => (next === "reset-password" || next === "register" ? phoneRef : newPwdRef).current?.focus(),
+      0,
+    );
   }
 
   function switchMode(next: LoginMode) {
@@ -251,6 +264,29 @@ export function LoginModal({
     }
   }
 
+  async function handleRegisterSubmit() {
+    if (!canSubmit) return;
+    if (newPassword.length < 8) {
+      setError("密码至少 8 位");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("两次输入的密码不一致");
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      await register(phone.trim(), newPassword);
+      if (onSuccess) onSuccess();
+      else onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "注册失败，请重试");
+      setSubmitting(false);
+      phoneRef.current?.focus();
+    }
+  }
+
   async function handleResetSubmit() {
     if (!canSubmit) return;
     if (newPassword.length < 8) {
@@ -322,9 +358,11 @@ export function LoginModal({
             ? "设置登录密码"
             : step === "reset-password"
               ? "找回密码"
-              : mode === "password"
-                ? "手机号密码登录"
-                : "手机验证码登录"}
+              : step === "register"
+                ? "手机号注册"
+                : mode === "password"
+                  ? "手机号密码登录"
+                  : "手机验证码登录"}
         </h2>
 
         {step === "set-password" && (
@@ -339,31 +377,27 @@ export function LoginModal({
           </p>
         )}
 
-        {/* 登录方式切换（设置密码步骤不显示） */}
-        {step === "login" && (
-          <div className="mt-7 flex gap-1 rounded-xl p-1" style={{ background: C.field }}>
-            {(
-              [
-                { key: "phone", label: "验证码登录" },
-                { key: "password", label: "密码登录" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => switchMode(tab.key)}
-                className="h-9 flex-1 rounded-lg text-[13.5px] font-normal transition-colors"
-                style={
-                  mode === tab.key
-                    ? { background: "var(--card)", color: C.ink, boxShadow: "0 1px 3px rgba(10,20,16,.08)" }
-                    : { color: C.sub }
-                }
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* 登录方式切换（设置密码步骤不显示；关闭短信验证码时只余密码登录，隐藏切换条） */}
+        {step === "login" &&
+          (ENABLE_SMS_LOGIN ? LOGIN_TABS : LOGIN_TABS.filter((t) => t.key !== "phone")).length > 1 && (
+            <div className="mt-7 flex gap-1 rounded-xl p-1" style={{ background: C.field }}>
+              {(ENABLE_SMS_LOGIN ? LOGIN_TABS : LOGIN_TABS.filter((t) => t.key !== "phone")).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => switchMode(tab.key)}
+                  className="h-9 flex-1 rounded-lg text-[13.5px] font-normal transition-colors"
+                  style={
+                    mode === tab.key
+                      ? { background: "var(--card)", color: C.ink, boxShadow: "0 1px 3px rgba(10,20,16,.08)" }
+                      : { color: C.sub }
+                  }
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
 
         {/* 表单 */}
         <form
@@ -375,7 +409,9 @@ export function LoginModal({
                 ? handleSetupSubmit()
                 : step === "reset-password"
                   ? handleResetSubmit()
-                  : handleSubmit()
+                  : step === "register"
+                    ? handleRegisterSubmit()
+                    : handleSubmit()
             );
           }}
         >
@@ -505,6 +541,74 @@ export function LoginModal({
                 返回登录
               </button>
             </>
+          ) : step === "register" ? (
+            <>
+              <input
+                ref={phoneRef}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                inputMode="numeric"
+                autoComplete="tel"
+                maxLength={11}
+                placeholder="请输入手机号"
+                className={
+                  "h-[52px] w-full rounded-xl px-4 text-[15px] font-normal outline-none transition-shadow placeholder:font-normal placeholder:text-(--muted-foreground) " +
+                  FOCUS_RING
+                }
+                style={{ background: C.field, color: C.ink }}
+              />
+
+              <div
+                className={
+                  "flex h-[52px] items-center rounded-xl px-4 transition-shadow " + FOCUS_WITHIN_RING
+                }
+                style={{ background: C.field }}
+              >
+                <input
+                  ref={newPwdRef}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  type={showPwd ? "text" : "password"}
+                  autoComplete="new-password"
+                  maxLength={64}
+                  placeholder="设置登录密码（至少 8 位）"
+                  className="h-full w-full bg-transparent text-[15px] font-normal outline-none placeholder:font-normal placeholder:text-(--muted-foreground)"
+                  style={{ color: C.ink }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((v) => !v)}
+                  aria-label={showPwd ? "隐藏密码" : "显示密码"}
+                  className="ml-2 flex size-6 shrink-0 items-center justify-center text-[14px] transition-colors hover:text-(--foreground)!"
+                  style={{ color: C.faint }}
+                >
+                  {showPwd ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                </button>
+              </div>
+
+              <input
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                type={showPwd ? "text" : "password"}
+                autoComplete="new-password"
+                maxLength={64}
+                placeholder="再次输入密码"
+                className={
+                  "h-[52px] w-full rounded-xl px-4 text-[15px] font-normal outline-none transition-shadow placeholder:font-normal placeholder:text-(--muted-foreground) " +
+                  FOCUS_RING
+                }
+                style={{ background: C.field, color: C.ink }}
+              />
+
+              <button
+                type="button"
+                onClick={() => enterStep("login")}
+                className="self-start text-[12.5px] font-normal transition-opacity hover:opacity-70"
+                style={{ color: C.sub }}
+              >
+                已有账号？返回登录
+              </button>
+            </>
           ) : mode === "password" ? (
             <>
               <input
@@ -630,11 +734,29 @@ export function LoginModal({
                 ? submitting
                   ? "重置中…"
                   : "重置密码"
-                : submitting
-                  ? "登录中…"
-                  : "登录"}
+                : step === "register"
+                  ? submitting
+                    ? "注册中…"
+                    : "注册并登录"
+                  : submitting
+                    ? "登录中…"
+                    : "登录"}
           </button>
         </form>
+
+        {step === "login" && (
+          <p className="mt-5 text-center text-[12.5px] font-normal" style={{ color: C.sub }}>
+            还没有账号？
+            <button
+              type="button"
+              onClick={() => enterStep("register")}
+              className="ml-1 font-normal transition-opacity hover:opacity-70"
+              style={{ color: C.brand }}
+            >
+              立即注册
+            </button>
+          </p>
+        )}
 
         {/* 其他登录方式（设置密码步骤不显示） */}
         {step === "login" && (

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="TaxAssistant/YunCaiTool.csproj" />
+  <Project Path="YunCai.Tests/YunCai.Tests.csproj" />
+  <Project Path="YunCai/YunCai.csproj" />
+</Solution>

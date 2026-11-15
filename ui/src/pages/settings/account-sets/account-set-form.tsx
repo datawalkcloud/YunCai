@@ -118,15 +118,31 @@ export interface AccountSetFieldsProps {
 export function BasicInfoFields({ values, errors, editing, standardLocked, onChange }: AccountSetFieldsProps) {
     return (
         <div className="flex flex-col gap-5">
-            <Row label="账套名称" htmlFor="account-set-name" required error={errors.name}>
-                <Input
-                    id="account-set-name"
-                    className={FORM_CONTROL_W}
-                    value={values.name}
-                    onChange={(e) => onChange("name", e.target.value)}
-                    placeholder="如 杭州数从科技有限公司"
-                />
-            </Row>
+            {/* 新建态不填账套名称：提交时按「公司名称 + 启用年份」自动生成。 */}
+            {editing && (
+                <Row label="账套名称" htmlFor="account-set-name" required error={errors.name}>
+                    <Input
+                        id="account-set-name"
+                        className={FORM_CONTROL_W}
+                        value={values.name}
+                        onChange={(e) => onChange("name", e.target.value)}
+                        placeholder="如 杭州数从科技有限公司"
+                    />
+                </Row>
+            )}
+
+            {/* 公司名称是建账必填项，编辑态放在「税务信息」页，新建态这里必须给到入口。 */}
+            {!editing && (
+                <Row label="公司名称" htmlFor="account-set-company" required error={errors.company}>
+                    <Input
+                        id="account-set-company"
+                        className={FORM_CONTROL_W}
+                        value={values.company}
+                        onChange={(e) => onChange("company", e.target.value)}
+                        placeholder="如 杭州数从科技有限公司"
+                    />
+                </Row>
+            )}
 
             <Row
                 label="账套启用年月"
@@ -186,15 +202,18 @@ export function BasicInfoFields({ values, errors, editing, standardLocked, onCha
                 />
             </Row>
 
-            <Row label="记账本位币" htmlFor="account-set-currency">
-                <Input
-                    id="account-set-currency"
-                    className={FORM_CONTROL_W}
-                    value={values.currency}
-                    onChange={(e) => onChange("currency", e.target.value)}
-                    placeholder="人民币"
-                />
-            </Row>
+            {/* 建账一律人民币，外币要到「设置 → 币别」增设；编辑态仍可核对与本位币改动。 */}
+            {editing && (
+                <Row label="记账本位币" htmlFor="account-set-currency">
+                    <Input
+                        id="account-set-currency"
+                        className={FORM_CONTROL_W}
+                        value={values.currency}
+                        onChange={(e) => onChange("currency", e.target.value)}
+                        placeholder="人民币"
+                    />
+                </Row>
+            )}
 
             <Row
                 label="科目编码方案"

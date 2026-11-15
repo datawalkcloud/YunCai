@@ -4,6 +4,7 @@ import {
   fetchMe,
   login as loginApi,
   loginByPhone as loginByPhoneApi,
+  register as registerApi,
   setPassword as setPasswordApi,
   type LoginResponse,
   type UserInfo,
@@ -22,6 +23,7 @@ interface AuthContextValue {
   needsPasswordSetup: boolean
   login: (username: string, password: string) => Promise<UserInfo>
   loginByPhone: (phone: string, code: string) => Promise<UserInfo>
+  register: (phone: string, password: string) => Promise<UserInfo>
   setPassword: (password: string) => Promise<UserInfo>
   changePassword: (currentPassword: string | null, newPassword: string) => Promise<UserInfo>
   logout: () => void
@@ -122,6 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applyLogin],
   )
 
+  const register = useCallback(
+    async (phone: string, password: string) => applyLogin(await registerApi(phone, password)),
+    [applyLogin],
+  )
+
   const setPassword = useCallback(
     async (password: string) => {
       if (!token) throw new Error('登录状态已失效，请重新登录')
@@ -150,11 +157,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       needsPasswordSetup,
       login,
       loginByPhone,
+      register,
       setPassword,
       changePassword,
       logout,
     }),
-    [token, user, status, needsPasswordSetup, login, loginByPhone, setPassword, changePassword, logout],
+    [token, user, status, needsPasswordSetup, login, loginByPhone, register, setPassword, changePassword, logout],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>
