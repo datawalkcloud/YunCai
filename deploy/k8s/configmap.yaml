@@ -4,8 +4,9 @@ metadata:
   name: yuncai-config
 data:
   ASPNETCORE_ENVIRONMENT: Production
-  # 迁移由 api 的 initContainer 以 --migrate-only 执行，进程内不再自动迁移。
-  YunCai__Database__AutoMigrate: "false"
+  # api 启动即补迁移：漏跑一次性迁移任务会让库结构落后，而 /health 只验连通性、接口按路径 500。
+  # 单副本 + strategy: Recreate 保证同一时刻只有一个进程改结构；initContainer 先跑一遍，重复执行无副作用。
+  YunCai__Database__AutoMigrate: "true"
   # 首次部署时置 true 生成初始管理员与默认账套，之后保持 false。
   YunCai__Seed__Enabled: "false"
   YunCai__Seed__AdminUsername: admin

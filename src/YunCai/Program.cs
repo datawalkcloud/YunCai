@@ -369,6 +369,10 @@ try
         {
             await DatabaseBootstrap.MigrateAsync(db, startupLogger);
         }
+        else
+        {
+            await DatabaseBootstrap.EnsureSchemaUpToDateAsync(db, startupLogger);
+        }
 
         await DatabaseBootstrap.SeedAsync(db, runtime, isDevelopment, startupLogger);
 

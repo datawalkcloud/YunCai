@@ -75,7 +75,7 @@ kubectl apply -k deploy/k8s   # api 的 initContainer 先跑 --migrate-only 再�
 
 1. 后端改动 API（Controller / DTO）后：`dotnet run` 启动后端 → 在 `ui/` 下执行 `npm run gen` 重新生成前端客户端 → 前端使用 `apis-gen` 中的强类型 API。
 2. OpenAPI 仅在 Development 环境暴露（`/openapi/v1.json`）；开发环境不做 HTTPS 跳转，方便生成器直连 http。
-3. 数据库连接串走 `ConnectionStrings:DefaultConnection`（PostgreSQL），**真实值不入库**：本机放 `appsettings.Local.json`，容器放环境变量（见 `docs/部署上线说明.md`）。迁移与播种由配置开关控制：开发环境 `YunCai:Database:AutoMigrate=true` + `YunCai:Seed:Enabled=true`（admin/admin123、user/user123、默认账套）；生产保持关闭，发布时跑一次性任务 `dotnet YunCai.dll --migrate-only`。连接串或 `Jwt:Key` 缺失/过短会直接让进程启动失败。
+3. 数据库连接串走 `ConnectionStrings:DefaultConnection`（PostgreSQL），**真实值不入库**：本机放 `appsettings.Local.json`，容器放环境变量（见 `docs/部署上线说明.md`）。迁移与播种由配置开关控制：开发环境 `YunCai:Database:AutoMigrate=true` + `YunCai:Seed:Enabled=true`（admin/admin123、user/user123、默认账套）；生产由发布时的一次性任务 `dotnet YunCai.dll --migrate-only` 建结构——Compose 侧 `AutoMigrate` 保持关闭，K8s 侧 ConfigMap 置 `true`（单副本 + `Recreate`，主容器启动再补一次，避免漏跑迁移导致库结构落后）。连接串或 `Jwt:Key` 缺失/过短会直接让进程启动失败。
 4. 科目、日记账、凭证均归属于某一账套（AccountSet），接口普遍需要 accountSetId 上下文。
 5. 运行时基线（`Program.cs` 组合根）：未捕获异常 → Problem Details（`Shared/Infrastructure/Api/GlobalExceptionHandler`，业务校验类 400 透出中文文案，500 不外泄堆栈）；`/health` 探活含数据库连通；`Auth/login` 按来源 IP 限流 10 次/5 分钟；反向代理后必须开 `YunCai:Networking:TrustForwardedHeaders`，否则限流按代理 IP 计数。
 
@@ -113,5 +113,5 @@ kubectl apply -k deploy/k8s   # api 的 initContainer 先跑 --migrate-only 再�
 - **apis-gen 日期运行时是 Date 对象**：生成客户端的 `FromJSON` 会把日期字段 `new Date(...)` 解析成真正的 Date（类型与运行时一致），前端展示用 `new Date(x).toISOString().substring(0,10)` 得 yyyy-MM-dd，不要直接 `String(x).slice(0,10)`（会渲染出英文星期）。
 - **改实体命名空间必须同步迁移快照**：`Migrations/AppDbContextModelSnapshot.cs` 以**实体全名字符串**（如 `"YunCai.Modules.Vouchers.Domain.Voucher"`）登记实体；改实体命名空间而不同步该文件，下次 `dotnet ef migrations add` 会生成全量删建。验证方法：加一个临时迁移看 Up/Down 是否为空，空则 `dotnet ef migrations remove` 撤掉。
 - **oxlint 存量警告**：根目录 `npx oxlint` 有 ~15 条既有 `react(only-export-components)` fast-refresh 提示（shadcn 组件与 router 辅助组件），不属于本次改动；lemon 页面文件保持 0 警告。
-- **启动即失败是设计**：`ConnectionStrings:DefaultConnection` 为空、或 `Jwt:Key` 缺失/短于 32 位时进程直接抛异常退出，不再「吞掉迁移错误照常服务」。CI 里跑 `dotnet ef` 需同时给这两个环境变量（见 `.github/workflows/ci.yml`）。
+- **启动即失败是设计**：`ConnectionStrings:DefaultConnection` 为空、或 `Jwt:Key` 缺失/短于 32 位时进程直接抛异常退出，不再「吞掉迁移错误照常服务」。CI 里跑 `dotnet ef` 需同时给这两个环境变量（见 `.github/workflows/ci.yml`）。`AutoMigrate=false` 的进程启动前还会比对迁移历史，有未应用迁移就拒绝启动并点名——`/health` 只验连通性，库结构落后时它照常 200 而接口按路径 500（如 `42703: column u.created_at does not exist`），别把探针绿了当成迁移跑过。
 - **前端页面两套并存**：`ui/src/pages/lemon/*` 是复刻柠檬云的正式 UI，`ui/src/pages/{vouchers,ledger,funds,reports,settings,closing}` 是既有实页，功能重叠但**数据来源接法不同**——改数据链路时先确认改的是哪套，`pages/home`、`pages/vouchers/import`、`lemon/menu.ts` 属不可达孤儿代码。

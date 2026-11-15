@@ -86,6 +86,8 @@ kubectl -n yuncai rollout status deploy/yuncai-web --timeout=5m
 
 `api` 的 `initContainer` 会用同一镜像执行 `dotnet YunCai.dll --migrate-only`：先迁移、再启动主容器，所以不存在「新版本先于库结构启动」的窗口；`strategy: Recreate` 保证同一时刻只有一个实例在迁移。
 
+`configmap.yaml` 另置 `YunCai__Database__AutoMigrate: "true"`，主容器启动时再补一次未应用的迁移（幂等，两处都跑无害），这样即使有人绕过清单直接换镜像也不会「探针全绿、接口 500」；把它置回 `false` 时主容器遇到未应用迁移会启动失败并点名缺哪些。
+
 ## 6. 首次初始化管理员
 
 `configmap.yaml` 当前是 `YunCai__Seed__Enabled: "true"`，首次 `kubectl apply -k` 会用 `yuncai-secret` 里的口令建出管理员与默认账套。种子跑完后把该文件改回 `"false"` 再 apply 一次——只改集群里的 ConfigMap 会被下一次 `apply -k` 覆盖回去。

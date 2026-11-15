@@ -245,7 +245,7 @@ function AccountSelect({
     return (
         <Select
             variant="borderless"
-            className="w-full"
+            className="pk-account-select w-full"
             value={value || undefined}
             options={options}
             placeholder=""
@@ -256,7 +256,6 @@ function AccountSelect({
             onFocus={onFocus}
             onOpenChange={onOpenChange}
             onChange={(v) => onChange(v ?? "")}
-            style={{ height: 32 }}
             labelRender={(props) => {
                 const base = labelOf(String(props.value ?? ""))
                 return labelSuffix ? `${base}_${labelSuffix}` : base
@@ -1754,7 +1753,7 @@ export default function VoucherSheet({
                                                 data-nav="account"
                                                 data-col="account"
                                                 data-assist-host={r.key}
-                                                className="relative flex h-full flex-col justify-center"
+                                                className="relative flex h-full flex-col"
                                                 onKeyDown={onCellKeyDown}
                                             >
                                                 <AccountSelect
@@ -1780,7 +1779,7 @@ export default function VoucherSheet({
                                                     }}
                                                 />
                                                 {account?.code && (
-                                                    <div className="pl-3 text-[12px] leading-4 tabular-nums text-(--muted-foreground)">
+                                                    <div className="shrink-0 pl-3 text-[12px] leading-4 tabular-nums text-(--muted-foreground)">
                                                         余额：{(balances[account.code] ?? 0).toFixed(2)}
                                                     </div>
                                                 )}

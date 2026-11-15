@@ -550,6 +550,13 @@
 .voucher-sheet.ant-table-wrapper .ant-table .ant-table-tbody .ant-select {
   font-size: 13px;
 }
+/* 科目格：选择器撑满整格并去掉自带的上下内边距（文字由 .ant-select-content 自身居中），
+   聚焦描边才能盖住整个单元格，和摘要格观感一致。 */
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-tbody .pk-account-select {
+  flex: 1;
+  min-height: 0;
+  padding-block: 0;
+}
 /* 合计行：铺米色底、补格线、清零留白，分位竖线才能上下贯通。 */
 .voucher-sheet.ant-table-wrapper .ant-table tfoot.ant-table-summary > tr > td.ant-table-cell {
   padding: 0;

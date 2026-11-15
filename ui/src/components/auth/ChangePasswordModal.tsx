@@ -75,7 +75,7 @@ export function ChangePasswordModal({ open, onClose }: { open: boolean; onClose:
                 >
                     <Input.Password autoComplete="new-password" maxLength={64} placeholder="再次输入新密码" />
                 </Form.Item>
-                <Button htmlType="submit" className="hidden" />
+                <Button htmlType="submit" style={{ display: "none" }} />
             </Form>
         </Modal>
     )
