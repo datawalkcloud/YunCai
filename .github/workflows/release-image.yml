@@ -1,0 +1,103 @@
+name: 发布镜像到阿里云 ACR
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要重新构建的版本 tag（如 v1.1.0，须已存在）'
+        required: true
+
+concurrency:
+  group: release-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    name: 构建 ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: yuncai-api
+            target: api
+          - image: yuncai-web
+            target: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: 解析版本号
+        id: version
+        env:
+          REF: ${{ inputs.tag || github.ref_name }}
+        run: |
+          version="${REF#v}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::只发布 v<主版本>.<次版本>.<修订> 形式的 tag，当前是 $REF"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: 校验并规范化 ACR 配置
+        id: acr
+        env:
+          RAW_REGISTRY: ${{ vars.ACR_REGISTRY || secrets.ACR_REGISTRY }}
+          RAW_NAMESPACE: ${{ vars.ACR_NAMESPACE || secrets.ACR_NAMESPACE }}
+        run: |
+          : "${RAW_REGISTRY:?缺少 ACR_REGISTRY（Repository variables 或 secrets）}"
+          : "${RAW_NAMESPACE:?缺少 ACR_NAMESPACE（Repository variables 或 secrets）}"
+          registry="${RAW_REGISTRY#https://}"; registry="${registry#http://}"; registry="${registry%/}"
+          registry=$(printf '%s' "$registry" | tr 'A-Z' 'a-z' | sed -e 's/[[:space:]]//g' -e 's/\.$//' -e 's/:443$//' -e 's/:80$//')
+          namespace=$(printf '%s' "$RAW_NAMESPACE" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's|/$||')
+          case "$registry" in
+            */*) echo "::error::ACR_REGISTRY 只填域名，不要带命名空间或路径"; exit 1;;
+            registry-vpc.*|*-vpc.*|*-internal.*) echo "::error::这是 VPC/内网地址，GitHub 托管 runner 无法访问，请换成公网域名"; exit 1;;
+          esac
+          code=$(curl -s -o /dev/null -w '%{http_code}' "https://$registry/v2/" || true)
+          echo "https://$registry/v2/ → HTTP $code（预期 401 表示域名可达）"
+          echo "registry=$registry" >> "$GITHUB_OUTPUT"
+          echo "namespace=$namespace" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 登录 ACR
+        env:
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+        run: |
+          : "${ACR_USERNAME:?缺少 ACR_USERNAME}"
+          : "${ACR_PASSWORD:?缺少 ACR_PASSWORD}"
+          # 复制进 Secrets 时容易带上换行或首尾空格，先剔掉再登录
+          user=$(printf '%s' "$ACR_USERNAME" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          pass=$(printf '%s' "$ACR_PASSWORD" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          printf '%s' "$pass" | docker login "${{ steps.acr.outputs.registry }}" --username "$user" --password-stdin
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.acr.outputs.registry }}/${{ steps.acr.outputs.namespace }}/${{ matrix.image }}
+          # 一个版本只推一个 tag：1.1.0。不要 latest / 浮动次版本 / 分支名 / sha-*，
+          # 避免 ACR 里堆一串指向同一镜像的别名，回滚直接按版本号拉。
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+
+      - name: 构建并推送
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          # ACR 对 OCI attestation 的支持因版本而异，关掉更稳。
+          provenance: false

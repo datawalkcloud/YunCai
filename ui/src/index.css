@@ -1,0 +1,731 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* 主题设置的两颗种子：--seed-radius 为圆角基准（px，0 即全站直角），--seed-primary 为主题色。
+     实际取值由「主题设置」写成 <html> 内联样式（见 components/theme/theme-provider.tsx
+     与 index.html 的防闪烁脚本），下面的品牌色档、@theme inline 里的 rounded-* 档位
+     以及 main.tsx 的 antd token 全部由这两颗种子派生。 */
+  --seed-radius: 0px;
+  --seed-primary: #273cf3;
+  --background: #f4f6fb;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --popover: #ffffff;
+  --popover-foreground: #1e293b;
+  --primary: var(--seed-primary);
+  --primary-foreground: #ffffff;
+  /* 品牌色分档：--brand 用于文字/描边，--brand-fill 用于实底，soft/tint/border 用于选中态浅底。 */
+  --brand: var(--seed-primary);
+  --brand-fill: var(--seed-primary);
+  --brand-fill-hover: color-mix(in srgb, var(--seed-primary) 78%, #000);
+  --brand-soft: color-mix(in srgb, var(--seed-primary) 8%, #fff);
+  --brand-tint: color-mix(in srgb, var(--seed-primary) 14%, #fff);
+  --brand-border: color-mix(in srgb, var(--seed-primary) 16%, #fff);
+  --secondary: #f1f5f9;
+  --secondary-foreground: #334155;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: var(--brand-soft);
+  --accent-foreground: #1e293b;
+  --destructive: #ef4444;
+  --border: #eceff4;
+  /* 凭证纸面的格线：默认档给全局（凭证详情、结转凭证都用它），记账纸样再就地覆盖。 */
+  --sheet-line: #c0c0c0;
+  --input: #e2e8f0;
+  --ring: var(--seed-primary);
+  --chart-1: var(--seed-primary);
+  --chart-2: #10b981;
+  --chart-3: #8b5cf6;
+  --chart-4: #f59e0b;
+  --chart-5: #6366f1;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1e293b;
+  --sidebar-primary: var(--seed-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--brand-soft);
+  --sidebar-accent-foreground: #1e293b;
+  --sidebar-border: #eceff4;
+  --sidebar-ring: var(--seed-primary);
+  /* 表格行底色：斑马行与负数行是内联样式，走变量才能在暗色下跟随。 */
+  --table-zebra-bg: #fafbfd;
+  --table-neg-bg: #fef2f2;
+  /* 语义色档：警示提示块、成功/危险文字。页面只引用这些变量，不再各自写死色值。 */
+  --warn-bg: #fff9ef;
+  --warn-border: #f0d7a8;
+  --warn-text: #8a6a35;
+  --warn-icon: #e6a23c;
+  --success: #16a34a;
+  --danger: #dc2626;
+  /* 状态色的浅底与描边档：成功/危险的提示块统一用这三档，页面不再自己挑绿或挑红。 */
+  --success-soft: #eefaf2;
+  --success-border: #b8e3c8;
+  --danger-border: #fecaca;
+  /* 六档状态色：文字档 / 标签浅底档 / 瓦片底色档。状态标签、瓦片、图标着色只从这里取，
+     页面与公共常量模块不再各写一份色值。 */
+  --tone-blue: #3b82f6;
+  --tone-blue-soft: #dbeafe;
+  --tone-blue-bg: #dbe8fd;
+  --tone-green: #10b981;
+  --tone-green-soft: #d1fae5;
+  --tone-green-bg: #caefe3;
+  --tone-purple: #8b5cf6;
+  --tone-purple-soft: #ede9fe;
+  --tone-purple-bg: #ebe4fd;
+  --tone-amber: #f59e0b;
+  --tone-amber-soft: #fef3c7;
+  --tone-amber-bg: #fce4bc;
+  --tone-red: #ef4444;
+  --tone-red-soft: #fee2e2;
+  --tone-red-bg: #fce1e1;
+  --tone-gray: #64748b;
+  --tone-gray-soft: #eef1f6;
+  --tone-gray-bg: #e5e8eb;
+  /* 图标专用的两档灰度：比 --muted-foreground 浅，供 ICON_STYLE 的 muted / placeholder 用。 */
+  --icon-muted: #94a3b8;
+  --icon-placeholder: #cbd5e1;
+}
+
+/* 暗色：antd 默认暗色算法同一套中性灰（纯灰阶，不额外染色）。 */
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  /* 深底上品牌色要提亮一档才读得清（文字/描边档），实底则压暗一档，两档都从种子色算出。
+     浅底三档改用半透明：叠在深灰表面上即为原来的深色档，换任何主题色都不会糊成一块。 */
+  --primary: color-mix(in srgb, var(--seed-primary) 60%, #fff);
+  --primary-foreground: oklch(0.17 0 0);
+  --brand: var(--primary);
+  --brand-fill: color-mix(in srgb, var(--seed-primary) 90%, #000);
+  --brand-fill-hover: color-mix(in srgb, var(--seed-primary) 72%, #fff);
+  --brand-soft: color-mix(in srgb, var(--brand) 14%, transparent);
+  --brand-tint: color-mix(in srgb, var(--brand) 22%, transparent);
+  --brand-border: color-mix(in srgb, var(--brand) 40%, transparent);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --sheet-line: rgb(255 255 255 / 0.22);
+  --input: oklch(1 0 0 / 15%);
+  --ring: var(--primary);
+  --chart-1: var(--primary);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.623 0.214 259.815);
+  --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  --table-zebra-bg: #1c1c1c;
+  --table-neg-bg: rgb(248 113 113 / 0.12);
+  --warn-icon: #e6a23c;
+  --warn-bg: color-mix(in srgb, var(--warn-icon) 14%, transparent);
+  --warn-border: color-mix(in srgb, var(--warn-icon) 34%, transparent);
+  --warn-text: rgb(255 255 255 / 0.82);
+  --success: #4ade80;
+  --danger: #f87171;
+  --success-soft: color-mix(in srgb, var(--success) 14%, transparent);
+  --success-border: color-mix(in srgb, var(--success) 34%, transparent);
+  --danger-border: color-mix(in srgb, var(--danger) 40%, transparent);
+  /* 状态色的浅底/瓦片档在暗色下改成同色透明度叠加，文字档保持不变。 */
+  --tone-blue-soft: color-mix(in srgb, var(--tone-blue) 24%, transparent);
+  --tone-blue-bg: color-mix(in srgb, var(--tone-blue) 30%, transparent);
+  --tone-green-soft: color-mix(in srgb, var(--tone-green) 24%, transparent);
+  --tone-green-bg: color-mix(in srgb, var(--tone-green) 30%, transparent);
+  --tone-purple-soft: color-mix(in srgb, var(--tone-purple) 24%, transparent);
+  --tone-purple-bg: color-mix(in srgb, var(--tone-purple) 30%, transparent);
+  --tone-amber-soft: color-mix(in srgb, var(--tone-amber) 24%, transparent);
+  --tone-amber-bg: color-mix(in srgb, var(--tone-amber) 30%, transparent);
+  --tone-red-soft: color-mix(in srgb, var(--tone-red) 24%, transparent);
+  --tone-red-bg: color-mix(in srgb, var(--tone-red) 30%, transparent);
+  --tone-gray-soft: color-mix(in srgb, var(--tone-gray) 34%, transparent);
+  --tone-gray-bg: color-mix(in srgb, var(--tone-gray) 40%, transparent);
+}
+
+@theme inline {
+  /* rounded-* 档位统一由 --seed-radius 派生（--seed-radius 对齐 Tailwind 的 lg 档 = 8px）：
+     设为 0 时全站直角，设为 8px 时正好落回 Tailwind 默认色阶。
+     裸档位 rounded / rounded-t 也在这一套里，不需要额外接管。
+     antd 的 borderRadius 在 main.tsx 里取同一个值。 */
+  --radius: calc(var(--seed-radius) * 0.5);
+  --radius-xs: calc(var(--seed-radius) * 0.25);
+  --radius-sm: calc(var(--seed-radius) * 0.5);
+  --radius-md: calc(var(--seed-radius) * 0.75);
+  --radius-lg: var(--seed-radius);
+  --radius-xl: calc(var(--seed-radius) * 1.5);
+  --radius-2xl: calc(var(--seed-radius) * 2);
+  --radius-3xl: calc(var(--seed-radius) * 3);
+  --radius-4xl: calc(var(--seed-radius) * 4);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-heading: var(--font-sans);
+  --font-sans: 'Inter Variable', sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/*
+ * 主题色落地层。
+ *
+ * 页面里大量手写的是 text-[#273cf3] / bg-[#273cf3] 这类任意值类（150+ 处），逐个页面换成
+ * token 不现实，这里按类名一次性映射到 --brand 系列变量：换主题色时整站一起跟随，
+ * 暗色下的深浅档由上面的 .dark 变量决定，这里不必再分明暗写两遍。
+ *
+ * 规则写在 Tailwind 的 @layer 之外：utilities 都在层里，无层声明天然压过它们。
+ * 带 ! 的重要声明是例外，必须写回 utilities 层才能压过同类名的重要版本。
+ */
+.text-\[\#273cf3\],
+.group:hover .group-hover\:text-\[\#273cf3\],
+.hover\:text-\[\#273cf3\]:hover,
+.focus\:text-\[\#273cf3\]:focus {
+  color: var(--brand);
+}
+.text-\[\#273cf3\]\/70 {
+  color: color-mix(in srgb, var(--brand) 70%, transparent);
+}
+.border-\[\#273cf3\],
+.hover\:border-\[\#273cf3\]:hover {
+  border-color: var(--brand);
+}
+.bg-\[\#273cf3\] {
+  background-color: var(--brand-fill);
+}
+.bg-\[\#1e2fc4\] {
+  background-color: var(--brand-fill-hover);
+}
+.hover\:bg-\[\#273cf3\]:hover,
+.hover\:bg-\[\#1e2fc4\]:hover {
+  background-color: var(--brand-fill-hover);
+}
+/* 选中态浅底与浅描边：换成主题色后同档派生，避免出现第二种颜色的浅蓝底。 */
+.bg-\[\#eef4ff\],
+.bg-\[\#e7f0ff\],
+.bg-\[\#f2f6ff\],
+.bg-\[\#f5f9ff\],
+.bg-\[\#f8faff\],
+.bg-\[\#f8fbff\],
+.bg-\[\#eff6ff\],
+.bg-\[\#dbeafe\] {
+  background-color: var(--brand-soft);
+}
+.border-\[\#bfdbfe\],
+.border-\[\#d7e3fb\],
+.border-\[\#d9e6ff\] {
+  border-color: var(--brand-border);
+}
+.ring-\[\#dbeafe\] {
+  --tw-ring-color: var(--brand-border);
+}
+
+@layer utilities {
+  .\!text-\[\#273cf3\],
+  .text-\[\#273cf3\]\!,
+  .hover\:\!text-\[\#273cf3\]:hover,
+  .enabled\:hover\:\!text-\[\#273cf3\]:enabled:hover,
+  .\[\&_input\]\:\!text-\[\#273cf3\] input {
+    color: var(--brand) !important;
+  }
+  .\!bg-\[\#273cf3\],
+  .bg-\[\#273cf3\]\! {
+    background-color: var(--brand-fill) !important;
+  }
+  .hover\:\!bg-\[\#1e2fc4\]:hover {
+    background-color: var(--brand-fill-hover) !important;
+  }
+  .\!border-\[\#273cf3\] {
+    border-color: var(--brand) !important;
+  }
+  .hover\:\!border-\[\#1e2fc4\]:hover {
+    border-color: var(--brand-fill-hover) !important;
+  }
+  .enabled\:hover\:\!border-\[\#273cf3\]:enabled:hover {
+    border-color: var(--brand) !important;
+  }
+}
+
+/*
+ * 后台壳层（账套内业务页）的语义标记：圆角与品牌色都由上面的主题变量 + antd token 统一控制，
+ * 这里不覆盖任何东西。官网与登录页不在 .admin-shell 内，沿用各自设计语言。
+ */
+.admin-shell {
+  /* 仅作为后台壳层语义标记。 */
+}
+
+/**
+ * 路由懒加载进度条（见 WorkspaceHeader）：页面 chunk 加载期间扫过一条细光带，
+ * 让「旧页面继续留在屏上」那几百毫秒有明确反馈。
+ */
+@keyframes kj-route-progress {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(380%);
+  }
+}
+
+.kj-route-progress {
+  animation: kj-route-progress 900ms ease-in-out infinite;
+}
+
+/* 侧边菜单：常驻展开后内容远超视口，留一条细滚动条提示「下面还有分组」。 */
+.menu-slim-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, currentColor 22%, transparent) transparent;
+}
+.menu-slim-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.menu-slim-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+.menu-slim-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ==================================================================
+ * 暗色兼容层
+ *
+ * 页面里大量手写的是浅色工具类（bg-white / text-slate-* / bg-[#fafbfd]…），
+ * 逐个页面改成 token 不现实。这里按「表面 / 文字 / 描边 / 语义浅底」四类，
+ * 把常用浅色类在 .dark 下映射到暗色色板；新增页面直接沿用这些类即可自动适配。
+ *
+ * 必须写在 Tailwind 的 @layer 之外：utilities 都在层里，无层声明天然压过它们。
+ * ================================================================== */
+
+/* ---- 表面 ---- */
+.dark .bg-white,
+.dark .bg-\[\#fcfcfc\] {
+  background-color: var(--card);
+}
+.dark .bg-\[\#f4f6fb\] {
+  background-color: var(--background);
+}
+.dark .bg-slate-50,
+.dark .bg-slate-100,
+.dark .bg-\[\#f7f8fa\],
+.dark .bg-\[\#f8fafc\],
+.dark .bg-\[\#fafbfd\],
+.dark .bg-\[\#fafbfe\],
+.dark .bg-\[\#fafafa\],
+.dark .bg-\[\#f5f5f5\],
+.dark .bg-\[\#f4f4f4\],
+.dark .bg-\[\#f1f5f9\],
+.dark .bg-\[\#f6f8fb\] {
+  background-color: var(--muted);
+}
+.dark .bg-slate-200,
+.dark .bg-slate-300,
+.dark .bg-\[\#e6e6e6\],
+.dark .bg-\[\#f0f0f0\] {
+  background-color: rgb(255 255 255 / 0.14);
+}
+.dark .bg-white\/85 {
+  background-color: rgb(255 255 255 / 0.06);
+}
+.dark .bg-white\/70 {
+  background-color: rgb(255 255 255 / 0.16);
+}
+
+/* 品牌浅底不再在这里单列：上面的主题色落地层已按 --brand-soft 分明暗两档处理。 */
+
+/* 语义浅底：危险 / 警告 / 成功 */
+.dark .bg-\[\#fef2f2\] {
+  background-color: rgb(248 113 113 / 0.14);
+}
+.dark .bg-\[\#fff9ef\],
+.dark .bg-\[\#fffbeb\],
+.dark .bg-\[\#fff8e6\],
+.dark .bg-\[\#fff1d6\],
+.dark .bg-\[\#fef3c7\],
+.dark .bg-\[\#fdf6ec\] {
+  background-color: rgb(250 173 20 / 0.14);
+}
+.dark .bg-\[\#e9f9f1\],
+.dark .bg-\[\#f6ffed\],
+.dark .bg-\[\#f8fdf9\] {
+  background-color: rgb(74 222 128 / 0.14);
+}
+
+/* ---- 文字 ---- */
+.dark .text-slate-800,
+.dark .text-slate-700,
+.dark .text-\[\#444\],
+.dark .text-\[\#333\],
+.dark .text-\[\#1a1a1a\],
+.dark .text-\[\#555\],
+.dark .text-\[\#595959\] {
+  color: var(--foreground);
+}
+.dark .text-slate-600 {
+  color: rgb(255 255 255 / 0.72);
+}
+.dark .text-slate-500 {
+  color: rgb(255 255 255 / 0.6);
+}
+.dark .text-slate-400,
+.dark .text-slate-300 {
+  color: rgb(255 255 255 / 0.42);
+}
+.dark .text-\[\#999\],
+.dark .text-\[\#b5b5b5\],
+.dark .text-\[\#b8b8b8\],
+.dark .text-\[\#c9c9c9\],
+.dark .text-\[\#6b6b6b\] {
+  color: var(--muted-foreground);
+}
+/* 警告语义文字：浅琥珀底上的深棕字在暗色下要提亮 */
+.dark .text-\[\#8a6a35\],
+.dark .text-\[\#b45309\],
+.dark .text-\[\#92640b\],
+.dark .text-\[\#e6a23c\] {
+  color: #e0b15f;
+}
+
+/* 品牌蓝文字 / 实底 / 浅描边不再在这里单列：主题色落地层已按 --brand 系列变量统一处理，
+   暗色下的深浅档由 .dark 的变量决定。 */
+
+/* ---- 描边 / 分隔线 ---- */
+.dark .border-slate-100,
+.dark .border-\[\#f0f0f0\],
+.dark .border-\[\#f5f5f5\],
+.dark .border-\[\#eef2f7\] {
+  border-color: var(--border);
+}
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-\[\#e8eaee\],
+.dark .border-\[\#e5e5e5\],
+.dark .border-\[\#d9d9d9\],
+.dark .border-\[\#dcdfe6\],
+.dark .border-\[\#e6eaf2\],
+.dark .border-\[\#dfe5f0\],
+.dark .border-\[\#b9b9b9\] {
+  border-color: rgb(255 255 255 / 0.16);
+}
+.dark .border-white\/80 {
+  border-color: rgb(255 255 255 / 0.14);
+}
+.dark .border-\[\#f0d7a8\],
+.dark .border-\[\#fde8b4\] {
+  border-color: rgb(250 173 20 / 0.4);
+}
+.dark .border-\[\#fecaca\] {
+  border-color: rgb(248 113 113 / 0.4);
+}
+.dark .border-\[\#c8efdd\] {
+  border-color: rgb(74 222 128 / 0.35);
+}
+.dark .divide-slate-100 > :not(:last-child) {
+  border-color: var(--border);
+}
+
+/* ---- 悬停态 ---- */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-\[\#fafafa\]:hover,
+.dark .hover\:bg-\[\#f4f4f4\]:hover,
+.dark .hover\:bg-\[\#f2f6ff\]:hover,
+.dark .hover\:bg-\[\#f6f8fb\]:hover {
+  background-color: rgb(255 255 255 / 0.07);
+}
+.dark .hover\:bg-white:hover {
+  background-color: rgb(255 255 255 / 0.07);
+}
+.dark .hover\:border-slate-300:hover,
+.dark .hover\:border-\[\#d9d9d9\]:hover,
+.dark .hover\:border-\[\#b9b9b9\]:hover {
+  border-color: rgb(255 255 255 / 0.26);
+}
+.dark .hover\:text-slate-700:hover,
+.dark .hover\:text-\[\#1a1a1a\]:hover {
+  color: var(--foreground);
+}
+.dark .hover\:text-slate-600:hover,
+.dark .hover\:text-slate-400:hover,
+.dark .hover\:text-\[\#6b6b6b\]:hover {
+  color: rgb(255 255 255 / 0.72);
+}
+
+/* ---- 凭证纸样：分录表按纸质凭证排格线，格线与合计行底色随明暗切换 ----
+   --sheet-line 的默认档在 :root / .dark 里，纸样只改米色底与表头底。 */
+.voucher-sheet {
+  --sheet-head-bg: #fff;
+  --sheet-summary-bg: #fffbf7;
+}
+.dark .voucher-sheet {
+  --sheet-head-bg: #1f1f1f;
+  --sheet-summary-bg: #241f19;
+}
+/* 选择器一律带 .voucher-sheet.ant-table-wrapper 前缀：antd 的单元格规则是
+   .ant-table-wrapper .ant-table.ant-table-small … （0-4-0 起），只挂一个 .voucher-sheet 压不住。 */
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-container {
+  border-block-start: 1px solid var(--sheet-line);
+  border-inline-start: 1px solid var(--sheet-line);
+}
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-thead > tr > th {
+  background: var(--sheet-head-bg);
+  color: var(--foreground);
+}
+/* 表头自带的分隔竖线会和纸样格线重叠成双线 */
+.voucher-sheet.ant-table-wrapper .ant-table-thead > tr > th::before {
+  display: none;
+}
+/* 底色交给行自己控制（当前行高亮），单元格保持透明 */
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-tbody > tr > td,
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: transparent;
+}
+/* 纸面单元格：去内边距、右下补格线；页面只挂类名，行高等布局自己传。 */
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-tbody > tr > td.pk-sheet-cell,
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-thead > tr > th.pk-sheet-head-cell {
+  padding: 0;
+  border-right: 1px solid var(--sheet-line);
+  border-bottom: 1px solid var(--sheet-line);
+}
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-thead > tr > th.pk-sheet-head-cell {
+  vertical-align: middle;
+}
+/* 纸样排字：表头、表体格与表体里的输入控件统一 13px，页面不再各写 fontSize/字号类。 */
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-thead > tr > th,
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-tbody > tr > td,
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-tbody input,
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-tbody .ant-select {
+  font-size: 13px;
+}
+/* 科目格：选择器撑满整格并去掉自带的上下内边距（文字由 .ant-select-content 自身居中），
+   聚焦描边才能盖住整个单元格，和摘要格观感一致。 */
+.voucher-sheet.ant-table-wrapper .ant-table .ant-table-tbody .pk-account-select {
+  flex: 1;
+  min-height: 0;
+  padding-block: 0;
+}
+/* 合计行：铺米色底、补格线、清零留白，分位竖线才能上下贯通。 */
+.voucher-sheet.ant-table-wrapper .ant-table tfoot.ant-table-summary > tr > td.ant-table-cell {
+  padding: 0;
+  background: var(--sheet-summary-bg);
+  border-right: 1px solid var(--sheet-line);
+  border-bottom: 1px solid var(--sheet-line);
+}
+/* 合计行的文字格（大写金额）：把留白与字号找回来。 */
+.voucher-sheet.ant-table-wrapper .ant-table tfoot.ant-table-summary > tr > td.pk-sheet-label {
+  padding-inline: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+/* ---- 凭证汇总表：只补纵向格线，表头底色/斑马纹/悬停一律用 antd 默认 ---- */
+.voucher-summary-sheet .ant-table-thead > tr > th:not(:last-child),
+.voucher-summary-sheet .ant-table-tbody > tr > td:not(:last-child),
+.voucher-summary-sheet .ant-table-summary > tr > td:not(:last-child) {
+  border-inline-end: 1px solid var(--border);
+}
+
+/* ---- 现金日记账：收支类别下拉的最窄宽度（布局档，选中态一律用 antd 默认高亮） ---- */
+.journal-category-popup {
+  min-width: 200px;
+}
+
+/* ---- 组件留白与合计行的公共档 ----
+ * 这里只留「贴边」这一类布局档：表格里的链接按钮贴齐单元格左缘、合计行里嵌纸面格线时让位。
+ * 颜色、字号、投影一律不再在这里覆盖，组件回到 antd 自己的长相。 */
+.ant-table td.pk-row-total,
+.ant-table .pk-row-total > td {
+  background: var(--table-zebra-bg);
+  font-weight: 500;
+}
+/* 贴边文字按钮：不要按钮自带左右留白，也不居中（列表里的文件名、行尾操作链接）。 */
+.pk-link-flush.ant-btn {
+  padding-inline: 0;
+  justify-content: flex-start;
+  text-align: start;
+}
+/* 合计单元格里嵌纸面格线时，让位给内层格线自己的留白。
+ * antd 小尺寸表格的单元格规则是 .ant-table-wrapper .ant-table.ant-table-small .ant-table-cell（0-4-0），
+ * 实测单挂类名甚至 px-6 都压不住，这里带 td + 双类名（0-4-1）才稳赢。 */
+.ant-table-wrapper .ant-table td.ant-table-cell.pk-cell-flush {
+  padding: 0;
+}
+/* 指标数字用等宽数字，避免各位数字宽度不齐导致数值跳动。 */
+.ant-statistic-content {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==================================================================
+ * 移动端适配层（宽度 < 768px）
+ *
+ * 后台页面是桌面优先的密度，这里集中兜住 antd 组件与常用工具类在手机上的退化：
+ * 弹窗/抽屉不超出视口、宽表横向滚动、固定多列栅格降列、两端对齐的工具条换行。
+ * 规则写在 Tailwind 层之外，才能压过 utilities；打印媒体通常宽度 > 767px，不受影响。
+ * ================================================================== */
+
+@media (max-width: 767px) {
+  /* ---- 弹窗 / 抽屉 ---- */
+  .ant-modal {
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+    top: 16px;
+    padding-bottom: 16px;
+  }
+  .ant-modal .ant-modal-content {
+    padding: 16px;
+  }
+  .ant-drawer .ant-drawer-content-wrapper {
+    max-width: 100vw;
+  }
+  .ant-drawer .ant-drawer-body {
+    padding: 16px;
+  }
+
+  /* ---- 下拉 / 日期面板 ---- */
+  .ant-dropdown {
+    max-width: calc(100vw - 16px);
+  }
+  .ant-picker-dropdown .ant-picker-panel-container {
+    max-width: calc(100vw - 16px);
+    overflow-x: auto;
+  }
+
+  /* ---- 表格：列多时横向滚动，而不是把每列压成一条 ----
+     配了 scroll.x 的表由 antd 自己的 .ant-table-body 滚动，表头会跟着位移；
+     wrapper 上的 overflow 兜住没有 scroll.x 的表，只把内层 table 撑到自然宽度。 */
+  .admin-shell .ant-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-shell .ant-table table {
+    min-width: 560px;
+  }
+  /* 表头不换行：列被压窄时标题仍是一行，数据列照常按内容换行。
+     （max-content 会让「发票种类」这类长文本列独占整个手机屏，故不用。） */
+  .admin-shell .ant-table thead th {
+    white-space: nowrap;
+  }
+  /* 凭证纸面：序号 + 摘要 + 科目 + 两侧各 11 位金额，按内容撑开会把科目列挤没。 */
+  .admin-shell .voucher-sheet table {
+    min-width: 820px;
+  }
+
+  /* ---- 卡片头：标题与右上操作挤不下时换行，避免中文标题被压成逐字竖排 ---- */
+  .admin-shell .ant-card-head-wrapper {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  /* ---- 固定列：手机上左右固定列加起来常超过视口，会把中间列整块盖住，
+     窄屏改为跟随表格一起横向滚动 ---- */
+  .admin-shell .ant-table-cell-fix-left,
+  .admin-shell .ant-table-cell-fix-right,
+  .admin-shell .ant-table-cell-fix-start,
+  .admin-shell .ant-table-cell-fix-end {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+  }
+  .admin-shell .ant-table-cell-fix-left-shadow,
+  .admin-shell .ant-table-cell-fix-right-shadow,
+  .admin-shell .ant-table-cell-fix-start-shadow,
+  .admin-shell .ant-table-cell-fix-end-shadow {
+    box-shadow: none !important;
+  }
+
+  /* ---- 栅格：固定 3 列以上降到 2 列（已带断点前缀的规则仍按各自断点生效） ---- */
+  .admin-shell [class~="grid-cols-3"],
+  .admin-shell [class~="grid-cols-4"],
+  .admin-shell [class~="grid-cols-5"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* ---- 两端对齐的工具条允许换行，避免按钮被挤出屏幕 ---- */
+  .admin-shell [class~="justify-between"] {
+    flex-wrap: wrap;
+  }
+
+  /* ---- 表单：标签与控件在窄屏上下排列 ---- */
+  .admin-shell .ant-form-item-row {
+    flex-wrap: wrap;
+  }
+  .admin-shell .ant-form-item-label,
+  .admin-shell .ant-form-item-control {
+    flex: 0 0 100%;
+  }
+  .admin-shell .ant-form-item-label {
+    padding-bottom: 4px;
+  }
+
+  /* ---- 输入框字号提到 16px，避免 iOS 聚焦时自动放大页面 ---- */
+  .admin-shell input,
+  .admin-shell textarea {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  /* 页面里写死的弹层宽度（如凭证筛选面板的 420px）收敛到视口内 */
+  .ant-popover .ant-popover-inner {
+    max-width: calc(100vw - 16px);
+  }
+  .ant-popover .ant-popover-inner [class*="w-["],
+  .ant-drawer .ant-drawer-body [class*="w-["],
+  .ant-modal [class*="w-["] {
+    max-width: calc(100vw - 32px);
+  }
+}

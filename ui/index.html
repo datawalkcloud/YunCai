@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>云财</title>
+    <!-- 站点运行时配置：同步注入，供登录页读取（私有化部署改 public/site.config.js 即可，无需重新构建）。 -->
+    <script src="/site.config.js"></script>
+    <script>
+      // 在 React 挂载前应用主题，避免首屏闪烁（FOUC）。
+      (function () {
+        try {
+          var root = document.documentElement;
+          var stored = localStorage.getItem("yuncai.theme");
+          var isDark =
+            stored === "dark" ||
+            ((!stored || stored === "system") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          root.classList.toggle("dark", isDark);
+
+          // 圆角与主题色同样先落到 CSS 变量，取值限定在档位表 / 十六进制颜色内。
+          var radius = localStorage.getItem("yuncai.radius");
+          if (radius === "4" || radius === "8" || radius === "12") {
+            root.style.setProperty("--seed-radius", radius + "px");
+          }
+          var primary = localStorage.getItem("yuncai.primary");
+          if (primary && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(primary)) {
+            root.style.setProperty("--seed-primary", primary);
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

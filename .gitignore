@@ -1,0 +1,53 @@
+# 构建产物
+bin
+obj
+dist
+*.user
+
+# 编辑器 / IDE
+.vs/
+/.vs
+.idea/
+*.suo
+
+# 日志与临时产物
+logs
+Logs
+*.log
+*.bak
+*.tmp
+oapi-tmp.json
+_openapi.json
+.scratch/
+.scratch-*/
+.tmp-preview/
+.backup-pre-ddd/
+.backend-gen/
+
+# 本地凭据与部署环境变量（切勿提交）
+.env
+.env.*
+!.env.example
+# 本机开发机密（连接串 / JWT 密钥）放这里，由框架在 Development 自动加载；模板 appsettings.Development.example.json 可入库
+appsettings.Development.json
+!appsettings.Development.example.json
+appsettings.Local.json
+
+# 部署配置整体不入库（含集群清单、真实实例域名/命名空间等环境相关信息）
+deploy/
+
+# 财务数据导出件（含真实账套/凭证数据，切勿提交）
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
+*.csv
+
+# 前端依赖
+node_modules/
+
+# 构建校验产物
+binVerify*/
+
+# 智能体内部记忆目录（切勿提交）
+.workbuddy/

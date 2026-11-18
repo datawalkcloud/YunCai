@@ -1,0 +1,16 @@
+# 与 docker-compose.yml 叠加使用：镜像由 CI 构建并推送到阿里云 ACR，本机不再构建。
+#   docker compose -f docker-compose.yml -f docker-compose.acr.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.acr.yml up -d
+# 需要 .env 里配置 ACR_REGISTRY、ACR_NAMESPACE。
+services:
+  migrate:
+    image: ${ACR_REGISTRY:?缺少 ACR_REGISTRY，请在 .env 中设置}/${ACR_NAMESPACE:?缺少 ACR_NAMESPACE，请在 .env 中设置}/yuncai-api:${YUNCAI_IMAGE_TAG:?请在 .env 中设置 YUNCAI_IMAGE_TAG（如 1.1.0）}
+    pull_policy: always
+
+  api:
+    image: ${ACR_REGISTRY:?缺少 ACR_REGISTRY，请在 .env 中设置}/${ACR_NAMESPACE:?缺少 ACR_NAMESPACE，请在 .env 中设置}/yuncai-api:${YUNCAI_IMAGE_TAG:?请在 .env 中设置 YUNCAI_IMAGE_TAG（如 1.1.0）}
+    pull_policy: always
+
+  web:
+    image: ${ACR_REGISTRY:?缺少 ACR_REGISTRY，请在 .env 中设置}/${ACR_NAMESPACE:?缺少 ACR_NAMESPACE，请在 .env 中设置}/yuncai-web:${YUNCAI_IMAGE_TAG:?请在 .env 中设置 YUNCAI_IMAGE_TAG（如 1.1.0）}
+    pull_policy: always

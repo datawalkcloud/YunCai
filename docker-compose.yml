@@ -1,0 +1,76 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${YUNCAI_DB_NAME:-yuncai}
+      POSTGRES_USER: ${YUNCAI_DB_USER:-yuncai}
+      POSTGRES_PASSWORD: ${YUNCAI_DB_PASSWORD:?缺少数据库口令，请在 .env 中设置 YUNCAI_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${YUNCAI_DB_USER:-yuncai} -d ${YUNCAI_DB_NAME:-yuncai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 一次性结构迁移任务：每次发布先跑它，避免多实例并发迁移。
+  migrate:
+    build:
+      context: .
+      target: api
+    image: yuncai-api:${YUNCAI_IMAGE_TAG:-latest}
+    command: ["--migrate-only"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${YUNCAI_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${YUNCAI_DB_NAME:-yuncai};Username=${YUNCAI_DB_USER:-yuncai};Password=${YUNCAI_DB_PASSWORD}"
+      # 迁移容器同样会执行配置校验，密钥必须可见但不会用于签发令牌。
+      Jwt__Key: ${YUNCAI_JWT_KEY:?缺少 JWT 签名密钥，请在 .env 中设置 YUNCAI_JWT_KEY（至少 32 位随机串）}
+      YunCai__Database__AutoMigrate: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: yuncai-api:${YUNCAI_IMAGE_TAG:-latest}
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${YUNCAI_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${YUNCAI_DB_NAME:-yuncai};Username=${YUNCAI_DB_USER:-yuncai};Password=${YUNCAI_DB_PASSWORD}"
+      Jwt__Key: ${YUNCAI_JWT_KEY:?缺少 JWT 签名密钥，请在 .env 中设置 YUNCAI_JWT_KEY（至少 32 位随机串）}
+      Cors__AllowedOrigins__0: ${YUNCAI_PUBLIC_ORIGIN:-http://localhost}
+      YunCai__Database__AutoMigrate: "false"
+      YunCai__Networking__TrustForwardedHeaders: "true"
+      YunCai__Networking__HttpsRedirection: ${YUNCAI_HTTPS_REDIRECT:-false}
+      YunCai__Networking__UseHsts: ${YUNCAI_USE_HSTS:-false}
+      # 官网联系表单的企业微信机器人 webhook（机密，来自 .env，不入库）
+      YunCai__Contact__Webhook: ${YUNCAI_CONTACT_WEBHOOK:-}
+    # 故意不映射到宿主机端口：只有 nginx 能直连后端，
+    # 否则客户端可绕过代理伪造 X-Forwarded-For，登录限流形同虚设。
+    expose:
+      - "8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    image: yuncai-web:${YUNCAI_IMAGE_TAG:-latest}
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    ports:
+      - "${YUNCAI_HTTP_PORT:-80}:80"
+    environment:
+      # 默认不展示官网入口；需要展示时设为 true，登录页才出现品牌标识与「返回官网」。
+      # 容器启动时据此生成 site.config.js，无需重新构建镜像。
+      YUNCAI_SHOW_OFFICIAL_SITE: ${YUNCAI_SHOW_OFFICIAL_SITE:-false}
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

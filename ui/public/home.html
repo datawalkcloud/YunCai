@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>云财｜开源免费财务系统 · 凭证 账簿 报表 出纳</title>
+<meta name="description" content="云财是开源免费的财务系统：凭证、账簿、报表、出纳、发票、工资、资产、档案共用一套科目。保存凭证即入账，账簿与报表只统计已过账凭证，期末先结转再结账；税局取数目前只在浙江完成验证。可用 Docker Compose 私有部署，数据放在自己的 PostgreSQL 里。">
+<meta name="keywords" content="在线记账,财务软件,云会计,代理记账,电子税务局,财务报表,现金流量表,资产负债表,凭证管理,多账套,私有化部署,云财">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="author" content="云财">
+<meta name="theme-color" content="#ffffff">
+<link rel="canonical" href="https://www.yuncai.cn/">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="云财">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:url" content="https://www.yuncai.cn/">
+<meta property="og:title" content="云财｜开源免费财务系统">
+<meta property="og:description" content="做账，本该如此简单。保存凭证即入账，账簿与报表只统计已过账凭证；数据可导出，也可用 Docker Compose 私有部署。">
+<meta property="og:image" content="https://www.yuncai.cn/home/report-cashflow.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="云财｜开源免费财务系统">
+<meta name="twitter:description" content="凭证、账簿、报表、出纳、发票、工资、资产、档案共用一套科目。开源免费，可私有部署，数据放在自己的服务器。">
+<meta name="twitter:image" content="https://www.yuncai.cn/home/report-cashflow.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "云财开源免费企业级财务系统",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://www.yuncai.cn/",
+  "image": "https://www.yuncai.cn/home/dashboard.png",
+  "description": "面向中小企业与代账团队的开源免费企业级财务系统：凭证、账簿、报表、出纳、发票、工资、资产与电子档案共用一套科目底座，保存凭证即入账。",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CNY" },
+  "author": { "@type": "Organization", "name": "云财" },
+  "publisher": { "@type": "Organization", "name": "云财" }
+}
+</script>
+<style>
+/* ── 令牌：直角、发丝线、单一品牌色 + 麦金点缀 ───────────────────── */
+:root{
+  --brand:#273cf3;
+  --brand-ink:#1a2bc4;
+  --brand-soft:#eef3ff;
+  --brand-line:#dbe4ff;
+  --gold:#f2be57;
+  --gold-ink:#5c3d00;
+  --leaf:#3ecf8e;
+  --ink:#0a1022;
+  --ink-2:#111a33;
+  --ink-line:#2a3450;
+  --body:#414a5e;
+  --muted:#6d7789;
+  --faint:#97a0b0;
+  --border:#e6eaf1;
+  --steel:#f7f9fc;
+  --radius:0;
+  --sans:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"Cascadia Mono","JetBrains Mono",Consolas,"Liberation Mono",monospace;
+  --hair:1px solid var(--border);
+  --page:min(1440px,calc(100vw - 88px));
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  background:#fff;color:var(--ink);
+  font-family:var(--sans);-webkit-font-smoothing:antialiased;
+  font-feature-settings:"tnum" 1;
+}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+.wrap{width:var(--page);margin-inline:auto}
+.skip{position:absolute;left:-9999px;top:0;background:#fff;border:var(--hair);padding:10px 14px;z-index:20}
+.skip:focus{left:12px;top:12px}
+
+/* ── 顶栏：细钢线承重，不做毛玻璃 ───────────────────────────────── */
+.topbar{border-bottom:var(--hair);height:74px;position:relative;z-index:5;background:#fff}
+.topbar-in{height:100%;display:flex;align-items:center;gap:34px}
+.logo{display:flex;align-items:center;gap:11px;flex:0 0 auto}
+.logo-mark{width:41px;height:41px;display:block}
+.logo-txt strong{display:block;font-size:19px;letter-spacing:.14em;line-height:1.1}
+.logo-txt small{display:block;margin-top:3px;font:700 8px/1 var(--mono);letter-spacing:.3em;color:var(--brand)}
+.nav{display:flex;gap:28px;margin-left:12px}
+.nav a{font-size:14px;font-weight:600;padding:26px 0;border-bottom:2px solid transparent;color:#3c4558}
+.nav a:hover,.nav a.on{color:var(--brand);border-color:var(--brand)}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:18px}
+.hotline{font-size:12px;color:var(--muted);line-height:1.5;text-align:right}
+.hotline b{display:block;font:700 13px/1.3 var(--mono);color:var(--ink);letter-spacing:.02em}
+.gh-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 auto;
+  border:1px solid var(--border);color:#2a3345;transition:color .16s,border-color .16s}
+.gh-icon:hover{color:var(--brand);border-color:var(--brand)}
+.gh-icon svg{width:19px;height:19px;fill:currentColor}
+.gh-text{display:inline-flex;align-items:center;gap:7px}
+.gh-text svg{width:14px;height:14px;flex:0 0 auto;fill:currentColor}
+.foot-bar .gh-text:hover{color:#fff}
+
+/* 移动端菜单钮与抽屉：只在 .nav 收起的 ≤1180 档出现 */
+.menu-btn{display:none;align-items:center;justify-content:center;flex:0 0 auto;width:44px;height:44px;
+  padding:0;border:1px solid var(--border);background:#fff;cursor:pointer}
+.menu-btn i{display:block;position:relative;width:18px;height:2px;background:var(--ink)}
+.menu-btn i::before,.menu-btn i::after{content:"";position:absolute;left:0;width:18px;height:2px;
+  background:var(--ink);transition:transform .16s ease}
+.menu-btn i::before{top:-6px}
+.menu-btn i::after{top:6px}
+.menu-btn[aria-expanded="true"]{border-color:var(--brand)}
+.menu-btn[aria-expanded="true"] i{background:transparent}
+.menu-btn[aria-expanded="true"] i::before{top:0;transform:rotate(45deg)}
+.menu-btn[aria-expanded="true"] i::after{top:0;transform:rotate(-45deg)}
+.drawer{position:absolute;left:0;right:0;top:100%;z-index:9;display:block;
+  border-bottom:var(--hair);background:#fff}
+.drawer[hidden]{display:none}
+.drawer-in{width:var(--page);margin-inline:auto;padding:6px 0 24px}
+.drawer-in>a{display:flex;align-items:center;min-height:48px;font-size:15px;font-weight:600;
+  border-bottom:var(--hair);color:#2a3345}
+.drawer-in>a:active{color:var(--brand)}
+.drawer-cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.drawer-cta .btn{flex:1 1 170px}
+
+/* ── 按钮：直角、无阴影、靠色块承重 ─────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 26px;
+  font-family:var(--sans);font-size:15px;font-weight:700;letter-spacing:.04em;
+  border:1px solid transparent;border-radius:0;cursor:pointer;white-space:nowrap}
+.btn-solid{background:var(--brand);color:#fff}
+.btn-solid:hover{background:var(--brand-ink)}
+.btn-line{border-color:#c3cad6;color:var(--ink);background:transparent}
+.btn-line:hover{border-color:var(--brand);color:var(--brand)}
+.btn-sm{height:40px;padding:0 18px;font-size:13px}
+.btn i{font-style:normal;font-family:var(--mono);font-size:11px;opacity:.8}
+
+/* ── 首屏 ─────────────────────────────────────────────────────── */
+.hero{position:relative;overflow:hidden;border-bottom:0}
+.hero-in{position:relative;z-index:2;display:flex;justify-content:center;padding:88px 0 92px}
+.hero-copy{min-width:0;width:100%;max-width:900px;text-align:center}
+h1{margin:22px 0 0;font-size:clamp(40px,4.4vw,64px);line-height:1.1;letter-spacing:-.035em;font-weight:800}
+h1 span{display:block}
+h1 u{text-decoration:none;color:var(--brand)}
+.lede{margin:24px auto 0;max-width:700px;font-size:16px;line-height:2;color:#3f4759}
+.lede code{font:600 15px/1 var(--mono);color:var(--ink);letter-spacing:-.01em}
+.cta{display:flex;justify-content:center;gap:14px;margin:34px 0 0;flex-wrap:wrap}
+.spec{margin:26px 0 0;display:flex;justify-content:center;flex-wrap:wrap;gap:8px 0;font:600 11.5px/1 var(--mono);
+  letter-spacing:.06em;color:var(--muted)}
+.spec span+span::before{content:"·";margin:0 10px;color:var(--gold)}
+
+/* ══ 整页各节 ═════════════════════════════════════════════════ */
+.band{border-bottom:var(--hair)}
+.band-ink{background:var(--ink);color:#e7ecf5;border-bottom:0}
+.sec{padding:98px 0}
+.sec-head{display:grid;grid-template-columns:minmax(280px,.86fr) minmax(320px,1.14fr);gap:56px;align-items:end;margin-bottom:54px}
+.sec-head h2{margin:18px 0 0;font-size:clamp(29px,3.1vw,44px);line-height:1.16;letter-spacing:-.032em;font-weight:800}
+.sec-head h2 em{font-style:normal;color:var(--brand)}
+.sec-head p{margin:0 0 4px;color:#444d60;font-size:15px;line-height:2.05}
+.band-ink .sec-head h2{color:#fff}
+.band-ink .sec-head h2 em{color:var(--gold)}
+.band-ink .sec-head p{color:#a9b6cf}
+
+/* 硬指标带 */
+.metrics{display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.metrics>div{padding:28px 20px 30px;border-right:1px solid var(--border)}
+.metrics>div:last-child{border-right:0}
+.metrics span{display:block;font:700 13px/1.3 var(--sans);letter-spacing:.02em;color:var(--muted)}
+.metrics b{display:block;margin-top:14px;font:700 clamp(24px,2.4vw,32px)/1 var(--mono);letter-spacing:-.05em}
+.metrics b u{text-decoration:none;font-size:.42em;letter-spacing:.02em;color:var(--muted);margin-left:4px}
+.metrics b s{text-decoration:none;color:var(--brand)}
+.metrics b.word{font-family:var(--sans);font-size:clamp(25px,2.5vw,34px);letter-spacing:.02em;color:var(--ink)}
+.metrics i{display:block;margin-top:11px;font-style:normal;font-size:12px;line-height:1.75;color:var(--muted)}
+
+/* 记账主线：十步 */
+.flow{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--border);background:var(--border);gap:1px}
+.flow>div{background:#fff;padding:22px 18px 26px;position:relative}
+.flow>div::before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:var(--border)}
+.flow>div.auto::before{background:var(--brand)}
+.flow .n{font:700 10px/1 var(--mono);letter-spacing:.16em;color:var(--muted)}
+.flow .n b{color:var(--brand);font-weight:700}
+.flow h3{margin:13px 0 9px;font-size:15.5px;letter-spacing:-.012em}
+.flow p{margin:0;font-size:12.5px;line-height:1.95;color:var(--muted)}
+.flow-note{margin-top:16px;display:flex;flex-wrap:wrap;gap:10px 22px;font:600 11.5px/1.6 var(--sans);color:var(--muted)}
+.flow-note s{text-decoration:none;color:var(--brand-ink);background:var(--brand-soft);padding:3px 7px;font-weight:700}
+
+/* 模块矩阵 */
+.table-scroll{position:relative}
+.table-wrap{overflow-x:auto}
+.table-hint{display:none;margin:10px 0 0;font:600 11.5px/1.6 var(--mono);letter-spacing:.08em;color:var(--muted)}
+.matrix{width:100%;min-width:880px;border-collapse:collapse;border:1px solid var(--border);background:#fff}
+.matrix th,.matrix td{text-align:left;padding:17px 18px;border-bottom:var(--hair);border-right:var(--hair);vertical-align:top}
+.matrix th{font:700 10.5px/1 var(--mono);letter-spacing:.14em;color:var(--muted);background:var(--steel)}
+.matrix tr:last-child td{border-bottom:0}
+.matrix th:last-child,.matrix td:last-child{border-right:0}
+.matrix .cat{width:170px;font-weight:700;font-size:14px;letter-spacing:-.01em}
+.matrix .cat s{display:block;margin-top:7px;text-decoration:none;font:700 9.5px/1 var(--mono);letter-spacing:.12em;color:var(--brand)}
+.matrix .dev{width:265px;font-size:13px;line-height:1.95}
+.matrix .dev b{display:block;font-weight:700;line-height:1.7}
+.matrix .dev small{display:block;margin-top:5px;color:var(--muted);font-size:11.5px}
+.matrix .how{font-size:13px;line-height:1.95;color:#444d60}
+.matrix .how ul{margin:0;padding-left:15px}
+.matrix .how li{margin:5px 0}
+.honest{margin-top:14px;font-size:12.5px;color:var(--muted);padding-left:14px;border-left:2px solid var(--gold);line-height:1.9}
+
+/* 通用发丝网格卡 */
+.cols{display:grid;gap:1px;background:var(--border);border:1px solid var(--border)}
+.cols.c2{grid-template-columns:repeat(2,1fr)}
+.cols.c3{grid-template-columns:repeat(3,1fr)}
+.cols>div{background:#fff;padding:28px 26px 30px}
+.cols .k{font:700 10.5px/1.3 var(--mono);letter-spacing:.14em;color:var(--brand)}
+.cols h3{margin:12px 0 10px;font-size:17px;letter-spacing:-.015em}
+.cols p{margin:0;font-size:13.5px;line-height:2;color:#4a5365}
+.cols ul{margin:13px 0 0;padding:0;list-style:none}
+.cols ul li{font-size:13px;line-height:2;color:#4a5365;padding-left:16px;position:relative}
+.cols ul li::before{content:"";position:absolute;left:0;top:11px;width:6px;height:6px;background:var(--gold)}
+
+/* 部署规格表与命令卡 */
+.specs{display:grid;grid-template-columns:repeat(2,1fr);gap:0 62px;margin:0}
+.specs>div{display:flex;gap:20px;padding:19px 0;border-bottom:1px solid var(--ink-line);align-items:baseline}
+.specs dt{flex:0 0 116px;font-size:14px;font-weight:700;letter-spacing:-.01em;color:#fff}
+.specs dd{margin:0;flex:1;font-size:13.5px;line-height:1.95;color:#a9b6cf}
+.specs dd b{color:var(--gold);font-family:var(--mono);font-weight:700;letter-spacing:-.01em}
+.deploy{display:grid;grid-template-columns:1fr;gap:1px;background:var(--ink-line);border:1px solid var(--ink-line);margin-top:46px}
+.deploy>div{background:var(--ink-2);padding:22px 24px}
+.deploy h4{margin:0 0 14px;font:700 10px/1 var(--mono);letter-spacing:.18em;color:var(--gold)}
+.deploy pre{margin:0;font:600 11.5px/2 var(--mono);color:#c6d2e8;white-space:pre;overflow-x:auto}
+.deploy pre s{text-decoration:none;color:#7c8aa8}
+.deploy pre b{color:var(--leaf);font-weight:700}
+
+/* 能力边界 */
+.law{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
+.law>div{background:#fff;padding:26px 24px}
+.law b{display:block;font-size:15.5px;letter-spacing:-.01em}
+.law p{margin:10px 0 0;font-size:13px;line-height:1.95;color:var(--muted)}
+.law i{display:block;font-style:normal;font:700 26px/1 var(--mono);letter-spacing:-.05em;color:var(--gold);margin-bottom:14px}
+.src{margin-top:14px;font-size:12px;color:var(--muted)}
+
+/* 开始使用 */
+.rel{display:grid;grid-template-columns:.82fr 1.18fr;gap:1px;background:var(--border);border:1px solid var(--border)}
+.rel-side{background:var(--steel);padding:32px 30px}
+.rel-side .v{font:700 clamp(34px,3.4vw,46px)/1 var(--mono);letter-spacing:-.055em}
+.rel-side .d{margin-top:12px;font:600 11.5px/1 var(--mono);letter-spacing:.1em;color:var(--muted)}
+.rel-side ul{margin:26px 0 0;padding:0;list-style:none;font-size:12.5px;line-height:2.1;color:#4a5365}
+.rel-side ul li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--border);padding:5px 0}
+.rel-side ul li b{font-family:var(--mono);font-weight:700;color:var(--ink);text-align:right}
+.rel-main{background:#fff;padding:32px 30px}
+.rel-main h3{margin:0 0 18px;font:700 10.5px/1 var(--mono);letter-spacing:.16em;color:var(--muted)}
+.rel-main ol{margin:0;padding:0;list-style:none;counter-reset:r}
+.rel-main ol li{counter-increment:r;padding:13px 0 13px 40px;border-bottom:var(--hair);position:relative;font-size:14px;line-height:1.9}
+.rel-main ol li:last-child{border-bottom:0}
+.rel-main ol li::before{content:counter(r,decimal-leading-zero);position:absolute;left:0;top:15px;font:700 11px/1 var(--mono);color:var(--brand);letter-spacing:.06em}
+.rel-main ol li s{display:block;text-decoration:none;margin-top:5px;font-size:12.5px;color:var(--muted);line-height:1.85}
+.rel-cta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:26px}
+.rel-cta small{font-size:12px;color:var(--muted);line-height:1.7}
+
+/* FAQ */
+.faq{border-top:var(--hair)}
+.faq details{border-bottom:var(--hair)}
+.faq summary{padding:22px 40px 22px 0;font-size:15.5px;font-weight:700;letter-spacing:-.012em;cursor:pointer;position:relative;list-style:none}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";position:absolute;right:6px;top:18px;font:400 22px/1 var(--mono);color:var(--brand)}
+.faq details[open] summary::after{content:"–"}
+.faq details p{margin:0 0 24px;max-width:820px;font-size:14px;line-height:2.05;color:#4a5365}
+.faq details p b{color:var(--ink)}
+
+/* 收尾 CTA：麦金实底 */
+.final{background:var(--gold);border-bottom:0;padding:78px 0}
+.final-in{display:grid;grid-template-columns:1.3fr auto;gap:48px;align-items:center}
+.final h2{margin:0;font-size:clamp(28px,3.2vw,44px);line-height:1.24;letter-spacing:-.032em;font-weight:800;color:var(--ink)}
+.final p{margin:16px 0 0;max-width:640px;font-size:14.5px;line-height:2;color:#3a2d0c}
+.final-cta{display:flex;flex-direction:column;gap:12px;flex:0 0 auto}
+.final-cta small{font-size:12px;line-height:1.7;color:#3a2d0c;margin-top:2px}
+.final .btn-solid{background:var(--ink);color:#fff}
+.final .btn-solid:hover{background:var(--ink-2)}
+.final .btn-line{border-color:rgba(10,16,34,.38);color:var(--ink)}
+.final .btn-line:hover{background:var(--ink);border-color:var(--ink);color:#fff}
+
+/* 联系我们：浅底表单，一条真实可用的联系通道 */
+.contact{background:var(--steel);border-bottom:var(--hair);padding:78px 0}
+.contact-in{display:grid;grid-template-columns:minmax(0,1fr) 520px;gap:64px;align-items:start}
+.contact h2{margin:0;font-size:clamp(30px,3.4vw,46px);line-height:1.28;letter-spacing:-.028em;font-weight:800}
+.contact .lead{margin:18px 0 0;max-width:500px;font-size:15.5px;line-height:2;color:var(--body)}
+.contact .note{margin:30px 0 0;padding-left:14px;border-left:2px solid var(--brand);font-size:13px;line-height:1.9;color:var(--muted)}
+.contact-form{background:#fff;border:1px solid #e6eaf3;border-radius:12px;padding:32px;box-shadow:0 10px 40px rgba(24,39,75,.05)}
+.cf-row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.cf-field{display:flex;flex-direction:column;gap:9px;margin-bottom:20px}
+.cf-field label{font-size:13px;font-weight:700;color:#4b5565}
+.cf-field label span{color:var(--brand)}
+.cf-field input,.cf-field textarea,.cf-field select{
+  width:100%;border:1px solid #c9d6ff;border-radius:8px;background:#fff;color:var(--ink);
+  font:400 14.5px/1.6 var(--sans);padding:14px 15px;outline:none;transition:border-color .16s,box-shadow .16s}
+.cf-field textarea{min-height:140px;resize:vertical}
+.cf-field input:focus,.cf-field textarea:focus,.cf-field select:focus{
+  border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.cf-field input::placeholder,.cf-field textarea::placeholder{color:#a8b1c0}
+.cf-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.cf-actions{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:4px}
+.cf-actions .btn{width:100%;height:52px;padding:0 24px;font-size:15px;border-radius:8px}
+.cf-privacy{margin:0;font-size:12.5px;line-height:1.7;color:var(--muted);text-align:center}
+.cf-status{font-size:13px;line-height:1.6;text-align:center}
+.cf-status.ok{color:#1a7f4b}
+.cf-status.err{color:#c0392b}
+.cf-form[hidden]{display:none}
+.cf-off{display:none;font-size:14px;line-height:1.9;color:var(--body)}
+.cf-off.on{display:block}
+
+/* 页脚 */
+.foot{background:var(--ink);color:#a9b6cf;padding:66px 0 0}
+.foot-grid{display:grid;grid-template-columns:1.5fr repeat(4,1fr);gap:40px;padding-bottom:52px}
+.foot .logo-txt strong{color:#fff}
+.foot-tag{margin:20px 0 0;font-size:13px;line-height:2;color:#8492ac;max-width:300px}
+.foot h4{margin:0 0 16px;font:700 10px/1 var(--mono);letter-spacing:.18em;color:var(--gold)}
+.foot ul{margin:0;padding:0;list-style:none}
+.foot ul li{margin:9px 0;font-size:13.5px}
+.foot ul a:hover{color:#fff}
+.foot-bar{border-top:1px solid var(--ink-line);padding:22px 0 32px;display:flex;flex-wrap:wrap;gap:8px 26px;align-items:center;font-size:12px;color:#7c8aa8}
+.foot-bar a{color:#a9b6cf}
+.foot-bar a:hover{color:#fff}
+.foot-bar .sep{width:1px;height:11px;background:var(--ink-line)}
+
+/* 返回顶部 */
+.to-top{position:fixed;right:26px;bottom:30px;z-index:8;width:46px;height:46px;display:grid;
+  place-items:center;background:#fff;border:var(--hair);color:var(--ink);
+  cursor:pointer;opacity:0;transform:translateY(8px);pointer-events:none;
+  transition:opacity .22s,transform .22s,border-color .16s,color .16s}
+.to-top.on{opacity:1;transform:none;pointer-events:auto}
+.to-top:hover{border-color:var(--brand);color:var(--brand)}
+.to-top svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter}
+@media (prefers-reduced-motion:reduce){
+  .to-top{transition:none}
+}
+
+@media (max-width:1180px){
+  .metrics{grid-template-columns:repeat(3,1fr)}
+  .metrics>div:nth-child(3){border-right:0}
+  .metrics>div:nth-child(-n+3){border-bottom:1px solid var(--border)}
+  .flow{grid-template-columns:repeat(2,1fr)}
+  .table-hint{display:block}
+  .table-scroll::after{content:"";position:absolute;top:0;right:0;bottom:1px;width:52px;pointer-events:none;
+    background:linear-gradient(90deg,transparent,#fff)}
+  .specs,.rel,.final-in,.contact-in{grid-template-columns:minmax(0,1fr)}
+  .contact-in{gap:32px}
+  .cols.c3{grid-template-columns:repeat(2,1fr)}
+  .foot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sec-head{grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
+  .hero-in{padding:60px 0 66px}
+  .nav{display:none}
+  .menu-btn{display:inline-flex}
+}
+@media (max-width:820px){
+  .sec{padding:64px 0}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .metrics>div:nth-child(3){border-right:1px solid var(--border)}
+  .metrics>div{border-bottom:1px solid var(--border)}
+  .flow,.cols.c2,.cols.c3,.law,.deploy{grid-template-columns:minmax(0,1fr)}
+  .law>div{padding:22px 20px}
+  .foot-grid{gap:26px}
+  .spec{padding-bottom:6px}
+}
+@media (max-width:720px){
+  :root{--page:calc(100vw - 32px)}
+  h1{font-size:clamp(31px,8.2vw,40px);letter-spacing:-.03em}
+  .sec-head h2{font-size:clamp(23px,6vw,32px);line-height:1.3}
+  .lede{font-size:15px;line-height:1.95}
+  .topbar{height:60px}
+  .topbar-in{gap:14px}
+  .hotline,.top-actions{display:none}
+  .menu-btn{margin-left:auto}
+  .spec{gap:7px 16px}
+  .spec span+span::before{content:none}
+  .final{padding:56px 0}
+  .contact{padding:56px 0}
+  .contact-form{padding:22px 18px}
+  .cf-row{grid-template-columns:minmax(0,1fr);gap:0}
+  .foot ul li{margin:0}
+  .foot ul a{display:block;padding:11px 0;border-bottom:1px solid #1c2740}
+  .foot-bar{gap:2px 20px}
+  .foot-bar a{display:inline-block;padding:9px 0}
+  .cols>div{padding:22px 18px 24px}
+  .specs dt{flex:0 0 92px}
+  .rel-main,.rel-side{padding:24px 20px}
+  .deploy>div{padding:18px 16px}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-github" viewBox="0 0 16 16">
+    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+  </symbol>
+</svg>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="logo" href="#" aria-label="云财首页">
+      <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M23.78 8.22A11 11 0 1 0 23.78 23.78L20.6 20.6A6.5 6.5 0 1 1 20.6 11.4Z" fill="#273CF3"/>
+        <circle cx="23.1" cy="16" r="2.25" fill="#273CF3"/>
+      </svg>
+      <span class="logo-txt"><strong>云财</strong><small>YUNCAI</small></span>
+    </a>
+    <nav class="nav" aria-label="站内导航">
+      <a href="#why">为什么是云财</a>
+      <a href="#modules">产品能力</a>
+      <a href="#workstation">使用场景</a>
+      <a href="#deploy">安全合规</a>
+      <a href="#faq">常见问题</a>
+      <a href="#contact">联系我们</a>
+    </nav>
+    <div class="top-actions">
+      <span class="hotline">开源免费企业级财务系统<b>私有部署 · 数据安全</b></span>
+      <a class="gh-icon" href="https://github.com/datawalkcloud/YunCai" target="_blank" rel="noopener noreferrer" aria-label="GitHub 开源仓库" title="GitHub 开源仓库">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-github"/></svg>
+      </a>
+      <a class="btn btn-line btn-sm" href="/login">登录</a>
+      <a class="btn btn-solid btn-sm" href="/login">免费使用</a>
+    </div>
+    <button class="menu-btn" type="button" aria-label="打开菜单" aria-expanded="false" aria-controls="site-menu"><i></i></button>
+  </div>
+  <nav class="drawer" id="site-menu" aria-label="站点目录" hidden>
+    <div class="wrap drawer-in">
+      <a href="#why">为什么是云财</a>
+      <a href="#modules">产品能力</a>
+      <a href="#workstation">使用场景</a>
+      <a href="#deploy">安全合规</a>
+      <a href="#faq">常见问题</a>
+      <a href="#contact">联系我们</a>
+      <div class="drawer-cta">
+        <a class="btn btn-solid btn-sm" href="/login">免费开始使用</a>
+        <a class="btn btn-line btn-sm" href="/login">登录</a>
+        <a class="btn btn-line btn-sm gh-text" href="https://github.com/datawalkcloud/YunCai" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-github"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+</header>
+
+<main id="main">
+  <!-- 01 首屏 -->
+  <section class="hero">
+    <div class="wrap hero-in">
+      <div class="hero-copy">
+        <h1>做账，<u>本该如此简单</u></h1>
+        <p class="lede">
+          凭证、账簿、报表、出纳、发票、工资、资产、档案共用一套科目。保存凭证即入账，账簿与报表只统计已过账凭证；期末先结转、再结账。<code>源码开放，可私有部署，数据自己掌控。</code>
+        </p>
+        <div class="cta">
+          <a class="btn btn-solid" href="/login">免费开始使用 <i>支持私有部署</i></a>
+          <a class="btn btn-line" href="#workstation">看它能做什么</a>
+        </div>
+        <div class="spec">
+          <span>四套准则建账</span><span>七类辅助核算</span><span>十种账页</span>
+          <span>全量可导出</span><span>可私有化部署</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 竞争力带 -->
+  <section class="band" id="why" aria-label="为什么是云财">
+    <div class="wrap" style="padding-top:58px;padding-bottom:58px">
+      <div class="metrics">
+        <div><span>价格</span><b><s>0</s><u>元</u></b><i>源码开放，不收授权费，也不按凭证条数限制</i></div>
+        <div><span>税局数据</span><b class="word">直连</b><i>页面内直连数字账户明文接口，税费种、申报、缴款、完税证明都能读到（浙江已验证）</i></div>
+        <div><span>会计内核</span><b class="word">兼容</b><i>新旧准则编码并存仍出表正确，结转前后报表口径不变</i></div>
+        <div><span>源码</span><b class="word">公开</b><i>余额怎么算、报表怎么取数，代码里都能查到</i></div>
+        <div><span>数据</span><b class="word">自持</b><i>库和账都在自己服务器，按 Docker Compose 清单自建</i></div>
+        <div><span>供应商锁定</span><b class="word">无</b><i>数据能全量导出，库是标准 PostgreSQL，代码也在自己手里</i></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 记账主线 -->
+  <section class="band" id="workstation">
+    <div class="wrap sec">
+      <div class="sec-head">
+        <div>
+          <h2>从建账到出表，<br><em>不用抄第二遍</em></h2>
+        </div>
+        <p>做账最费时间的是把同一笔数据抄来抄去：凭证抄进账簿、报表再抄一遍、税局数据手工回填。云财把十步接在同一套科目上，每一步的结果都留给下一步用。</p>
+      </div>
+
+      <div class="flow">
+        <div><div class="n">01</div><h3>建账</h3><p>选准则、启用期间与编码方案。四套准则各带一套预置科目表，账套之间互不干扰。</p></div>
+        <div><div class="n">02</div><h3>科目与期初</h3><p>按准则恢复预置科目，按需增删层级；期初余额录入后先试算平衡，再开始记账。</p></div>
+        <div><div class="n">03</div><h3>凭证录入</h3><p>手工录入或 Excel 批量导入，借贷自动校验，辅助核算随手挂上客户、部门、项目等维度。</p></div>
+        <div class="auto"><div class="n"><b>04 · 系统完成</b></div><h3>保存即入账</h3><p>没有审核环节。保存凭证直接计入账簿与报表；草稿只来自导入不平衡或反过账退回。</p></div>
+        <div><div class="n">05</div><h3>资金出纳</h3><p>日记账、收支类别、内部转账与批量出票；转账在两端各登记一笔流水，分类清楚。</p></div>
+        <div><div class="n">06</div><h3>发票与票据</h3><p>销项、进项、查验与汇总；电子税务局取回的票据数据直接进入票据池。</p></div>
+        <div><div class="n">07</div><h3>工资与资产</h3><p>工资计提、发放与社保公积金代扣；资产卡片、折旧、变更与清理各走各的单据。</p></div>
+        <div class="auto"><div class="n"><b>08 · 系统完成</b></div><h3>期末结转</h3><p>结转损益由系统生成凭证并直接过账；自定义模板按当月数据计算并校验平衡。</p></div>
+        <div><div class="n">09</div><h3>结账</h3><p>先结转、再结账。账套的「已结转至」必须先于「已结账至」推进，顺序不能倒。</p></div>
+        <div class="auto"><div class="n"><b>10 · 系统完成</b></div><h3>报表</h3><p>科目余额表、资产负债表、利润表、现金流量表从已过账凭证实时归集，每行带行次与取数公式。</p></div>
+      </div>
+      <div class="flow-note">
+        <span>绿标三步由系统生成，不用手工再录一遍</span>
+        <s>保存即入账</s><s>期末结转</s><s>报表实时归集</s>
+        <span>其余步骤也走同一套科目，不用切换软件、导出再导入</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 模块矩阵 -->
+  <section class="band" id="modules">
+    <div class="wrap sec">
+      <div class="sec-head">
+        <div>
+          <h2>模块之间，<em>账是对得上的</em></h2>
+        </div>
+        <p>每行都列了能做什么、按什么口径、边界在哪。税局这条尤其要说明：各省接口差异很大，能取什么、取到哪一步，都如实写在表里。</p>
+      </div>
+
+      <div class="table-scroll">
+        <div class="table-wrap">
+          <table class="matrix">
+            <thead>
+              <tr><th style="width:170px">类别</th><th style="width:265px">已支持</th><th>口径与边界</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="cat">凭证与账簿<s>voucher</s></td>
+                <td class="dev"><b>凭证录入 · 导入 · 模板</b><b>十种账页</b><small>反过账、凭证详情联查</small></td>
+                <td class="how"><ul><li>保存即入账，没有审核环节；账簿与报表只统计<b>已过账</b>凭证</li><li>修改已过账凭证需先反过账，退回草稿后修改，再保存重新入账</li><li>凭证行挂辅助核算维度，账簿可按客户、部门、项目等口径查询</li></ul></td>
+              </tr>
+              <tr>
+                <td class="cat">财务报表<s>report</s></td>
+                <td class="dev"><b>资产负债表 · 利润表</b><b>现金流量表</b><b>部门 / 项目利润表</b><b>自定义报表</b></td>
+                <td class="how"><ul><li>每行带行次与取数公式，<b>AUTO</b> 与小计公式可见，也可逐行编辑</li><li>报表行下钻到科目明细账，明细行再点开即凭证详情</li><li>准则不同版式不同；现金流量表为直接法，投资与筹资活动分开列示</li></ul></td>
+              </tr>
+              <tr>
+                <td class="cat">资金出纳<s>funds</s></td>
+                <td class="dev"><b>日记账 · 收支类别</b><b>内部转账</b><b>批量生成凭证</b><small>账户启停用与开户行信息</small></td>
+                <td class="how"><ul><li>停用资金账户只拦新流水，历史数据与报表照常</li><li>已生成凭证的内部转账不可改删；转账在两端各登记一笔流水</li><li>出纳台账为全量流水（含未生成凭证），总账侧只统计已过账凭证 + 科目期初</li></ul></td>
+              </tr>
+              <tr>
+                <td class="cat">税务取数<s>tax</s></td>
+                <td class="dev"><b>税费种 · 申报记录</b><b>缴款信息 · 完税证明</b><small>电子税务局数字账户</small></td>
+                <td class="how"><ul><li>登录后在页面内直连数字账户的明文接口，按 500 条一页读取</li><li>被 <b>9999</b> 拒绝时补建业务会话重试，仍失败如实返回需要登录</li><li><b>仅浙江完成真机验证</b>；其他地区失败时不伪造数据、不拿旧值填充</li></ul></td>
+              </tr>
+              <tr>
+                <td class="cat">个人所得税<s>iit</s></td>
+                <td class="dev"><b>人员管理 · 报表填写</b><b>申报缴款 · 查询统计</b><small>累计预扣法</small></td>
+                <td class="how"><ul><li>申报表由本系统按累计预扣法计算，不依赖税局回填</li><li>人员管理读取税局报送与验证状态，本地工资档案打底</li><li>查询统计走 ITS 页面驱动；缴税记录是扣缴端按人按次的流水</li></ul></td>
+              </tr>
+              <tr>
+                <td class="cat">工资与社保<s>salary</s></td>
+                <td class="dev"><b>工资表 · 计提发放</b><b>社保公积金代扣</b><small>五险一金基数</small></td>
+                <td class="how"><ul><li>工资单按人员与期间生成，计提与发放各出凭证</li><li>五险一金基数员工留空时沿用全局；个人扣除以录入金额为准</li><li>工资数据与个税申报共用同一份人员档案</li></ul></td>
+              </tr>
+              <tr>
+                <td class="cat">固定资产<s>asset</s></td>
+                <td class="dev"><b>卡片 · 折旧 · 变更</b><b>清理</b><small>与总账同源</small></td>
+                <td class="how"><ul><li>折旧按卡片与期间计提，折旧凭证由系统生成</li><li>资产报表与总账同源，不单独维护一套余额</li><li>变更与清理留下记录，历史折旧不重算</li></ul></td>
+              </tr>
+              <tr>
+                <td class="cat">电子档案<s>archive</s></td>
+                <td class="dev"><b>凭证附件</b><b>票据影像归档</b><small>与凭证同源</small></td>
+                <td class="how"><ul><li>附件挂在凭证上，查账时与分录一起打开</li><li>归档不改变凭证金额与期间，只补充原始依据</li><li>影像与凭证的逐笔联动仍在路线图上，当前按凭证归档</li></ul></td>
+              </tr>
+              <tr>
+                <td class="cat">权限与多账套<s>auth</s></td>
+                <td class="dev"><b>账套级隔离</b><b>角色权限</b><small>21 个权限模块</small></td>
+                <td class="how"><ul><li>成员表是唯一权限源，跨账套访问由全局过滤器拦截</li><li>权限按模块开合，高危端点仅管理员可用</li><li>一个账号可管多个账套，账套之间数据互不可见</li></ul></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="table-hint">← 表格可横向拖动，共三栏：类别 / 已支持 / 口径与边界 →</p>
+      <p class="honest">我们不承诺「一键搞定所有税局页面」。税局接口各省不同，目前只在浙江完成真机验证；其他地区取数失败时，系统如实提示，不用假数据填充。</p>
+    </div>
+  </section>
+
+  <!-- 06 数据与部署 -->
+  <section class="band-ink" id="deploy">
+    <div class="wrap sec">
+      <div class="sec-head">
+        <div>
+          <h2>账在你自己手里，<br><em>随时可以带走</em></h2>
+        </div>
+        <p>云财可以在线用，也可以整套部署到你自己的服务器。数据库是标准 PostgreSQL，导出是 Excel 与 PDF，不把数据锁在系统里。</p>
+      </div>
+
+      <dl class="specs">
+        <div><dt>账套隔离</dt><dd>接口按账套组织，跨账套访问由全局过滤器拦截，成员只能看到被授权的账套。</dd></div>
+        <div><dt>角色权限</dt><dd>成员表是唯一权限源；<b>21 个</b>权限模块按角色开合，高危端点仅管理员可用。</dd></div>
+        <div><dt>全量导出</dt><dd>凭证、账簿、报表均可导出 Excel 或 PDF，导出内容与页面口径一致。</dd></div>
+        <div><dt>审计留痕</dt><dd>关键操作写入操作日志，可按账套与操作人查询，历史单据不被覆盖。</dd></div>
+        <div><dt>Docker 部署</dt><dd>web、api、db 三个容器；migrate 容器先执行一次 <b>--migrate-only</b>，再启动 api。</dd></div>
+        <div><dt>库结构校验</dt><dd>启动前比对迁移历史，发现未应用迁移就拒绝启动并点名，不带着旧结构提供服务。</dd></div>
+        <div><dt>升级</dt><dd>EF Core 迁移随版本发布；升级不改动历史单据，迁移失败可回滚镜像。</dd></div>
+      </dl>
+
+      <div class="deploy">
+        <div>
+          <h4>DOCKER COMPOSE</h4>
+          <pre><s># 1. 准备环境变量</s>
+cp .env.example .env
+
+<s># 2. 构建并启动</s>
+docker compose up -d --build
+
+<s># 3. 浏览器打开</s>
+http://&lt;服务器地址&gt;</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 FAQ -->
+  <section class="band" id="faq">
+    <div class="wrap sec">
+      <div class="sec-head">
+        <div>
+          <h2>被问得最多的九件事</h2>
+        </div>
+        <p>能答的都答了；涉及具体省份税局接口与部署环境的，请联系服务人员按现状确认。</p>
+      </div>
+
+      <div class="faq">
+        <details open><summary>真的永久免费吗？</summary><p>是。当前版本不收取授权费、年费，也不按凭证张数或账套数计费。私有化部署由你自行准备服务器与数据库，云财不代收基础设施费用。</p></details>
+        <details><summary>保存凭证就入账，录错了怎么办？</summary><p>已过账凭证先做<b>反过账</b>，退回草稿后修改，再保存重新入账。草稿不会进入账簿与报表；导入时借贷不平衡的凭证也会落在草稿，补齐后保存即入账。</p></details>
+        <details><summary>支持哪些会计准则？</summary><p>企业会计准则、小企业会计准则、民间非营利组织会计制度、2006 年企业会计准则四套。建账时选定，预置科目表按准则恢复；准则切换目前只放行小企业升级为企业，反向不开放。</p></details>
+        <details><summary>税局数据能自动取回吗？</summary><p>在浙江可以：登录后由页面直连电子税务局数字账户，读取税费种、申报记录、缴款信息与完税证明。其他省份尚未完成真机验证，取数失败时系统会如实提示，不会用假数据填充。</p></details>
+        <details><summary>现金流量表是怎么归类的？</summary><p>直接法简化工作底稿：现金科目为一级编码 1001 / 1002 / 1012；每张凭证的现金净收付按比例分摊到对手方科目，再由分类器归入标准 35 行主表。权益类对手方归筹资，投资与筹资活动分开列示。</p></details>
+        <details><summary>账簿和报表统计哪些凭证？</summary><p>只统计<b>已过账</b>凭证。系统没有审核环节，保存即过账；草稿与反过账退回的凭证都不入账。修改已过账凭证必须先反过账。</p></details>
+        <details><summary>数据能导出、能迁走吗？</summary><p>能。凭证、账簿、报表可导出 Excel 或 PDF；私有化部署的数据在标准 PostgreSQL 里，可用常规备份工具迁移，不依赖云财专用格式。</p></details>
+        <details><summary>能部署到自己的服务器吗？</summary><p>能。提供 Docker Compose 清单；生产环境需要自备 PostgreSQL 与 JWT 密钥。启动前会校验库结构，迁移没跟上会拒绝启动并点名缺少的迁移。</p></details>
+        <details><summary>多人怎么分工？</summary><p>每个账套独立授权，成员只能看到被授权的账套；21 个权限模块按角色开合，管理员独占高危端点。一个账号可以管理多个账套，账套之间数据互不可见。</p></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 收尾 CTA -->
+  <section class="final">
+    <div class="wrap final-in">
+      <div>
+        <h2>先走完一个月，<br>再决定要不要继续</h2>
+        <p>用现有账套试一个月：凭证、账簿、报表、结转结账，完整做一轮。数据随时可以全量导出。</p>
+      </div>
+      <div class="final-cta">
+        <a class="btn btn-solid" href="/login">免费开始使用</a>
+        <a class="btn btn-line" href="#deploy">查看部署方式</a>
+        <small>在线使用无需安装；私有化部署提供 Docker Compose 清单。</small>
+      </div>
+    </div>
+  </section>
+
+  <!-- 联系我们 -->
+  <section class="contact band" id="contact">
+    <div class="wrap contact-in">
+      <div>
+        <h2>有想法，<br>聊聊。</h2>
+        <p class="lead">试用、部署、二次开发，或者想问问这套系统适不适合你，留几句话，我们看到就回。</p>
+        <p class="note">开源项目，留言只用于回复你的咨询，不会用于其它用途，也不会公开你的联系方式。</p>
+      </div>
+      <div>
+        <form class="contact-form cf-form" id="contact-form" novalidate>
+          <div class="cf-row">
+            <div class="cf-field">
+              <label for="cf-name">您的称呼 <span>*</span></label>
+              <input id="cf-name" name="name" type="text" maxlength="40" autocomplete="name" placeholder="如：王经理" required>
+            </div>
+            <div class="cf-field">
+              <label for="cf-contact">联系方式（手机或微信） <span>*</span></label>
+              <input id="cf-contact" name="contact" type="text" maxlength="120" autocomplete="tel" placeholder="方便我们与您联系" required>
+            </div>
+          </div>
+          <div class="cf-field">
+            <label for="cf-message">需求描述（选填）</label>
+            <textarea id="cf-message" name="message" maxlength="2000" placeholder="管理规模、关注的功能模块等"></textarea>
+          </div>
+          <!-- 蜜罐：真人看不到，机器人填了后端会静默丢弃 -->
+          <div class="cf-hp" aria-hidden="true"><label for="cf-website">网站</label><input id="cf-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+          <div class="cf-actions">
+            <button class="btn btn-solid" type="submit" id="cf-submit">提交</button>
+            <span class="cf-status" id="cf-status" role="status" aria-live="polite"></span>
+            <p class="cf-privacy">您的信息仅用于产品咨询，我们不会向任何第三方透露。</p>
+          </div>
+        </form>
+        <p class="cf-off" id="cf-off">留言功能暂未开放，欢迎通过项目仓库的 Issue 与我们交流。</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="logo" href="#" aria-label="云财首页">
+          <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M23.78 8.22A11 11 0 1 0 23.78 23.78L20.6 20.6A6.5 6.5 0 1 1 20.6 11.4Z" fill="#fff"/>
+            <circle cx="23.1" cy="16" r="2.25" fill="#fff"/>
+          </svg>
+          <span class="logo-txt"><strong>云财</strong><small>YUNCAI</small></span>
+        </a>
+        <p class="foot-tag">开源免费企业级财务系统。凭证、账簿、报表、出纳、发票、工资、资产、档案共用一套科目底座，保存即入账，数据可导出、可私有化部署。</p>
+      </div>
+      <div><h4>产品</h4><ul><li><a href="#workstation">凭证与账簿</a></li><li><a href="#modules">财务报表</a></li><li><a href="#workstation">资金出纳</a></li><li><a href="#modules">期末结转</a></li><li><a href="#modules">自定义报表</a></li></ul></div>
+      <div><h4>能力</h4><ul><li><a href="#modules">四套准则</a></li><li><a href="#modules">七类辅助核算</a></li><li><a href="#modules">账套级权限</a></li><li><a href="#deploy">全量导出</a></li><li><a href="#deploy">私有化部署</a></li></ul></div>
+      <div><h4>数据</h4><ul><li><a href="#deploy">部署方式</a></li><li><a href="#deploy">数据库与升级</a></li><li><a href="#deploy">操作日志</a></li></ul></div>
+      <div><h4>支持</h4><ul><li><a href="#contact">联系我们</a></li><li><a href="/login">免费开始使用</a></li><li><a href="/login">登录</a></li><li><a href="#faq">常见问题</a></li></ul></div>
+    </div>
+    <div class="foot-bar">
+      <span>© 2026 云财 YUNCAI</span><span class="sep"></span>
+      <a href="#faq">常见问题</a><span class="sep"></span>
+      <a href="#deploy">安全合规</a><span class="sep"></span>
+      <a class="gh-text" href="https://github.com/datawalkcloud/YunCai" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-github"/></svg>
+        GitHub 开源仓库
+      </a><span class="sep"></span>
+      <span>v1.2.2 · 2026 年 11 月</span>
+    </div>
+  </div>
+</footer>
+
+<button class="to-top" type="button" aria-label="返回顶部" title="返回顶部">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V4M5 11l7-7 7 7"/></svg>
+</button>
+
+<script>
+  // 移动端抽屉
+  const menuBtn = document.querySelector('.menu-btn');
+  const drawer = document.getElementById('site-menu');
+  menuBtn.addEventListener('click', () => {
+    const open = menuBtn.getAttribute('aria-expanded') === 'true';
+    menuBtn.setAttribute('aria-expanded', String(!open));
+    menuBtn.setAttribute('aria-label', open ? '打开菜单' : '关闭菜单');
+    drawer.hidden = open;
+  });
+  drawer.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
+    menuBtn.setAttribute('aria-expanded', 'false');
+    drawer.hidden = true;
+  }));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !drawer.hidden) {
+      menuBtn.setAttribute('aria-expanded', 'false');
+      drawer.hidden = true;
+      menuBtn.focus();
+    }
+  });
+
+  // 返回顶部
+  const toTop = document.querySelector('.to-top');
+  const onScroll = () => toTop.classList.toggle('on', window.scrollY > 600);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+  toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+  // 联系表单：提交走 /api/contact（dev 由 vite 代理、生产由 nginx 反代）。
+  (function () {
+    const form = document.getElementById('contact-form');
+    const status = document.getElementById('cf-status');
+    const submit = document.getElementById('cf-submit');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      status.textContent = '';
+      status.className = 'cf-status';
+
+      const name = form.elements.name.value.trim();
+      const contact = form.elements.contact.value.trim();
+      const message = form.elements.message.value.trim();
+      if (!name || !contact) {
+        status.textContent = '请填写称呼和联系方式。';
+        status.className = 'cf-status err';
+        return;
+      }
+
+      submit.disabled = true;
+      submit.textContent = '提交中…';
+      try {
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name, contact, message,
+            website: form.elements.website.value
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          status.textContent = data.message || '申请已收到，我们会尽快联系你。';
+          status.className = 'cf-status ok';
+          form.reset();
+        } else {
+          status.textContent = data.detail || data.message || '发送失败，请稍后再试。';
+          status.className = 'cf-status err';
+        }
+      } catch (_) {
+        status.textContent = '网络连接失败，请稍后再试。';
+        status.className = 'cf-status err';
+      } finally {
+        submit.disabled = false;
+        submit.textContent = '提交';
+      }
+    });
+  })();
+
+</script>
+</body>
+</html>
