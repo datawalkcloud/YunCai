@@ -174,3 +174,6 @@ npm run build
 - 前端单包约 1.4MB（gzip 365KB），尚未做路由级分包。
 - 智能报税直连仅在浙江验证；个税 ITS 明文链路只跑通编译，真机（需短信登录）尚未验证明文回流。
 - `ui/src/pages/business/*` 与 `ui/src/pages/{vouchers,ledger,funds,reports,settings,closing}` 两套页面并存，数据链路接法不同；改取数前先确认改的是哪一套。`pages/home`、`pages/vouchers/import` 是不可达的孤儿代码。
+
+## QQ交流群
+1134375323
