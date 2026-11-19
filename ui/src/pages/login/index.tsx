@@ -48,6 +48,11 @@ const PHONE_RE = /^1\d{10}$/;
 /* 是否开放「短信验证码登录」。临时隐藏改 false 即可，恢复只改回 true。 */
 const ENABLE_SMS_LOGIN = false;
 
+/* 是否展示「其他登录方式」（企业微信 / 手机号 / SSO / QQ / 邮箱）。
+ * 目前这些渠道都还没接，先整块隐藏，登录页只留手机号 + 密码。
+ * 恢复时改回 true 即可，渠道映射 CHANNELS 保留未删。 */
+const ENABLE_OTHER_LOGIN: boolean = false;
+
 const LOGIN_TABS = [
   { key: "phone", label: "验证码登录" },
   { key: "password", label: "密码登录" },
@@ -768,8 +773,9 @@ export default function LoginPage() {
           </p>
         )}
 
-        {/* 其他登录方式（设置密码步骤不显示） */}
-        {step === "login" && (
+        {/* 其他登录方式（设置密码步骤不显示）。
+            目前整块隐藏，登录页只留手机号 + 密码；把 ENABLE_OTHER_LOGIN 改回 true 即恢复。 */}
+        {step === "login" && ENABLE_OTHER_LOGIN && (
           <>
             <div className="mt-11 flex items-center gap-3">
               <span className="h-px flex-1" style={{ background: C.line }} />
@@ -805,9 +811,14 @@ export default function LoginPage() {
                 </button>
               ))}
             </div>
+          </>
+        )}
 
+        {/* 提示（如重置密码成功）与协议不随登录方式一起隐藏 */}
+        {step === "login" && (
+          <>
             {hint && (
-              <p className="mt-3 text-center text-[12px] font-normal" style={{ color: C.brand }}>
+              <p className="mt-5 text-center text-[12px] font-normal" style={{ color: C.brand }}>
                 {hint}
               </p>
             )}
