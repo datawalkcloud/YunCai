@@ -12,9 +12,15 @@
  *   - 默认 false：不展示任何指向官方官网的入口（适合私有化 / 二次分发）。
  *   - 需要展示时设 true：登录页顶部出现品牌标识与「返回官网」。
  *
+ * feedbackGiteeUrl / feedbackGithubUrl：顶栏「问题反馈」里两个平台的新建 Issue 地址。
+ *   - 默认指向官方仓库；私有化部署可改成自己的地址，或设为空字符串隐藏对应项。
+ *   - 两项都为空时，顶栏不再显示问题反馈入口。
+ *
  * 注意：官网首页本身由 nginx 的 `location = / -> home.html` 返回。若私有化部署
  * 需要连根路径的官方营销页也一并去掉，需另外调整 ui/nginx.conf（本开关只管入口）。
  */
 window.__YUNCAI_SITE__ = {
   showOfficialSite: false,
+  feedbackGiteeUrl: "https://gitee.com/datawalkcloud/YunCai/issues/new",
+  feedbackGithubUrl: "https://github.com/datawalkcloud/YunCai/issues/new",
 };

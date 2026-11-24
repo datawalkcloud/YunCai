@@ -31,6 +31,7 @@ import { setTaxPeriod, useTaxPeriod } from "@/pages/tax/tax-period";
 import { filterGroupsByPermission, menuCategories, findCategoryOf } from "./menu-model";
 import { tabKeyOf } from "./route-tabs-context";
 import { setPath } from "@/accountSets/url-id";
+import { FeedbackMenu } from "./FeedbackMenu";
 
 /* ------------------------------------------------------------------ */
 /*  工作区顶栏（停车平台风格）：品牌 + 记账/报税分类 + 期间 + 主题 + 用户。 */
@@ -128,6 +129,7 @@ export function WorkspaceTopBar({
                 <div className="min-w-0 flex-1" />
                 {category.to ? <TaxPeriodPicker /> : <PeriodLabel />}
                 <ThemeMenu />
+                <FeedbackMenu />
                 <UserMenu />
             </div>
             {loading && (

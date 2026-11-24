@@ -67,8 +67,11 @@ services:
       - "${YUNCAI_HTTP_PORT:-80}:80"
     environment:
       # 默认不展示官网入口；需要展示时设为 true，登录页才出现品牌标识与「返回官网」。
+      # 问题反馈入口指向的平台地址；留空可隐藏对应项（两项都空则整个入口隐藏）。
       # 容器启动时据此生成 site.config.js，无需重新构建镜像。
       YUNCAI_SHOW_OFFICIAL_SITE: ${YUNCAI_SHOW_OFFICIAL_SITE:-false}
+      YUNCAI_FEEDBACK_GITEE_URL: ${YUNCAI_FEEDBACK_GITEE_URL-https://gitee.com/datawalkcloud/YunCai/issues/new}
+      YUNCAI_FEEDBACK_GITHUB_URL: ${YUNCAI_FEEDBACK_GITHUB_URL-https://github.com/datawalkcloud/YunCai/issues/new}
     depends_on:
       - api
 
